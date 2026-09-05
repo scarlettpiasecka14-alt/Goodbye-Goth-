@@ -1,4 +1,3 @@
-\
 export class StoryController {
   constructor(root, { onComplete }) {
     this.root = root;

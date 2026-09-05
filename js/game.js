@@ -1,4 +1,3 @@
-\
 import { createLevel1 } from "./levels/level1.js";
 import { StoryController } from "./story.js";
 
