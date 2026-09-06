@@ -141,3 +141,19 @@ html,body,#app{height:100%;overflow:hidden}
   .cartoon-story-footer{width:96vw}
   .story-hint{font-size:11px}
 }
+
+/* v1.1: cinematic typed narration between the four approved cartoon story panels. */
+.typing-story-screen{padding:10px;overflow:hidden;background:#000}
+.typing-story-panel{position:relative;width:min(96vw,980px);height:100%;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:#000;color:#f8edf3;cursor:pointer}
+.typing-story-text{width:min(860px,88vw);font:700 clamp(1.25rem,3.2vw,2.15rem)/1.65 Georgia,"Times New Roman",serif;letter-spacing:.015em;text-wrap:balance;text-shadow:0 0 18px rgba(239,145,172,.14)}
+.typing-story-cursor{width:.12em;height:1.15em;margin-top:8px;background:#ef91ac;animation:typing-blink .85s steps(1,end) infinite}
+.typing-story-next{margin-top:28px;min-width:190px;background:#241822;border-color:#684c61;color:#f8edf3;opacity:.88}
+.typing-story-next:not(:disabled):hover{background:#372636}
+.typing-story-next:disabled{cursor:default;opacity:0}
+.note-lead-panel{cursor:default}
+.note-icon-button{min-width:150px;padding:8px 14px;background:transparent;border-color:#ef91ac;display:flex;flex-direction:column;align-items:center;gap:2px}
+.note-icon{font-size:2.6rem;line-height:1}
+.note-icon-label{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:#f4cfdd}
+@keyframes typing-blink{0%,45%{opacity:1}46%,100%{opacity:0}}
+@media(prefers-reduced-motion:reduce){.typing-story-cursor{animation:none}}
+@media(max-width:600px){.typing-story-screen{padding:5px}.typing-story-text{width:90vw;font-size:clamp(1.1rem,5vw,1.55rem)}.typing-story-next{margin-top:22px}}
