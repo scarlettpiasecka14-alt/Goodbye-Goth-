@@ -39,19 +39,70 @@ function drawCemetery(ctx,w,h){
   ctx.fillStyle='#30323a';ctx.fillRect(w*.03,h*.45,w*.16,8);for(let x=w*.03;x<w*.19;x+=14)ctx.fillRect(x,h*.45-35,5,43);ctx.fillStyle='#776f74';ctx.fillRect(w*.72,h*.25,w*.18,8);ctx.fillStyle='#413b43';ctx.fillRect(w*.77,h*.08,w*.08,h*.18);ctx.fillStyle='#7b6d82';ctx.beginPath();ctx.moveTo(w*.77,h*.08);ctx.lineTo(w*.81,h*.025);ctx.lineTo(w*.85,h*.08);ctx.fill();
 }
 
-function drawOlly(ctx,x,y,s=.7,t=0,front=false){
-  ctx.save();const cx=x,cy=y+Math.sin(t*5)*1.2;ctx.translate(cx,cy);
-  // shadow
-  ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.ellipse(0,48*s,27*s,8*s,0,0,Math.PI*2);ctx.fill();
-  if(!front){
-    ctx.fillStyle='#35271f';ctx.beginPath();ctx.ellipse(0,-35*s,23*s,24*s,0,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#27212a';ctx.fillRect(-17*s,-11*s,34*s,31*s);ctx.fillStyle='#273029';ctx.fillRect(-15*s,20*s,30*s,18*s);
-    ctx.strokeStyle='#121114';ctx.lineWidth=4*s;ctx.beginPath();ctx.moveTo(-8*s,38*s);ctx.lineTo(-10*s,53*s);ctx.moveTo(8*s,38*s);ctx.lineTo(10*s,53*s);ctx.stroke();
-    ctx.fillStyle='#f4f2ef';ctx.fillRect(-18*s,52*s,12*s,5*s);ctx.fillRect(6*s,52*s,12*s,5*s);
-    ctx.strokeStyle='#b58d68';ctx.lineWidth=3*s;ctx.beginPath();ctx.moveTo(12*s,-3*s);ctx.lineTo(28*s,-20*s);ctx.stroke();ctx.strokeStyle='#6b4731';ctx.lineWidth=2*s;ctx.beginPath();ctx.arc(16*s,-5*s,19*s,-1.2,.9);ctx.stroke();
-  }else{
-    ctx.fillStyle='#35271f';ctx.beginPath();ctx.ellipse(0,-37*s,23*s,24*s,0,Math.PI,Math.PI*2);ctx.fill();ctx.fillStyle='#d9b59e';ctx.beginPath();ctx.arc(0,-32*s,14*s,0,Math.PI*2);ctx.fill();ctx.fillStyle='#dbe0e7';ctx.fillRect(-18*s,-17*s,36*s,29*s);ctx.fillStyle='#25212a';ctx.fillRect(-15*s,12*s,30*s,18*s);ctx.strokeStyle='#111';ctx.lineWidth=4*s;ctx.beginPath();ctx.moveTo(-9*s,29*s);ctx.lineTo(-10*s,47*s);ctx.moveTo(9*s,29*s);ctx.lineTo(10*s,47*s);ctx.stroke();
-  }
+function drawOlly(ctx,x,y,s=.7,t=0,front=true,dir='down',moving=false){
+  // Chunky hand-drawn/pixel-cartoon Olly. The old geometric mannequin made
+  // horizontal movement look like backwards walking, so the map character
+  // now has a clear silhouette, animated limbs, curls, Weeknd shirt and bow.
+  ctx.save();
+  const phase=moving ? Math.sin(t*11) : 0;
+  const bob=moving ? Math.abs(Math.sin(t*11))*1.8 : Math.sin(t*2)*0.6;
+  ctx.translate(x,y-bob);
+  const flip=dir==='left'?-1:1;
+  ctx.scale(flip,1);
+
+  // ground shadow
+  ctx.fillStyle='rgba(0,0,0,.32)';
+  ctx.beginPath();ctx.ellipse(0,34*s,25*s,7*s,0,0,Math.PI*2);ctx.fill();
+
+  // legs and olive cargos
+  const legA=moving?phase*5:0, legB=moving?-phase*5:0;
+  ctx.strokeStyle='#17151b';ctx.lineWidth=7*s;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(-7*s,19*s);ctx.lineTo((-9+legA)*s,36*s);ctx.moveTo(7*s,19*s);ctx.lineTo((9+legB)*s,36*s);ctx.stroke();
+  ctx.strokeStyle='#303a2f';ctx.lineWidth=11*s;
+  ctx.beginPath();ctx.moveTo(-7*s,17*s);ctx.lineTo((-9+legA)*s,31*s);ctx.moveTo(7*s,17*s);ctx.lineTo((9+legB)*s,31*s);ctx.stroke();
+  ctx.fillStyle='#15151a';ctx.fillRect((-15+legA)*s,29*s,11*s,6*s);ctx.fillRect((4+legB)*s,29*s,11*s,6*s);
+
+  // torso / The Weeknd shirt
+  ctx.fillStyle='#16151a';ctx.strokeStyle='#09090c';ctx.lineWidth=2*s;
+  ctx.beginPath();ctx.roundRect(-19*s,-18*s,38*s,39*s,7*s);ctx.fill();ctx.stroke();
+  ctx.fillStyle='#8b766e';ctx.font=`bold ${7*s}px Arial`;ctx.textAlign='center';ctx.fillText('The Weeknd',0,0);
+  ctx.fillStyle='#3c3534';ctx.fillRect(-10*s,4*s,20*s,11*s);
+  ctx.fillStyle='#b8a59c';ctx.fillRect(-7*s,6*s,14*s,2*s);ctx.fillRect(-5*s,10*s,10*s,2*s);
+
+  // swinging arms
+  const armA=moving?phase*4:0, armB=moving?-phase*4:0;
+  ctx.strokeStyle='#d1a48e';ctx.lineWidth=6*s;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(-17*s,-10*s);ctx.lineTo((-23+armA)*s,7*s);ctx.moveTo(17*s,-10*s);ctx.lineTo((23+armB)*s,5*s);ctx.stroke();
+  ctx.fillStyle='#d1a48e';ctx.beginPath();ctx.arc((-23+armA)*s,8*s,4*s,0,Math.PI*2);ctx.arc((23+armB)*s,6*s,4*s,0,Math.PI*2);ctx.fill();
+
+  // neck
+  ctx.fillStyle='#c9957f';ctx.fillRect(-6*s,-24*s,12*s,9*s);
+
+  // face
+  ctx.fillStyle='#d6a28d';ctx.strokeStyle='#20171a';ctx.lineWidth=2*s;
+  ctx.beginPath();ctx.roundRect(-14*s,-42*s,28*s,27*s,9*s);ctx.fill();ctx.stroke();
+  // ears
+  ctx.beginPath();ctx.arc(-14*s,-29*s,4*s,0,Math.PI*2);ctx.arc(14*s,-29*s,4*s,0,Math.PI*2);ctx.fill();
+
+  // curly hair silhouette, deliberately larger and messier like the reference
+  ctx.fillStyle='#24181b';ctx.strokeStyle='#100d11';ctx.lineWidth=2*s;
+  ctx.beginPath();
+  ctx.arc(-10*s,-43*s,10*s,0,Math.PI*2);ctx.arc(0,-48*s,11*s,0,Math.PI*2);ctx.arc(11*s,-43*s,10*s,0,Math.PI*2);ctx.arc(-15*s,-35*s,7*s,0,Math.PI*2);ctx.arc(15*s,-35*s,7*s,0,Math.PI*2);ctx.fill();ctx.stroke();
+  // curl highlights
+  ctx.fillStyle='#4b3030';
+  [[-10,-46],[-2,-51],[7,-48],[14,-40],[-15,-37],[2,-43]].forEach(([cx,cy])=>{ctx.beginPath();ctx.arc(cx*s,cy*s,3*s,0,Math.PI*2);ctx.fill()});
+
+  // eyebrows / eyes / beard
+  ctx.strokeStyle='#4b2d2b';ctx.lineWidth=2*s;ctx.beginPath();ctx.moveTo(-9*s,-31*s);ctx.lineTo(-3*s,-32*s);ctx.moveTo(3*s,-32*s);ctx.lineTo(9*s,-31*s);ctx.stroke();
+  ctx.fillStyle='#17141a';ctx.fillRect(-7*s,-28*s,4*s,2*s);ctx.fillRect(3*s,-28*s,4*s,2*s);
+  ctx.fillStyle='#69473e';ctx.beginPath();ctx.arc(0,-20*s,8*s,0,Math.PI);ctx.fill();
+  ctx.strokeStyle='#9b6858';ctx.lineWidth=1*s;ctx.beginPath();ctx.moveTo(-3*s,-23*s);ctx.lineTo(3*s,-23*s);ctx.stroke();
+
+  // bow in his hand, with a small walking swing
+  ctx.save();ctx.translate(23*s,0);ctx.rotate(-0.12+phase*0.03);
+  ctx.strokeStyle='#b98a5c';ctx.lineWidth=2.5*s;ctx.beginPath();ctx.moveTo(0,-22*s);ctx.lineTo(0,20*s);ctx.stroke();
+  ctx.strokeStyle='#6f4731';ctx.lineWidth=1.5*s;ctx.beginPath();ctx.arc(0,-1*s,15*s,-1.15,1.15);ctx.stroke();
+  ctx.restore();
   ctx.restore();
 }
 
@@ -80,14 +131,14 @@ export function createLevel1(ui){
     {x:17,y:5,type:'chain',name:'CHAIN ZOMBIE',hp:5,maxHp:5,dead:false,pattern:'Chain lash'}
   ];
   const relationship={x:4,y:7},puzzle={x:13,y:12},boss={x:20,y:11};
-  let x=3,y=6,hp=5,mode='map',kills=0,relationshipDone=false,puzzleSolved=false,target=null,isBoss=false,combatHp=0,combatMax=1,enemyAttackPhase=null,enemyTimer=null,combatRaf=0,projectiles=[],player={x:135,y:260,invuln:0,aimX:500,aimY:180},combatCheckpoint=null,relationshipStep=0,relationshipRound=0,relationshipStart=0,relationshipDuration=2600,relationshipAnimating=false,relationshipRAF=0;
+  let x=3,y=6,hp=5,mode='map',walkDir='down',walkPulse=0,kills=0,relationshipDone=false,puzzleSolved=false,target=null,isBoss=false,combatHp=0,combatMax=1,enemyAttackPhase=null,enemyTimer=null,combatRaf=0,projectiles=[],player={x:135,y:260,invuln:0,aimX:500,aimY:180},combatCheckpoint=null,relationshipStep=0,relationshipRound=0,relationshipStart=0,relationshipDuration=2600,relationshipAnimating=false,relationshipRAF=0;
   let now=0,raf=0;
 
   function reveal(){for(let yy=0;yy<ROWS;yy++)for(let xx=0;xx<COLS;xx++)if(Math.hypot(xx-x,yy-y)<=3.7)revealed[yy][xx]=true}
   function unlockedBoss(){return kills>=2&&relationshipDone&&puzzleSolved}
   function stats(){ui.hpEl.textContent=hp;ui.gothEl.textContent=`${kills}/2`;ui.relEl.textContent=relationshipDone?'Done':'Locked';ui.puzzleEl.textContent=puzzleSolved?'Solved':'Locked';ui.goalGoths.innerHTML=kills>=2?'<span class="good">✓ Defeat the required Zombie Goths</span>':`○ Defeat the required Zombie Goths (${kills}/2)`;ui.goalRel.innerHTML=relationshipDone?'<span class="good">✓ Relationship Challenge complete</span>':'○ Complete the Relationship Challenge';ui.goalPuzzle.innerHTML=puzzleSolved?'<span class="good">✓ Puzzle solved</span>':'○ Solve the Puzzle';ui.goalBoss.innerHTML=unlockedBoss()?'<span class="good">✓ Boss gate unlocked</span>':'<span class="locked">🔒 Boss gate locked</span>'}
   function drawMini(){mctx.clearRect(0,0,250,180);mctx.fillStyle='#0d0b11';mctx.fillRect(0,0,250,180);for(let yy=0;yy<ROWS;yy++)for(let xx=0;xx<COLS;xx++){if(revealed[yy][xx]){mctx.fillStyle=isFloor(xx,yy)?'#57505b':'#17131b';mctx.fillRect(xx*10,yy*10,10,10)}else{mctx.fillStyle='#0c0a0e';mctx.fillRect(xx*10,yy*10,10,10)}}mctx.fillStyle='#f3eff0';mctx.beginPath();mctx.arc(x*10+5,y*10+5,3.5,0,Math.PI*2);mctx.fill();if(!relationshipDone&&revealed[relationship.y][relationship.x]){mctx.fillStyle='#ef91ac';mctx.fillRect(relationship.x*10+2,relationship.y*10+2,6,6)}if(!puzzleSolved&&revealed[puzzle.y][puzzle.x]){mctx.fillStyle='#e5c5d5';mctx.fillRect(puzzle.x*10+2,puzzle.y*10+2,6,6)}if(unlockedBoss()&&revealed[boss.y][boss.x]){mctx.fillStyle='#f0cf8b';mctx.fillRect(boss.x*10+2,boss.y*10+2,6,6)}}
-  function drawWorld(t){drawCemetery(ctx,1000,600);for(let yy=0;yy<ROWS;yy++)for(let xx=0;xx<COLS;xx++){if(!revealed[yy][xx]){ctx.fillStyle='rgba(3,2,6,.92)';ctx.fillRect(xx*TILE,yy*TILE,TILE,TILE)}else{ctx.fillStyle=isFloor(xx,yy)?'rgba(42,41,46,.24)':'rgba(0,0,0,.22)';ctx.fillRect(xx*TILE,yy*TILE,TILE,TILE)}}enemies.forEach(e=>{if(!e.dead&&revealed[e.y][e.x])drawZombie(ctx,e.x*TILE+20,e.y*TILE+30,e.type,.58,t/1000)});if(!relationshipDone&&revealed[relationship.y][relationship.x]){ctx.fillStyle='#ef91ac';ctx.font='28px Georgia';ctx.textAlign='center';ctx.fillText('♥',relationship.x*TILE+20,relationship.y*TILE+29)}if(!puzzleSolved&&revealed[puzzle.y][puzzle.x]){ctx.fillStyle='#e6c5d3';ctx.font='26px Georgia';ctx.textAlign='center';ctx.fillText('✣',puzzle.x*TILE+20,puzzle.y*TILE+29)}if(unlockedBoss()&&revealed[boss.y][boss.x]){ctx.fillStyle='#f0cf8b';ctx.font='25px Georgia';ctx.textAlign='center';ctx.fillText('♛',boss.x*TILE+20,boss.y*TILE+29)}drawOlly(ctx,x*TILE+20,y*TILE+35,.62,t/1000,true)}
+  function drawWorld(t){drawCemetery(ctx,1000,600);for(let yy=0;yy<ROWS;yy++)for(let xx=0;xx<COLS;xx++){if(!revealed[yy][xx]){ctx.fillStyle='rgba(3,2,6,.92)';ctx.fillRect(xx*TILE,yy*TILE,TILE,TILE)}else{ctx.fillStyle=isFloor(xx,yy)?'rgba(42,41,46,.24)':'rgba(0,0,0,.22)';ctx.fillRect(xx*TILE,yy*TILE,TILE,TILE)}}enemies.forEach(e=>{if(!e.dead&&revealed[e.y][e.x])drawZombie(ctx,e.x*TILE+20,e.y*TILE+30,e.type,.58,t/1000)});if(!relationshipDone&&revealed[relationship.y][relationship.x]){ctx.fillStyle='#ef91ac';ctx.font='28px Georgia';ctx.textAlign='center';ctx.fillText('♥',relationship.x*TILE+20,relationship.y*TILE+29)}if(!puzzleSolved&&revealed[puzzle.y][puzzle.x]){ctx.fillStyle='#e6c5d3';ctx.font='26px Georgia';ctx.textAlign='center';ctx.fillText('✣',puzzle.x*TILE+20,puzzle.y*TILE+29)}if(unlockedBoss()&&revealed[boss.y][boss.x]){ctx.fillStyle='#f0cf8b';ctx.font='25px Georgia';ctx.textAlign='center';ctx.fillText('♛',boss.x*TILE+20,boss.y*TILE+29)}drawOlly(ctx,x*TILE+20,y*TILE+35,.70,t/1000,true,walkDir,walkPulse>0)}
 
   function drawEncounter(type){ectx.clearRect(0,0,720,300);const gg=ectx.createLinearGradient(0,0,0,300);gg.addColorStop(0,'#2e2436');gg.addColorStop(1,'#111016');ectx.fillStyle=gg;ectx.fillRect(0,0,720,300);for(let i=0;i<15;i++){ectx.fillStyle='#4d3b51';ectx.fillRect((i*61)%720,150+(i%4)*18,28,42)}drawOlly(ectx,180,245,.95,0,true);drawZombie(ectx,520,230,type,.95,1.2,false);ectx.fillStyle='#f3e7ed';ectx.font='bold 18px Georgia';ectx.textAlign='center';ectx.fillText(type==='shambler'?'Mmm... black eyeliner...':'Mmm... accessories...',500,45)}
 
@@ -160,7 +211,7 @@ export function createLevel1(ui){
     const dx=dir==='left'?-1:dir==='right'?1:0,dy=dir==='up'?-1:dir==='down'?1:0,nx=x+dx,ny=y+dy;
     if(!isFloor(nx,ny))return;
     if(nx===11&&y===6&&kills<1)return;if(nx===15&&y===6&&kills<2)return;
-    x=nx;y=ny;reveal();ui.dialogue.textContent='The cemetery reveals more of the path...';drawMini();checkTriggers();
+    x=nx;y=ny;walkDir=dir;walkPulse=1;setTimeout(()=>{walkPulse=0},180);reveal();ui.dialogue.textContent='The cemetery reveals more of the path...';drawMini();checkTriggers();
   }
   function interact(){checkTriggers()}
   function startEncounterFight(){ui.encounter.classList.add('hidden');startCombat(false)}
@@ -227,7 +278,7 @@ function completeRelationship(){
 }
   function answerPuzzle(answer){if(mode!=='puzzle')return;if(answer==='correct'){puzzleSolved=true;mode='map';ui.puzzle.classList.add('hidden');ui.dialogue.textContent='🧩 Correct. Princess etiquette level: appalling. The boss gate is now open.';stats()}else ui.puzzleFeedback.textContent='❌ Wrong. Even the cemetery is disappointed in you.'}
   function startBoss(){ui.bossIntro.classList.add('hidden');target=null;combatCheckpoint={x,y};startCombat(true)}
-  function start(){reveal();stats();drawMini();cancelAnimationFrame(relationshipRAF);clearInterval(enemyTimer);cancelAnimationFrame(raf);const loop=t=>{now=t;if(mode==='map')drawWorld(t);drawMini();raf=requestAnimationFrame(loop)};raf=requestAnimationFrame(loop);requestAnimationFrame(combatTick)}
+  function start(){reveal();stats();drawMini();cancelAnimationFrame(relationshipRAF);clearInterval(enemyTimer);cancelAnimationFrame(raf);const loop=t=>{now=t;if(walkPulse>0 && t%99999>-1){} if(mode==='map')drawWorld(t);drawMini();raf=requestAnimationFrame(loop)};raf=requestAnimationFrame(loop);requestAnimationFrame(combatTick)}
   function primaryAction(){if(mode==='encounter')startEncounterFight();else if(mode==='combat')combatAttack();else if(mode==='map')checkTriggers()}
 
   return {start,move,primaryAction,interact,startEncounterFight,combatAttack,combatDodge,shootAtPointer,retryCombat,backToMap,completeRelationship,answerPuzzle,startBoss};
