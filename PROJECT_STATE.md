@@ -1,4 +1,4 @@
-# Goodbye Goth v0.8
+# Goodbye Goth v0.9
 
 ## This pass
 Animation-only pass for Level 1 exploration. No combat, puzzle, relationship, loading screen, or map logic was intentionally changed.
@@ -12,3 +12,6 @@ Animation-only pass for Level 1 exploration. No combat, puzzle, relationship, lo
 
 ## Next
 After this is tested, fix combat as a separate pass. Do not combine unrelated systems into the same patch.
+
+
+V0.9 change: replaced the four intro story images with clean crops from the approved storyboard-master-v0.2 reference. This removes the baked-in title-screen strip under the first story panel and matches the preferred cartoon-ey illustrated style. No gameplay code was changed.

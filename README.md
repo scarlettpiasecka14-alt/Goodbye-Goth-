@@ -28,3 +28,6 @@ Keep GitHub as the master repository and Netlify as the published site. Replace 
 
 ## v0.5 development strategy
 This version intentionally isolates the title/intro/layout/relationship systems. Combat is the next separate pass so combat bugs do not destabilise the rest of the game.
+
+
+V0.9: Story intro visuals now use clean crops from the approved storyboard reference, with no baked-in title-screen strip. Gameplay code unchanged.
