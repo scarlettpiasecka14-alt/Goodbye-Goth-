@@ -1,315 +1,285 @@
+
 const MAP = [
   "#########################",
-  "#########################",
-  "#########################",
-  "###############.....#####",
-  "###############.....#####",
-  "##.....#######.....######",
-  "##.....#######.....######",
-  "##.................######",
-  "##.....#######.....######",
-  "##.....#######.....######",
+  "######....###############",
+  "######....###############",
+  "##........######....#####",
+  "##........######....#####",
+  "##........######....#####",
+  "##..................#####",
+  "##........######....#####",
+  "##........######....#####",
+  "##########.....##########",
   "##########.....##########",
   "##########...........####",
-  "##########.....#.....####",
+  "##########...........####",
   "#########################",
   "#########################"
 ];
 
-const TILE = 40;
-const ROWS = MAP.length;
-const COLS = MAP[0].length;
+const TILE=40, COLS=25, ROWS=15;
+const isFloor=(x,y)=>x>=0&&y>=0&&x<COLS&&y<ROWS&&MAP[y][x]===".";
+const md=(a,b)=>Math.abs(a.x-b.x)+Math.abs(a.y-b.y);
 
-function isFloor(x, y) {
-  return x >= 0 && y >= 0 && x < COLS && y < ROWS && MAP[y][x] === ".";
+function drawCemetery(c,w,h){
+  const g=c.createLinearGradient(0,0,0,h);
+  g.addColorStop(0,"#33253a");g.addColorStop(1,"#0d0b10");
+  c.fillStyle=g;c.fillRect(0,0,w,h);
+  c.fillStyle="#eee9df";c.beginPath();c.arc(w*.78,h*.16,38,0,Math.PI*2);c.fill();
+  c.fillStyle="#17131b";c.fillRect(0,h*.72,w,h*.28);
+  c.strokeStyle="#4b3c51";c.lineWidth=2;
+  for(let i=0;i<18;i++){const xx=(i*71)%w,yy=70+(i*43)%225;c.beginPath();c.moveTo(xx,yy);c.lineTo(xx+5,yy+60);c.stroke()}
+  for(let i=0;i<13;i++){const xx=18+i*78,yy=h*.62-(i%3)*24;c.fillStyle="#5a5260";c.fillRect(xx,yy,30,54);c.beginPath();c.arc(xx+15,yy,15,Math.PI,0);c.fill()}
+  c.fillStyle="#d394b1";for(let i=0;i<20;i++){const xx=20+(i*89)%w,yy=h*.66+(i%4)*13;c.beginPath();c.arc(xx,yy,3,0,Math.PI*2);c.fill()}
 }
 
-function rectDistance(ax, ay, bx, by) {
-  return Math.abs(ax - bx) + Math.abs(ay - by);
-}
-
-function drawOlly(ctx, x, y, scale=0.62, t=0, attack=false, hurt=false) {
-  ctx.save();
-  ctx.translate(x * TILE + 20, y * TILE + 34 + (Math.sin(t * 7) * 1.4));
-  if (hurt) ctx.translate((Math.random() - .5) * 5, 0);
-  ctx.fillStyle = "#2d241f";
-  ctx.beginPath(); ctx.ellipse(0, -38*scale, 25*scale, 25*scale, 0, Math.PI, Math.PI*2); ctx.fill();
-  ctx.fillStyle = "#d9b59d";
-  ctx.beginPath(); ctx.arc(0, -33*scale, 15*scale, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = "#dfe4ea";
-  ctx.fillRect(-18*scale, -18*scale, 36*scale, 31*scale);
-  ctx.fillStyle = "#26222a";
-  ctx.fillRect(-15*scale, 13*scale, 30*scale, 19*scale);
-  ctx.strokeStyle = "#111";
-  ctx.lineWidth = 4*scale;
-  ctx.beginPath();
-  ctx.moveTo(-9*scale, 31*scale); ctx.lineTo(-10*scale, 49*scale);
-  ctx.moveTo(9*scale, 31*scale); ctx.lineTo(10*scale, 49*scale);
-  ctx.stroke();
-  ctx.fillStyle = "#fff";
-  ctx.fillRect(-18*scale, 48*scale, 12*scale, 5*scale);
-  ctx.fillRect(6*scale, 48*scale, 12*scale, 5*scale);
-  if (attack) {
-    ctx.strokeStyle = "#f1edf4";
-    ctx.lineWidth = 4*scale;
-    ctx.beginPath(); ctx.moveTo(17*scale, 2*scale); ctx.lineTo(43*scale, -15*scale); ctx.stroke();
+function drawOlly(c,x,y,scale=.6,t=0,pose="back"){
+  c.save();const cx=x*TILE+20,cy=y*TILE+34+Math.sin(t*7)*1.2;c.translate(cx,cy);
+  if(pose==="back"){
+    c.fillStyle="#2c231f";c.beginPath();c.ellipse(0,-34*scale,23*scale,24*scale,0,0,Math.PI*2);c.fill();
+    c.fillStyle="#dbe0e7";c.fillRect(-17*scale,-12*scale,34*scale,27*scale);
+    c.fillStyle="#25212a";c.fillRect(-14*scale,15*scale,28*scale,17*scale);
+    c.strokeStyle="#101015";c.lineWidth=4*scale;c.beginPath();c.moveTo(-8*scale,32*scale);c.lineTo(-9*scale,48*scale);c.moveTo(8*scale,32*scale);c.lineTo(9*scale,48*scale);c.stroke();
+    c.fillStyle="#fff";c.fillRect(-17*scale,48*scale,11*scale,5*scale);c.fillRect(6*scale,48*scale,11*scale,5*scale);
+    c.strokeStyle="#b68c6a";c.lineWidth=2*scale;c.beginPath();c.moveTo(13*scale,-1*scale);c.lineTo(28*scale,-15*scale);c.stroke();
+  }else{
+    c.fillStyle="#2c231f";c.beginPath();c.ellipse(0,-38*scale,24*scale,25*scale,0,Math.PI,Math.PI*2);c.fill();
+    c.fillStyle="#d9b59d";c.beginPath();c.arc(0,-33*scale,14*scale,0,Math.PI*2);c.fill();
+    c.fillStyle="#dbe0e7";c.fillRect(-18*scale,-18*scale,36*scale,29*scale);
+    c.fillStyle="#25212a";c.fillRect(-15*scale,12*scale,30*scale,18*scale);
+    c.strokeStyle="#111";c.lineWidth=4*scale;c.beginPath();c.moveTo(-9*scale,29*scale);c.lineTo(-10*scale,47*scale);c.moveTo(9*scale,29*scale);c.lineTo(10*scale,47*scale);c.stroke();
   }
-  ctx.restore();
+  c.restore();
 }
 
-function drawGoth(ctx, x, y, scale=.6, t=0, attack=false, elite=false) {
-  ctx.save();
-  ctx.translate(x * TILE + 20, y * TILE + 31 + Math.sin(t * 5) * 1.8);
-  ctx.fillStyle = "#07060a";
-  ctx.beginPath(); ctx.ellipse(0, -38*scale, 25*scale, 38*scale, 0, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = "#e1c3b8";
-  ctx.beginPath(); ctx.arc(0, -35*scale, 14*scale, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = elite ? "#47304b" : "#332938";
-  ctx.beginPath();
-  ctx.moveTo(-17*scale, -16*scale); ctx.lineTo(-28*scale, 48*scale); ctx.lineTo(28*scale, 48*scale); ctx.lineTo(17*scale, -16*scale); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = "#151019";
-  ctx.fillRect(-13*scale, -18*scale, 26*scale, 30*scale);
-  ctx.fillStyle = "#d5b2cf";
-  ctx.font = `${10*scale}px serif`; ctx.textAlign="center"; ctx.fillText("☾",0,2*scale);
-  if (attack) {
-    ctx.strokeStyle = "#e7d8ea"; ctx.lineWidth=4*scale;
-    ctx.beginPath(); ctx.moveTo(19*scale, 2*scale); ctx.lineTo(42*scale, -18*scale); ctx.stroke();
+function drawZombie(c,x,y,type,t,attack=false){
+  c.save();const cx=x*TILE+20,cy=y*TILE+32+Math.sin(t*6)*1.8;c.translate(cx,cy);
+  if(type==="shambler"){
+    c.fillStyle="#09080e";c.beginPath();c.ellipse(0,-36,21,30,0,0,Math.PI*2);c.fill();
+    c.fillStyle="#a98692";c.beginPath();c.arc(0,-31,13,0,Math.PI*2);c.fill();
+    c.fillStyle="#28212d";c.beginPath();c.moveTo(-15,-17);c.lineTo(-27,40);c.lineTo(27,40);c.lineTo(15,-17);c.closePath();c.fill();
+  }else if(type==="chain"){
+    c.fillStyle="#0b0910";c.beginPath();c.ellipse(0,-37,23,32,0,0,Math.PI*2);c.fill();
+    c.fillStyle="#bc9aaa";c.beginPath();c.arc(0,-31,12,0,Math.PI*2);c.fill();
+    c.fillStyle="#342838";c.fillRect(-15,-16,30,44);
+    c.strokeStyle="#b494a7";c.lineWidth=3;c.beginPath();c.moveTo(18,0);c.lineTo(38,9);c.stroke();
   }
-  ctx.restore();
+  if(attack){c.strokeStyle="#ef91ac";c.lineWidth=3;c.beginPath();c.arc(0,-8,35,0,Math.PI*2);c.stroke()}
+  c.restore();
 }
 
-export function createLevel1(ui) {
-  const ctx = ui.canvas.getContext("2d");
-  const cctx = ui.combatCanvas.getContext("2d");
+function drawClassicBoss(c,x,y,s=1,t=0,attack=false){
+  c.save();const cx=x*TILE+20,cy=y*TILE+30+Math.sin(t*4)*1.2;c.translate(cx,cy);
+  c.fillStyle="#07060a";c.beginPath();c.ellipse(0,-35*s,29*s,42*s,0,0,Math.PI*2);c.fill();
+  c.fillStyle="#dfc1b8";c.beginPath();c.arc(0,-33*s,16*s,0,Math.PI*2);c.fill();
+  c.fillStyle="#171019";c.beginPath();c.moveTo(-18*s,-14*s);c.lineTo(-30*s,48*s);c.lineTo(30*s,48*s);c.lineTo(18*s,-14*s);c.closePath();c.fill();
+  c.strokeStyle="#caa2c1";c.lineWidth=2*s;c.beginPath();c.arc(0,-33*s,17*s,0,Math.PI*2);c.stroke();
+  if(attack){c.strokeStyle="#ef91ac";c.lineWidth=4*s;c.beginPath();c.arc(0,-4*s,46*s,0,Math.PI*2);c.stroke()}
+  c.restore();
+}
 
-  const revealed = Array.from({length: ROWS}, () => Array(COLS).fill(false));
-  const enemies = [
-    {x: 8, y: 7, hp: 3, maxHp: 3, dead: false, id: 1},
-    {x: 16, y: 5, hp: 3, maxHp: 3, dead: false, id: 2},
+export function createLevel1(ui){
+  const ctx=ui.canvas.getContext("2d"), cctx=ui.combatCanvas.getContext("2d");
+  const revealed=Array.from({length:ROWS},()=>Array(COLS).fill(false));
+
+  const enemies=[
+    {x:8,y:6,type:"shambler",name:"GRAVEYARD SHAMBLER",hp:4,maxHp:4,dead:false,
+     pattern:"slow lunge",description:"Slow, close-range, but deceptively hard to dodge."},
+    {x:17,y:5,type:"chain",name:"CHAIN ZOMBIE",hp:5,maxHp:5,dead:false,
+     pattern:"chain lash",description:"Keeps its distance and lashes out in a wider arc."}
   ];
-  const puzzle = {x: 13, y: 12};
-  const boss = {x: 20, y: 11};
+  const relationship={x:4,y:7};
+  const puzzle={x:13,y:12};
+  const boss={x:20,y:11};
 
-  let x=3, y=7, hp=5, kills=0, puzzleSolved=false, mode="map";
-  let combatEnemy=null, combatHp=0, combatMax=1, lastEnemyAttack=0, attackLocked=false, dodgeUntil=0;
-  let raf=0, lastTime=performance.now();
+  let x=3,y=6,hp=5,kills=0,relationshipDone=false,puzzleSolved=false,mode="map";
+  let target=null,isBoss=false,combatHp=0,combatMax=1,attackLocked=false,dodgeUntil=0,lastEnemyAttack=0;
+  let enemyLoop=0, raf=0, now=0, relationshipStep=0;
 
-  function snapshot() {
-    ui.onUpdate?.({hp, maxHp:5, gothsDefeated:kills, puzzleSolved, phase:mode});
-    ui.hpEl.textContent = hp;
-    ui.killsEl.textContent = kills;
-    ui.puzzleEl.textContent = puzzleSolved ? "Solved" : "Locked";
+  function reveal(){
+    for(let yy=0;yy<ROWS;yy++)for(let xx=0;xx<COLS;xx++)
+      if(Math.hypot(xx-x,yy-y)<=3.6)revealed[yy][xx]=true;
   }
 
-  function reveal() {
-    for(let yy=0;yy<ROWS;yy++) for(let xx=0;xx<COLS;xx++) {
-      if (Math.hypot(xx-x, yy-y) <= 3.3) revealed[yy][xx] = true;
+  function stats(){
+    ui.hpEl.textContent=hp;
+    ui.gothEl.textContent=`${kills}/2`;
+    ui.relEl.textContent=relationshipDone?"Done":"Locked";
+    ui.puzzleEl.textContent=puzzleSolved?"Solved":"Locked";
+    ui.goalGoths.innerHTML=kills>=2?'<span class="good">✓ Defeat the required Zombie Goths</span>':`○ Defeat the required Zombie Goths (${kills}/2)`;
+    ui.goalRel.innerHTML=relationshipDone?'<span class="good">✓ Complete the Relationship Challenge</span>':'○ Complete the Relationship Challenge';
+    ui.goalPuzzle.innerHTML=puzzleSolved?'<span class="good">✓ Solve the Puzzle</span>':'○ Solve the Puzzle';
+    const unlocked=kills>=2&&relationshipDone&&puzzleSolved;
+    ui.goalBoss.innerHTML=unlocked?'<span class="good">✓ Boss gate unlocked</span>':'<span class="locked">🔒 Boss gate locked</span>';
+  }
+
+  function drawWorld(t){
+    drawCemetery(ctx,1000,600);
+    for(let yy=0;yy<ROWS;yy++)for(let xx=0;xx<COLS;xx++){
+      if(!revealed[yy][xx]){ctx.fillStyle="#060509";ctx.fillRect(xx*TILE,yy*TILE,TILE,TILE);continue}
+      ctx.fillStyle=isFloor(xx,yy)?"#302a35":"#131017";ctx.fillRect(xx*TILE,yy*TILE,TILE,TILE);
+      if(isFloor(xx,yy)){ctx.strokeStyle="#514655";ctx.strokeRect(xx*TILE+.5,yy*TILE+.5,TILE-1,TILE-1)}
     }
+    enemies.forEach(e=>{if(!e.dead&&revealed[e.y][e.x])drawZombie(ctx,e.x,e.y,e.type,t/1000)});
+    if(!relationshipDone&&revealed[relationship.y][relationship.x]){ctx.fillStyle="#ef91ac";ctx.font="25px system-ui";ctx.textAlign="center";ctx.fillText("♥",relationship.x*TILE+20,relationship.y*TILE+30)}
+    if(!puzzleSolved&&revealed[puzzle.y][puzzle.x]){ctx.fillStyle="#e6c4d4";ctx.font="25px system-ui";ctx.textAlign="center";ctx.fillText("✣",puzzle.x*TILE+20,puzzle.y*TILE+30)}
+    const bossUnlocked=kills>=2&&relationshipDone&&puzzleSolved;
+    if(bossUnlocked&&revealed[boss.y][boss.x]){ctx.fillStyle="#f0d08b";ctx.font="25px system-ui";ctx.textAlign="center";ctx.fillText("♛",boss.x*TILE+20,boss.y*TILE+30)}
+    drawOlly(ctx,x,y,.55,t/1000);
   }
 
-  function drawWorld(now) {
-    ctx.clearRect(0,0,1000,600);
-    const grad=ctx.createLinearGradient(0,0,0,600);
-    grad.addColorStop(0,"#302238"); grad.addColorStop(1,"#111016");
-    ctx.fillStyle=grad; ctx.fillRect(0,0,1000,600);
-    ctx.fillStyle="#eee9df"; ctx.beginPath(); ctx.arc(790,90,38,0,Math.PI*2); ctx.fill();
+  function drawCombat(isBoss=false,enemyAttack=false,hit=false){
+    const g=cctx.createLinearGradient(0,0,0,300);g.addColorStop(0,"#312239");g.addColorStop(1,"#0f0c12");
+    cctx.fillStyle=g;cctx.fillRect(0,0,700,300);cctx.fillStyle="#16121a";cctx.fillRect(0,235,700,65);
+    drawOlly(cctx,4.3,5.6,.96,now/1000,"front");
+    if(isBoss)drawClassicBoss(cctx,12.4,5.1,1.18,now/1000,enemyAttack);
+    else drawZombie(cctx,12.4,5.1,target?.type||"shambler",now/1000,enemyAttack);
+    if(enemyAttack){cctx.strokeStyle="#ef91ac";cctx.lineWidth=4;cctx.strokeRect(275,10,150,36);cctx.fillStyle="#f2d8e3";cctx.font="bold 16px Georgia";cctx.textAlign="center";cctx.fillText("⚠ INCOMING",350,34)}
+  }
 
-    for(let yy=0;yy<ROWS;yy++) for(let xx=0;xx<COLS;xx++) {
-      const visible=revealed[yy][xx];
-      ctx.fillStyle = visible ? (isFloor(xx,yy) ? "#3b3340" : "#09080d") : "#07070a";
-      ctx.fillRect(xx*TILE, yy*TILE, TILE, TILE);
-      if (visible && isFloor(xx,yy)) {
-        ctx.strokeStyle="#55485a"; ctx.strokeRect(xx*TILE+.5,yy*TILE+.5,TILE-1,TILE-1);
+  function startLoop(){
+    cancelAnimationFrame(raf);
+    const loop=t=>{now=t;drawWorld(t);raf=requestAnimationFrame(loop)};
+    raf=requestAnimationFrame(loop);
+  }
+
+  function checkTriggers(){
+    if(mode!=="map")return;
+    const enemy=enemies.find(e=>!e.dead&&md({x,y},e)<=0);
+    if(enemy){
+      target=enemy;mode="encounter";
+      ui.encounterImage.src=enemy.id===1?"assets/story/classic-goth.png":"assets/story/classic-goth-fight.png";
+      ui.encounterName.textContent=enemy.name;
+      ui.encounterText.innerHTML=
+        enemy.id===1
+        ? `<strong>Zombie Goth:</strong> “Mmm... black eyeliner...”<br><br>She shambles toward you. Slowly. Unfortunately, very purposefully.`
+        : `<strong>Zombie Goth:</strong> “Mmm... accessories...”<br><br>She twirls a chain. That seems like a problem.`;
+      ui.encounter.classList.remove("hidden");
+      return;
+    }
+    if(!relationshipDone&&md({x,y},relationship)<=0){mode="relationship";relationshipStep=0;ui.relationship.classList.remove("hidden");ui.wouldFeedback.textContent="";ui.wouldDisplay.textContent="“Would you...”";return}
+    if(kills>=2&&!puzzleSolved&&md({x,y},puzzle)<=0){mode="puzzle";ui.puzzle.classList.remove("hidden");return}
+    if(kills>=2&&relationshipDone&&puzzleSolved&&md({x,y},boss)<=0){mode="bossintro";ui.bossIntro.classList.remove("hidden");return}
+  }
+
+  function move(dir){
+    if(mode!=="map")return;
+    const dx=dir==="left"?-1:dir==="right"?1:0;
+    const dy=dir==="up"?-1:dir==="down"?1:0;
+    const nx=x+dx,ny=y+dy;
+    if(!isFloor(nx,ny))return;
+    // Required progression gates keep the route but never block a corridor that doesn't need gating.
+    if(nx===11&&y===6&&kills<1)return;
+    if(nx===15&&y===6&&kills<2)return;
+    x=nx;y=ny;reveal();ui.dialogue.textContent="The cemetery reveals more of the path...";checkTriggers();stats();
+  }
+
+  function startEncounterFight(){
+    ui.encounter.classList.add("hidden");
+    beginCombat(false);
+  }
+
+  function beginCombat(bossFight){
+    mode="combat";isBoss=bossFight;
+    combatMax=bossFight?12:(target?.maxHp||4);combatHp=combatMax;attackLocked=false;dodgeUntil=0;lastEnemyAttack=performance.now();
+    ui.combatName.textContent=bossFight?"THE CLASSIC GOTH • QUEEN":"ZOMBIE GOTH";
+    ui.combatPattern.textContent=bossFight?"Phase attacks • 12 HP":"Different zombie patterns • dodge to survive";
+    ui.combatHp.style.width="100%";
+    ui.combatStatus.textContent=bossFight?"The Queen watches you. This is not a normal goth.":"Watch the warning, dodge, then fire.";
+    ui.combat.classList.remove("hidden");
+    clearInterval(enemyLoop);
+    enemyLoop=setInterval(enemyTurn,900);
+    snapshotCombat();
+  }
+
+  function snapshotCombat(){ui.combatHp.style.width=`${Math.max(0,combatHp/combatMax*100)}%`;stats();}
+
+  function enemyTurn(){
+    if(mode!=="combat")return;
+    const warning=isBoss?"She raises her hand. The room darkens.":"The zombie goth tenses. Incoming attack.";
+    ui.combatStatus.textContent=warning;
+    drawCombat(isBoss,true,false);
+    setTimeout(()=>{
+      if(mode!=="combat")return;
+      if(performance.now()>dodgeUntil){
+        hp=Math.max(0,hp-1);
+        ui.combatStatus.textContent=isBoss?"💥 The Classic Goth hit you.":"💥 Zombie Goth hit you.";
+        drawCombat(isBoss,false,true);
+        if(hp<=0){endCombat(false);return}
+      }else{
+        ui.combatStatus.textContent="↪ Dodged. Now fire an arrow.";
       }
-    }
-
-    // Cemetery decoration
-    ctx.fillStyle="#554b57";
-    for(let i=0;i<11;i++) {
-      const xx=(i*97)%900, yy=250+(i%4)*40;
-      if(revealed[Math.min(ROWS-1,Math.floor(yy/TILE))]?.[Math.floor(xx/TILE)]) {
-        ctx.fillRect(xx,yy,24,35); ctx.beginPath();ctx.arc(xx+12,yy,12,Math.PI,0);ctx.fill();
-      }
-    }
-
-    enemies.forEach(e => { if(!e.dead && revealed[e.y][e.x]) drawGoth(ctx,e.x,e.y,.55,now/1000); });
-    if (!puzzleSolved && revealed[puzzle.y][puzzle.x]) {
-      ctx.font="28px serif"; ctx.textAlign="center"; ctx.fillStyle="#e9b8d0";
-      ctx.fillText("✣", puzzle.x*TILE+20, puzzle.y*TILE+30);
-    }
-    if (puzzleSolved && revealed[boss.y][boss.x]) {
-      ctx.font="27px serif"; ctx.textAlign="center"; ctx.fillStyle="#f1d5e4";
-      ctx.fillText("♛", boss.x*TILE+20, boss.y*TILE+30);
-    }
-    drawOlly(ctx,x,y,.55,now/1000);
+      lastEnemyAttack=performance.now();snapshotCombat();
+    },330);
   }
 
-  function frame(now) {
-    drawWorld(now);
-    raf=requestAnimationFrame(frame);
-  }
-
-  function move(dir) {
-    if (mode !== "map") return;
-    const dx = dir==="left" ? -1 : dir==="right" ? 1 : 0;
-    const dy = dir==="up" ? -1 : dir==="down" ? 1 : 0;
-    const nx=x+dx, ny=y+dy;
-    if (!isFloor(nx,ny)) return;
-    x=nx; y=ny; reveal();
-    ui.dialogue.textContent="The cemetery reveals more of the path...";
-    checkTriggers();
-  }
-
-  function checkTriggers() {
-    if (mode !== "map") return;
-    const e=enemies.find(z=>!z.dead && rectDistance(x,y,z.x,z.y)<=1);
-    if (e) {
-      combatEnemy=e; mode="encounter";
-      ui.encounterImage.src="assets/story/classic-goth.png";
-      ui.encounterName.textContent=e.id===1 ? "THE CLASSIC GOTH" : "ANOTHER CLASSIC GOTH";
-      ui.encounterText.innerHTML=e.id===1
-        ? "<strong>Goth:</strong> “Do you hate the sun?”<br><strong>Olly:</strong> “A bit.”<br><br>She draws a blade. That seems less promising."
-        : "<strong>Goth:</strong> “You are interrupting my atmosphere.”<br><strong>Olly:</strong> “Sorry.”<br><br>She attacks anyway.";
-      ui.encounterEl.classList.remove("hidden");
-    } else if (kills>=2 && !puzzleSolved && rectDistance(x,y,puzzle.x,puzzle.y)<=1) {
-      mode="puzzle"; ui.puzzleOverlay.classList.remove("hidden");
-    } else if (puzzleSolved && !ui.bossIntro.classList.contains("hidden")===false && rectDistance(x,y,boss.x,boss.y)<=1) {
-      mode="bossintro"; ui.bossIntro.classList.remove("hidden");
-    }
-    snapshot();
-  }
-
-  function startCombat(isBoss) {
-    mode="combat";
-    combatHp = combatMax = isBoss ? 8 : 4;
-    attackLocked=false; dodgeUntil=0;
-    lastEnemyAttack = performance.now();
-    ui.combatName.textContent = isBoss ? "THE CLASSIC GOTH • BOSS" : "THE CLASSIC GOTH";
-    ui.enemyHp.style.width="100%";
-    ui.combatStatus.textContent="Watch the telegraph. Dodge her attack, then strike.";
-    ui.combatEl.classList.remove("hidden");
-    drawCombat(false);
-    snapshot();
-  }
-
-  function drawCombat(attack=false, hit=false) {
-    const g=cctx.createLinearGradient(0,0,0,300);g.addColorStop(0,"#32243a");g.addColorStop(1,"#111016");
-    cctx.fillStyle=g;cctx.fillRect(0,0,700,300);
-    cctx.fillStyle="#17131a";cctx.fillRect(0,235,700,65);
-    drawOlly(cctx,4.5,5.2,.95,performance.now()/1000,attack,hit);
-    drawGoth(cctx,12.5,5.0,1.15,performance.now()/1000,attack);
-    if (!attack) {
-      cctx.fillStyle="#c8afc7";cctx.font="17px Georgia";cctx.textAlign="center";
-      cctx.fillText("ATTACK",350,35);
-    }
-    if (dodgeUntil > performance.now()) {
-      cctx.strokeStyle="#e98aa8";cctx.lineWidth=4;cctx.beginPath();cctx.arc(90,206,32,0,Math.PI*2);cctx.stroke();
-    }
-  }
-
-  function combatLoop() {
-    if (mode !== "combat") return;
-    const now=performance.now();
-    // Telegraph then attack. Player can dodge during the warning window.
-    if (now-lastEnemyAttack > 1350) {
-      ui.combatStatus.textContent = "⚠️ Incoming attack! Press DODGE now.";
-      drawCombat(true,false);
-      setTimeout(() => {
-        if (mode!=="combat") return;
-        if (dodgeUntil < performance.now()) {
-          hp=Math.max(0,hp-1);
-          ui.combatStatus.textContent = "💥 Hit! Dodge the next attack earlier.";
-          drawCombat(false,true);
-          if(hp<=0){ endCombat(false); return; }
-        } else {
-          ui.combatStatus.textContent = "↪ Dodged! Now attack.";
-        }
-        lastEnemyAttack=performance.now();
-        snapshot();
-      }, 320);
-    } else {
-      drawCombat(false,false);
-    }
-    requestAnimationFrame(combatLoop);
-  }
-
-  function playerAttack() {
-    if(mode!=="combat" || attackLocked) return;
+  function combatAttack(){
+    if(mode!=="combat"||attackLocked)return;
+    // More responsive than a pure random check: attacking immediately after a dodge is the best time.
     attackLocked=true;
-    drawCombat(true,false);
-    setTimeout(()=>attackLocked=false,420);
-    // attacks are only reliable when the player did not just dodge too late.
-    const success = Math.random() < 0.84;
-    if(success){
+    const bonus=performance.now()-dodgeUntil<250;
+    const chance=bonus?0.96:0.84;
+    drawCombat(isBoss,false,false);
+    setTimeout(()=>{attackLocked=false},360);
+    if(Math.random()<chance){
       combatHp=Math.max(0,combatHp-1);
-      ui.enemyHp.style.width=(combatHp/combatMax*100)+"%";
-      ui.combatStatus.textContent="⚔️ Hit! She is preparing another attack.";
-      if(combatHp<=0){ setTimeout(()=>endCombat(true),220); }
-    } else {
-      ui.combatStatus.textContent="Miss! Her next attack is already coming.";
+      ui.combatStatus.textContent=bonus?"🎯 Perfect timing! Arrow hits hard.":"🏹 Arrow hit!";
+      snapshotCombat();
+      if(combatHp<=0)setTimeout(()=>endCombat(true),220);
+    }else{
+      ui.combatStatus.textContent="Miss! The next attack is already coming.";
     }
   }
 
-  function dodge() {
-    if(mode!=="combat") return;
-    dodgeUntil=performance.now()+650;
+  function combatDodge(){
+    if(mode!=="combat")return;
+    dodgeUntil=performance.now()+720;
     ui.combatStatus.textContent="↪ Dodge window active.";
-    drawCombat(false,false);
+    drawCombat(isBoss,false,false);
   }
 
-  function endCombat(won) {
-    mode="map";
-    ui.combatEl.classList.add("hidden");
+  function endCombat(won){
+    clearInterval(enemyLoop);ui.combat.classList.add("hidden");
     if(!won){
-      hp=5;x=3;y=7;reveal();
-      ui.dialogue.textContent="Olly has been knocked out. He wakes back at the cemetery gate. Try again.";
-    } else if(combatEnemy){
-      combatEnemy.dead=true;combatEnemy=null;kills++;
-      ui.dialogue.textContent = kills===1 ? "✅ First goth defeated. The way onward is open." : "✅ Both goths defeated. Find the puzzle.";
-    } else {
-      ui.winOverlay.classList.remove("hidden");
+      hp=5;x=3;y=6;mode="map";reveal();ui.dialogue.textContent="Olly gets knocked out and wakes at the cemetery entrance. Try again.";
+      snapshotCombat();return;
     }
-    snapshot();
+    if(!isBoss&&target){
+      target.dead=true;kills++;target=null;mode="map";
+      ui.dialogue.textContent=kills===1?"✅ First Zombie Goth defeated. The route deeper into the cemetery opens.":"✅ Both Zombie Goths defeated. Now complete the two special events.";
+    }else{
+      mode="win";ui.win.classList.remove("hidden");
+    }
+    snapshotCombat();
   }
 
-  ui.encounterStart.addEventListener("click",()=>{ui.encounterEl.classList.add("hidden");startCombat(false);});
-  ui.combatAttack.addEventListener("click",playerAttack);
-  ui.combatDodge.addEventListener("click",dodge);
-  ui.startBoss.addEventListener("click",()=>{ui.bossIntro.classList.add("hidden");combatEnemy=null;startCombat(true);});
-  ui.restart.addEventListener("click",()=>window.location.reload());
+  function completeRelationship(){
+    if(mode!=="relationship")return;
+    relationshipStep++;
+    const lines=[
+      "“Would you...”",
+      "“Would you... um...”",
+      "“Would you... actually never mind.”"
+    ];
+    if(relationshipStep<3){
+      ui.wouldDisplay.textContent=lines[relationshipStep];
+      ui.wouldFeedback.textContent="You both start laughing.";
+      return;
+    }
+    relationshipDone=true;mode="map";ui.relationship.classList.add("hidden");ui.dialogue.textContent="💕 Relationship Challenge complete. The cemetery approves.";stats();
+  }
 
-  function answerPuzzle(answer) {
-    if(mode!=="puzzle") return;
+  function answerPuzzle(answer){
+    if(mode!=="puzzle")return;
     if(answer==="correct"){
-      puzzleSolved=true; mode="map"; ui.puzzleOverlay.classList.add("hidden");
-      ui.dialogue.textContent="🧩 CORRECT. Princess etiquette level: appalling. The boss gate is open.";
-    } else {
-      ui.puzzleResult.textContent="❌ Wrong. Even the cemetery is disappointed in you.";
-    }
-    snapshot();
+      puzzleSolved=true;mode="map";ui.puzzle.classList.add("hidden");ui.dialogue.textContent="🧩 CORRECT. Princess etiquette level: absolutely appalling. The boss gate is unlocked.";stats();
+    }else ui.puzzleFeedback.textContent="❌ Wrong. Even the graveyard is disappointed in you.";
   }
 
-  function interact(){ checkTriggers(); }
+  function startBoss(){ui.bossIntro.classList.add("hidden");target=null;beginCombat(true)}
+  function interact(){checkTriggers()}
+  function primaryAction(){if(mode==="encounter")startEncounterFight();else if(mode==="combat")combatAttack();else if(mode==="map")checkTriggers()}
 
-  function primaryAction(){
-    if(mode==="encounter") ui.encounterStart.click();
-    else if(mode==="combat") playerAttack();
-    else checkTriggers();
-  }
-
-  function start(){
-    reveal(); snapshot(); cancelAnimationFrame(raf); lastTime=performance.now(); raf=requestAnimationFrame(frame);
-    const keyHandler=(e)=>{
-      const k=e.key.toLowerCase();
-      if(["arrowup","arrowdown","arrowleft","arrowright"," ","w","a","s","d"].includes(k)) e.preventDefault();
-      if(k==="arrowup"||k==="w") move("up");
-      if(k==="arrowdown"||k==="s") move("down");
-      if(k==="arrowleft"||k==="a") move("left");
-      if(k==="arrowright"||k==="d") move("right");
-      if(k===" ") primaryAction();
-    };
-    window.addEventListener("keydown",keyHandler);
-  }
-
-  return {start, move, primaryAction, interact, answerPuzzle};
+  function start(){reveal();stats();startLoop();ui.canvas.focus()}
+  return {start,move,primaryAction,interact,startEncounterFight,combatAttack,combatDodge,completeRelationship,answerPuzzle,startBoss};
 }
