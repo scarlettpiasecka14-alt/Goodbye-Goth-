@@ -1,4 +1,4 @@
-# Goodbye Goth v0.4
+# Goodbye Goth v0.5
 
 Persistent project for Scarlett's anniversary game.
 
@@ -25,3 +25,6 @@ Every level will ultimately contain exploration, Zombie Goth fights, one unique 
 
 ## Deployment
 Keep GitHub as the master repository and Netlify as the published site. Replace files inside the existing repository for future versions.
+
+## v0.5 development strategy
+This version intentionally isolates the title/intro/layout/relationship systems. Combat is the next separate pass so combat bugs do not destabilise the rest of the game.

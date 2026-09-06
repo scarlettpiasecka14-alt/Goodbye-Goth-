@@ -80,7 +80,7 @@ export function createLevel1(ui){
     {x:17,y:5,type:'chain',name:'CHAIN ZOMBIE',hp:5,maxHp:5,dead:false,pattern:'Chain lash'}
   ];
   const relationship={x:4,y:7},puzzle={x:13,y:12},boss={x:20,y:11};
-  let x=3,y=6,hp=5,mode='map',kills=0,relationshipDone=false,puzzleSolved=false,target=null,isBoss=false,combatHp=0,combatMax=1,enemyAttackPhase=null,enemyTimer=null,combatRaf=0,projectiles=[],player={x:135,y:260,invuln:0,aimX:500,aimY:180},combatCheckpoint=null,relationshipStep=0;
+  let x=3,y=6,hp=5,mode='map',kills=0,relationshipDone=false,puzzleSolved=false,target=null,isBoss=false,combatHp=0,combatMax=1,enemyAttackPhase=null,enemyTimer=null,combatRaf=0,projectiles=[],player={x:135,y:260,invuln:0,aimX:500,aimY:180},combatCheckpoint=null,relationshipStep=0,relationshipRound=0,relationshipStart=0,relationshipDuration=2600,relationshipAnimating=false,relationshipRAF=0;
   let now=0,raf=0;
 
   function reveal(){for(let yy=0;yy<ROWS;yy++)for(let xx=0;xx<COLS;xx++)if(Math.hypot(xx-x,yy-y)<=3.7)revealed[yy][xx]=true}
@@ -120,7 +120,7 @@ export function createLevel1(ui){
   function backToMap(){ui.death.classList.add('hidden');hp=5;stats();if(combatCheckpoint){x=combatCheckpoint.x;y=combatCheckpoint.y;reveal()}mode='map';ui.dialogue.textContent='You retreat to the checkpoint. The goths are still waiting.'}
 
   function checkTriggers(){if(mode!=='map')return;let e=enemies.find(z=>!z.dead&&dist({x,y},{x:z.x,y:z.y})<1.01);if(e){target=e;combatCheckpoint={x,y};mode='encounter';drawEncounter(e.type);ui.encounterName.textContent=e.name;ui.encounterText.innerHTML=e.type==='shambler'?'<strong>Zombie Goth:</strong> “Mmm... black eyeliner...”<br><br>She shuffles closer. Then faster.':'<strong>Zombie Goth:</strong> “Mmm... accessories...”<br><br>The chain starts moving.';ui.encounter.classList.remove('hidden');return}
-    if(!relationshipDone&&dist({x,y},relationship)<1.01){mode='relationship';relationshipStep=0;ui.relationship.classList.remove('hidden');rctx.clearRect(0,0,720,250);drawOlly(rctx,190,205,.95,0,true);rctx.fillStyle='#ef91ac';rctx.font='bold 24px Georgia';rctx.textAlign='center';rctx.fillText('Would you...',500,70);ui.wouldDisplay.textContent='“Would you...”';ui.wouldFeedback.textContent='';return}
+    if(!relationshipDone&&dist({x,y},relationship)<1.01){startRelationship();return}
     if(kills>=2&&!puzzleSolved&&dist({x,y},puzzle)<1.01){mode='puzzle';ui.puzzle.classList.remove('hidden');ui.puzzleFeedback.textContent='';return}
     if(unlockedBoss()&&dist({x,y},boss)<1.01){mode='bossintro';ui.bossIntro.classList.remove('hidden');return}}
 
@@ -141,10 +141,60 @@ export function createLevel1(ui){
   }
   function interact(){checkTriggers()}
   function startEncounterFight(){ui.encounter.classList.add('hidden');startCombat(false)}
-  function completeRelationship(){if(mode!=='relationship')return;relationshipStep++;if(relationshipStep===1){ui.wouldDisplay.textContent='“Would you... um...”';ui.wouldFeedback.textContent='You both start laughing.'}else if(relationshipStep===2){ui.wouldDisplay.textContent='“Would you... actually never mind.”';ui.wouldFeedback.textContent='Exactly right.'}else{relationshipDone=true;mode='map';ui.relationship.classList.add('hidden');ui.dialogue.textContent='💕 Relationship Challenge complete. That went exactly as expected.';stats();}}
+  function drawRelationshipArt(){
+    rctx.clearRect(0,0,720,250);
+    const grad=rctx.createLinearGradient(0,0,720,250);grad.addColorStop(0,'#211821');grad.addColorStop(1,'#0f0b12');rctx.fillStyle=grad;rctx.fillRect(0,0,720,250);
+    // Simple cartoon versions for this interaction only. The final character assets come later.
+    drawOlly(rctx,210,205,.95,relationshipRound*.4,true);
+    rctx.fillStyle='#e9a8bf';rctx.beginPath();rctx.ellipse(520,170,32,70,0,0,Math.PI*2);rctx.fill();
+    rctx.fillStyle='#2d2028';rctx.beginPath();rctx.ellipse(520,128,35,36,0,0,Math.PI*2);rctx.fill();
+    rctx.fillStyle='#d7a898';rctx.beginPath();rctx.arc(520,132,22,0,Math.PI*2);rctx.fill();
+    rctx.strokeStyle='#b88ca4';rctx.lineWidth=3;rctx.beginPath();rctx.arc(520,134,24,0,Math.PI*2);rctx.stroke();
+}
+function startRelationship(){
+    mode='relationship';relationshipRound=0;relationshipAnimating=true;relationshipDuration=2700;relationshipStart=performance.now();
+    ui.relationship.classList.remove('hidden');ui.wouldFeedback.textContent='Listen... she is building up to it.';ui.wouldDisplay.textContent='“Can I ask you a question... have you ever...”';
+    drawRelationshipArt();animateRelationship();
+}
+function animateRelationship(){
+    cancelAnimationFrame(relationshipRAF);
+    const tick=t=>{
+      if(mode!=='relationship')return;
+      const elapsed=t-relationshipStart;
+      const pct=Math.min(1,elapsed/relationshipDuration);
+      ui.timingCursor.style.left=`${pct*100}%`;
+      ui.timingZone.style.left=`${(41 + relationshipRound*3)}%`;
+      ui.timingZone.style.width=`${Math.max(10,18-relationshipRound*2)}%`;
+      const phase=relationshipRound===0?'“Can I ask you a question...”':relationshipRound===1?'“Have you ever... do you like...”':'“Wait...”';
+      if(elapsed<relationshipDuration*.72)ui.wouldDisplay.textContent=phase;
+      else ui.wouldDisplay.textContent='“...would you?”';
+      if(pct>=1){ relationshipStart=performance.now(); relationshipRound=0; ui.wouldFeedback.textContent='Missed it! She just says “wait...” and starts again.'; }
+      relationshipRAF=requestAnimationFrame(tick);
+    };
+    relationshipRAF=requestAnimationFrame(tick);
+}
+function completeRelationship(){
+    if(mode!=='relationship')return;
+    const elapsed=performance.now()-relationshipStart;
+    const pct=elapsed/relationshipDuration;
+    const zoneStart=.72 + relationshipRound*.03;
+    const zoneEnd=.88 + relationshipRound*.03;
+    if(pct>=zoneStart&&pct<=zoneEnd){
+      relationshipStep++;
+      if(relationshipStep>=3){
+        relationshipDone=true;mode='map';cancelAnimationFrame(relationshipRAF);ui.relationship.classList.add('hidden');
+        ui.dialogue.textContent='💕 Relationship Challenge complete. You got the “would you?” at exactly the right moment.';stats();
+      }else{
+        relationshipRound++;relationshipDuration=Math.max(1850,2700-relationshipStep*250);relationshipStart=performance.now();
+        ui.wouldFeedback.textContent='✅ Perfect timing. Round '+(relationshipStep+1)+'...';
+      }
+    }else{
+      ui.wouldFeedback.textContent='❌ Too early or too late. Try to hit the pink window when she is about to say “would you?”';
+    }
+}
   function answerPuzzle(answer){if(mode!=='puzzle')return;if(answer==='correct'){puzzleSolved=true;mode='map';ui.puzzle.classList.add('hidden');ui.dialogue.textContent='🧩 Correct. Princess etiquette level: appalling. The boss gate is now open.';stats()}else ui.puzzleFeedback.textContent='❌ Wrong. Even the cemetery is disappointed in you.'}
   function startBoss(){ui.bossIntro.classList.add('hidden');target=null;combatCheckpoint={x,y};startCombat(true)}
-  function start(){reveal();stats();drawMini();clearInterval(enemyTimer);cancelAnimationFrame(raf);const loop=t=>{now=t;if(mode==='map')drawWorld(t);drawMini();raf=requestAnimationFrame(loop)};raf=requestAnimationFrame(loop);requestAnimationFrame(combatTick)}
+  function start(){reveal();stats();drawMini();cancelAnimationFrame(relationshipRAF);clearInterval(enemyTimer);cancelAnimationFrame(raf);const loop=t=>{now=t;if(mode==='map')drawWorld(t);drawMini();raf=requestAnimationFrame(loop)};raf=requestAnimationFrame(loop);requestAnimationFrame(combatTick)}
   function primaryAction(){if(mode==='encounter')startEncounterFight();else if(mode==='combat')combatAttack();else if(mode==='map')checkTriggers()}
 
   return {start,move,primaryAction,interact,startEncounterFight,combatAttack,combatDodge,shootAtPointer,retryCombat,backToMap,completeRelationship,answerPuzzle,startBoss};
