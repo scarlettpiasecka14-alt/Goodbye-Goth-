@@ -1,43 +1,27 @@
+# Goodbye Goth v0.4
 
-# Goodbye Goth v0.2
+Persistent project for Scarlett's anniversary game.
 
-A persistent project for Scarlett's anniversary game.
+## v0.4 focus
+- Restored short loading/title screen.
+- Four-scene illustrated intro.
+- Improved screen-fit layout so gameplay and options fit together more cleanly.
+- More detailed cemetery presentation, including graves, statues, paths, lanterns, trees and gates.
+- Olly shown from behind in exploration, with bow; front-facing in combat.
+- Zombie Goths remain separate from Queen bosses and now have different visual/attack patterns.
+- Combat is real-time: movement, aiming, arrow projectiles, enemy telegraphs, dodge timing, player damage and death state.
+- Clear YOU DIED consequence with checkpoint retry/back-to-map options.
+- Level 1 relationship challenge is enterable and playable.
+- Princess puzzle uses dedicated princess-themed art.
+- Classic Goth remains reserved for the Level 1 boss.
 
-## Do not replace this with a new single-file prototype.
+## Current known design target
+This is still a Level 1 foundation, not the final 12-level game. Character art will be refined to the approved storyboard likenesses as dedicated assets are produced.
 
-The project is intentionally modular:
-- `index.html` = entry point
-- `css/game.css` = visual styling
-- `js/game.js` = game assembly
-- `js/story.js` = intro story
-- `js/levels/level1.js` = Level 1 gameplay
-- `assets/story/` = illustrated game assets
-- `assets/reference/` = visual references and design sources
+## Canonical project rules
+12 unique Goth Queen bosses; Zombie Goths are a separate enemy family and must not copy Queen silhouettes or signature mechanics.
 
-## v0.2 goals completed
-- four-scene illustrated intro
-- first-person intro wording
-- unique Level 1 entry art
-- unique princess puzzle art
-- different zombie goth enemies
-- progression checklist
-- relationship challenge framework
-- enemy attack/dodge combat framework
-- Classic Goth as boss only
+Every level will ultimately contain exploration, Zombie Goth fights, one unique Relationship Challenge, one separate Puzzle/Question, and one unique Queen boss. Boss gates unlock only after the required level objectives are complete.
 
 ## Deployment
-This project can be hosted as a static website. GitHub remains the master copy and Netlify can publish the main branch.
-
-## Update workflow
-When a new version is produced, replace the project files in the existing GitHub repository. Do not create a new repository.
-
-## Design philosophy
-Difficulty should rise through:
-- more Zombie Goths
-- more varied enemy patterns
-- more puzzles
-- harder relationship challenges
-- more complex maps
-- stronger Queens and boss phases
-
-Do not rely only on larger enemy health bars.
+Keep GitHub as the master repository and Netlify as the published site. Replace files inside the existing repository for future versions.
