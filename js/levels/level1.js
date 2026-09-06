@@ -87,30 +87,53 @@ export function createLevel1(ui){
   function unlockedBoss(){return kills>=2&&relationshipDone&&puzzleSolved}
   function stats(){ui.hpEl.textContent=hp;ui.gothEl.textContent=`${kills}/2`;ui.relEl.textContent=relationshipDone?'Done':'Locked';ui.puzzleEl.textContent=puzzleSolved?'Solved':'Locked';ui.goalGoths.innerHTML=kills>=2?'<span class="good">✓ Defeat the required Zombie Goths</span>':`○ Defeat the required Zombie Goths (${kills}/2)`;ui.goalRel.innerHTML=relationshipDone?'<span class="good">✓ Relationship Challenge complete</span>':'○ Complete the Relationship Challenge';ui.goalPuzzle.innerHTML=puzzleSolved?'<span class="good">✓ Puzzle solved</span>':'○ Solve the Puzzle';ui.goalBoss.innerHTML=unlockedBoss()?'<span class="good">✓ Boss gate unlocked</span>':'<span class="locked">🔒 Boss gate locked</span>'}
   function drawMini(){mctx.clearRect(0,0,250,180);mctx.fillStyle='#0d0b11';mctx.fillRect(0,0,250,180);for(let yy=0;yy<ROWS;yy++)for(let xx=0;xx<COLS;xx++){if(revealed[yy][xx]){mctx.fillStyle=isFloor(xx,yy)?'#57505b':'#17131b';mctx.fillRect(xx*10,yy*10,10,10)}else{mctx.fillStyle='#0c0a0e';mctx.fillRect(xx*10,yy*10,10,10)}}mctx.fillStyle='#f3eff0';mctx.beginPath();mctx.arc(x*10+5,y*10+5,3.5,0,Math.PI*2);mctx.fill();if(!relationshipDone&&revealed[relationship.y][relationship.x]){mctx.fillStyle='#ef91ac';mctx.fillRect(relationship.x*10+2,relationship.y*10+2,6,6)}if(!puzzleSolved&&revealed[puzzle.y][puzzle.x]){mctx.fillStyle='#e5c5d5';mctx.fillRect(puzzle.x*10+2,puzzle.y*10+2,6,6)}if(unlockedBoss()&&revealed[boss.y][boss.x]){mctx.fillStyle='#f0cf8b';mctx.fillRect(boss.x*10+2,boss.y*10+2,6,6)}}
-  function drawWorld(t){drawCemetery(ctx,1000,600);for(let yy=0;yy<ROWS;yy++)for(let xx=0;xx<COLS;xx++){if(!revealed[yy][xx]){ctx.fillStyle='rgba(3,2,6,.92)';ctx.fillRect(xx*TILE,yy*TILE,TILE,TILE)}else{ctx.fillStyle=isFloor(xx,yy)?'rgba(42,41,46,.24)':'rgba(0,0,0,.22)';ctx.fillRect(xx*TILE,yy*TILE,TILE,TILE)}}enemies.forEach(e=>{if(!e.dead&&revealed[e.y][e.x])drawZombie(ctx,e.x*TILE+20,e.y*TILE+30,e.type,.58,t/1000)});if(!relationshipDone&&revealed[relationship.y][relationship.x]){ctx.fillStyle='#ef91ac';ctx.font='28px Georgia';ctx.textAlign='center';ctx.fillText('♥',relationship.x*TILE+20,relationship.y*TILE+29)}if(!puzzleSolved&&revealed[puzzle.y][puzzle.x]){ctx.fillStyle='#e6c5d3';ctx.font='26px Georgia';ctx.textAlign='center';ctx.fillText('✣',puzzle.x*TILE+20,puzzle.y*TILE+29)}if(unlockedBoss()&&revealed[boss.y][boss.x]){ctx.fillStyle='#f0cf8b';ctx.font='25px Georgia';ctx.textAlign='center';ctx.fillText('♛',boss.x*TILE+20,boss.y*TILE+29)}drawOlly(ctx,x*TILE+20,y*TILE+35,.62,t/1000,false)}
+  function drawWorld(t){drawCemetery(ctx,1000,600);for(let yy=0;yy<ROWS;yy++)for(let xx=0;xx<COLS;xx++){if(!revealed[yy][xx]){ctx.fillStyle='rgba(3,2,6,.92)';ctx.fillRect(xx*TILE,yy*TILE,TILE,TILE)}else{ctx.fillStyle=isFloor(xx,yy)?'rgba(42,41,46,.24)':'rgba(0,0,0,.22)';ctx.fillRect(xx*TILE,yy*TILE,TILE,TILE)}}enemies.forEach(e=>{if(!e.dead&&revealed[e.y][e.x])drawZombie(ctx,e.x*TILE+20,e.y*TILE+30,e.type,.58,t/1000)});if(!relationshipDone&&revealed[relationship.y][relationship.x]){ctx.fillStyle='#ef91ac';ctx.font='28px Georgia';ctx.textAlign='center';ctx.fillText('♥',relationship.x*TILE+20,relationship.y*TILE+29)}if(!puzzleSolved&&revealed[puzzle.y][puzzle.x]){ctx.fillStyle='#e6c5d3';ctx.font='26px Georgia';ctx.textAlign='center';ctx.fillText('✣',puzzle.x*TILE+20,puzzle.y*TILE+29)}if(unlockedBoss()&&revealed[boss.y][boss.x]){ctx.fillStyle='#f0cf8b';ctx.font='25px Georgia';ctx.textAlign='center';ctx.fillText('♛',boss.x*TILE+20,boss.y*TILE+29)}drawOlly(ctx,x*TILE+20,y*TILE+35,.62,t/1000,true)}
 
   function drawEncounter(type){ectx.clearRect(0,0,720,300);const gg=ectx.createLinearGradient(0,0,0,300);gg.addColorStop(0,'#2e2436');gg.addColorStop(1,'#111016');ectx.fillStyle=gg;ectx.fillRect(0,0,720,300);for(let i=0;i<15;i++){ectx.fillStyle='#4d3b51';ectx.fillRect((i*61)%720,150+(i%4)*18,28,42)}drawOlly(ectx,180,245,.95,0,true);drawZombie(ectx,520,230,type,.95,1.2,false);ectx.fillStyle='#f3e7ed';ectx.font='bold 18px Georgia';ectx.textAlign='center';ectx.fillText(type==='shambler'?'Mmm... black eyeliner...':'Mmm... accessories...',500,45)}
 
   function resetCombatVisual(){projectiles=[];enemyAttackPhase=null;player={x:145,y:300,invuln:0,aimX:650,aimY:170};}
-  function drawCombat(t){const w=900,h=450;const g=cctx.createLinearGradient(0,0,0,h);g.addColorStop(0,'#32243a');g.addColorStop(1,'#100d12');cctx.fillStyle=g;cctx.fillRect(0,0,w,h);cctx.fillStyle='#171218';cctx.fillRect(0,h-78,w,78);for(let i=0;i<18;i++){cctx.fillStyle='#3d3243';cctx.fillRect((i*61)%w,80+(i%4)*53,3,3)}
-    // attack telegraphs
-    if(enemyAttackPhase){cctx.strokeStyle='#e45b6f';cctx.lineWidth=5;cctx.setLineDash([10,8]);if(enemyAttackPhase.kind==='lunge'){cctx.beginPath();cctx.moveTo(enemyAttackPhase.x,enemyAttackPhase.y);cctx.lineTo(player.x,player.y);cctx.stroke();cctx.fillStyle='rgba(228,91,111,.16)';cctx.beginPath();cctx.moveTo(enemyAttackPhase.x,enemyAttackPhase.y);cctx.lineTo(player.x+40,player.y+40);cctx.lineTo(player.x-40,player.y-40);cctx.closePath();cctx.fill()}else{cctx.beginPath();cctx.arc(player.x,player.y,enemyAttackPhase.radius,0,Math.PI*2);cctx.stroke();cctx.fillStyle='rgba(228,91,111,.10)';cctx.beginPath();cctx.arc(player.x,player.y,enemyAttackPhase.radius,0,Math.PI*2);cctx.fill()}cctx.setLineDash([]);cctx.fillStyle='#f5d6df';cctx.font='bold 16px system-ui';cctx.textAlign='center';cctx.fillText('DODGE NOW',player.x,player.y-42)}
-    projectiles.forEach(p=>{cctx.fillStyle=p.kind==='arrow'?'#f5dbe5':'#dba1b5';cctx.beginPath();cctx.arc(p.x,p.y,p.kind==='arrow'?4:8,0,Math.PI*2);cctx.fill();if(p.kind==='arrow'){cctx.strokeStyle='#f5edf0';cctx.lineWidth=2;cctx.beginPath();cctx.moveTo(p.x,p.y);cctx.lineTo(p.x-p.vx*2,p.y-p.vy*2);cctx.stroke()}});
+  function drawCombat(t){
+    const w=900,h=450;
+    const g=cctx.createLinearGradient(0,0,0,h);g.addColorStop(0,'#241a2c');g.addColorStop(.55,'#17121c');g.addColorStop(1,'#0c090f');cctx.fillStyle=g;cctx.fillRect(0,0,w,h);
+    // Ground and cemetery details so the arena is visibly a fight, not a blank panel.
+    cctx.fillStyle='#211a25';cctx.fillRect(0,h-105,w,105);
+    cctx.fillStyle='#4a3b4e';for(let i=0;i<9;i++){const gx=40+i*105;cctx.fillRect(gx,h-165,5,60);cctx.fillRect(gx-12,h-165,29,5);}
+    cctx.fillStyle='#5d4a60';for(let i=0;i<14;i++){const gx=(i*71)%860+20,gy=70+(i%4)*45;cctx.fillRect(gx,gy,4,4);}
+    cctx.fillStyle='#d9c9d4';cctx.font='bold 14px system-ui';cctx.textAlign='left';cctx.fillText('CLICK / FIRE ARROW',24,30);cctx.font='12px system-ui';cctx.fillStyle='#a99aaa';cctx.fillText('Red warning = DODGE',24,49);
+    // Aim reticle
+    if(player.aimX&&player.aimY){cctx.strokeStyle='rgba(245,218,231,.65)';cctx.lineWidth=2;cctx.beginPath();cctx.arc(player.aimX,player.aimY,13,0,Math.PI*2);cctx.moveTo(player.aimX-19,player.aimY);cctx.lineTo(player.aimX-7,player.aimY);cctx.moveTo(player.aimX+7,player.aimY);cctx.lineTo(player.aimX+19,player.aimY);cctx.moveTo(player.aimX,player.aimY-19);cctx.lineTo(player.aimX,player.aimY-7);cctx.moveTo(player.aimX,player.aimY+7);cctx.lineTo(player.aimX,player.aimY+19);cctx.stroke();}
+    // Attack telegraphs
+    if(enemyAttackPhase){cctx.strokeStyle='#f05d79';cctx.lineWidth=6;cctx.setLineDash([12,8]);if(enemyAttackPhase.kind==='lunge'){cctx.beginPath();cctx.moveTo(enemyAttackPhase.x,enemyAttackPhase.y);cctx.lineTo(player.x,player.y);cctx.stroke();cctx.fillStyle='rgba(240,93,121,.18)';cctx.beginPath();cctx.moveTo(enemyAttackPhase.x,enemyAttackPhase.y);cctx.lineTo(player.x+46,player.y+46);cctx.lineTo(player.x-46,player.y-46);cctx.closePath();cctx.fill()}else{cctx.beginPath();cctx.arc(player.x,player.y,enemyAttackPhase.radius,0,Math.PI*2);cctx.stroke();cctx.fillStyle='rgba(240,93,121,.12)';cctx.beginPath();cctx.arc(player.x,player.y,enemyAttackPhase.radius,0,Math.PI*2);cctx.fill()}cctx.setLineDash([]);cctx.fillStyle='#ffd7e3';cctx.font='900 22px system-ui';cctx.textAlign='center';cctx.fillText('DODGE!',player.x,player.y-62);}
+    projectiles.forEach(p=>{cctx.fillStyle='#f7dbe6';cctx.beginPath();cctx.arc(p.x,p.y,5,0,Math.PI*2);cctx.fill();cctx.strokeStyle='#fff2f7';cctx.lineWidth=2;cctx.beginPath();cctx.moveTo(p.x,p.y);cctx.lineTo(p.x-p.vx*2,p.y-p.vy*2);cctx.stroke();});
     drawOllyWorldCombat(player.x,player.y,1.0,player.aimX,player.aimY,performance.now()/1000,player.invuln>performance.now());
-    if(isBoss)drawBoss(cctx,690,250,1.12,performance.now()/1000,!!enemyAttackPhase,enemyPhaseNumber());else drawZombieCombat(cctx,690,255,target?.type||'shambler',!!enemyAttackPhase);
+    if(isBoss)drawBoss(cctx,690,250,1.25,performance.now()/1000,!!enemyAttackPhase,enemyPhaseNumber());else drawZombieCombat(cctx,690,255,target?.type||'shambler',!!enemyAttackPhase);
+    // Enemy label / hit target
+    cctx.fillStyle='#f3e7ed';cctx.font='900 18px Georgia';cctx.textAlign='center';cctx.fillText(isBoss?'QUEEN GOTH':(target?.name||'ZOMBIE GOTH'),690,355);
+    cctx.fillStyle='#332635';cctx.fillRect(620,370,140,10);cctx.fillStyle='#ef91ac';cctx.fillRect(620,370,140*(combatHp/combatMax),10);
   }
   function drawOllyWorldCombat(c,px,py,s,ax,ay,t,hurt){c.save();c.translate(px,py);if(hurt)c.globalAlpha=.5; c.fillStyle='rgba(0,0,0,.25)';c.beginPath();c.ellipse(0,54*s,32*s,8*s,0,0,Math.PI*2);c.fill();c.fillStyle='#35271f';c.beginPath();c.ellipse(0,-50*s,25*s,25*s,0,0,Math.PI*2);c.fill();c.fillStyle='#d9b59e';c.beginPath();c.arc(0,-46*s,14*s,0,Math.PI*2);c.fill();c.fillStyle='#dbe0e7';c.fillRect(-20*s,-30*s,40*s,34*s);c.fillStyle='#273029';c.fillRect(-16*s,4*s,32*s,22*s);c.strokeStyle='#111';c.lineWidth=4*s;c.beginPath();c.moveTo(-10*s,26*s);c.lineTo(-12*s,47*s);c.moveTo(10*s,26*s);c.lineTo(12*s,47*s);c.stroke();const ang=Math.atan2(ay-py,ax-px);c.save();c.rotate(ang);c.strokeStyle='#b58d68';c.lineWidth=4*s;c.beginPath();c.moveTo(15*s,-2*s);c.lineTo(46*s,-2*s);c.stroke();c.strokeStyle='#6b4731';c.lineWidth=2*s;c.beginPath();c.arc(15*s,-2*s,25*s,-1.2,1.2);c.stroke();c.restore();c.restore()}
   function drawZombieCombat(c,px,py,type,attack){c.save();c.translate(px,py);if(type==='shambler'){c.fillStyle='#0d0a10';c.beginPath();c.ellipse(0,-48,35,48,0,0,Math.PI*2);c.fill();c.fillStyle='#aa8b96';c.beginPath();c.arc(0,-40,17,0,Math.PI*2);c.fill();c.fillStyle='#2a222c';c.beginPath();c.moveTo(-23,-18);c.lineTo(-35,62);c.lineTo(35,62);c.lineTo(23,-18);c.closePath();c.fill()}else{c.fillStyle='#09080e';c.beginPath();c.ellipse(0,-44,37,51,0,0,Math.PI*2);c.fill();c.fillStyle='#c6a5b0';c.beginPath();c.arc(0,-40,17,0,Math.PI*2);c.fill();c.fillStyle='#3a2c3c';c.fillRect(-24,-22,48,68);c.strokeStyle='#b89fb0';c.lineWidth=5;c.beginPath();c.moveTo(26,-3);c.lineTo(70,18);c.stroke()}if(attack){c.strokeStyle='#ef91ac';c.lineWidth=6;c.beginPath();c.arc(0,-8,65,0,Math.PI*2);c.stroke()}c.restore()}
   function enemyPhaseNumber(){if(!isBoss)return 1;const r=combatHp/combatMax;return r<=.34?3:r<=.67?2:1}
 
-  function startCombat(bossFight){isBoss=bossFight;mode='combat';combatMax=bossFight?18:(target?.maxHp||4);combatHp=combatMax;resetCombatVisual();ui.combatName.textContent=bossFight?'THE CLASSIC GOTH • QUEEN':target?.name||'ZOMBIE GOTH';ui.combatPattern.textContent=bossFight?'Three phases • dodge carefully':(target?.pattern||'watch the warning');ui.enemyHp.style.width='100%';ui.combatStatus.textContent=bossFight?'This is the Queen. Her attacks will accelerate.':'Watch the telegraph, dodge, then fire.';ui.combat.classList.remove('hidden');clearInterval(enemyTimer);enemyTimer=setInterval(enemyAttackTick,bossFight?820:1100);clearInterval(combatRaf);const loop=()=>{if(mode==='combat'){drawCombat(performance.now());combatRaf=requestAnimationFrame(loop)}};combatRaf=requestAnimationFrame(loop)}
-  function enemyAttackTick(){if(mode!=='combat')return;const now=performance.now();const faster=isBoss&&enemyPhaseNumber()===3;const kind=(target?.type==='chain'||isBoss&&enemyPhaseNumber()===2)?'ring':'lunge';enemyAttackPhase={kind,x:isBoss?690:670,y:isBoss?250:255,radius:100};ui.combatStatus.textContent=kind==='lunge'?'⚠ She is about to charge. DODGE!':'⚠ Incoming attack wave. DODGE!';setTimeout(()=>{if(mode!=='combat')return;const hit=performance.now()>player.invuln;if(hit){hp=Math.max(0,hp-1);stats();ui.combatStatus.textContent='💥 You were hit. Your health is now '+hp+'.';if(hp<=0){endCombat(false);return}}else ui.combatStatus.textContent='↪ Dodged! Fire back now.';enemyAttackPhase=null},faster?260:340)}
+  function startCombat(bossFight){
+    isBoss=bossFight;mode='combat';combatMax=bossFight?18:(target?.maxHp||4);combatHp=combatMax;resetCombatVisual();
+    ui.combatName.textContent=bossFight?'THE CLASSIC GOTH • QUEEN':target?.name||'ZOMBIE GOTH';
+    ui.combatPattern.textContent=bossFight?'Phase 1 • DODGE red warnings • FIRE arrows':(target?.pattern||'Watch red warnings • DODGE • FIRE arrows');
+    ui.enemyHp.style.width='100%';
+    ui.combatStatus.innerHTML='<strong>HOW TO FIGHT:</strong> Click anywhere in the arena to aim and fire. When the enemy flashes a red warning, press <strong>DODGE</strong>. Hit the enemy until its health bar is empty.';
+    ui.combat.classList.remove('hidden');
+    clearInterval(enemyTimer);enemyTimer=setInterval(enemyAttackTick,bossFight?900:1250);
+    clearInterval(combatRaf);const loop=()=>{if(mode==='combat'){drawCombat(performance.now());combatRaf=requestAnimationFrame(loop)}};combatRaf=requestAnimationFrame(loop);
+  }
+  function enemyAttackTick(){if(mode!=='combat')return;const now=performance.now();const faster=isBoss&&enemyPhaseNumber()===3;const kind=(target?.type==='chain'||isBoss&&enemyPhaseNumber()===2)?'ring':'lunge';enemyAttackPhase={kind,x:isBoss?690:670,y:isBoss?250:255,radius:100};ui.combatStatus.textContent=kind==='lunge'?'⚠ She is about to charge. DODGE!':'⚠ Incoming attack wave. DODGE!';setTimeout(()=>{if(mode!=='combat')return;const hit=performance.now()>player.invuln;if(hit){hp=Math.max(0,hp-1);stats();ui.combatStatus.textContent='💥 You were hit. Your health is now '+hp+'.';if(hp<=0){endCombat(false);return}}else ui.combatStatus.textContent='↪ Dodged! Fire back now.';enemyAttackPhase=null},faster?420:620)}
 
   function shootAt(xm,ym){if(mode!=='combat')return;const dx=xm-player.x,dy=ym-player.y,len=Math.hypot(dx,dy)||1;const vx=dx/len*12,vy=dy/len*12;projectiles.push({kind:'arrow',x:player.x+vx,y:player.y+vy,vx,vy,ttl:90});player.aimX=xm;player.aimY=ym;ui.combatStatus.textContent='🏹 Arrow fired.';}
   function updateProjectiles(){for(let i=projectiles.length-1;i>=0;i--){const p=projectiles[i];p.x+=p.vx;p.y+=p.vy;p.ttl--;if(p.kind==='arrow'&&Math.hypot(p.x-(isBoss?690:690),p.y-255)<48){combatHp=Math.max(0,combatHp-1);ui.enemyHp.style.width=(combatHp/combatMax*100)+'%';ui.combatStatus.textContent='🎯 Hit!';projectiles.splice(i,1);if(combatHp<=0){setTimeout(()=>endCombat(true),180)}}else if(p.ttl<=0||p.x<0||p.x>900||p.y<0||p.y>450)projectiles.splice(i,1)} }
 
   function combatTick(){if(mode==='combat'){updateProjectiles();if(player.invuln>performance.now()){};requestAnimationFrame(combatTick)}}
   window.addEventListener('pointermove',e=>{if(mode!=='combat')return;const r=ui.combatCanvas.getBoundingClientRect();player.aimX=(e.clientX-r.left)*(ui.combatCanvas.width/r.width);player.aimY=(e.clientY-r.top)*(ui.combatCanvas.height/r.height)});
+  ui.combatCanvas.addEventListener('pointerdown',e=>{if(mode!=='combat')return;shootAtPointer(e)});
+  window.addEventListener('keydown',e=>{if(mode!=='combat')return;const k=e.key.toLowerCase();if(['arrowleft','arrowright','arrowup','arrowdown',' ','shift'].includes(k))e.preventDefault();if(k===' '){combatAttack()}else if(k==='shift'){combatDodge()}else if(k==='arrowleft'||k==='arrowright'||k==='arrowup'||k==='arrowdown'){move(k.replace('arrow',''))}});
   function combatAttack(){if(mode==='combat')shootAt(player.aimX,player.aimY)}
   function shootAtPointer(e){const r=ui.combatCanvas.getBoundingClientRect();shootAt((e.clientX-r.left)*(ui.combatCanvas.width/r.width),(e.clientY-r.top)*(ui.combatCanvas.height/r.height))}
   function combatDodge(){if(mode!=='combat')return;player.invuln=performance.now()+650;const dx=player.x<450?1:-1;player.x=Math.max(55,Math.min(845,player.x+dx*120));ui.combatStatus.textContent='↪ DODGE ROLL!';}
@@ -152,8 +175,10 @@ export function createLevel1(ui){
     rctx.strokeStyle='#b88ca4';rctx.lineWidth=3;rctx.beginPath();rctx.arc(520,134,24,0,Math.PI*2);rctx.stroke();
 }
 function startRelationship(){
-    mode='relationship';relationshipRound=0;relationshipAnimating=true;relationshipDuration=2700;relationshipStart=performance.now();
-    ui.relationship.classList.remove('hidden');ui.wouldFeedback.textContent='Listen... she is building up to it.';ui.wouldDisplay.textContent='“Can I ask you a question... have you ever...”';
+    mode='relationship';relationshipRound=0;relationshipStep=0;relationshipDuration=3000;relationshipStart=performance.now();
+    ui.relationship.classList.remove('hidden');
+    ui.wouldFeedback.textContent='Wait for the ramble to reach the words “WOULD YOU?” Then press the button.';
+    ui.wouldDisplay.textContent='“Can I ask you a question...”';
     drawRelationshipArt();animateRelationship();
 }
 function animateRelationship(){
@@ -162,13 +187,21 @@ function animateRelationship(){
       if(mode!=='relationship')return;
       const elapsed=t-relationshipStart;
       const pct=Math.min(1,elapsed/relationshipDuration);
+      const zoneStart=Math.min(.84 + relationshipRound*.025,.9);
+      const zoneWidth=Math.max(.07, .105-relationshipRound*.012);
       ui.timingCursor.style.left=`${pct*100}%`;
-      ui.timingZone.style.left=`${(41 + relationshipRound*3)}%`;
-      ui.timingZone.style.width=`${Math.max(10,18-relationshipRound*2)}%`;
-      const phase=relationshipRound===0?'“Can I ask you a question...”':relationshipRound===1?'“Have you ever... do you like...”':'“Wait...”';
-      if(elapsed<relationshipDuration*.72)ui.wouldDisplay.textContent=phase;
-      else ui.wouldDisplay.textContent='“...would you?”';
-      if(pct>=1){ relationshipStart=performance.now(); relationshipRound=0; ui.wouldFeedback.textContent='Missed it! She just says “wait...” and starts again.'; }
+      ui.timingZone.style.left=`${zoneStart*100}%`;
+      ui.timingZone.style.width=`${zoneWidth*100}%`;
+      let line='“Can I ask you a question...”';
+      if(pct>=.22&&pct<.43) line='“Have you ever...”';
+      else if(pct>=.43&&pct<.63) line='“Do you like...”';
+      else if(pct>=.63&&pct<zoneStart) line='“What was I going to say?”';
+      else if(pct>=zoneStart) line='“WOULD YOU?”';
+      ui.wouldDisplay.textContent=line;
+      if(pct>=1){
+        relationshipStart=performance.now();
+        ui.wouldFeedback.textContent='Missed it. She rambles again. Listen for the sudden “WOULD YOU?”';
+      }
       relationshipRAF=requestAnimationFrame(tick);
     };
     relationshipRAF=requestAnimationFrame(tick);
@@ -177,19 +210,19 @@ function completeRelationship(){
     if(mode!=='relationship')return;
     const elapsed=performance.now()-relationshipStart;
     const pct=elapsed/relationshipDuration;
-    const zoneStart=.72 + relationshipRound*.03;
-    const zoneEnd=.88 + relationshipRound*.03;
+    const zoneStart=Math.min(.84 + relationshipRound*.025,.9);
+    const zoneEnd=zoneStart+Math.max(.07,.105-relationshipRound*.012);
     if(pct>=zoneStart&&pct<=zoneEnd){
       relationshipStep++;
       if(relationshipStep>=3){
         relationshipDone=true;mode='map';cancelAnimationFrame(relationshipRAF);ui.relationship.classList.add('hidden');
-        ui.dialogue.textContent='💕 Relationship Challenge complete. You got the “would you?” at exactly the right moment.';stats();
+        ui.dialogue.textContent='💕 Relationship Challenge complete. You survived the full ramble and pressed WOULD YOU? at exactly the right moment.';stats();
       }else{
-        relationshipRound++;relationshipDuration=Math.max(1850,2700-relationshipStep*250);relationshipStart=performance.now();
-        ui.wouldFeedback.textContent='✅ Perfect timing. Round '+(relationshipStep+1)+'...';
+        relationshipRound++;relationshipDuration=Math.max(2100,3000-relationshipStep*350);relationshipStart=performance.now();
+        ui.wouldFeedback.textContent='✅ PERFECT. She is already starting another ramble... Round '+(relationshipStep+1)+' of 3.';
       }
     }else{
-      ui.wouldFeedback.textContent='❌ Too early or too late. Try to hit the pink window when she is about to say “would you?”';
+      ui.wouldFeedback.textContent=pct<zoneStart?'❌ Too early. She has not reached “WOULD YOU?” yet.':'❌ Too late. She already said “WOULD YOU?”';
     }
 }
   function answerPuzzle(answer){if(mode!=='puzzle')return;if(answer==='correct'){puzzleSolved=true;mode='map';ui.puzzle.classList.add('hidden');ui.dialogue.textContent='🧩 Correct. Princess etiquette level: appalling. The boss gate is now open.';stats()}else ui.puzzleFeedback.textContent='❌ Wrong. Even the cemetery is disappointed in you.'}

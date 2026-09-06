@@ -35,7 +35,7 @@ function mountLevel1(){
         <div class="play-column">
           <div class="world-wrap">
             <canvas id="world" width="1000" height="600" tabindex="0" aria-label="Level 1 haunted cemetery"></canvas>
-            <div class="help">Explore to reveal the cemetery • WASD / arrow keys move • combat will be rebuilt next</div>
+            <div class="help">Explore to reveal the cemetery • WASD / arrow keys move • Find the ♥, ✣ and the Zombie Goths</div>
           </div>
           <div id="dialogue" class="dialogue" aria-live="polite">You wake up somewhere very dark...</div>
           <div class="control-row">
@@ -73,10 +73,10 @@ function mountLevel1(){
       </div></div>
 
       <div id="combat" class="overlay hidden"><div class="overlay-box">
-        <div class="combat-ui"><strong id="combat-name">ZOMBIE GOTH</strong><span id="combat-pattern" class="small">Combat rebuild next</span></div>
+        <div class="combat-ui"><strong id="combat-name">ZOMBIE GOTH</strong><span id="combat-pattern" class="small">Watch the warning • DODGE • FIRE ARROWS</span></div>
         <div class="bar" style="margin-top:7px"><div id="enemy-hp"></div></div>
         <div class="combat-arena"><canvas id="combat-canvas" width="900" height="450"></canvas></div>
-        <div id="combat-status" class="combat-note">Combat is being rebuilt in the next pass.</div>
+        <div id="combat-status" class="combat-note"><strong>HOW TO FIGHT:</strong> Click the enemy or the arena to fire an arrow. When a red warning appears, press <strong>DODGE</strong>. You can also use ← → ↑ ↓ to move Olly.</div>
         <div class="combat-actions"><button id="combat-attack" class="primary">🏹 FIRE ARROW</button><button id="combat-dodge">↪ DODGE</button></div>
       </div></div>
 

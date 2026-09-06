@@ -1,10 +1,11 @@
-# Goodbye Goth v0.6
+# Goodbye Goth v0.7
 
-## This version
-- Uses the exact approved Goodbye Goth loading/title artwork from the existing chat.
-- The visible NEW GAME button is part of the artwork; a transparent clickable hitbox sits over it.
-- Clicking NEW GAME opens the existing four-screen intro.
-- No gameplay, combat, cemetery, challenge, puzzle, or boss code was changed.
+Incremental gameplay repair pass.
 
-## Deployment test
-Upload the **contents of this folder** to the GitHub repository root, not the outer `goodbye-goth-v0.6` folder. Netlify should then auto-deploy the commit.
+- Approved loading/title screen retained unchanged.
+- Intro retained.
+- Exploration Olly now faces forward so he no longer reads as walking backwards.
+- Modal overlays are fully opaque so the cemetery cannot bleed through at the bottom.
+- Level 1 Zombie Goth combat is now an explicit playable mechanic: visible arena, Olly, enemy, health bar, click/tap-to-fire, DODGE warnings, keyboard controls, and death/retry.
+- Would You challenge now uses the intended rambling setup and only opens the timing window when Scarlett reaches “WOULD YOU?”.
+- Other Level 1 content remains intact.
