@@ -127,19 +127,15 @@ html,body,#app{height:100%;overflow:hidden}
 /* v0.7 combat readability / opaque modal fix */
 .combat.overlay{padding:12px}.combat .overlay-box{width:min(100%,920px);overflow:hidden}.combat-actions button{min-width:145px}.combat-ui .small{color:#e7c8d5}.combat-arena{background:#17111a}
 
-/* v1.0 story art pass: use the approved cartoon-comic storyboard style as the actual story panels. */
-.cartoon-story-screen{padding:10px;overflow:hidden;background:#0b080e}
-.cartoon-story-frame{width:min(96vw,980px);height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px}
-.cartoon-story-panel{display:block;padding:0;border:0;background:#050408;cursor:pointer;width:min(96vw,760px);height:min(78svh,760px);aspect-ratio:379/595;border-radius:14px;overflow:hidden;box-shadow:0 0 0 1px var(--line)}
-.cartoon-story-panel:focus-visible{outline:3px solid #f18caf;outline-offset:3px}
-.cartoon-story-image{display:block;width:100%;height:100%;object-fit:cover;object-position:center;background:#050408}
-.cartoon-story-footer{width:min(760px,96vw);display:flex;align-items:center;justify-content:space-between;color:var(--muted);font:700 12px system-ui,sans-serif;padding:0 3px}
-.story-hint{font-family:Georgia,serif;color:#e8d9e4}
+/* v1.3: final 4:3 intro artwork. Each panel is a complete in-game illustration. */
+.cartoon-story-screen{padding:0;overflow:hidden;background:#050408}
+.cartoon-story-frame{width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+.cartoon-story-panel{display:block;padding:0;border:0;background:#050408;cursor:pointer;width:min(100%,1448px);aspect-ratio:4/3;height:auto;max-height:100%;overflow:hidden;box-shadow:0 0 0 1px var(--line)}
+.cartoon-story-panel:focus-visible{outline:3px solid #f18caf;outline-offset:-3px}
+.cartoon-story-image{display:block;width:100%;height:100%;object-fit:contain;object-position:center;background:#050408}
 @media(max-width:600px){
-  .cartoon-story-screen{padding:5px}
-  .cartoon-story-panel{width:min(96vw,760px);height:min(76svh,700px);aspect-ratio:379/595}
-  .cartoon-story-footer{width:96vw}
-  .story-hint{font-size:11px}
+  .cartoon-story-screen{padding:0}
+  .cartoon-story-panel{width:100%;max-width:none}
 }
 
 /* v1.1: cinematic typed narration between the four approved cartoon story panels. */

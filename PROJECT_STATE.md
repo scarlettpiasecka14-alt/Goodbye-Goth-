@@ -1,4 +1,4 @@
-# Goodbye Goth v1.2
+# Goodbye Goth v1.3
 
 Intro polish pass only.
 - Slowed typewriter narration from 38ms to 58ms per character.

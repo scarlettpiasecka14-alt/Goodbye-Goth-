@@ -120,10 +120,6 @@ export class StoryController {
           <button id="story-panel-next" class="cartoon-story-panel" type="button" aria-label="Continue story">
             <img class="cartoon-story-image" src="${s.image}" alt="${s.alt}">
           </button>
-          <div class="cartoon-story-footer">
-            <span class="story-progress">${this.imageProgress()} / 4</span>
-            <span class="story-hint">Click anywhere on the panel to continue</span>
-          </div>
         </div>
       </section>`;
 
