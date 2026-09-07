@@ -1,7 +1,9 @@
-# Goodbye Goth v1.3
+# Goodbye Goth v1.4
 
-Intro polish pass only.
-- Slowed typewriter narration from 38ms to 58ms per character.
-- Standardized the story panel proportions across all four illustrated panels.
-- Story artwork now fills the panel using object-fit: cover, preserving proportions and avoiding distortion; minor edge cropping is preferred to letterboxing.
-- Loading screen, story artwork, Level 1 gameplay, combat, puzzles, and other systems are unchanged.
+Focused fix: robust Safari/browser sizing for the 4:3 intro story panels.
+
+- Keeps the four approved 4:3 intro artworks unchanged.
+- Makes #game-root fill the available app area so percentage-height sizing cannot collapse.
+- Centers the complete 4:3 panel and constrains it to both viewport width and height.
+- Removes the Safari/flex sizing failure that could render the story panel as a tiny strip.
+- No gameplay, combat, loading screen, or story content changes.

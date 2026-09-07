@@ -127,15 +127,16 @@ html,body,#app{height:100%;overflow:hidden}
 /* v0.7 combat readability / opaque modal fix */
 .combat.overlay{padding:12px}.combat .overlay-box{width:min(100%,920px);overflow:hidden}.combat-actions button{min-width:145px}.combat-ui .small{color:#e7c8d5}.combat-arena{background:#17111a}
 
-/* v1.3: final 4:3 intro artwork. Each panel is a complete in-game illustration. */
-.cartoon-story-screen{padding:0;overflow:hidden;background:#050408}
-.cartoon-story-frame{width:100%;height:100%;display:flex;align-items:center;justify-content:center}
-.cartoon-story-panel{display:block;padding:0;border:0;background:#050408;cursor:pointer;width:min(100%,1448px);aspect-ratio:4/3;height:auto;max-height:100%;overflow:hidden;box-shadow:0 0 0 1px var(--line)}
+/* v1.4: robust 4:3 intro sizing. Keep the full artwork visible and prevent Safari flex/percentage-height collapse. */
+#game-root{width:100%;height:100%;min-width:0;min-height:0;display:flex;align-items:stretch;justify-content:center}
+.cartoon-story-screen{width:100%;height:100%;min-width:0;min-height:0;padding:0;overflow:hidden;background:#050408;display:grid;place-items:center}
+.cartoon-story-frame{width:100%;height:100%;min-width:0;min-height:0;display:grid;place-items:center}
+.cartoon-story-panel{display:block;flex:0 0 auto;width:min(100%,1448px);max-width:calc(100vw - 20px);height:auto;max-height:calc(100svh - 20px);aspect-ratio:4/3;padding:0;border:0;background:#050408;cursor:pointer;overflow:hidden;box-shadow:0 0 0 1px var(--line)}
 .cartoon-story-panel:focus-visible{outline:3px solid #f18caf;outline-offset:-3px}
-.cartoon-story-image{display:block;width:100%;height:100%;object-fit:contain;object-position:center;background:#050408}
+.cartoon-story-image{display:block;width:100%;height:100%;object-fit:fill;object-position:center;background:#050408}
 @media(max-width:600px){
   .cartoon-story-screen{padding:0}
-  .cartoon-story-panel{width:100%;max-width:none}
+  .cartoon-story-panel{width:100%;max-width:100vw;max-height:100svh}
 }
 
 /* v1.1: cinematic typed narration between the four approved cartoon story panels. */
