@@ -7,3 +7,7 @@ The story panels remain the same artwork. The change is only to make the story r
 
 ## Upload
 Unzip and upload the contents of this folder to the repository root.
+
+
+### v1.5
+Loading/title screen centering fix only.
