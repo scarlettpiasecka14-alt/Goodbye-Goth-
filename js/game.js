@@ -15,8 +15,75 @@ function showTitle(){
 }
 
 function showIntro(){
-  const story = new StoryController(root, mountLevel1);
+  const story = new StoryController(root, showGothAbyss);
   story.render();
+}
+
+function showGothAbyss(){
+  root.innerHTML = `
+    <section class="abyss-cutscene" aria-label="Olly falls into the Goth Abyss">
+      <div class="abyss-sky">
+        <div class="abyss-glow"></div>
+        <div class="abyss-note">💌</div>
+        <div class="abyss-title">THE GOTH ABYSS</div>
+        <div class="abyss-subtitle">something has gone very, very wrong...</div>
+        <div class="abyss-floor-crack" aria-hidden="true"></div>
+        <div class="abyss-olly" id="abyss-olly" aria-hidden="true">
+          <svg viewBox="0 0 220 300" role="img" aria-label="Cartoon Olly falling">
+            <g class="olly-falling-body">
+              <ellipse cx="110" cy="272" rx="48" ry="13" fill="rgba(0,0,0,.35)"/>
+              <path d="M68 168 Q110 145 152 168 L158 244 Q110 262 62 244 Z" fill="#17151b" stroke="#0a090d" stroke-width="7"/>
+              <text x="110" y="205" text-anchor="middle" font-size="17" font-family="Arial, sans-serif" font-weight="700" fill="#e98ab3">The Weeknd</text>
+              <path d="M75 171 Q46 184 31 215" fill="none" stroke="#d98a68" stroke-width="20" stroke-linecap="round"/>
+              <path d="M145 171 Q175 181 191 211" fill="none" stroke="#d98a68" stroke-width="20" stroke-linecap="round"/>
+              <path d="M83 240 Q72 270 62 289" fill="none" stroke="#68703e" stroke-width="25" stroke-linecap="round"/>
+              <path d="M137 240 Q148 270 158 289" fill="none" stroke="#68703e" stroke-width="25" stroke-linecap="round"/>
+              <ellipse cx="57" cy="291" rx="24" ry="8" fill="#26232a"/>
+              <ellipse cx="163" cy="291" rx="24" ry="8" fill="#26232a"/>
+              <circle cx="110" cy="111" r="54" fill="#d98a68" stroke="#0a090d" stroke-width="7"/>
+              <path d="M58 105 Q56 42 111 38 Q169 43 164 108 Q148 76 124 73 Q91 74 58 105Z" fill="#21151a" stroke="#0a090d" stroke-width="7"/>
+              <circle cx="91" cy="113" r="7" fill="#17131a"/><circle cx="129" cy="113" r="7" fill="#17131a"/>
+              <path d="M94 140 Q110 150 126 140" fill="none" stroke="#6b302c" stroke-width="5" stroke-linecap="round"/>
+              <path d="M82 88 Q92 80 101 87 M119 87 Q129 80 139 88" fill="none" stroke="#17131a" stroke-width="6" stroke-linecap="round"/>
+              <path d="M45 97 Q22 77 29 58 M175 97 Q198 77 191 58" fill="none" stroke="#21151a" stroke-width="14" stroke-linecap="round"/>
+            </g>
+          </svg>
+        </div>
+        <div class="abyss-scream" id="abyss-scream">AAAAAA—!</div>
+        <div class="abyss-impact" id="abyss-impact">THUD!</div>
+        <div class="abyss-reaction" id="abyss-reaction">Where the hell am I?</div>
+      </div>
+      <button id="abyss-skip" class="abyss-skip" type="button">SKIP CUTSCENE →</button>
+    </section>`;
+
+  const finish = () => showAbyssRules();
+  document.getElementById('abyss-skip').addEventListener('click', finish, { once:true });
+  setTimeout(() => document.getElementById('abyss-scream')?.classList.add('show'), 950);
+  setTimeout(() => document.getElementById('abyss-olly')?.classList.add('falling'), 650);
+  setTimeout(() => document.getElementById('abyss-impact')?.classList.add('show'), 2350);
+  setTimeout(() => document.getElementById('abyss-reaction')?.classList.add('show'), 2850);
+  setTimeout(finish, 3900);
+}
+
+function showAbyssRules(){
+  root.innerHTML = `
+    <section class="abyss-rules-screen" aria-label="Welcome to the Goth Abyss">
+      <div class="abyss-rules-card">
+        <div class="abyss-rules-skull">☠</div>
+        <div class="abyss-rules-kicker">WELCOME TO</div>
+        <h1>THE GOTH ABYSS</h1>
+        <p class="abyss-rules-intro">Scarlett has been taken. The Goths have hidden her somewhere beyond this place.</p>
+        <div class="abyss-rules-grid">
+          <div><span>🧭</span><strong>EXPLORE</strong><p>Search each level and uncover the path forward.</p></div>
+          <div><span>🏹</span><strong>FIGHT</strong><p>Defeat the Zombie Goths and survive their attacks.</p></div>
+          <div><span>💕</span><strong>LOVE</strong><p>Complete one relationship challenge on every level.</p></div>
+          <div><span>🧩</span><strong>THINK</strong><p>Solve the puzzle to unlock the boss gate.</p></div>
+        </div>
+        <div class="abyss-rule-line">DEFEAT THE QUEEN GOTH → FIND SCARLETT → ESCAPE THE ABYSS</div>
+        <button id="enter-abyss" class="primary abyss-enter" type="button">ENTER THE GOTH ABYSS ♥</button>
+      </div>
+    </section>`;
+  document.getElementById('enter-abyss').addEventListener('click', mountLevel1, { once:true });
 }
 
 function mountLevel1(){

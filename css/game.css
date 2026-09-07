@@ -159,3 +159,28 @@ html,body,#app{height:100%;overflow:hidden}
 @keyframes typing-blink{0%,45%{opacity:1}46%,100%{opacity:0}}
 @media(prefers-reduced-motion:reduce){.typing-story-cursor{animation:none}}
 @media(max-width:600px){.typing-story-screen{padding:5px}.typing-story-text{width:90vw;font-size:clamp(1.1rem,5vw,1.55rem)}.typing-story-next{margin-top:22px}}
+
+/* V1.6: dedicated Goth Abyss transition and rules screen */
+.abyss-cutscene,.abyss-rules-screen{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:#09070d;overflow:hidden;font-family:Georgia,serif}
+.abyss-sky{position:relative;width:min(100vw,calc(100vh * 4 / 3));height:min(100vh,calc(100vw * 3 / 4));max-width:100vw;max-height:100vh;background:radial-gradient(circle at 50% 38%,#3d1744 0%,#1b1024 38%,#08070d 78%);overflow:hidden;border:2px solid #5d345d;box-shadow:0 0 60px rgba(255,87,165,.14) inset}
+.abyss-glow{position:absolute;left:50%;top:46%;width:45%;height:32%;transform:translate(-50%,-50%);background:radial-gradient(ellipse,#ff65aa33 0%,#8f4db522 42%,transparent 72%);filter:blur(8px)}
+.abyss-sky:before,.abyss-sky:after{content:'♥   ✦   ☠   ✦   ♥';position:absolute;left:0;right:0;color:#ff65a8aa;font-size:clamp(18px,3vw,34px);letter-spacing:22px;text-align:center}
+.abyss-sky:before{top:8%;transform:rotate(-5deg)}.abyss-sky:after{bottom:10%;transform:rotate(4deg)}
+.abyss-title{position:absolute;top:11%;left:0;right:0;text-align:center;color:#ff6cad;font-size:clamp(30px,6vw,72px);font-weight:900;letter-spacing:4px;text-shadow:0 4px 0 #120b16}
+.abyss-subtitle{position:absolute;top:22%;left:0;right:0;text-align:center;color:#f3d5e4;font-size:clamp(13px,2vw,22px);font-style:italic}
+.abyss-note{position:absolute;top:30%;left:50%;transform:translateX(-50%) rotate(-8deg);font-size:clamp(32px,5vw,60px);animation:noteFloat 1.4s ease-in-out infinite}
+@keyframes noteFloat{50%{transform:translateX(-50%) rotate(8deg) translateY(-10px)}}
+.abyss-floor-crack{position:absolute;bottom:18%;left:50%;width:32%;height:6px;background:#ff4d9c;box-shadow:0 0 28px #ff4d9c;transform:translateX(-50%);border-radius:50%;animation:crackPulse .8s ease-in-out infinite alternate}
+@keyframes crackPulse{to{width:45%;opacity:.65}}
+.abyss-olly{position:absolute;left:50%;top:31%;width:clamp(110px,16vw,190px);transform:translateX(-50%);opacity:1}
+.abyss-olly svg{width:100%;height:auto;filter:drop-shadow(0 12px 10px #0008)}
+.abyss-olly.falling{animation:ollyFall 1.65s cubic-bezier(.2,.75,.25,1) forwards}
+@keyframes ollyFall{0%{transform:translate(-50%,0) rotate(0deg) scale(1)}35%{transform:translate(calc(-50% + 18px),60px) rotate(8deg) scale(.95)}70%{transform:translate(calc(-50% - 22px),190px) rotate(-14deg) scale(.8)}100%{transform:translate(-50%,360px) rotate(28deg) scale(.62);opacity:.15}}
+.abyss-scream,.abyss-impact,.abyss-reaction{position:absolute;left:50%;opacity:0;pointer-events:none;text-align:center}
+.abyss-scream{top:49%;transform:translateX(-50%) rotate(-8deg);font-size:clamp(26px,4vw,52px);font-weight:900;color:#fff;text-shadow:3px 3px #ff3f9d;transition:opacity .15s}
+.abyss-impact{bottom:25%;transform:translateX(-50%) rotate(-5deg);font-size:clamp(24px,4vw,48px);font-weight:900;color:#fff;text-shadow:3px 3px #6f3c74}.abyss-reaction{bottom:15%;transform:translateX(-50%);padding:10px 20px;background:#0c0910;border:2px solid #ff69aa;border-radius:14px;color:#fff;font-size:clamp(18px,2.5vw,30px);transition:opacity .25s}.abyss-scream.show,.abyss-impact.show,.abyss-reaction.show{opacity:1}
+.abyss-skip{position:absolute;right:22px;bottom:18px;background:#211624cc;color:#f4c6db;border:1px solid #8b4e77;border-radius:10px;padding:9px 13px;font-weight:700;cursor:pointer}
+.abyss-rules-screen{background:radial-gradient(circle at 50% 20%,#321335,#0a080e 65%)}
+.abyss-rules-card{width:min(900px,90vw);max-height:90vh;overflow:auto;text-align:center;background:#1a1220ee;border:2px solid #ff65aa;border-radius:24px;padding:clamp(22px,4vw,42px);box-shadow:0 0 50px #0009,0 0 35px #ff4d9c1a;color:#f8eaf1}
+.abyss-rules-skull{font-size:clamp(34px,5vw,58px);color:#ff6cad}.abyss-rules-kicker{margin-top:2px;color:#e8a2c2;letter-spacing:4px;font-weight:800}.abyss-rules-card h1{margin:4px 0 10px;color:#ff6cad;font-size:clamp(32px,6vw,66px);line-height:1}.abyss-rules-intro{max-width:680px;margin:0 auto 22px;font-size:clamp(15px,2vw,21px);line-height:1.45}.abyss-rules-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}.abyss-rules-grid>div{background:#0c0910;border:1px solid #70405e;border-radius:16px;padding:16px 10px}.abyss-rules-grid span{display:block;font-size:30px;margin-bottom:5px}.abyss-rules-grid strong{color:#ff7eb4;font-size:15px}.abyss-rules-grid p{font-size:13px;line-height:1.35;margin:7px 0 0;color:#d9c4cf}.abyss-rule-line{border-top:1px solid #6c3c5b;border-bottom:1px solid #6c3c5b;padding:12px 4px;margin:16px 0;color:#f6a8ca;font-weight:800;letter-spacing:1px;font-size:clamp(11px,1.5vw,16px)}.abyss-enter{font-size:clamp(14px,2vw,19px);padding:13px 24px}
+@media(max-width:700px){.abyss-rules-grid{grid-template-columns:repeat(2,1fr)}.abyss-rules-card{max-height:86vh}.abyss-title{top:9%}.abyss-subtitle{top:19%}}
