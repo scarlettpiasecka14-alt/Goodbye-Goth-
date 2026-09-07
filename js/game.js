@@ -13,7 +13,7 @@ function showTitle(){
       </div>
     </section>`;
   document.getElementById('title-start').addEventListener('click', showIntro, { once:true });
-  document.getElementById('title-skip').addEventListener('click', showGothAbyss, { once:true });
+  document.getElementById('title-skip').addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); showGothAbyss(); }, { once:true });
 }
 
 function showIntro(){
@@ -22,12 +22,12 @@ function showIntro(){
 }
 
 function showGothAbyss() {
-  gameRoot.innerHTML = `
+  root.innerHTML = `
     <section class="abyss-video-screen" id="abyss-video-screen">
       <video
         id="abyss-video"
         class="abyss-video"
-        src="assets/video/cutscene.mp4"
+        src="assets/video/cutscene 720p.mov"
         playsinline
         preload="auto"
       ></video>
