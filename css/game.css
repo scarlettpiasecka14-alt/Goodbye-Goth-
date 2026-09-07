@@ -130,14 +130,14 @@ html,body,#app{height:100%;overflow:hidden}
 /* v1.0 story art pass: use the approved cartoon-comic storyboard style as the actual story panels. */
 .cartoon-story-screen{padding:10px;overflow:hidden;background:#0b080e}
 .cartoon-story-frame{width:min(96vw,980px);height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px}
-.cartoon-story-panel{display:block;padding:0;border:0;background:transparent;cursor:pointer;width:min(96vw,760px);height:min(78svh,760px);border-radius:14px;overflow:hidden;box-shadow:0 0 0 1px var(--line)}
+.cartoon-story-panel{display:block;padding:0;border:0;background:#050408;cursor:pointer;width:min(96vw,760px);height:min(78svh,760px);aspect-ratio:379/595;border-radius:14px;overflow:hidden;box-shadow:0 0 0 1px var(--line)}
 .cartoon-story-panel:focus-visible{outline:3px solid #f18caf;outline-offset:3px}
-.cartoon-story-image{display:block;width:100%;height:100%;object-fit:contain;background:#050408}
+.cartoon-story-image{display:block;width:100%;height:100%;object-fit:cover;object-position:center;background:#050408}
 .cartoon-story-footer{width:min(760px,96vw);display:flex;align-items:center;justify-content:space-between;color:var(--muted);font:700 12px system-ui,sans-serif;padding:0 3px}
 .story-hint{font-family:Georgia,serif;color:#e8d9e4}
 @media(max-width:600px){
   .cartoon-story-screen{padding:5px}
-  .cartoon-story-panel{width:96vw;height:min(76svh,700px)}
+  .cartoon-story-panel{width:min(96vw,760px);height:min(76svh,700px);aspect-ratio:379/595}
   .cartoon-story-footer{width:96vw}
   .story-hint{font-size:11px}
 }

@@ -5,7 +5,7 @@ export class StoryController {
     this.step = 0;
     this.typingTimer = null;
     this.isTyping = false;
-    this.typeSpeed = 38;
+    this.typeSpeed = 58;
     this.steps = [
       {
         type:'text',
