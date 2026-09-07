@@ -14,3 +14,12 @@ Focused fix: robust Safari/browser sizing for the 4:3 intro story panels.
 - The title screen now escapes the app's 1180px content-width constraint using a fixed viewport layer.
 - Preserved the original 1536x1024 title artwork at its native 3:2 ratio, using viewport-aware sizing so it stays centered without distortion.
 - No story, gameplay, combat, or art assets changed.
+
+
+## v1.9
+- Added a title-screen SKIP INTRO shortcut for testing. It bypasses the four intro panels and goes directly to the Goth Abyss cutscene, then rules, then Level 1.
+- No other gameplay systems changed.
+
+
+## v1.9 cutscene
+The Goth Abyss cutscene is loaded from `assets/video/cutscene.mp4`. The file is intentionally not bundled here and should be added at that exact path before deployment.
