@@ -1,17 +1,17 @@
 const MAP=[
   "#########################",
-  "######....###############",
-  "######....###############",
-  "##........######....#####",
-  "##........######....#####",
-  "##........######....#####",
-  "##..................#####",
-  "##........######....#####",
-  "##........######....#####",
-  "##########.....##########",
-  "##########.....##########",
-  "##########...........####",
-  "##########...........####",
+  "#########################",
+  "##..............#########",
+  "##..............#########",
+  "##..............#########",
+  "##..............#########",
+  "#####...#####...#####...#",
+  "#####...................#",
+  "#####...................#",
+  "##......................#",
+  "##......................#",
+  "##...................####",
+  "##...................####",
   "#########################",
   "#########################"
 ];
@@ -21,22 +21,59 @@ const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 function rgba(c,a){return c.replace(')',`,${a})`).replace('rgb','rgba')}
 
 function drawCemetery(ctx,w,h){
-  const g=ctx.createLinearGradient(0,0,0,h);g.addColorStop(0,'#23313a');g.addColorStop(.55,'#1a2428');g.addColorStop(1,'#101418');ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
-  ctx.fillStyle='#e9e3d8';ctx.beginPath();ctx.arc(w*.76,h*.16,38,0,Math.PI*2);ctx.fill();
-  // grass texture
-  for(let i=0;i<180;i++){const x=(i*83)%w,y=(i*47)%h;ctx.fillStyle=i%3?'#25352e':'#314337';ctx.fillRect(x,y,2,2)}
-  // paths
-  ctx.fillStyle='#4c4b4e';ctx.fillRect(w*.36,h*.04,w*.18,h*.92);ctx.fillRect(0,h*.56,w*.86,h*.14);ctx.fillStyle='#595558';for(let x=0;x<w*.86;x+=50)ctx.fillRect(x,h*.585,38,5);
-  // trees
-  for(let i=0;i<17;i++){const x=(i*117)%w,y=55+(i*61)%360;ctx.fillStyle='#111a16';ctx.beginPath();ctx.arc(x,y,30,0,Math.PI*2);ctx.fill();ctx.fillStyle='#17241d';ctx.beginPath();ctx.arc(x+15,y-10,25,0,Math.PI*2);ctx.fill()}
-  // graves
-  for(let i=0;i<24;i++){const x=28+(i*83)%900,y=120+(i*59)%330;ctx.fillStyle=i%2?'#717176':'#5f6067';ctx.fillRect(x,y,25,38);ctx.beginPath();ctx.arc(x+12.5,y,12.5,Math.PI,0);ctx.fill();ctx.strokeStyle='#8e8d91';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x+12,y+8);ctx.lineTo(x+12,y+25);ctx.moveTo(x+6,y+15);ctx.lineTo(x+18,y+15);ctx.stroke()}
-  // statues
-  for(let i=0;i<5;i++){const x=120+i*180,y=90+(i%2)*245;ctx.fillStyle='#737579';ctx.fillRect(x-7,y+20,14,48);ctx.beginPath();ctx.arc(x,y,11,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.moveTo(x-16,y+22);ctx.lineTo(x-28,y+55);ctx.lineTo(x-5,y+48);ctx.fill();ctx.beginPath();ctx.moveTo(x+16,y+22);ctx.lineTo(x+28,y+55);ctx.lineTo(x+5,y+48);ctx.fill()}
-  // lanterns
-  for(let i=0;i<9;i++){const x=45+i*110,y=160+(i%3)*130;ctx.fillStyle='#d69a57';ctx.fillRect(x-2,y,4,28);ctx.fillRect(x-9,y-4,18,8);ctx.fillStyle='#ffd69a';ctx.beginPath();ctx.arc(x,y-5,5,0,Math.PI*2);ctx.fill()}
-  // main iron gate / chapel
-  ctx.fillStyle='#30323a';ctx.fillRect(w*.03,h*.45,w*.16,8);for(let x=w*.03;x<w*.19;x+=14)ctx.fillRect(x,h*.45-35,5,43);ctx.fillStyle='#776f74';ctx.fillRect(w*.72,h*.25,w*.18,8);ctx.fillStyle='#413b43';ctx.fillRect(w*.77,h*.08,w*.08,h*.18);ctx.fillStyle='#7b6d82';ctx.beginPath();ctx.moveTo(w*.77,h*.08);ctx.lineTo(w*.81,h*.025);ctx.lineTo(w*.85,h*.08);ctx.fill();
+  const g=ctx.createLinearGradient(0,0,0,h);
+  g.addColorStop(0,'#201a2f');g.addColorStop(.52,'#171223');g.addColorStop(1,'#0b0910');
+  ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
+
+  // Moon and distant gothic silhouette.
+  ctx.fillStyle='#f1cfe0';ctx.beginPath();ctx.arc(w*.78,h*.15,42,0,Math.PI*2);ctx.fill();
+  ctx.shadowBlur=28;ctx.shadowColor='rgba(241,207,224,.18)';ctx.fill();ctx.shadowBlur=0;
+  ctx.fillStyle='#0e0b15';
+  for(let i=0;i<14;i++){const bx=i*78-18,base=h*.43;ctx.fillRect(bx,base-45-(i%3)*18,20,45+(i%3)*18);ctx.beginPath();ctx.moveTo(bx-4,base-45-(i%3)*18);ctx.lineTo(bx+10,base-70-(i%2)*10);ctx.lineTo(bx+24,base-45-(i%3)*18);ctx.fill();}
+
+  // Stone paths aligned with the playable route.
+  ctx.fillStyle='#4a414e';ctx.fillRect(w*.20,h*.34,w*.64,h*.12);ctx.fillRect(w*.43,h*.08,w*.14,h*.84);ctx.fillRect(w*.08,h*.72,w*.72,h*.15);
+  ctx.fillStyle='#5b4e61';for(let px=55;px<w*.78;px+=54){ctx.fillRect(px,h*.775,40,5)}for(let py=70;py<h*.9;py+=48){ctx.fillRect(w*.495,py,5,33)}
+
+  // Trees around the edges, plus a few framing the main paths.
+  for(let i=0;i<18;i++){const x=28+(i*137)%930,y=40+(i*83)%500;
+    ctx.fillStyle='#0d1015';ctx.fillRect(x-5,y+18,10,36);ctx.beginPath();ctx.arc(x,y,30+(i%3)*7,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#171325';ctx.beginPath();ctx.arc(x+18,y-10,24,0,Math.PI*2);ctx.fill();
+  }
+
+  // Graves.
+  for(let i=0;i<32;i++){const x=28+(i*91)%920,y=108+(i*53)%420;
+    const wide=i%5===0;
+    ctx.fillStyle=i%2?'#716d79':'#5f5d68';ctx.fillRect(x,y,wide?30:24,wide?42:36);ctx.beginPath();ctx.arc(x+(wide?15:12),y,wide?15:12,Math.PI,0);ctx.fill();
+    ctx.strokeStyle='#96919c';ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(x+12,y+8);ctx.lineTo(x+12,y+24);ctx.moveTo(x+5,y+15);ctx.lineTo(x+19,y+15);ctx.stroke();
+  }
+
+  // Mausoleums / crypts.
+  const maus=[{x:95,y:112},{x:350,y:305},{x:690,y:118},{x:805,y:328}];
+  maus.forEach((m,i)=>{ctx.fillStyle='#4b4551';ctx.fillRect(m.x,m.y,72,55);ctx.beginPath();ctx.moveTo(m.x-6,m.y);ctx.lineTo(m.x+36,m.y-24);ctx.lineTo(m.x+78,m.y);ctx.fill();ctx.fillStyle='#18131d';ctx.fillRect(m.x+26,m.y+22,20,33);ctx.fillStyle='#d78aa8';ctx.fillRect(m.x+34,m.y+29,4,6);});
+
+  // Statues.
+  for(let i=0;i<6;i++){const x=170+i*145,y=150+(i%2)*265;ctx.fillStyle='#77727d';ctx.fillRect(x-7,y+19,14,48);ctx.beginPath();ctx.arc(x,y,11,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.moveTo(x-16,y+23);ctx.lineTo(x-27,y+54);ctx.lineTo(x-5,y+48);ctx.fill();ctx.beginPath();ctx.moveTo(x+16,y+23);ctx.lineTo(x+27,y+54);ctx.lineTo(x+5,y+48);ctx.fill();}
+
+  // Lanterns.
+  for(let i=0;i<11;i++){const x=55+i*91,y=140+(i%4)*103;ctx.strokeStyle='#76616c';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x,y,x,y+28);ctx.stroke();ctx.fillStyle='#c98961';ctx.fillRect(x-8,y-5,16,12);ctx.fillStyle='#ffd7a1';ctx.beginPath();ctx.arc(x,y+1,4.5,0,Math.PI*2);ctx.fill();}
+
+  // Church / spooky house at the upper-left side route.
+  ctx.fillStyle='#3b3442';ctx.fillRect(90,75,155,96);ctx.fillStyle='#2b2632';ctx.beginPath();ctx.moveTo(78,75);ctx.lineTo(166,25);ctx.lineTo(257,75);ctx.fill();
+  ctx.fillStyle='#15111a';ctx.fillRect(156,108,25,63);ctx.fillStyle='#a36583';ctx.fillRect(162,120,13,24);ctx.fillStyle='#111';ctx.fillRect(110,105,20,20);ctx.fillRect(202,105,20,20);
+
+  // Iron fencing around parts of the cemetery.
+  ctx.strokeStyle='#15131a';ctx.lineWidth=6;
+  const fenceLines=[[30,h*.63,w*.27,h*.63],[w*.58,h*.18,w*.92,h*.18],[w*.20,h*.92,w*.55,h*.92]];
+  fenceLines.forEach(([x1,y1,x2,y2])=>{ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();for(let x=x1;x<=x2;x+=18){ctx.fillRect(x,y1-18,5,20)}});
+
+  // A few pink petals make the place feel pretty as well as creepy.
+  ctx.fillStyle='#cc5e89';for(let i=0;i<24;i++){const x=(i*119)%w,y=80+(i*71)%470;ctx.beginPath();ctx.ellipse(x,y,5,2,((i%4)-2)*.25,0,Math.PI*2);ctx.fill();}
+
+  // The boss gate is drawn near the right-hand end of the main route.
+  const gx=20*TILE+4, gy=8*TILE+2;
+  ctx.strokeStyle='#24202b';ctx.lineWidth=5;ctx.beginPath();ctx.arc(gx+20,gy+40,36,Math.PI,0);ctx.stroke();
+  for(let i=-2;i<=2;i++){ctx.fillRect(gx+18+i*11,gy+5,4,36)}
 }
 
 function drawOlly(ctx,x,y,s=.7,t=0,front=true,dir='down',moving=false){
@@ -130,15 +167,36 @@ export function createLevel1(ui){
     {x:8,y:6,type:'shambler',name:'GRAVEYARD SHAMBLER',hp:4,maxHp:4,dead:false,pattern:'Slow lunge'},
     {x:17,y:5,type:'chain',name:'CHAIN ZOMBIE',hp:5,maxHp:5,dead:false,pattern:'Chain lash'}
   ];
-  const relationship={x:4,y:7},puzzle={x:13,y:12},boss={x:20,y:11};
-  let x=3,y=6,hp=5,mode='map',walkDir='down',walkPulse=0,kills=0,relationshipDone=false,puzzleSolved=false,target=null,isBoss=false,combatHp=0,combatMax=1,enemyAttackPhase=null,enemyTimer=null,combatRaf=0,projectiles=[],player={x:135,y:260,invuln:0,aimX:500,aimY:180},combatCheckpoint=null,relationshipStep=0,relationshipRound=0,relationshipStart=0,relationshipDuration=2600,relationshipAnimating=false,relationshipRAF=0;
+  const relationship={x:9,y:7},puzzle={x:17,y:10},boss={x:20,y:8};
+  let x=3,y=11,hp=5,mode='map',walkDir='down',walkPulse=0,kills=0,relationshipDone=false,puzzleSolved=false,target=null,isBoss=false,combatHp=0,combatMax=1,enemyAttackPhase=null,enemyTimer=null,combatRaf=0,projectiles=[],player={x:135,y:260,invuln:0,aimX:500,aimY:180},combatCheckpoint=null,bossRoomEntered=false,relationshipStep=0,relationshipRound=0,relationshipStart=0,relationshipDuration=2600,relationshipAnimating=false,relationshipRAF=0;
   let now=0,raf=0;
 
   function reveal(){for(let yy=0;yy<ROWS;yy++)for(let xx=0;xx<COLS;xx++)if(Math.hypot(xx-x,yy-y)<=3.7)revealed[yy][xx]=true}
   function unlockedBoss(){return kills>=2&&relationshipDone&&puzzleSolved}
   function stats(){ui.hpEl.textContent=hp;ui.gothEl.textContent=`${kills}/2`;ui.relEl.textContent=relationshipDone?'Done':'Locked';ui.puzzleEl.textContent=puzzleSolved?'Solved':'Locked';ui.goalGoths.innerHTML=kills>=2?'<span class="good">✓ Defeat the required Zombie Goths</span>':`○ Defeat the required Zombie Goths (${kills}/2)`;ui.goalRel.innerHTML=relationshipDone?'<span class="good">✓ Relationship Challenge complete</span>':'○ Complete the Relationship Challenge';ui.goalPuzzle.innerHTML=puzzleSolved?'<span class="good">✓ Puzzle solved</span>':'○ Solve the Puzzle';ui.goalBoss.innerHTML=unlockedBoss()?'<span class="good">✓ Boss gate unlocked</span>':'<span class="locked">🔒 Boss gate locked</span>'}
   function drawMini(){mctx.clearRect(0,0,250,180);mctx.fillStyle='#0d0b11';mctx.fillRect(0,0,250,180);for(let yy=0;yy<ROWS;yy++)for(let xx=0;xx<COLS;xx++){if(revealed[yy][xx]){mctx.fillStyle=isFloor(xx,yy)?'#57505b':'#17131b';mctx.fillRect(xx*10,yy*10,10,10)}else{mctx.fillStyle='#0c0a0e';mctx.fillRect(xx*10,yy*10,10,10)}}mctx.fillStyle='#f3eff0';mctx.beginPath();mctx.arc(x*10+5,y*10+5,3.5,0,Math.PI*2);mctx.fill();if(!relationshipDone&&revealed[relationship.y][relationship.x]){mctx.fillStyle='#ef91ac';mctx.fillRect(relationship.x*10+2,relationship.y*10+2,6,6)}if(!puzzleSolved&&revealed[puzzle.y][puzzle.x]){mctx.fillStyle='#e5c5d5';mctx.fillRect(puzzle.x*10+2,puzzle.y*10+2,6,6)}if(unlockedBoss()&&revealed[boss.y][boss.x]){mctx.fillStyle='#f0cf8b';mctx.fillRect(boss.x*10+2,boss.y*10+2,6,6)}}
-  function drawWorld(t){drawCemetery(ctx,1000,600);for(let yy=0;yy<ROWS;yy++)for(let xx=0;xx<COLS;xx++){if(!revealed[yy][xx]){ctx.fillStyle='rgba(3,2,6,.92)';ctx.fillRect(xx*TILE,yy*TILE,TILE,TILE)}else{ctx.fillStyle=isFloor(xx,yy)?'rgba(42,41,46,.24)':'rgba(0,0,0,.22)';ctx.fillRect(xx*TILE,yy*TILE,TILE,TILE)}}enemies.forEach(e=>{if(!e.dead&&revealed[e.y][e.x])drawZombie(ctx,e.x*TILE+20,e.y*TILE+30,e.type,.58,t/1000)});if(!relationshipDone&&revealed[relationship.y][relationship.x]){ctx.fillStyle='#ef91ac';ctx.font='28px Georgia';ctx.textAlign='center';ctx.fillText('♥',relationship.x*TILE+20,relationship.y*TILE+29)}if(!puzzleSolved&&revealed[puzzle.y][puzzle.x]){ctx.fillStyle='#e6c5d3';ctx.font='26px Georgia';ctx.textAlign='center';ctx.fillText('✣',puzzle.x*TILE+20,puzzle.y*TILE+29)}if(unlockedBoss()&&revealed[boss.y][boss.x]){ctx.fillStyle='#f0cf8b';ctx.font='25px Georgia';ctx.textAlign='center';ctx.fillText('♛',boss.x*TILE+20,boss.y*TILE+29)}drawOlly(ctx,x*TILE+20,y*TILE+35,.70,t/1000,true,walkDir,walkPulse>0)}
+  function drawWorld(t){
+    drawCemetery(ctx,1000,600);
+    // Fog-of-war: only explored tiles are visible.
+    for(let yy=0;yy<ROWS;yy++)for(let xx=0;xx<COLS;xx++){
+      if(!revealed[yy][xx]){ctx.fillStyle='rgba(3,2,7,.94)';ctx.fillRect(xx*TILE,yy*TILE,TILE,TILE)}
+      else if(!isFloor(xx,yy)){ctx.fillStyle='rgba(2,2,6,.35)';ctx.fillRect(xx*TILE,yy*TILE,TILE,TILE)}
+    }
+    // Route markers, kept subtle so exploration remains primary.
+    enemies.forEach(e=>{if(!e.dead&&revealed[e.y][e.x])drawZombie(ctx,e.x*TILE+20,e.y*TILE+30,e.type,.58,t/1000)});
+    if(!relationshipDone&&revealed[relationship.y][relationship.x]){ctx.fillStyle='#ef91ac';ctx.font='28px Georgia';ctx.textAlign='center';ctx.fillText('♥',relationship.x*TILE+20,relationship.y*TILE+29)}
+    if(!puzzleSolved&&revealed[puzzle.y][puzzle.x]){ctx.fillStyle='#e6c5d3';ctx.font='26px Georgia';ctx.textAlign='center';ctx.fillText('✣',puzzle.x*TILE+20,puzzle.y*TILE+29)}
+    if(revealed[boss.y][boss.x]){
+      ctx.fillStyle=unlockedBoss()?'#f0cf8b':'#8c7584';ctx.font='24px Georgia';ctx.textAlign='center';ctx.fillText(unlockedBoss()?'✦':'🔒',boss.x*TILE+20,boss.y*TILE+29);
+      if(unlockedBoss()){ctx.fillStyle='#ef91ac';ctx.font='bold 14px system-ui';ctx.fillText('GATE OPEN',boss.x*TILE+20,boss.y*TILE+56)}
+    }
+    if(bossRoomEntered){
+      ctx.fillStyle='rgba(8,5,15,.55)';ctx.fillRect(21*TILE,6*TILE,3*TILE,5*TILE);
+      ctx.strokeStyle='#8d617f';ctx.lineWidth=3;ctx.strokeRect(21*TILE+8,6*TILE+8,3*TILE-16,5*TILE-16);
+      ctx.fillStyle='#f0d5e3';ctx.font='bold 15px Georgia';ctx.textAlign='center';ctx.fillText('CLASSIC GOTH',22*TILE+20,8*TILE+28);
+    }
+    drawOlly(ctx,x*TILE+20,y*TILE+35,.70,t/1000,true,walkDir,walkPulse>0)
+  }
 
   function drawEncounter(type){ectx.clearRect(0,0,720,300);const gg=ectx.createLinearGradient(0,0,0,300);gg.addColorStop(0,'#2e2436');gg.addColorStop(1,'#111016');ectx.fillStyle=gg;ectx.fillRect(0,0,720,300);for(let i=0;i<15;i++){ectx.fillStyle='#4d3b51';ectx.fillRect((i*61)%720,150+(i%4)*18,28,42)}drawOlly(ectx,180,245,.95,0,true);drawZombie(ectx,520,230,type,.95,1.2,false);ectx.fillStyle='#f3e7ed';ectx.font='bold 18px Georgia';ectx.textAlign='center';ectx.fillText(type==='shambler'?'Mmm... black eyeliner...':'Mmm... accessories...',500,45)}
 
@@ -210,8 +268,21 @@ export function createLevel1(ui){
     if(mode!=='map')return;
     const dx=dir==='left'?-1:dir==='right'?1:0,dy=dir==='up'?-1:dir==='down'?1:0,nx=x+dx,ny=y+dy;
     if(!isFloor(nx,ny))return;
-    if(nx===11&&y===6&&kills<1)return;if(nx===15&&y===6&&kills<2)return;
-    x=nx;y=ny;walkDir=dir;walkPulse=1;setTimeout(()=>{walkPulse=0},180);reveal();ui.dialogue.textContent='The cemetery reveals more of the path...';drawMini();checkTriggers();
+
+    // The locked boss gate cannot be crossed until all Level 1 objectives are complete.
+    if(nx===20&&ny===8&&!unlockedBoss()){
+      ui.dialogue.textContent='🔒 The iron gate is sealed. Defeat both Zombie Goths, survive WOULD YOU?, and solve the question first.';
+      return;
+    }
+    // Crossing into the chamber creates the Level 1.5 threshold.
+    if(nx>=21&&x===20&&y===8&&unlockedBoss()){
+      x=nx;y=ny;walkDir=dir;walkPulse=1;bossRoomEntered=true;mode='bossready';
+      ui.bossReady.classList.remove('hidden');
+      return;
+    }
+
+    x=nx;y=ny;walkDir=dir;walkPulse=1;setTimeout(()=>{walkPulse=0},180);
+    reveal();ui.dialogue.textContent='The cemetery reveals more of the path...';drawMini();checkTriggers();
   }
   function interact(){checkTriggers()}
   function startEncounterFight(){ui.encounter.classList.add('hidden');startCombat(false)}
@@ -277,7 +348,7 @@ function completeRelationship(){
     }
 }
   function answerPuzzle(answer){if(mode!=='puzzle')return;if(answer==='correct'){puzzleSolved=true;mode='map';ui.puzzle.classList.add('hidden');ui.dialogue.textContent='🧩 Correct. Princess etiquette level: appalling. The boss gate is now open.';stats()}else ui.puzzleFeedback.textContent='❌ Wrong. Even the cemetery is disappointed in you.'}
-  function startBoss(){ui.bossIntro.classList.add('hidden');target=null;combatCheckpoint={x,y};startCombat(true)}
+  function startBoss(){ui.bossReady.classList.add('hidden');ui.bossIntro.classList.add('hidden');target=null;combatCheckpoint={x,y};startCombat(true)}
   function start(){reveal();stats();drawMini();cancelAnimationFrame(relationshipRAF);clearInterval(enemyTimer);cancelAnimationFrame(raf);const loop=t=>{now=t;if(walkPulse>0 && t%99999>-1){} if(mode==='map')drawWorld(t);drawMini();raf=requestAnimationFrame(loop)};raf=requestAnimationFrame(loop);requestAnimationFrame(combatTick)}
   function primaryAction(){if(mode==='encounter')startEncounterFight();else if(mode==='combat')combatAttack();else if(mode==='map')checkTriggers()}
 
