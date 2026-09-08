@@ -281,7 +281,7 @@ export function createLevel1(ui){
     {x:8,y:6,type:'shambler',name:'GRAVEYARD SHAMBLER',hp:4,maxHp:4,dead:false,pattern:'Slow lunge'},
     {x:17,y:5,type:'fire',name:'FIRE GOTH',hp:5,maxHp:5,dead:false,pattern:'Throws fireballs'}
   ];
-  const relationship={x:9,y:7},puzzle={x:17,y:10},boss={x:20,y:8};
+  const relationship={x:12,y:8},puzzle={x:17,y:10},boss={x:20,y:8};
   let x=3,y=11,hp=5,mode='map',walkDir='down',walkPulse=0,kills=0,relationshipDone=false,puzzleSolved=false,target=null,isBoss=false,combatHp=0,combatMax=1,enemyAttackPhase=null,enemyTimer=null,combatRaf=0,projectiles=[],player={x:135,y:260,invuln:0,aimX:500,aimY:180},combatCheckpoint=null,bossRoomEntered=false,relationshipStep=0,relationshipRound=0,relationshipStart=0,relationshipDuration=2600,relationshipAnimating=false,relationshipRAF=0;
   let now=0,raf=0;
 
@@ -297,7 +297,7 @@ export function createLevel1(ui){
       else if(!isFloor(xx,yy)){ctx.fillStyle='rgba(2,2,6,.35)';ctx.fillRect(xx*TILE,yy*TILE,TILE,TILE)}
     }
     // Route markers, kept subtle so exploration remains primary.
-    enemies.forEach(e=>{if(!e.dead&&revealed[e.y][e.x])drawZombieSprite(ctx,e.x*TILE+20,e.y*TILE+35,e.type,.58,t/1000)});
+    enemies.forEach(e=>{if(!e.dead&&revealed[e.y][e.x])drawZombieSprite(ctx,e.x*TILE+20,e.y*TILE+38,e.type,.68,t/1000)});
     if(!relationshipDone&&revealed[relationship.y][relationship.x]){ctx.fillStyle='#ef91ac';ctx.font='28px Georgia';ctx.textAlign='center';ctx.fillText('♥',relationship.x*TILE+20,relationship.y*TILE+29)}
     if(!puzzleSolved&&revealed[puzzle.y][puzzle.x]){ctx.fillStyle='#e6c5d3';ctx.font='26px Georgia';ctx.textAlign='center';ctx.fillText('✣',puzzle.x*TILE+20,puzzle.y*TILE+29)}
     if(revealed[boss.y][boss.x]){
