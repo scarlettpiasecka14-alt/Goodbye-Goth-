@@ -236,8 +236,8 @@ function drawOlly(ctx,x,y,s=.7,t=0,front=true,dir='down',moving=false){
 }
 
 const zombieSprites={shambler:new Image(),fire:new Image()};
-zombieSprites.shambler.src='assets/zombies/zombie-shambler.svg';
-zombieSprites.fire.src='assets/zombies/fire-goth.svg';
+zombieSprites.shambler.src='assets/zombies/zombie-shambler.svg?v=29';
+zombieSprites.fire.src='assets/zombies/fire-goth.svg?v=29';
 function drawZombieSprite(ctx,x,y,type,s=.75,t=0,attack=false){
   const img=zombieSprites[type]||zombieSprites.shambler;
   ctx.save();
@@ -335,7 +335,10 @@ export function createLevel1(ui){
     cctx.fillStyle='#332635';cctx.fillRect(620,370,140,10);cctx.fillStyle='#ef91ac';cctx.fillRect(620,370,140*(combatHp/combatMax),10);
   }
   function drawOllyWorldCombat(c,px,py,s,ax,ay,t,hurt){c.save();c.translate(px,py);if(hurt)c.globalAlpha=.5; c.fillStyle='rgba(0,0,0,.25)';c.beginPath();c.ellipse(0,54*s,32*s,8*s,0,0,Math.PI*2);c.fill();c.fillStyle='#35271f';c.beginPath();c.ellipse(0,-50*s,25*s,25*s,0,0,Math.PI*2);c.fill();c.fillStyle='#d9b59e';c.beginPath();c.arc(0,-46*s,14*s,0,Math.PI*2);c.fill();c.fillStyle='#dbe0e7';c.fillRect(-20*s,-30*s,40*s,34*s);c.fillStyle='#273029';c.fillRect(-16*s,4*s,32*s,22*s);c.strokeStyle='#111';c.lineWidth=4*s;c.beginPath();c.moveTo(-10*s,26*s);c.lineTo(-12*s,47*s);c.moveTo(10*s,26*s);c.lineTo(12*s,47*s);c.stroke();const ang=Math.atan2(ay-py,ax-px);c.save();c.rotate(ang);c.strokeStyle='#b58d68';c.lineWidth=4*s;c.beginPath();c.moveTo(15*s,-2*s);c.lineTo(46*s,-2*s);c.stroke();c.strokeStyle='#6b4731';c.lineWidth=2*s;c.beginPath();c.arc(15*s,-2*s,25*s,-1.2,1.2);c.stroke();c.restore();c.restore()}
-  function drawZombieCombat(c,px,py,type,attack){c.save();c.translate(px,py);if(type==='shambler'){c.fillStyle='#0d0a10';c.beginPath();c.ellipse(0,-48,35,48,0,0,Math.PI*2);c.fill();c.fillStyle='#aa8b96';c.beginPath();c.arc(0,-40,17,0,Math.PI*2);c.fill();c.fillStyle='#2a222c';c.beginPath();c.moveTo(-23,-18);c.lineTo(-35,62);c.lineTo(35,62);c.lineTo(23,-18);c.closePath();c.fill()}else{c.fillStyle='#09080e';c.beginPath();c.ellipse(0,-44,37,51,0,0,Math.PI*2);c.fill();c.fillStyle='#c6a5b0';c.beginPath();c.arc(0,-40,17,0,Math.PI*2);c.fill();c.fillStyle='#3a2c3c';c.fillRect(-24,-22,48,68);c.strokeStyle='#b89fb0';c.lineWidth=5;c.beginPath();c.moveTo(26,-3);c.lineTo(70,18);c.stroke()}if(attack){c.strokeStyle='#ef91ac';c.lineWidth=6;c.beginPath();c.arc(0,-8,65,0,Math.PI*2);c.stroke()}c.restore()}
+  function drawZombieCombat(c,px,py,type,attack){
+    // v2.9: use the same detailed zombie sprite in combat as on the map.
+    drawZombieSprite(c,px,py+20,type,1.0,performance.now()/1000,attack);
+  }
   function enemyPhaseNumber(){if(!isBoss)return 1;const r=combatHp/combatMax;return r<=.34?3:r<=.67?2:1}
 
   function startCombat(bossFight){
