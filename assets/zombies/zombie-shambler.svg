@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="320" viewBox="0 0 220 320">
+  <defs>
+    <filter id="shadow"><feGaussianBlur stdDeviation="4"/></filter>
+    <linearGradient id="skin" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c9aeb9"/><stop offset="1" stop-color="#8c7480"/></linearGradient>
+  </defs>
+  <ellipse cx="110" cy="300" rx="64" ry="11" fill="#000" opacity=".35" filter="url(#shadow)"/>
+  <!-- hair -->
+  <path d="M50 118 C32 82 47 36 79 28 C111 14 151 27 170 58 C186 85 176 119 157 136 L58 138 Z" fill="#150d16" stroke="#07050a" stroke-width="8"/>
+  <path d="M62 54 C79 26 111 25 142 38 C127 47 115 63 110 80 C94 59 79 59 62 72 Z" fill="#2a1827" opacity=".8"/>
+  <!-- face -->
+  <ellipse cx="110" cy="108" rx="50" ry="61" fill="url(#skin)" stroke="#2a1720" stroke-width="6"/>
+  <!-- cracks -->
+  <path d="M80 78 l-9 16 11 7 -7 18 M140 72 l10 17 -8 8 9 17" fill="none" stroke="#6d4d5b" stroke-width="5" stroke-linecap="round"/>
+  <!-- eyes -->
+  <ellipse cx="91" cy="105" rx="11" ry="14" fill="#f5a2bb" stroke="#331322" stroke-width="4"/>
+  <ellipse cx="129" cy="105" rx="11" ry="14" fill="#f5a2bb" stroke="#331322" stroke-width="4"/>
+  <circle cx="91" cy="106" r="5" fill="#1a0d16"/><circle cx="129" cy="106" r="5" fill="#1a0d16"/>
+  <!-- zombie mouth -->
+  <path d="M81 132 Q110 151 139 132 Q133 161 110 164 Q87 161 81 132Z" fill="#2d101b" stroke="#4a1c2b" stroke-width="4"/>
+  <path d="M91 136 l0 15 M103 140 l0 16 M116 140 l0 16 M128 136 l0 15" stroke="#f3dfe6" stroke-width="5" stroke-linecap="round"/>
+  <!-- neck --> <path d="M92 157 L128 157 L136 182 L84 182 Z" fill="#8b707a" stroke="#2a1720" stroke-width="5"/>
+  <!-- outfit -->
+  <path d="M72 173 L148 173 L170 287 Q110 310 50 287 Z" fill="#17121a" stroke="#07050a" stroke-width="7"/>
+  <path d="M84 176 L136 176 L130 235 L90 235 Z" fill="#241a27"/>
+  <!-- skull tee emblem -->
+  <circle cx="110" cy="206" r="16" fill="#0c0910" stroke="#9d8190" stroke-width="3"/>
+  <circle cx="103" cy="202" r="4" fill="#cbb8c1"/><circle cx="117" cy="202" r="4" fill="#cbb8c1"/>
+  <path d="M103 213 h14 l-3 7 h-8 z" fill="#cbb8c1"/>
+  <!-- fishnets -->
+  <path d="M78 235 L55 287 M96 236 L77 294 M124 236 L143 294 M142 235 L166 286" stroke="#7f6875" stroke-width="2" opacity=".9"/>
+  <path d="M70 242 L151 242 M63 254 L158 254 M58 266 L164 266 M56 278 L168 278" stroke="#7f6875" stroke-width="2" opacity=".8"/>
+  <!-- arms + hands/nails -->
+  <path d="M69 183 Q43 215 45 252" stroke="#9a7d88" stroke-width="22" stroke-linecap="round"/>
+  <path d="M151 183 Q177 216 179 250" stroke="#9a7d88" stroke-width="22" stroke-linecap="round"/>
+  <path d="M44 249 l-18 20 M44 249 l-9 24 M45 250 l3 22 M179 250 l18 19 M179 250 l9 25 M178 251 l-3 22" stroke="#efdbe3" stroke-width="5" stroke-linecap="round"/>
+  <!-- boots -->
+  <path d="M53 281 h43 l10 22 H47 Z" fill="#0d0a10" stroke="#050307" stroke-width="7"/>
+  <path d="M124 281 h43 l9 22 h-59 Z" fill="#0d0a10" stroke="#050307" stroke-width="7"/>
+  <path d="M54 292 H95 M128 292 H168" stroke="#70435c" stroke-width="4"/>
+  <!-- crosses + heart -->
+  <path d="M78 170 v18 M69 179 h18 M142 172 v17 M133 180 h18" stroke="#b89aaa" stroke-width="5" stroke-linecap="round"/>
+  <path d="M110 239 C103 229 89 238 110 256 C131 238 117 229 110 239Z" fill="#ef6f9f" stroke="#2d1524" stroke-width="3"/>
+</svg>

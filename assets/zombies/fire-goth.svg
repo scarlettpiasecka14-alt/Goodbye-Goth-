@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="320" viewBox="0 0 220 320">
+  <defs>
+    <linearGradient id="skin" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c6a0a8"/><stop offset="1" stop-color="#856b76"/></linearGradient>
+    <linearGradient id="flame" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff08a"/><stop offset=".4" stop-color="#ff8a3d"/><stop offset="1" stop-color="#e43768"/></linearGradient>
+  </defs>
+  <ellipse cx="110" cy="300" rx="64" ry="11" fill="#000" opacity=".35"/>
+  <!-- hair, scorched -->
+  <path d="M47 120 C26 82 45 33 79 27 C111 15 155 27 174 63 C188 91 176 124 159 140 L56 138 Z" fill="#160e15" stroke="#07050a" stroke-width="8"/>
+  <path d="M57 61 C84 23 123 30 147 46 C129 53 118 75 113 94 C96 65 78 67 57 77 Z" fill="#4c1427"/>
+  <path d="M151 43 C171 56 181 81 173 104 C188 93 197 80 199 61 C212 88 203 119 185 138 L162 133Z" fill="url(#flame)" stroke="#5d1624" stroke-width="4"/>
+  <!-- face -->
+  <ellipse cx="110" cy="108" rx="50" ry="61" fill="url(#skin)" stroke="#2a1720" stroke-width="6"/>
+  <path d="M78 80 l-8 15 10 8 -7 16 M144 74 l9 16 -8 8 8 15" fill="none" stroke="#6c4d59" stroke-width="5" stroke-linecap="round"/>
+  <!-- tired fiery eyes -->
+  <ellipse cx="91" cy="105" rx="11" ry="14" fill="#ff8c67" stroke="#331322" stroke-width="4"/>
+  <ellipse cx="129" cy="105" rx="11" ry="14" fill="#ff8c67" stroke="#331322" stroke-width="4"/>
+  <circle cx="91" cy="106" r="5" fill="#261019"/><circle cx="129" cy="106" r="5" fill="#261019"/>
+  <!-- zombie mouth -->
+  <path d="M81 132 Q110 151 139 132 Q133 161 110 164 Q87 161 81 132Z" fill="#2d101b" stroke="#4a1c2b" stroke-width="4"/>
+  <path d="M91 136 l0 15 M103 140 l0 16 M116 140 l0 16 M128 136 l0 15" stroke="#f3dfe6" stroke-width="5" stroke-linecap="round"/>
+  <!-- neck --> <path d="M92 157 L128 157 L136 182 L84 182 Z" fill="#886d77" stroke="#2a1720" stroke-width="5"/>
+  <!-- burnt goth dress -->
+  <path d="M72 173 L148 173 L171 286 Q110 308 49 286 Z" fill="#160f17" stroke="#07050a" stroke-width="7"/>
+  <path d="M77 181 Q110 198 143 181 L138 232 Q110 247 82 232Z" fill="#271723"/>
+  <path d="M86 191 Q110 206 134 191" fill="none" stroke="#9f375d" stroke-width="5"/>
+  <!-- flame cuffs -->
+  <path d="M65 187 Q45 210 48 243 Q60 228 67 245 Q77 218 87 207 L84 184 Z" fill="url(#flame)" stroke="#6e1b2f" stroke-width="4"/>
+  <path d="M155 186 Q176 210 173 243 Q161 228 154 245 Q144 218 134 207 L137 184 Z" fill="url(#flame)" stroke="#6e1b2f" stroke-width="4"/>
+  <!-- chains -->
+  <path d="M88 174 q22 12 44 0" fill="none" stroke="#b89aaa" stroke-width="4" stroke-dasharray="8 5"/>
+  <!-- fishnets -->
+  <path d="M78 232 L57 286 M96 233 L78 293 M124 233 L142 293 M142 232 L165 286" stroke="#7f6875" stroke-width="2"/>
+  <path d="M70 242 L151 242 M63 254 L158 254 M58 266 L164 266 M56 278 L168 278" stroke="#7f6875" stroke-width="2"/>
+  <!-- arms -->
+  <path d="M69 184 Q43 214 46 246" stroke="#967782" stroke-width="22" stroke-linecap="round"/>
+  <path d="M151 184 Q177 214 174 246" stroke="#967782" stroke-width="22" stroke-linecap="round"/>
+  <!-- fire hands -->
+  <path d="M48 236 Q33 217 37 198 Q45 212 50 199 Q55 216 69 226 Q58 233 48 236Z" fill="url(#flame)"/>
+  <path d="M172 236 Q187 217 183 198 Q175 212 170 199 Q165 216 151 226 Q162 233 172 236Z" fill="url(#flame)"/>
+  <!-- boots -->
+  <path d="M52 281 h44 l10 22 H46 Z" fill="#0d0a10" stroke="#050307" stroke-width="7"/>
+  <path d="M124 281 h44 l10 22 h-60 Z" fill="#0d0a10" stroke="#050307" stroke-width="7"/>
+  <path d="M53 293 H96 M128 293 H169" stroke="#d15d63" stroke-width="4"/>
+  <!-- flame wisps -->
+  <path d="M37 156 Q26 139 40 121 Q42 136 52 139 Q48 118 62 106 Q64 129 73 135" fill="none" stroke="#ff8650" stroke-width="6" stroke-linecap="round"/>
+  <path d="M183 156 Q194 139 180 121 Q178 136 168 139 Q172 118 158 106 Q156 129 147 135" fill="none" stroke="#ff8650" stroke-width="6" stroke-linecap="round"/>
+</svg>
