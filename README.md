@@ -11,3 +11,7 @@ Unzip and upload the contents of this folder to the repository root.
 
 ### v1.5
 Loading/title screen centering fix only.
+
+
+## v2.6 Level 1 visual foundation
+The existing Level 1 layout is retained, while the cemetery rendering has been upgraded with more recognisable graves, mausoleums, church architecture, angel statues, trees, lantern glows, fences, stone paths, petals and atmospheric fog. Olly now uses a friendlier caricature-inspired look with curly hair, Weeknd shirt, olive cargos and red shoes, with no bow at Level 1 start.

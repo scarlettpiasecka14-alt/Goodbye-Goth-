@@ -21,125 +21,217 @@ const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 function rgba(c,a){return c.replace(')',`,${a})`).replace('rgb','rgba')}
 
 function drawCemetery(ctx,w,h){
-  const g=ctx.createLinearGradient(0,0,0,h);
-  g.addColorStop(0,'#201a2f');g.addColorStop(.52,'#171223');g.addColorStop(1,'#0b0910');
-  ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
+  // More illustrative, hand-drawn cemetery. The underlying walkable map stays the same.
+  const sky=ctx.createLinearGradient(0,0,0,h);
+  sky.addColorStop(0,'#1a1430');sky.addColorStop(.48,'#211733');sky.addColorStop(1,'#0b0910');
+  ctx.fillStyle=sky;ctx.fillRect(0,0,w,h);
 
-  // Moon and distant gothic silhouette.
-  ctx.fillStyle='#f1cfe0';ctx.beginPath();ctx.arc(w*.78,h*.15,42,0,Math.PI*2);ctx.fill();
-  ctx.shadowBlur=28;ctx.shadowColor='rgba(241,207,224,.18)';ctx.fill();ctx.shadowBlur=0;
-  ctx.fillStyle='#0e0b15';
-  for(let i=0;i<14;i++){const bx=i*78-18,base=h*.43;ctx.fillRect(bx,base-45-(i%3)*18,20,45+(i%3)*18);ctx.beginPath();ctx.moveTo(bx-4,base-45-(i%3)*18);ctx.lineTo(bx+10,base-70-(i%2)*10);ctx.lineTo(bx+24,base-45-(i%3)*18);ctx.fill();}
+  // Soft moon glow.
+  const glow=ctx.createRadialGradient(w*.79,h*.16,8,w*.79,h*.16,125);
+  glow.addColorStop(0,'rgba(255,196,225,.28)');glow.addColorStop(1,'rgba(255,196,225,0)');
+  ctx.fillStyle=glow;ctx.fillRect(0,0,w,h);
+  ctx.fillStyle='#f2cadf';ctx.beginPath();ctx.arc(w*.79,h*.16,50,0,Math.PI*2);ctx.fill();
 
-  // Stone paths aligned with the playable route.
-  ctx.fillStyle='#4a414e';ctx.fillRect(w*.20,h*.34,w*.64,h*.12);ctx.fillRect(w*.43,h*.08,w*.14,h*.84);ctx.fillRect(w*.08,h*.72,w*.72,h*.15);
-  ctx.fillStyle='#5b4e61';for(let px=55;px<w*.78;px+=54){ctx.fillRect(px,h*.775,40,5)}for(let py=70;py<h*.9;py+=48){ctx.fillRect(w*.495,py,5,33)}
-
-  // Trees around the edges, plus a few framing the main paths.
-  for(let i=0;i<18;i++){const x=28+(i*137)%930,y=40+(i*83)%500;
-    ctx.fillStyle='#0d1015';ctx.fillRect(x-5,y+18,10,36);ctx.beginPath();ctx.arc(x,y,30+(i%3)*7,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#171325';ctx.beginPath();ctx.arc(x+18,y-10,24,0,Math.PI*2);ctx.fill();
+  // Distant church spires / crypt skyline.
+  ctx.fillStyle='#0d0a15';
+  for(let i=0;i<17;i++){
+    const bx=i*64-18, bw=28+(i%3)*10, bh=72+(i%4)*26, base=h*.39;
+    ctx.fillRect(bx,base-bh,bw,bh);
+    ctx.beginPath();ctx.moveTo(bx-7,base-bh);ctx.lineTo(bx+bw/2,base-bh-28-(i%2)*10);ctx.lineTo(bx+bw+7,base-bh);ctx.closePath();ctx.fill();
+    if(i%4===1){ctx.fillStyle='#6e365b';ctx.fillRect(bx+bw*.42,base-bh+18,5,16);ctx.fillStyle='#0d0a15';}
   }
 
-  // Graves.
-  for(let i=0;i<32;i++){const x=28+(i*91)%920,y=108+(i*53)%420;
-    const wide=i%5===0;
-    ctx.fillStyle=i%2?'#716d79':'#5f5d68';ctx.fillRect(x,y,wide?30:24,wide?42:36);ctx.beginPath();ctx.arc(x+(wide?15:12),y,wide?15:12,Math.PI,0);ctx.fill();
-    ctx.strokeStyle='#96919c';ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(x+12,y+8);ctx.lineTo(x+12,y+24);ctx.moveTo(x+5,y+15);ctx.lineTo(x+19,y+15);ctx.stroke();
+  // Mossy grass base with subtle texture.
+  ctx.fillStyle='#11101a';ctx.fillRect(0,h*.37,w,h*.63);
+  for(let i=0;i<90;i++){
+    const gx=(i*83)%w, gy=h*.40+(i*47)%(h*.53);
+    ctx.strokeStyle=i%2?'#25202e':'#302736';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(gx,gy+5);ctx.lineTo(gx+2,gy-2);ctx.moveTo(gx+3,gy+5);ctx.lineTo(gx+6,gy);ctx.stroke();
   }
 
-  // Mausoleums / crypts.
-  const maus=[{x:95,y:112},{x:350,y:305},{x:690,y:118},{x:805,y:328}];
-  maus.forEach((m,i)=>{ctx.fillStyle='#4b4551';ctx.fillRect(m.x,m.y,72,55);ctx.beginPath();ctx.moveTo(m.x-6,m.y);ctx.lineTo(m.x+36,m.y-24);ctx.lineTo(m.x+78,m.y);ctx.fill();ctx.fillStyle='#18131d';ctx.fillRect(m.x+26,m.y+22,20,33);ctx.fillStyle='#d78aa8';ctx.fillRect(m.x+34,m.y+29,4,6);});
+  // Main stone paths with individual cobbles and soft edge shadows.
+  function pathRect(x,y,pw,ph,horiz){
+    ctx.fillStyle='#302a36';ctx.fillRect(x+4,y+4,pw,ph);
+    ctx.fillStyle='#554858';ctx.fillRect(x,y,pw,ph);
+    ctx.strokeStyle='rgba(12,9,16,.65)';ctx.lineWidth=3;ctx.strokeRect(x,y,pw,ph);
+    ctx.strokeStyle='#746174';ctx.lineWidth=1.2;
+    if(horiz){for(let yy=y+12;yy<y+ph;yy+=15){ctx.beginPath();ctx.moveTo(x+3,yy);ctx.lineTo(x+pw-3,yy);ctx.stroke()}}
+    else{for(let xx=x+12;xx<x+pw;xx+=15){ctx.beginPath();ctx.moveTo(xx,y+3);ctx.lineTo(xx,y+ph-3);ctx.stroke()}}
+  }
+  pathRect(w*.18,h*.32,w*.65,h*.13,true);
+  pathRect(w*.44,h*.08,w*.15,h*.83,false);
+  pathRect(w*.07,h*.70,w*.74,h*.16,true);
+  // Connecting side paths matching the existing route.
+  pathRect(w*.09,h*.48,w*.19,h*.08,true);
+  pathRect(w*.74,h*.50,w*.17,h*.08,true);
 
-  // Statues.
-  for(let i=0;i<6;i++){const x=170+i*145,y=150+(i%2)*265;ctx.fillStyle='#77727d';ctx.fillRect(x-7,y+19,14,48);ctx.beginPath();ctx.arc(x,y,11,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.moveTo(x-16,y+23);ctx.lineTo(x-27,y+54);ctx.lineTo(x-5,y+48);ctx.fill();ctx.beginPath();ctx.moveTo(x+16,y+23);ctx.lineTo(x+27,y+54);ctx.lineTo(x+5,y+48);ctx.fill();}
+  // Trees with visible trunks and branching silhouettes.
+  function tree(x,y,scale=1){
+    ctx.save();ctx.translate(x,y);ctx.scale(scale,scale);
+    ctx.fillStyle='#21151b';ctx.fillRect(-8,10,16,62);
+    ctx.strokeStyle='#140d12';ctx.lineWidth=8;ctx.lineCap='round';
+    [[0,28,-28,4],[1,20,30,-2],[-2,4,-8,-34],[3,1,18,-31]].forEach(([x1,y1,x2,y2])=>{ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke()});
+    ctx.fillStyle='#0c1015';
+    [[-28,-2,34],[8,-15,38],[-8,16,35],[30,8,30]].forEach(([cx,cy,r])=>{ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill()});
+    ctx.fillStyle='rgba(86,35,73,.55)';ctx.beginPath();ctx.arc(10,-4,29,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+  }
+  tree(70,85,1.35);tree(360,92,1.05);tree(825,74,1.30);tree(955,340,1.1);tree(260,395,.95);tree(690,412,1.0);
 
-  // Lanterns.
-  for(let i=0;i<11;i++){const x=55+i*91,y=140+(i%4)*103;ctx.strokeStyle='#76616c';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x,y,x,y+28);ctx.stroke();ctx.fillStyle='#c98961';ctx.fillRect(x-8,y-5,16,12);ctx.fillStyle='#ffd7a1';ctx.beginPath();ctx.arc(x,y+1,4.5,0,Math.PI*2);ctx.fill();}
+  // Graves, with stone depth, carved crosses and inscriptions.
+  function grave(x,y,s=1,style=0){
+    ctx.save();ctx.translate(x,y);ctx.scale(s,s);
+    const stone=style%2?'#797080':'#6c6673';
+    ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(-17,22,34,7);
+    ctx.fillStyle='#39343f';ctx.fillRect(-18,4,36,27);
+    ctx.fillStyle=stone;ctx.beginPath();ctx.roundRect(-16,-6,32,30,8);ctx.fill();
+    ctx.fillStyle='#8f8895';ctx.fillRect(-10,-3,20,3);
+    ctx.strokeStyle='#b1a8b3';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(0,1);ctx.lineTo(0,13);ctx.moveTo(-6,7);ctx.lineTo(6,7);ctx.stroke();
+    ctx.fillStyle='#3e3742';ctx.font='5px Georgia';ctx.textAlign='center';ctx.fillText('♥',0,20);
+    if(style===2){ctx.fillStyle='#8d496c';ctx.beginPath();ctx.arc(-10,5,3,0,Math.PI*2);ctx.fill()}
+    ctx.restore();
+  }
+  const graves=[[42,170,1,0],[92,255,.9,1],[135,360,1.15,0],[210,214,.85,2],[272,170,1.0,0],[315,368,1.1,1],[390,245,.85,0],[465,165,.95,2],[535,310,.95,0],[600,190,1.05,1],[655,385,.9,0],[745,275,1.15,2],[815,178,.95,0],[895,370,1.05,1],[946,250,.9,0]];
+  graves.forEach(g=>grave(...g));
 
-  // Church / spooky house at the upper-left side route.
-  ctx.fillStyle='#3b3442';ctx.fillRect(90,75,155,96);ctx.fillStyle='#2b2632';ctx.beginPath();ctx.moveTo(78,75);ctx.lineTo(166,25);ctx.lineTo(257,75);ctx.fill();
-  ctx.fillStyle='#15111a';ctx.fillRect(156,108,25,63);ctx.fillStyle='#a36583';ctx.fillRect(162,120,13,24);ctx.fillStyle='#111';ctx.fillRect(110,105,20,20);ctx.fillRect(202,105,20,20);
+  // Mausoleum / crypt buildings, with columns and doors.
+  function mausoleum(x,y,wid=88,hei=62){
+    ctx.save();ctx.translate(x,y);
+    ctx.fillStyle='#27222b';ctx.fillRect(-4,5,wid+8,hei+8);
+    ctx.fillStyle='#6a616d';ctx.fillRect(0,0,wid,hei);
+    ctx.fillStyle='#7d7280';ctx.beginPath();ctx.moveTo(-7,0);ctx.lineTo(wid/2,-27);ctx.lineTo(wid+7,0);ctx.closePath();ctx.fill();
+    ctx.strokeStyle='#8e8290';ctx.lineWidth=2;ctx.strokeRect(0,0,wid,hei);
+    ctx.fillStyle='#352e3a';ctx.fillRect(wid*.33,hei*.35,wid*.34,hei*.65);
+    ctx.fillStyle='#c8789c';ctx.fillRect(wid*.46,hei*.45,4,14);
+    ctx.fillStyle='#3d3541';ctx.fillRect(7,10,5,hei-18);ctx.fillRect(wid-12,10,5,hei-18);
+    ctx.fillStyle='#9e8d9d';ctx.font='10px Georgia';ctx.textAlign='center';ctx.fillText('REST',wid/2,19);ctx.fillText('IN PEACE',wid/2,31);
+    ctx.restore();
+  }
+  mausoleum(75,104,94,64);mausoleum(344,286,92,66);mausoleum(720,108,92,66);mausoleum(820,330,90,66);
 
-  // Iron fencing around parts of the cemetery.
-  ctx.strokeStyle='#15131a';ctx.lineWidth=6;
-  const fenceLines=[[30,h*.63,w*.27,h*.63],[w*.58,h*.18,w*.92,h*.18],[w*.20,h*.92,w*.55,h*.92]];
-  fenceLines.forEach(([x1,y1,x2,y2])=>{ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();for(let x=x1;x<=x2;x+=18){ctx.fillRect(x,y1-18,5,20)}});
+  // Church / spooky house at the upper-left, clearly recognisable.
+  ctx.fillStyle='#554c58';ctx.fillRect(91,74,157,98);
+  ctx.fillStyle='#2c2430';ctx.beginPath();ctx.moveTo(78,74);ctx.lineTo(169,20);ctx.lineTo(260,74);ctx.closePath();ctx.fill();
+  ctx.strokeStyle='#1c151e';ctx.lineWidth=5;ctx.stroke();
+  // tower
+  ctx.fillStyle='#5f5363';ctx.fillRect(194,38,38,92);ctx.beginPath();ctx.moveTo(187,38);ctx.lineTo(213,9);ctx.lineTo(239,38);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#17121a';ctx.fillRect(104,105,23,22);ctx.fillRect(198,105,23,22);ctx.fillRect(152,108,30,64);
+  ctx.fillStyle='#f29ac1';ctx.fillRect(161,120,12,21);ctx.fillStyle='#8d5f7d';ctx.fillRect(209,54,8,14);
+  ctx.strokeStyle='#17121a';ctx.lineWidth=2;ctx.strokeRect(91,74,157,98);
+  // tiny cross
+  ctx.strokeStyle='#8f7c8d';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(213,14);ctx.lineTo(213,31);ctx.moveTo(207,22);ctx.lineTo(219,22);ctx.stroke();
 
-  // A few pink petals make the place feel pretty as well as creepy.
-  ctx.fillStyle='#cc5e89';for(let i=0;i<24;i++){const x=(i*119)%w,y=80+(i*71)%470;ctx.beginPath();ctx.ellipse(x,y,5,2,((i%4)-2)*.25,0,Math.PI*2);ctx.fill();}
+  // Angel statues on carved bases.
+  function angel(x,y,scale=1){
+    ctx.save();ctx.translate(x,y);ctx.scale(scale,scale);
+    ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(-18,36,36,7);
+    ctx.fillStyle='#8b8490';ctx.fillRect(-15,22,30,14);
+    ctx.fillStyle='#9c94a0';ctx.beginPath();ctx.arc(0,5,11,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#756e79';ctx.beginPath();ctx.moveTo(-9,13);ctx.lineTo(0,31);ctx.lineTo(9,13);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#a59ca8';ctx.beginPath();ctx.ellipse(-16,15,12,6,-.45,0,Math.PI*2);ctx.ellipse(16,15,12,6,.45,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#5a5360';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-16,15);ctx.lineTo(-8,21);ctx.moveTo(16,15);ctx.lineTo(8,21);ctx.stroke();
+    ctx.restore();
+  }
+  angel(205,330,.95);angel(750,342,.92);angel(905,164,.8);
 
-  // The boss gate is drawn near the right-hand end of the main route.
+  // Lanterns with real glows.
+  function lantern(x,y,scale=1){
+    ctx.save();ctx.translate(x,y);ctx.scale(scale,scale);
+    const lg=ctx.createRadialGradient(0,0,2,0,0,38);lg.addColorStop(0,'rgba(255,210,151,.34)');lg.addColorStop(1,'rgba(255,210,151,0)');ctx.fillStyle=lg;ctx.fillRect(-40,-40,80,80);
+    ctx.strokeStyle='#292129';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,-25);ctx.lineTo(0,15);ctx.stroke();
+    ctx.fillStyle='#2a2027';ctx.fillRect(-10,-11,20,25);ctx.strokeStyle='#76606d';ctx.lineWidth=1.5;ctx.strokeRect(-10,-11,20,25);
+    ctx.fillStyle='#ffd9a4';ctx.beginPath();ctx.arc(0,-1,6,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#221a20';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-7,-16);ctx.lineTo(0,-24);ctx.lineTo(7,-16);ctx.stroke();
+    ctx.restore();
+  }
+  [[48,300,1],[250,255,.9],[305,510,1],[535,205,.9],[640,500,1],[855,245,.95],[940,480,1]].forEach(a=>lantern(...a));
+
+  // Iron fences with more recognisable posts and spearheads.
+  function fence(x1,y1,x2,y2){
+    ctx.strokeStyle='#16131b';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+    const len=Math.hypot(x2-x1,y2-y1),steps=Math.max(1,Math.floor(len/22));
+    for(let i=0;i<=steps;i++){
+      const u=i/steps,px=x1+(x2-x1)*u,py=y1+(y2-y1)*u;
+      ctx.strokeStyle='#100d14';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(px,py+16);ctx.lineTo(px,py-15);ctx.stroke();
+      ctx.fillStyle='#d071a0';ctx.beginPath();ctx.moveTo(px,py-21);ctx.lineTo(px-3,py-15);ctx.lineTo(px+3,py-15);ctx.closePath();ctx.fill();
+    }
+  }
+  fence(25,h*.63,w*.27,h*.63);fence(w*.60,h*.19,w*.92,h*.19);fence(w*.21,h*.92,w*.55,h*.92);
+
+  // Petals and small flowers.
+  ctx.fillStyle='#d95e91';for(let i=0;i<28;i++){const px=(i*127)%w,py=80+(i*67)%(h-100);ctx.beginPath();ctx.ellipse(px,py,5,2,((i%5)-2)*.2,0,Math.PI*2);ctx.fill();}
+  for(let i=0;i<12;i++){const fx=(i*157)%w,fy=h*.48+(i*41)%(h*.45);ctx.fillStyle='#ae3d73';ctx.beginPath();ctx.arc(fx,fy,3,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#2f4731';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(fx,fy+4);ctx.lineTo(fx,fy+10);ctx.stroke();}
+
+  // Boss gate, now clearly a physical iron arch with a blocked opening.
   const gx=20*TILE+4, gy=8*TILE+2;
-  ctx.strokeStyle='#24202b';ctx.lineWidth=5;ctx.beginPath();ctx.arc(gx+20,gy+40,36,Math.PI,0);ctx.stroke();
-  for(let i=-2;i<=2;i++){ctx.fillRect(gx+18+i*11,gy+5,4,36)}
+  ctx.fillStyle='#2b2630';ctx.fillRect(gx-9,gy+4,10,75);ctx.fillRect(gx+78,gy+4,10,75);
+  ctx.strokeStyle='#19151d';ctx.lineWidth=7;ctx.beginPath();ctx.arc(gx+40,gy+40,45,Math.PI,0);ctx.stroke();
+  for(let i=0;i<7;i++){const px=gx+10+i*11;ctx.fillRect(px,gy+9,5,55);ctx.fillStyle='#b65c8d';ctx.beginPath();ctx.moveTo(px+2.5,gy+2);ctx.lineTo(px-1,gy+10);ctx.lineTo(px+6,gy+10);ctx.closePath();ctx.fill();ctx.fillStyle='#19151d';}
+  ctx.fillStyle='#0e0b12';ctx.fillRect(gx+12,gy+17,56,47);
+
+  // Light fog pools to make the reveal feel atmospheric rather than just black tiles.
+  const fog=ctx.createLinearGradient(0,h*.45,0,h);fog.addColorStop(0,'rgba(255,214,234,.01)');fog.addColorStop(.72,'rgba(172,133,170,.07)');fog.addColorStop(1,'rgba(96,71,101,.12)');ctx.fillStyle=fog;ctx.fillRect(0,0,w,h);
 }
 
 function drawOlly(ctx,x,y,s=.7,t=0,front=true,dir='down',moving=false){
-  // Chunky hand-drawn/pixel-cartoon Olly. The old geometric mannequin made
-  // horizontal movement look like backwards walking, so the map character
-  // now has a clear silhouette, animated limbs, curls, Weeknd shirt and bow.
+  // Olly, simplified from the provided caricature/walking reference.
+  // Neutral friendly face, curly dark hair, Weeknd shirt, olive cargos and red shoes.
   ctx.save();
   const phase=moving ? Math.sin(t*11) : 0;
-  const bob=moving ? Math.abs(Math.sin(t*11))*1.8 : Math.sin(t*2)*0.6;
+  const bob=moving ? Math.abs(Math.sin(t*11))*1.25 : Math.sin(t*2)*0.45;
   ctx.translate(x,y-bob);
+  const side=dir==='left'||dir==='right';
   const flip=dir==='left'?-1:1;
   ctx.scale(flip,1);
 
-  // ground shadow
-  ctx.fillStyle='rgba(0,0,0,.32)';
-  ctx.beginPath();ctx.ellipse(0,34*s,25*s,7*s,0,0,Math.PI*2);ctx.fill();
+  // shadow
+  ctx.fillStyle='rgba(0,0,0,.36)';ctx.beginPath();ctx.ellipse(0,39*s,24*s,6.5*s,0,0,Math.PI*2);ctx.fill();
 
-  // legs and olive cargos
-  const legA=moving?phase*5:0, legB=moving?-phase*5:0;
-  ctx.strokeStyle='#17151b';ctx.lineWidth=7*s;ctx.lineCap='round';
-  ctx.beginPath();ctx.moveTo(-7*s,19*s);ctx.lineTo((-9+legA)*s,36*s);ctx.moveTo(7*s,19*s);ctx.lineTo((9+legB)*s,36*s);ctx.stroke();
-  ctx.strokeStyle='#303a2f';ctx.lineWidth=11*s;
-  ctx.beginPath();ctx.moveTo(-7*s,17*s);ctx.lineTo((-9+legA)*s,31*s);ctx.moveTo(7*s,17*s);ctx.lineTo((9+legB)*s,31*s);ctx.stroke();
-  ctx.fillStyle='#15151a';ctx.fillRect((-15+legA)*s,29*s,11*s,6*s);ctx.fillRect((4+legB)*s,29*s,11*s,6*s);
+  // legs and trousers
+  const stride=moving?phase*6:0;
+  ctx.strokeStyle='#17131a';ctx.lineWidth=7*s;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(-7*s,13*s);ctx.lineTo((-9+stride)*s,31*s);ctx.moveTo(7*s,13*s);ctx.lineTo((9-stride)*s,31*s);ctx.stroke();
+  ctx.strokeStyle='#394335';ctx.lineWidth=10*s;
+  ctx.beginPath();ctx.moveTo(-7*s,11*s);ctx.lineTo((-9+stride)*s,29*s);ctx.moveTo(7*s,11*s);ctx.lineTo((9-stride)*s,29*s);ctx.stroke();
 
-  // torso / The Weeknd shirt
-  ctx.fillStyle='#16151a';ctx.strokeStyle='#09090c';ctx.lineWidth=2*s;
-  ctx.beginPath();ctx.roundRect(-19*s,-18*s,38*s,39*s,7*s);ctx.fill();ctx.stroke();
-  ctx.fillStyle='#8b766e';ctx.font=`bold ${7*s}px Arial`;ctx.textAlign='center';ctx.fillText('The Weeknd',0,0);
-  ctx.fillStyle='#3c3534';ctx.fillRect(-10*s,4*s,20*s,11*s);
-  ctx.fillStyle='#b8a59c';ctx.fillRect(-7*s,6*s,14*s,2*s);ctx.fillRect(-5*s,10*s,10*s,2*s);
+  // red sneakers, visible and consistent with the reference.
+  ctx.fillStyle='#a64b58';ctx.strokeStyle='#4b1d26';ctx.lineWidth=1.4*s;
+  ctx.beginPath();ctx.roundRect((-15+stride)*s,27*s,14*s,8*s,3*s);ctx.fill();ctx.stroke();
+  ctx.beginPath();ctx.roundRect((1-stride)*s,27*s,14*s,8*s,3*s);ctx.fill();ctx.stroke();
+  ctx.strokeStyle='#f2ced4';ctx.lineWidth=1.3*s;ctx.beginPath();ctx.moveTo((-12+stride)*s,31*s);ctx.lineTo((-3+stride)*s,31*s);ctx.moveTo((4-stride)*s,31*s);ctx.lineTo((13-stride)*s,31*s);ctx.stroke();
 
-  // swinging arms
-  const armA=moving?phase*4:0, armB=moving?-phase*4:0;
-  ctx.strokeStyle='#d1a48e';ctx.lineWidth=6*s;ctx.lineCap='round';
-  ctx.beginPath();ctx.moveTo(-17*s,-10*s);ctx.lineTo((-23+armA)*s,7*s);ctx.moveTo(17*s,-10*s);ctx.lineTo((23+armB)*s,5*s);ctx.stroke();
-  ctx.fillStyle='#d1a48e';ctx.beginPath();ctx.arc((-23+armA)*s,8*s,4*s,0,Math.PI*2);ctx.arc((23+armB)*s,6*s,4*s,0,Math.PI*2);ctx.fill();
+  // torso / Weeknd shirt
+  ctx.fillStyle='#16161a';ctx.strokeStyle='#0a090d';ctx.lineWidth=1.6*s;
+  ctx.beginPath();ctx.roundRect(-19*s,-19*s,38*s,34*s,7*s);ctx.fill();ctx.stroke();
+  ctx.fillStyle='#9b827e';ctx.font=`bold ${6.2*s}px Arial`;ctx.textAlign='center';ctx.fillText('The Weeknd',0,-4*s);
+  ctx.fillStyle='#514346';ctx.fillRect(-9*s,0,18*s,9*s);
+  ctx.fillStyle='#bba7a1';ctx.fillRect(-6*s,2*s,12*s,1.6*s);ctx.fillRect(-4*s,5.2*s,8*s,1.5*s);
 
-  // neck
-  ctx.fillStyle='#c9957f';ctx.fillRect(-6*s,-24*s,12*s,9*s);
+  // arms
+  const arm= moving ? phase*4 : 0;
+  ctx.strokeStyle='#c98974';ctx.lineWidth=5.2*s;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(-16*s,-10*s);ctx.lineTo((-22+arm)*s,6*s);ctx.moveTo(16*s,-10*s);ctx.lineTo((22-arm)*s,6*s);ctx.stroke();
+  ctx.fillStyle='#c98974';ctx.beginPath();ctx.arc((-22+arm)*s,7*s,3.5*s,0,Math.PI*2);ctx.arc((22-arm)*s,7*s,3.5*s,0,Math.PI*2);ctx.fill();
 
-  // face
-  ctx.fillStyle='#d6a28d';ctx.strokeStyle='#20171a';ctx.lineWidth=2*s;
-  ctx.beginPath();ctx.roundRect(-14*s,-42*s,28*s,27*s,9*s);ctx.fill();ctx.stroke();
-  // ears
-  ctx.beginPath();ctx.arc(-14*s,-29*s,4*s,0,Math.PI*2);ctx.arc(14*s,-29*s,4*s,0,Math.PI*2);ctx.fill();
+  // neck and face
+  ctx.fillStyle='#c98f7a';ctx.fillRect(-5*s,-24*s,10*s,7*s);
+  ctx.fillStyle='#d49a84';ctx.strokeStyle='#3a2025';ctx.lineWidth=1.5*s;
+  ctx.beginPath();ctx.roundRect(-14*s,-42*s,28*s,25*s,9*s);ctx.fill();ctx.stroke();
 
-  // curly hair silhouette, deliberately larger and messier like the reference
-  ctx.fillStyle='#24181b';ctx.strokeStyle='#100d11';ctx.lineWidth=2*s;
-  ctx.beginPath();
-  ctx.arc(-10*s,-43*s,10*s,0,Math.PI*2);ctx.arc(0,-48*s,11*s,0,Math.PI*2);ctx.arc(11*s,-43*s,10*s,0,Math.PI*2);ctx.arc(-15*s,-35*s,7*s,0,Math.PI*2);ctx.arc(15*s,-35*s,7*s,0,Math.PI*2);ctx.fill();ctx.stroke();
-  // curl highlights
-  ctx.fillStyle='#4b3030';
-  [[-10,-46],[-2,-51],[7,-48],[14,-40],[-15,-37],[2,-43]].forEach(([cx,cy])=>{ctx.beginPath();ctx.arc(cx*s,cy*s,3*s,0,Math.PI*2);ctx.fill()});
+  // curls: larger, messier, closer to the provided caricature.
+  ctx.fillStyle='#25171a';ctx.strokeStyle='#110b0f';ctx.lineWidth=1.6*s;
+  const curls=[[-11,-43,9],[-3,-48,10],[6,-48,10],[14,-42,9],[-14,-36,7],[14,-35,7],[-4,-39,7],[7,-40,7]];
+  curls.forEach(([cx,cy,rr])=>{ctx.beginPath();ctx.arc(cx*s,cy*s,rr*s,0,Math.PI*2);ctx.fill();});
+  ctx.fillStyle='#4b2c2b';[[-8,-46],[-1,-51],[7,-48],[13,-41],[-11,-37],[2,-42]].forEach(([cx,cy])=>{ctx.beginPath();ctx.arc(cx*s,cy*s,2.6*s,0,Math.PI*2);ctx.fill()});
 
-  // eyebrows / eyes / beard
-  ctx.strokeStyle='#4b2d2b';ctx.lineWidth=2*s;ctx.beginPath();ctx.moveTo(-9*s,-31*s);ctx.lineTo(-3*s,-32*s);ctx.moveTo(3*s,-32*s);ctx.lineTo(9*s,-31*s);ctx.stroke();
-  ctx.fillStyle='#17141a';ctx.fillRect(-7*s,-28*s,4*s,2*s);ctx.fillRect(3*s,-28*s,4*s,2*s);
-  ctx.fillStyle='#69473e';ctx.beginPath();ctx.arc(0,-20*s,8*s,0,Math.PI);ctx.fill();
-  ctx.strokeStyle='#9b6858';ctx.lineWidth=1*s;ctx.beginPath();ctx.moveTo(-3*s,-23*s);ctx.lineTo(3*s,-23*s);ctx.stroke();
+  // friendly eyes and brows, no open mouth.
+  ctx.strokeStyle='#5a332f';ctx.lineWidth=1.6*s;ctx.beginPath();ctx.moveTo(-9*s,-31*s);ctx.lineTo(-3*s,-32*s);ctx.moveTo(3*s,-32*s);ctx.lineTo(9*s,-31*s);ctx.stroke();
+  ctx.fillStyle='#282027';ctx.beginPath();ctx.arc(-6*s,-28*s,2*s,0,Math.PI*2);ctx.arc(6*s,-28*s,2*s,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#9b675a';ctx.lineWidth=1.1*s;ctx.beginPath();ctx.moveTo(-2.8*s,-22*s);ctx.quadraticCurveTo(0,-21*s,2.8*s,-22*s);ctx.stroke();
+  // subtle stubble
+  ctx.fillStyle='rgba(86,57,54,.38)';for(let i=0;i<8;i++){const sx=(-8+(i%4)*5)*s,sy=(-19+Math.floor(i/4)*2.3)*s;ctx.beginPath();ctx.arc(sx,sy,0.8*s,0,Math.PI*2);ctx.fill();}
 
-  // bow in his hand, with a small walking swing
-  ctx.save();ctx.translate(23*s,0);ctx.rotate(-0.12+phase*0.03);
-  ctx.strokeStyle='#b98a5c';ctx.lineWidth=2.5*s;ctx.beginPath();ctx.moveTo(0,-22*s);ctx.lineTo(0,20*s);ctx.stroke();
-  ctx.strokeStyle='#6f4731';ctx.lineWidth=1.5*s;ctx.beginPath();ctx.arc(0,-1*s,15*s,-1.15,1.15);ctx.stroke();
-  ctx.restore();
+  // no bow at Level 1 start. It is earned as the boss reward.
   ctx.restore();
 }
 
