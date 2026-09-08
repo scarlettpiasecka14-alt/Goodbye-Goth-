@@ -23,7 +23,7 @@ function showIntro(){
 
 function showGothAbyss() {
   root.innerHTML = `
-    <section class="abyss-video-screen" id="abyss-video-screen">
+    <section class="abyss-video-screen" id="abyss-video-screen" aria-label="Goth Abyss cutscene">
       <video
         id="abyss-video"
         class="abyss-video"
@@ -31,60 +31,93 @@ function showGothAbyss() {
         playsinline
         preload="auto"
       ></video>
-      <button class="skip-cutscene-btn" id="skip-cutscene-btn">SKIP CUTSCENE →</button>
-      <button class="video-play-btn" id="video-play-btn" hidden>▶ PLAY CUTSCENE</button>
+      <button class="skip-cutscene-btn" id="skip-cutscene-btn" type="button">SKIP CUTSCENE →</button>
+      <button class="video-play-btn" id="video-play-btn" hidden type="button">▶ PLAY CUTSCENE</button>
     </section>
   `;
 
-  const video = document.getElementById("abyss-video");
-  const skipButton = document.getElementById("skip-cutscene-btn");
-  const playButton = document.getElementById("video-play-btn");
+  const video = document.getElementById('abyss-video');
+  const skipButton = document.getElementById('skip-cutscene-btn');
+  const playButton = document.getElementById('video-play-btn');
 
   const finishCutscene = () => {
     if (video) {
       video.pause();
-      video.removeAttribute("src");
+      video.removeAttribute('src');
       video.load();
     }
-    showAbyssRules();
+    showAbyssWelcome();
   };
 
-  skipButton.addEventListener("click", finishCutscene);
-
-  video.addEventListener("ended", finishCutscene);
+  skipButton.addEventListener('click', finishCutscene, { once: true });
+  video.addEventListener('ended', finishCutscene, { once: true });
 
   video.play().catch(() => {
-    // Some browsers may block autoplay. Show a play button instead.
     playButton.hidden = false;
   });
 
-  playButton.addEventListener("click", () => {
+  playButton.addEventListener('click', () => {
     playButton.hidden = true;
     video.play().catch(() => {
       playButton.hidden = false;
     });
-  });
+  }, { once: true });
 }
 
-function showAbyssRules(){
+function showImageTransitionScreen(image, alt, onContinue, label) {
   root.innerHTML = `
-    <section class="abyss-rules-screen" aria-label="Welcome to the Goth Abyss">
-      <div class="abyss-rules-card">
-        <div class="abyss-rules-skull">☠</div>
-        <div class="abyss-rules-kicker">WELCOME TO</div>
-        <h1>THE GOTH ABYSS</h1>
-        <p class="abyss-rules-intro">Scarlett has been taken. The Goths have hidden her somewhere beyond this place.</p>
-        <div class="abyss-rules-grid">
-          <div><span>🧭</span><strong>EXPLORE</strong><p>Search each level and uncover the path forward.</p></div>
-          <div><span>🏹</span><strong>FIGHT</strong><p>Defeat the Zombie Goths and survive their attacks.</p></div>
-          <div><span>💕</span><strong>LOVE</strong><p>Complete one relationship challenge on every level.</p></div>
-          <div><span>🧩</span><strong>THINK</strong><p>Solve the puzzle to unlock the boss gate.</p></div>
+    <section class="full-art-screen" aria-label="${label}">
+      <button class="full-art-button" id="full-art-continue" type="button" aria-label="Continue">
+        <img class="full-art-image" src="${image}" alt="${alt}">
+      </button>
+    </section>`;
+  document.getElementById('full-art-continue').addEventListener('click', onContinue, { once: true });
+}
+
+function showAbyssWelcome(){
+  showImageTransitionScreen(
+    'assets/story/goth-abyss-welcome.png',
+    'Welcome to the Goth Abyss screen.',
+    showAbyssObjective,
+    'Welcome to the Goth Abyss'
+  );
+}
+
+function showAbyssObjective(){
+  showImageTransitionScreen(
+    'assets/story/goth-abyss-objective.png',
+    'The Goths have stolen Scarlett. Explore, defeat and solve to rescue her.',
+    showControls,
+    'Game objective'
+  );
+}
+
+function showControls(){
+  root.innerHTML = `
+    <section class="controls-screen" aria-label="Controls">
+      <div class="controls-card">
+        <div class="controls-decor" aria-hidden="true">☠ ♥ ☠</div>
+        <h1>CONTROLS</h1>
+        <div class="controls-list">
+          <div class="control-item"><span class="control-key">WASD / ARROWS</span><span class="control-action">Move</span></div>
+          <div class="control-item"><span class="control-key">SPACE</span><span class="control-action">Jump</span></div>
+          <div class="control-item"><span class="control-key">RIGHT CLICK</span><span class="control-action">Roll</span></div>
+          <div class="control-item"><span class="control-key">LEFT CLICK</span><span class="control-action">Attack</span></div>
+          <div class="control-item"><span class="control-key">LEFT CLICK / ENTER</span><span class="control-action">Pick up / interact</span></div>
         </div>
-        <div class="abyss-rule-line">DEFEAT THE QUEEN GOTH → FIND SCARLETT → ESCAPE THE ABYSS</div>
-        <button id="enter-abyss" class="primary abyss-enter" type="button">ENTER THE GOTH ABYSS ♥</button>
+        <button id="controls-next" class="controls-next" type="button">CLICK TO CONTINUE →</button>
       </div>
     </section>`;
-  document.getElementById('enter-abyss').addEventListener('click', mountLevel1, { once:true });
+  document.getElementById('controls-next').addEventListener('click', showLevel1Intro, { once: true });
+}
+
+function showLevel1Intro(){
+  showImageTransitionScreen(
+    'assets/story/level1-entrance.png',
+    'Level 1: The Cemetery. Enter if you dare.',
+    mountLevel1,
+    'Level 1 entrance'
+  );
 }
 
 function mountLevel1(){
