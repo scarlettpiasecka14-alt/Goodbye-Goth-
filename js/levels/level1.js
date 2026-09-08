@@ -193,8 +193,7 @@ export function createLevel1(ui){
     if(bossRoomEntered){
       ctx.fillStyle='rgba(8,5,15,.55)';ctx.fillRect(21*TILE,6*TILE,3*TILE,5*TILE);
       ctx.strokeStyle='#8d617f';ctx.lineWidth=3;ctx.strokeRect(21*TILE+8,6*TILE+8,3*TILE-16,5*TILE-16);
-      ctx.fillStyle='#f0d5e3';ctx.font='bold 15px Georgia';ctx.textAlign='center';ctx.fillText('CLASSIC GOTH
-',22*TILE+20,8*TILE+28);
+      ctx.fillStyle='#f0d5e3';ctx.font='bold 15px Georgia';ctx.textAlign='center';ctx.fillText('CLASSIC GOTH',22*TILE+20,8*TILE+28);
     }
     drawOlly(ctx,x*TILE+20,y*TILE+35,.70,t/1000,true,walkDir,walkPulse>0)
   }
