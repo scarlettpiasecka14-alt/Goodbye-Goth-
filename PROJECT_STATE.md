@@ -16,10 +16,14 @@ Focused fix: robust Safari/browser sizing for the 4:3 intro story panels.
 - No story, gameplay, combat, or art assets changed.
 
 
-## v2.1
+## v2.2
 - Added a title-screen SKIP INTRO shortcut for testing. It bypasses the four intro panels and goes directly to the Goth Abyss cutscene, then rules, then Level 1.
 - No other gameplay systems changed.
 
 
-## v2.1 cutscene
+## v2.2 cutscene
 The Goth Abyss cutscene is loaded from `assets/video/cutscene 720p.mov`. The file is intentionally not bundled here and should be added at that exact path before deployment.
+
+
+## v2.2 display fix
+The full-screen transition artwork now uses intrinsic image dimensions with max-width/max-height constraints so the complete artwork remains visible without vertical cropping on Safari and other viewport sizes.
