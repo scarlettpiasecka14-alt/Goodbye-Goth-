@@ -144,7 +144,7 @@ function mountLevel1(){
               <span></span><button data-dir="up">↑</button><span></span>
               <button data-dir="left">←</button><button data-dir="down">↓</button><button data-dir="right">→</button>
             </div>
-            <button id="attack" class="primary">🏹 ATTACK</button>
+            <button id="attack" class="primary">⚔️ ATTACK</button>
             <button id="interact">✦ INTERACT</button>
           </div>
         </div>
