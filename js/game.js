@@ -136,7 +136,7 @@ function mountLevel1(){
         <div class="play-column">
           <div class="world-wrap">
             <canvas id="world" width="1000" height="600" tabindex="0" aria-label="Level 1 haunted cemetery"></canvas>
-            <div class="help">Explore to reveal the cemetery • WASD / arrow keys move • Find the ♥, ✣ and the Zombie Goths</div>
+            <div class="help">Explore to reveal the cemetery • WASD / arrow keys move • Walk into the 🧩 and ❤️ markers to interact</div>
           </div>
           <div id="dialogue" class="dialogue" aria-live="polite">You wake up somewhere very dark...</div>
         </div>
@@ -200,7 +200,7 @@ function mountLevel1(){
           <button data-answer="correct"><strong>C.</strong> “Get your kit off, mate.”</button>
           <button data-answer="wrong"><strong>D.</strong> “Princess, the time has come to retire your dress.”</button>
         </div>
-        <p id="puzzle-feedback" class="small"></p>
+        <p id="puzzle-feedback" class="small quiz-feedback" aria-live="polite"></p>
       </div></div>
 
       <div id="boss-intro" class="overlay hidden"><div class="overlay-box center">

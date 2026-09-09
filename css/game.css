@@ -496,3 +496,10 @@ html,body,#app{height:100%;overflow:hidden}
   .relationship-box .ironic-copy,.quiz-copy{font-size:.82rem}
   .quiz-answers button{font-size:.86rem;padding:9px 10px}
 }
+
+/* v3.4: clearer interactive map markers and quiz presentation. */
+.relationship-image,.quiz-image{image-rendering:auto}
+.quiz-answers button{border-color:#805d73;background:#211723}
+.quiz-answers button:hover{transform:translateY(-1px)}
+.quiz-answers button:focus-visible{outline:2px solid #ef91ac;outline-offset:2px}
+.quiz-feedback{min-height:24px;margin:8px 0 0}
