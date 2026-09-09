@@ -199,6 +199,121 @@ function drawCemetery(ctx,w,h){
   }
   ctx.restore();
 
+  // Layered environmental detail pass: irregular plot edges, stone borders, shrubs, candles and signs.
+  function roundedPlot(x,y,pw,ph,rot=0){
+    ctx.save();ctx.translate(x,y);ctx.rotate(rot);ctx.fillStyle='rgba(8,6,10,.34)';ctx.beginPath();ctx.roundRect(-pw/2+4,-ph/2+5,pw,ph,8);ctx.fill();ctx.fillStyle='#1b1820';ctx.beginPath();ctx.roundRect(-pw/2,-ph/2,pw,ph,8);ctx.fill();ctx.strokeStyle='#39313d';ctx.lineWidth=2;ctx.stroke();ctx.restore();
+  }
+  [[120,225,86,54,-.08],[300,265,100,58,.06],[575,145,92,54,-.04],[730,350,118,60,.02],[915,320,88,56,-.06]].forEach(v=>roundedPlot(...v));
+
+  // Low stone edging around the main walkways, giving the routes a carved-in-place feel.
+  function stoneEdge(x,y,len,vertical=false){
+    ctx.save();ctx.fillStyle='#3b3440';ctx.strokeStyle='#1b1620';ctx.lineWidth=1.5;
+    const n=Math.max(2,Math.floor(len/24));
+    for(let i=0;i<n;i++){
+      const u=i/n, px=vertical?x:x+i*(len/n), py=vertical?y+i*(len/n):y;
+      const rw=vertical?10:18, rh=vertical?18:10;
+      ctx.beginPath();ctx.roundRect(px-rw/2,py-rh/2,rw,rh,3);ctx.fill();ctx.stroke();
+      ctx.fillStyle='#655867';ctx.beginPath();ctx.moveTo(px-rw*.25,py-rh*.15);ctx.lineTo(px+rw*.2,py-rh*.2);ctx.stroke();ctx.fillStyle='#3b3440';
+    }
+    ctx.restore();
+  }
+  stoneEdge(182,h*.305,w*.64,false);stoneEdge(438,h*.145,h*.70,true);stoneEdge(72,h*.69,w*.74,false);
+
+  // Individual pavers with chipped corners and alternating tones.
+  ctx.save();
+  const paveRows=[{x:185,y:h*.325,w:w*.64,h:h*.11},{x:75,y:h*.705,w:w*.74,h:h*.145},{x:443,y:h*.08,w:w*.14,h:h*.83}];
+  paveRows.forEach((r,ri)=>{
+    for(let yy=r.y+8;yy<r.y+r.h-5;yy+=18){
+      const offset=((Math.floor((yy-r.y)/18)+ri)%2)*10;
+      for(let xx=r.x+6-offset;xx<r.x+r.w-6;xx+=36){
+        const ww=29+(Math.floor(xx+yy)%7), hh=11+(Math.floor(xx*3+yy)%5);
+        ctx.fillStyle=((Math.floor(xx/36)+Math.floor(yy/18))%3===0)?'#625464':'#514654';
+        ctx.beginPath();ctx.roundRect(xx,yy,ww,hh,3);ctx.fill();
+        ctx.strokeStyle='#362e38';ctx.lineWidth=1;ctx.stroke();
+      }
+    }
+  });
+  ctx.restore();
+
+  // Tiny candle clusters and memorial flowers make the space feel inhabited rather than tiled.
+  function candleCluster(x,y,s=1){
+    ctx.save();ctx.translate(x,y);ctx.scale(s,s);
+    [[-9,3,12],[0,0,18],[10,5,9]].forEach(([cx,cy,ch],i)=>{ctx.fillStyle=i===1?'#8c6f75':'#6d5661';ctx.fillRect(cx-3,cy-ch,6,ch);ctx.fillStyle='#ffd69b';ctx.beginPath();ctx.arc(cx,cy-ch-3,2.5,0,Math.PI*2);ctx.fill();ctx.fillStyle='rgba(255,210,150,.14)';ctx.beginPath();ctx.arc(cx,cy-ch-3,11,0,Math.PI*2);ctx.fill();});
+    ctx.restore();
+  }
+  candleCluster(126,168,1);candleCluster(903,382,.9);candleCluster(548,330,.85);candleCluster(340,430,.8);
+
+  function shrub(x,y,s=1){
+    ctx.save();ctx.translate(x,y);ctx.scale(s,s);ctx.fillStyle='#202c25';ctx.beginPath();ctx.arc(-8,6,11,0,Math.PI*2);ctx.arc(7,5,13,0,Math.PI*2);ctx.arc(0,-4,10,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#46543a';ctx.lineWidth=1.4;for(let i=0;i<6;i++){ctx.beginPath();ctx.moveTo(-8+i*3,7);ctx.lineTo(-7+i*3,1);ctx.stroke()}ctx.restore();
+  }
+  shrub(55,225,.9);shrub(275,420,1.0);shrub(785,215,.85);shrub(960,410,.95);shrub(675,455,.8);
+
+  // Small gothic signs and memorial plaques with legible silhouettes.
+  function sign(x,y,text1,text2){
+    ctx.save();ctx.translate(x,y);ctx.fillStyle='#302632';ctx.fillRect(-31,0,62,48);ctx.strokeStyle='#7e5f73';ctx.lineWidth=2;ctx.strokeRect(-31,0,62,48);ctx.fillStyle='#ef91ac';ctx.font='bold 8px Georgia';ctx.textAlign='center';ctx.fillText(text1,0,17);ctx.fillText(text2,0,29);ctx.fillStyle='#1b131d';ctx.font='7px Georgia';ctx.fillText('♥',0,41);ctx.restore();
+  }
+  sign(92,454,'SWEET','DREAMS');sign(875,137,'KEEP','OUT');
+
+  // v3.0 detail pass: break up the geometry with hand-placed cemetery props.
+  function bench(x,y,s=1){
+    ctx.save();ctx.translate(x,y);ctx.scale(s,s);
+    ctx.fillStyle='#2a2028';ctx.fillRect(-23,-9,46,8);ctx.fillRect(-20,0,40,7);
+    ctx.fillStyle='#5c4350';ctx.fillRect(-25,-13,50,5);ctx.fillStyle='#332731';ctx.fillRect(-18,7,5,13);ctx.fillRect(13,7,5,13);
+    ctx.strokeStyle='#171219';ctx.lineWidth=2;ctx.strokeRect(-25,-13,50,5);ctx.restore();
+  }
+  [[150,278,.9],[470,300,.82],[750,470,.95]].forEach(v=>bench(...v));
+
+  function vine(x,y,dx,dy,s=1){
+    ctx.save();ctx.strokeStyle='#2d4531';ctx.lineWidth=2*s;ctx.beginPath();ctx.moveTo(x,y);ctx.bezierCurveTo(x+dx*.3,y+dy*.25,x+dx*.7,y+dy*.55,x+dx,y+dy);ctx.stroke();
+    for(let i=1;i<5;i++){const u=i/5,px=x+dx*u,py=y+dy*u;ctx.fillStyle='#3f5b3e';ctx.beginPath();ctx.ellipse(px-3,py,5,2,-.4,0,Math.PI*2);ctx.ellipse(px+3,py-2,5,2,.4,0,Math.PI*2);ctx.fill();}
+    ctx.restore();
+  }
+  vine(88,112,28,42,.8);vine(421,332,26,40,.75);vine(804,152,-24,44,.8);vine(888,365,24,35,.72);
+
+  function flowerBed(x,y,s=1){
+    ctx.save();ctx.translate(x,y);ctx.scale(s,s);ctx.fillStyle='#252f24';ctx.beginPath();ctx.ellipse(0,6,28,10,0,0,Math.PI*2);ctx.fill();
+    for(let i=0;i<7;i++){const px=-20+i*6,py=2+(i%2)*4;ctx.strokeStyle='#49633f';ctx.lineWidth=1.3;ctx.beginPath();ctx.moveTo(px,7);ctx.lineTo(px,py-7);ctx.stroke();ctx.fillStyle=i%2?'#d8588a':'#b94478';ctx.beginPath();ctx.arc(px,py-9,3.2,0,Math.PI*2);ctx.fill();ctx.fillStyle='#f5a5be';ctx.beginPath();ctx.arc(px-.8,py-9.8,1,0,Math.PI*2);ctx.fill();}
+    ctx.restore();
+  }
+  [[70,188,1],[190,336,.85],[350,205,.75],[585,370,.9],[760,240,.8],[930,430,.75]].forEach(v=>flowerBed(...v));
+
+  function stoneSteps(x,y,n=4,vertical=true){
+    ctx.save();ctx.translate(x,y);
+    for(let i=0;i<n;i++){const off=i*10;ctx.fillStyle=i%2?'#625564':'#746372';ctx.strokeStyle='#2c2530';ctx.lineWidth=2;
+      if(vertical){ctx.beginPath();ctx.roundRect(-34+i*3,off,68-i*6,9,2);ctx.fill();ctx.stroke();}
+      else{ctx.beginPath();ctx.roundRect(off,-22+i*2,9,44-i*4,2);ctx.fill();ctx.stroke();}
+    }ctx.restore();
+  }
+  stoneSteps(515,325,4,true);stoneSteps(330,420,4,false);stoneSteps(795,430,4,false);
+
+  function carvedGrave(x,y,s=1){
+    ctx.save();ctx.translate(x,y);ctx.scale(s,s);ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.ellipse(0,23,22,6,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#807684';ctx.beginPath();ctx.moveTo(-20,20);ctx.lineTo(-20,-4);ctx.quadraticCurveTo(0,-24,20,-4);ctx.lineTo(20,20);ctx.closePath();ctx.fill();ctx.strokeStyle='#3d3541';ctx.lineWidth=2;ctx.stroke();
+    ctx.strokeStyle='#b7a7b4';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-10);ctx.lineTo(0,6);ctx.moveTo(-7,-2);ctx.lineTo(7,-2);ctx.stroke();
+    ctx.fillStyle='#4c3b49';ctx.font='7px Georgia';ctx.textAlign='center';ctx.fillText('OLLY + SCARLETT',0,15);ctx.restore();
+  }
+  carvedGrave(610,265,.72);carvedGrave(250,470,.62);
+
+  function gothicLamp(x,y,s=1){
+    ctx.save();ctx.translate(x,y);ctx.scale(s,s);ctx.strokeStyle='#20181f';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,28,0,-2);ctx.stroke();
+    ctx.fillStyle='#30222a';ctx.fillRect(-9,-14,18,18);ctx.strokeStyle='#9f6b82';ctx.lineWidth=1.5;ctx.strokeRect(-9,-14,18,18);
+    ctx.fillStyle='#ffd9a6';ctx.beginPath();ctx.arc(0,-5,4.5,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#20181f';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-7,-16);ctx.lineTo(0,-24);ctx.lineTo(7,-16);ctx.stroke();
+    ctx.restore();
+  }
+  [[150,396,.8],[430,145,.9],[840,285,.8]].forEach(v=>gothicLamp(...v));
+
+  // A few irregular shadow-plots make the paths read as carved routes through ground, not giant rectangles.
+  function groundIsland(points){
+    ctx.save();ctx.fillStyle='rgba(12,10,16,.72)';ctx.beginPath();ctx.moveTo(...points[0]);for(let i=1;i<points.length;i++)ctx.lineTo(...points[i]);ctx.closePath();ctx.fill();ctx.strokeStyle='rgba(53,44,54,.8)';ctx.lineWidth=2;ctx.stroke();ctx.restore();
+  }
+  groundIsland([[24,220],[92,202],[118,225],[104,262],[54,270],[20,248]]);
+  groundIsland([[520,92],[596,80],[632,112],[616,155],[548,160],[505,135]]);
+  groundIsland([[690,445],[770,424],[808,450],[796,492],[732,510],[684,482]]);
+
+  // More dramatic vignette and distant mist ribbons for depth.
+  const mist=ctx.createRadialGradient(w*.52,h*.50,40,w*.52,h*.50,h*.62);mist.addColorStop(0,'rgba(186,146,190,0)');mist.addColorStop(.75,'rgba(186,146,190,.04)');mist.addColorStop(1,'rgba(8,6,12,.24)');ctx.fillStyle=mist;ctx.fillRect(0,0,w,h);
+
   // Light fog pools to make the reveal feel atmospheric rather than just black tiles.
   const fog=ctx.createLinearGradient(0,h*.45,0,h);fog.addColorStop(0,'rgba(255,214,234,.01)');fog.addColorStop(.72,'rgba(172,133,170,.07)');fog.addColorStop(1,'rgba(96,71,101,.12)');ctx.fillStyle=fog;ctx.fillRect(0,0,w,h);
 }
@@ -208,7 +323,7 @@ function drawOlly(ctx,x,y,s=.7,t=0,front=true,dir='right',moving=false){
   const bob=moving ? Math.sin(t*18)*1.6 : Math.sin(t*2)*0.4;
   // The supplied Olly artwork faces right. Only flip for horizontal movement;
   // keep the last horizontal facing while moving vertically.
-  const faceX = dir === 'left' ? 1 : -1;
+  const faceX = dir === 'left' ? -1 : 1;
   ctx.translate(x,y-bob);
   ctx.fillStyle='rgba(0,0,0,.36)';ctx.beginPath();ctx.ellipse(0,39*s,24*s,6*s,0,0,Math.PI*2);ctx.fill();
   if(ollySprite.complete && ollySprite.naturalWidth){
@@ -222,10 +337,10 @@ function drawOlly(ctx,x,y,s=.7,t=0,front=true,dir='right',moving=false){
 }
 
 const ollySprite=new Image();
-ollySprite.src='assets/characters/olly.png?v=214';
+ollySprite.src='assets/characters/olly.png?v=300';
 const zombieSprites={shambler:new Image(),fire:new Image()};
-zombieSprites.shambler.src='assets/characters/zombie-goth.png?v=214';
-zombieSprites.fire.src='assets/characters/fire-goth.png?v=214';
+zombieSprites.shambler.src='assets/characters/zombie-goth.png?v=300';
+zombieSprites.fire.src='assets/characters/fire-goth.png?v=300';
 function drawZombieSprite(ctx,x,y,type,s=.75,t=0,attack=false){
   const img=zombieSprites[type]||zombieSprites.shambler;
   ctx.save();
@@ -274,26 +389,31 @@ export function createLevel1(ui){
   function drawMini(){mctx.clearRect(0,0,250,180);mctx.fillStyle='#0d0b11';mctx.fillRect(0,0,250,180);for(let yy=0;yy<ROWS;yy++)for(let xx=0;xx<COLS;xx++){if(revealed[yy][xx]){mctx.fillStyle=isFloor(xx,yy)?'#57505b':'#17131b';mctx.fillRect(xx*10,yy*10,10,10)}else{mctx.fillStyle='#0c0a0e';mctx.fillRect(xx*10,yy*10,10,10)}}mctx.fillStyle='#f3eff0';mctx.beginPath();mctx.arc(x*10+5,y*10+5,3.5,0,Math.PI*2);mctx.fill();if(!relationshipDone&&revealed[relationship.y][relationship.x]){mctx.fillStyle='#ef91ac';mctx.fillRect(relationship.x*10+2,relationship.y*10+2,6,6)}if(!puzzleSolved&&revealed[puzzle.y][puzzle.x]){mctx.fillStyle='#e5c5d5';mctx.fillRect(puzzle.x*10+2,puzzle.y*10+2,6,6)}if(unlockedBoss()&&revealed[boss.y][boss.x]){mctx.fillStyle='#f0cf8b';mctx.fillRect(boss.x*10+2,boss.y*10+2,6,6)}}
   function drawWorld(t){
     ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
-    drawCemetery(ctx,1000,600);
-    // Fog-of-war: only explored tiles are visible.
+    const vw=ui.canvas.clientWidth||1000, vh=ui.canvas.clientHeight||600;
+    const WORLD_W=1000, WORLD_H=600, zoom=1.24;
+    ctx.clearRect(0,0,ui.canvas.width,ui.canvas.height);
+    const sx=ui.canvas.width/vw, sy=ui.canvas.height/vh;
+    ctx.save();ctx.scale(sx,sy);
+    ctx.fillStyle='#07050b';ctx.fillRect(0,0,vw,vh);
+    const playerX=x*TILE+20, playerY=y*TILE+35;
+    const viewW=vw/zoom, viewH=vh/zoom;
+    const camX=Math.max(viewW/2,Math.min(WORLD_W-viewW/2,playerX));
+    const camY=Math.max(viewH/2,Math.min(WORLD_H-viewH/2,playerY));
+    ctx.translate(vw/2-camX*zoom,vh/2-camY*zoom);
+    ctx.scale(zoom,zoom);
+    drawCemetery(ctx,WORLD_W,WORLD_H);
+    // Fog-of-war stays tile-based, but now follows the zoomed camera just like the world.
     for(let yy=0;yy<ROWS;yy++)for(let xx=0;xx<COLS;xx++){
-      if(!revealed[yy][xx]){ctx.fillStyle='rgba(3,2,7,.94)';ctx.fillRect(xx*TILE,yy*TILE,TILE,TILE)}
-      else if(!isFloor(xx,yy)){ctx.fillStyle='rgba(2,2,6,.35)';ctx.fillRect(xx*TILE,yy*TILE,TILE,TILE)}
+      if(!revealed[yy][xx]){ctx.fillStyle='rgba(3,2,7,.92)';ctx.fillRect(xx*TILE,yy*TILE,TILE,TILE)}
+      else if(!isFloor(xx,yy)){ctx.fillStyle='rgba(2,2,6,.28)';ctx.fillRect(xx*TILE,yy*TILE,TILE,TILE)}
     }
-    // Route markers, kept subtle so exploration remains primary.
     enemies.forEach(e=>{if(!e.dead&&revealed[e.y][e.x])drawZombieSprite(ctx,e.x*TILE+20,e.y*TILE+38,e.type,.68,t/1000)});
     if(!relationshipDone&&revealed[relationship.y][relationship.x]){ctx.fillStyle='#ef91ac';ctx.font='28px Georgia';ctx.textAlign='center';ctx.fillText('♥',relationship.x*TILE+20,relationship.y*TILE+29)}
     if(!puzzleSolved&&revealed[puzzle.y][puzzle.x]){ctx.fillStyle='#e6c5d3';ctx.font='26px Georgia';ctx.textAlign='center';ctx.fillText('✣',puzzle.x*TILE+20,puzzle.y*TILE+29)}
-    if(revealed[boss.y][boss.x]){
-      ctx.fillStyle=unlockedBoss()?'#f0cf8b':'#8c7584';ctx.font='24px Georgia';ctx.textAlign='center';ctx.fillText(unlockedBoss()?'✦':'🔒',boss.x*TILE+20,boss.y*TILE+29);
-      if(unlockedBoss()){ctx.fillStyle='#ef91ac';ctx.font='bold 14px system-ui';ctx.fillText('GATE OPEN',boss.x*TILE+20,boss.y*TILE+56)}
-    }
-    if(bossRoomEntered){
-      ctx.fillStyle='rgba(8,5,15,.55)';ctx.fillRect(21*TILE,6*TILE,3*TILE,5*TILE);
-      ctx.strokeStyle='#8d617f';ctx.lineWidth=3;ctx.strokeRect(21*TILE+8,6*TILE+8,3*TILE-16,5*TILE-16);
-      ctx.fillStyle='#f0d5e3';ctx.font='bold 15px Georgia';ctx.textAlign='center';ctx.fillText('CLASSIC GOTH',22*TILE+20,8*TILE+28);
-    }
-    drawOlly(ctx,x*TILE+20,y*TILE+35,.78,t/1000,true,facingDir,walkPulse>0)
+    if(revealed[boss.y][boss.x]){ctx.fillStyle=unlockedBoss()?'#f0cf8b':'#8c7584';ctx.font='24px Georgia';ctx.textAlign='center';ctx.fillText(unlockedBoss()?'✦':'🔒',boss.x*TILE+20,boss.y*TILE+29);if(unlockedBoss()){ctx.fillStyle='#ef91ac';ctx.font='bold 14px system-ui';ctx.fillText('GATE OPEN',boss.x*TILE+20,boss.y*TILE+56)}}
+    if(bossRoomEntered){ctx.fillStyle='rgba(8,5,15,.55)';ctx.fillRect(21*TILE,6*TILE,3*TILE,5*TILE);ctx.strokeStyle='#8d617f';ctx.lineWidth=3;ctx.strokeRect(21*TILE+8,6*TILE+8,3*TILE-16,5*TILE-16);ctx.fillStyle='#f0d5e3';ctx.font='bold 15px Georgia';ctx.textAlign='center';ctx.fillText('CLASSIC GOTH',22*TILE+20,8*TILE+28)}
+    drawOlly(ctx,playerX,playerY,.78,t/1000,true,facingDir,walkPulse>0);
+    ctx.restore();
   }
 
   function drawEncounter(type){

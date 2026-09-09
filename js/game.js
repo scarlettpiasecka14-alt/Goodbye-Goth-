@@ -139,14 +139,6 @@ function mountLevel1(){
             <div class="help">Explore to reveal the cemetery • WASD / arrow keys move • Find the ♥, ✣ and the Zombie Goths</div>
           </div>
           <div id="dialogue" class="dialogue" aria-live="polite">You wake up somewhere very dark...</div>
-          <div class="control-row">
-            <div class="dpad">
-              <span></span><button data-dir="up">↑</button><span></span>
-              <button data-dir="left">←</button><button data-dir="down">↓</button><button data-dir="right">→</button>
-            </div>
-            <button id="attack" class="primary">⚔️ ATTACK</button>
-            <button id="interact">✦ INTERACT</button>
-          </div>
         </div>
         <aside class="side-column">
           <div class="side-card">
@@ -231,9 +223,6 @@ function mountLevel1(){
   };
 
   const level = createLevel1(ui);
-  document.querySelectorAll('[data-dir]').forEach(b=>b.addEventListener('click',()=>level.move(b.dataset.dir)));
-  document.getElementById('attack').addEventListener('click',()=>level.primaryAction());
-  document.getElementById('interact').addEventListener('click',()=>level.interact());
   ui.encounterFight.addEventListener('click',()=>level.startEncounterFight());
   ui.combatAttack.addEventListener('click',()=>level.combatAttack());
   ui.combatDodge.addEventListener('click',()=>level.combatDodge());
