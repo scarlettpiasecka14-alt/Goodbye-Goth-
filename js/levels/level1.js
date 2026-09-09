@@ -174,86 +174,32 @@ function drawCemetery(ctx,w,h){
 }
 
 function drawOlly(ctx,x,y,s=.7,t=0,front=true,dir='down',moving=false){
-  // Olly, simplified from the provided caricature/walking reference.
-  // Neutral friendly face, curly dark hair, Weeknd shirt, olive cargos and red shoes.
   ctx.save();
-  const phase=moving ? Math.sin(t*11) : 0;
-  const bob=moving ? Math.abs(Math.sin(t*11))*1.25 : Math.sin(t*2)*0.45;
+  const bob=moving ? Math.abs(Math.sin(t*11))*1.2 : Math.sin(t*2)*0.4;
   ctx.translate(x,y-bob);
-  const side=dir==='left'||dir==='right';
-  const flip=dir==='left'?-1:1;
-  ctx.scale(flip,1);
-
-  // shadow
-  ctx.fillStyle='rgba(0,0,0,.36)';ctx.beginPath();ctx.ellipse(0,39*s,24*s,6.5*s,0,0,Math.PI*2);ctx.fill();
-
-  // legs and trousers
-  const stride=moving?phase*6:0;
-  ctx.strokeStyle='#17131a';ctx.lineWidth=7*s;ctx.lineCap='round';
-  ctx.beginPath();ctx.moveTo(-7*s,13*s);ctx.lineTo((-9+stride)*s,31*s);ctx.moveTo(7*s,13*s);ctx.lineTo((9-stride)*s,31*s);ctx.stroke();
-  ctx.strokeStyle='#394335';ctx.lineWidth=10*s;
-  ctx.beginPath();ctx.moveTo(-7*s,11*s);ctx.lineTo((-9+stride)*s,29*s);ctx.moveTo(7*s,11*s);ctx.lineTo((9-stride)*s,29*s);ctx.stroke();
-
-  // red sneakers, visible and consistent with the reference.
-  ctx.fillStyle='#a64b58';ctx.strokeStyle='#4b1d26';ctx.lineWidth=1.4*s;
-  ctx.beginPath();ctx.roundRect((-15+stride)*s,27*s,14*s,8*s,3*s);ctx.fill();ctx.stroke();
-  ctx.beginPath();ctx.roundRect((1-stride)*s,27*s,14*s,8*s,3*s);ctx.fill();ctx.stroke();
-  ctx.strokeStyle='#f2ced4';ctx.lineWidth=1.3*s;ctx.beginPath();ctx.moveTo((-12+stride)*s,31*s);ctx.lineTo((-3+stride)*s,31*s);ctx.moveTo((4-stride)*s,31*s);ctx.lineTo((13-stride)*s,31*s);ctx.stroke();
-
-  // torso / Weeknd shirt
-  ctx.fillStyle='#16161a';ctx.strokeStyle='#0a090d';ctx.lineWidth=1.6*s;
-  ctx.beginPath();ctx.roundRect(-19*s,-19*s,38*s,34*s,7*s);ctx.fill();ctx.stroke();
-  ctx.fillStyle='#9b827e';ctx.font=`bold ${6.2*s}px Arial`;ctx.textAlign='center';ctx.fillText('The Weeknd',0,-4*s);
-  ctx.fillStyle='#514346';ctx.fillRect(-9*s,0,18*s,9*s);
-  ctx.fillStyle='#bba7a1';ctx.fillRect(-6*s,2*s,12*s,1.6*s);ctx.fillRect(-4*s,5.2*s,8*s,1.5*s);
-
-  // arms
-  const arm= moving ? phase*4 : 0;
-  ctx.strokeStyle='#c98974';ctx.lineWidth=5.2*s;ctx.lineCap='round';
-  ctx.beginPath();ctx.moveTo(-16*s,-10*s);ctx.lineTo((-22+arm)*s,6*s);ctx.moveTo(16*s,-10*s);ctx.lineTo((22-arm)*s,6*s);ctx.stroke();
-  ctx.fillStyle='#c98974';ctx.beginPath();ctx.arc((-22+arm)*s,7*s,3.5*s,0,Math.PI*2);ctx.arc((22-arm)*s,7*s,3.5*s,0,Math.PI*2);ctx.fill();
-
-  // neck and face
-  ctx.fillStyle='#c98f7a';ctx.fillRect(-5*s,-24*s,10*s,7*s);
-  ctx.fillStyle='#d49a84';ctx.strokeStyle='#3a2025';ctx.lineWidth=1.5*s;
-  ctx.beginPath();ctx.roundRect(-14*s,-42*s,28*s,25*s,9*s);ctx.fill();ctx.stroke();
-
-  // curls: larger, messier, closer to the provided caricature.
-  ctx.fillStyle='#25171a';ctx.strokeStyle='#110b0f';ctx.lineWidth=1.6*s;
-  const curls=[[-11,-43,9],[-3,-48,10],[6,-48,10],[14,-42,9],[-14,-36,7],[14,-35,7],[-4,-39,7],[7,-40,7]];
-  curls.forEach(([cx,cy,rr])=>{ctx.beginPath();ctx.arc(cx*s,cy*s,rr*s,0,Math.PI*2);ctx.fill();});
-  ctx.fillStyle='#4b2c2b';[[-8,-46],[-1,-51],[7,-48],[13,-41],[-11,-37],[2,-42]].forEach(([cx,cy])=>{ctx.beginPath();ctx.arc(cx*s,cy*s,2.6*s,0,Math.PI*2);ctx.fill()});
-
-  // friendly eyes and brows, no open mouth.
-  ctx.strokeStyle='#5a332f';ctx.lineWidth=1.6*s;ctx.beginPath();ctx.moveTo(-9*s,-31*s);ctx.lineTo(-3*s,-32*s);ctx.moveTo(3*s,-32*s);ctx.lineTo(9*s,-31*s);ctx.stroke();
-  ctx.fillStyle='#282027';ctx.beginPath();ctx.arc(-6*s,-28*s,2*s,0,Math.PI*2);ctx.arc(6*s,-28*s,2*s,0,Math.PI*2);ctx.fill();
-  ctx.strokeStyle='#9b675a';ctx.lineWidth=1.1*s;ctx.beginPath();ctx.moveTo(-2.8*s,-22*s);ctx.quadraticCurveTo(0,-21*s,2.8*s,-22*s);ctx.stroke();
-  // subtle stubble
-  ctx.fillStyle='rgba(86,57,54,.38)';for(let i=0;i<8;i++){const sx=(-8+(i%4)*5)*s,sy=(-19+Math.floor(i/4)*2.3)*s;ctx.beginPath();ctx.arc(sx,sy,0.8*s,0,Math.PI*2);ctx.fill();}
-
-  // no bow at Level 1 start. It is earned as the boss reward.
+  ctx.fillStyle='rgba(0,0,0,.36)';ctx.beginPath();ctx.ellipse(0,39*s,24*s,6*s,0,0,Math.PI*2);ctx.fill();
+  if(ollySprite.complete && ollySprite.naturalWidth){
+    const w=86*s,h=129*s;
+    ctx.drawImage(ollySprite,-w/2,-104*s,w,h);
+  }
   ctx.restore();
 }
 
+const ollySprite=new Image();
+ollySprite.src='assets/characters/olly.png?v=211';
 const zombieSprites={shambler:new Image(),fire:new Image()};
-zombieSprites.shambler.src='assets/zombies/zombie-shambler.svg?v=29';
-zombieSprites.fire.src='assets/zombies/fire-goth.svg?v=29';
+zombieSprites.shambler.src='assets/characters/zombie-goth.png?v=211';
+zombieSprites.fire.src='assets/characters/fire-goth.png?v=211';
 function drawZombieSprite(ctx,x,y,type,s=.75,t=0,attack=false){
   const img=zombieSprites[type]||zombieSprites.shambler;
   ctx.save();
-  ctx.translate(x,y+Math.sin(t*7)*2);
-  ctx.fillStyle='rgba(0,0,0,.34)';ctx.beginPath();ctx.ellipse(0,38*s,27*s,7*s,0,0,Math.PI*2);ctx.fill();
+  ctx.translate(x,y+Math.sin(t*7)*1.5);
+  ctx.fillStyle='rgba(0,0,0,.34)';ctx.beginPath();ctx.ellipse(0,40*s,30*s,7*s,0,0,Math.PI*2);ctx.fill();
   if(img.complete && img.naturalWidth){
-    const w=108*s,h=157*s;
-    ctx.globalAlpha=attack?.98:1;
-    ctx.drawImage(img,-w/2,-125*s,w,h);
-  }else{
-    // Keep the old procedural drawing until the sprite asset has loaded.
-    ctx.fillStyle='#2a222c';ctx.beginPath();ctx.roundRect(-20*s,-75*s,40*s,112*s,14*s);ctx.fill();
-    ctx.fillStyle='#c3a3ae';ctx.beginPath();ctx.arc(0,-84*s,18*s,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#f0a2b9';ctx.beginPath();ctx.arc(-7*s,-86*s,3*s,0,Math.PI*2);ctx.arc(7*s,-86*s,3*s,0,Math.PI*2);ctx.fill();
+    const w=96*s,h=144*s;
+    ctx.drawImage(img,-w/2,-118*s,w,h);
   }
-  if(attack){ctx.strokeStyle='#ef91ac';ctx.lineWidth=3*s;ctx.beginPath();ctx.arc(0,-4*s,38*s,0,Math.PI*2);ctx.stroke()}
+  if(attack){ctx.strokeStyle=type==='fire'?'#ff6e4c':'#ef91ac';ctx.lineWidth=3*s;ctx.beginPath();ctx.arc(0,-6*s,40*s,0,Math.PI*2);ctx.stroke()}
   ctx.restore();
 }
 
@@ -322,7 +268,7 @@ export function createLevel1(ui){
     cctx.fillStyle='#211a25';cctx.fillRect(0,h-105,w,105);
     cctx.fillStyle='#4a3b4e';for(let i=0;i<9;i++){const gx=40+i*105;cctx.fillRect(gx,h-165,5,60);cctx.fillRect(gx-12,h-165,29,5);}
     cctx.fillStyle='#5d4a60';for(let i=0;i<14;i++){const gx=(i*71)%860+20,gy=70+(i%4)*45;cctx.fillRect(gx,gy,4,4);}
-    cctx.fillStyle='#d9c9d4';cctx.font='bold 14px system-ui';cctx.textAlign='left';cctx.fillText('CLICK / FIRE ARROW',24,30);cctx.font='12px system-ui';cctx.fillStyle='#a99aaa';cctx.fillText('Red warning = DODGE',24,49);
+    cctx.fillStyle='#d9c9d4';cctx.font='bold 14px system-ui';cctx.textAlign='left';cctx.fillText('MOVE • JUMP • DODGE • ATTACK',24,30);cctx.font='12px system-ui';cctx.fillStyle='#a99aaa';cctx.fillText('Watch the warning and react',24,49);
     // Aim reticle
     if(player.aimX&&player.aimY){cctx.strokeStyle='rgba(245,218,231,.65)';cctx.lineWidth=2;cctx.beginPath();cctx.arc(player.aimX,player.aimY,13,0,Math.PI*2);cctx.moveTo(player.aimX-19,player.aimY);cctx.lineTo(player.aimX-7,player.aimY);cctx.moveTo(player.aimX+7,player.aimY);cctx.lineTo(player.aimX+19,player.aimY);cctx.moveTo(player.aimX,player.aimY-19);cctx.lineTo(player.aimX,player.aimY-7);cctx.moveTo(player.aimX,player.aimY+7);cctx.lineTo(player.aimX,player.aimY+19);cctx.stroke();}
     // Attack telegraphs
@@ -334,8 +280,16 @@ export function createLevel1(ui){
     cctx.fillStyle='#f3e7ed';cctx.font='900 18px Georgia';cctx.textAlign='center';cctx.fillText(isBoss?'QUEEN GOTH':(target?.name||'ZOMBIE GOTH'),690,355);
     cctx.fillStyle='#332635';cctx.fillRect(620,370,140,10);cctx.fillStyle='#ef91ac';cctx.fillRect(620,370,140*(combatHp/combatMax),10);
   }
-  function drawOllyWorldCombat(c,px,py,s,ax,ay,t,hurt){c.save();c.translate(px,py);if(hurt)c.globalAlpha=.5; c.fillStyle='rgba(0,0,0,.25)';c.beginPath();c.ellipse(0,54*s,32*s,8*s,0,0,Math.PI*2);c.fill();c.fillStyle='#35271f';c.beginPath();c.ellipse(0,-50*s,25*s,25*s,0,0,Math.PI*2);c.fill();c.fillStyle='#d9b59e';c.beginPath();c.arc(0,-46*s,14*s,0,Math.PI*2);c.fill();c.fillStyle='#dbe0e7';c.fillRect(-20*s,-30*s,40*s,34*s);c.fillStyle='#273029';c.fillRect(-16*s,4*s,32*s,22*s);c.strokeStyle='#111';c.lineWidth=4*s;c.beginPath();c.moveTo(-10*s,26*s);c.lineTo(-12*s,47*s);c.moveTo(10*s,26*s);c.lineTo(12*s,47*s);c.stroke();const ang=Math.atan2(ay-py,ax-px);c.save();c.rotate(ang);c.strokeStyle='#b58d68';c.lineWidth=4*s;c.beginPath();c.moveTo(15*s,-2*s);c.lineTo(46*s,-2*s);c.stroke();c.strokeStyle='#6b4731';c.lineWidth=2*s;c.beginPath();c.arc(15*s,-2*s,25*s,-1.2,1.2);c.stroke();c.restore();c.restore()}
-  function drawZombieCombat(c,px,py,type,attack){
+  function drawOllyWorldCombat(c,px,py,s,ax,ay,t,hurt){
+  c.save();c.translate(px,py);if(hurt)c.globalAlpha=.5;
+  c.fillStyle='rgba(0,0,0,.25)';c.beginPath();c.ellipse(0,54*s,32*s,8*s,0,0,Math.PI*2);c.fill();
+  if(ollySprite.complete && ollySprite.naturalWidth){
+    const w=104*s,h=156*s;
+    c.drawImage(ollySprite,-w/2,-126*s,w,h);
+  }
+  c.restore();
+}
+function drawZombieCombat(c,px,py,type,attack){
     // v2.9: use the same detailed zombie sprite in combat as on the map.
     drawZombieSprite(c,px,py+20,type,1.0,performance.now()/1000,attack);
   }
@@ -346,7 +300,7 @@ export function createLevel1(ui){
     ui.combatName.textContent=bossFight?'THE CLASSIC GOTH • QUEEN':target?.name||'ZOMBIE GOTH';
     ui.combatPattern.textContent=bossFight?'Phase 1 • DODGE red warnings':(target?.pattern||'Watch red warnings • DODGE');
     ui.enemyHp.style.width='100%';
-    ui.combatStatus.innerHTML=bossFight?'<strong>HOW TO FIGHT:</strong> Watch for attack warnings, dodge them, and strike the Queen Goth.':'<strong>HOW TO FIGHT:</strong> Attack the Zombie Goth and dodge when she warns you. Your next combat pass will add the full jump/roll system.';
+    ui.combatStatus.innerHTML=bossFight?'<strong>HOW TO FIGHT:</strong> Watch for attack warnings, dodge them, and strike the Queen Goth.':'<strong>HOW TO FIGHT:</strong> Move, jump and dodge her attacks. Your melee attack will be connected in the next combat pass.';
     ui.combat.classList.remove('hidden');
     clearInterval(enemyTimer);enemyTimer=setInterval(enemyAttackTick,bossFight?900:1250);
     clearInterval(combatRaf);const loop=()=>{if(mode==='combat'){drawCombat(performance.now());combatRaf=requestAnimationFrame(loop)}};combatRaf=requestAnimationFrame(loop);
