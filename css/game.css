@@ -445,3 +445,54 @@ html,body,#app{height:100%;overflow:hidden}
   .relationship-box .minigame-display{min-height:40px;font-size:1rem}
   .relationship-box .timing-button{min-width:185px}
 }
+
+
+/* v3.3: bespoke relationship + question art, larger mini-game layouts, clearer hierarchy. */
+.overlay-box.relationship-box,.overlay-box.quiz-box{
+  width:min(1180px,96vw);
+  max-width:1180px;
+  padding:14px 18px 16px;
+}
+.relationship-image,.quiz-image{
+  width:min(1080px,94%);
+  max-height:46svh;
+  aspect-ratio:16/9;
+  object-fit:contain;
+  background:#08070b;
+}
+.relationship-box .story-title,.quiz-box .story-title{
+  font-size:clamp(1.65rem,3.4vw,2.55rem);
+  margin:4px 0 6px;
+}
+.relationship-box .ironic-copy,.quiz-copy{
+  max-width:1080px;
+  font-size:clamp(.84rem,1.35vw,1rem);
+  line-height:1.45;
+}
+.relationship-box .minigame-display{
+  max-width:1080px;
+  margin:8px auto;
+  min-height:54px;
+}
+.relationship-box .timing-track{width:min(880px,92%);height:16px}
+.relationship-box .timing-button{min-width:260px;padding:10px 18px;font-size:1rem}
+.quiz-question{
+  max-width:1080px;
+  margin:10px auto 8px;
+  padding:10px 14px;
+  border:1px dashed var(--line);
+  border-radius:10px;
+  background:#18121b;
+  font-family:Georgia,serif;
+  font-size:clamp(1.15rem,2.2vw,1.65rem);
+  line-height:1.35;
+}
+.quiz-answers{max-width:1080px;margin:10px auto 0}
+.quiz-answers button{font-size:clamp(.9rem,1.35vw,1.05rem);line-height:1.35;padding:11px 14px}
+.quiz-answers button strong{color:#f2a0c1;margin-right:4px}
+@media(max-width:700px){
+  .overlay-box.relationship-box,.overlay-box.quiz-box{width:96vw;padding:10px}
+  .relationship-image,.quiz-image{width:100%;max-height:38svh}
+  .relationship-box .ironic-copy,.quiz-copy{font-size:.82rem}
+  .quiz-answers button{font-size:.86rem;padding:9px 10px}
+}

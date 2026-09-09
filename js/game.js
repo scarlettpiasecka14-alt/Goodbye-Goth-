@@ -128,8 +128,8 @@ function mountLevel1(){
         <div class="stats">
           <span class="pill">❤️ <span id="hp">5</span></span>
           <span class="pill">🧟 <span id="goth-count">0/2</span></span>
-          <span class="pill">💕 <span id="rel-state">Locked</span></span>
-          <span class="pill">🧩 <span id="puzzle-state">Locked</span></span>
+          <span class="pill">🧩 <span id="rel-state">Locked</span></span>
+          <span class="pill">❤️ <span id="puzzle-state">Locked</span></span>
         </div>
       </div>
       <div class="game-layout">
@@ -145,8 +145,8 @@ function mountLevel1(){
             <strong>LEVEL 1 OBJECTIVES</strong>
             <div class="objective-list">
               <div id="goal-goths">○ Defeat the required Zombie Goths (0/2)</div>
-              <div id="goal-rel">○ Complete the Relationship Challenge</div>
-              <div id="goal-puzzle">○ Solve the Puzzle</div>
+              <div id="goal-rel">○ Complete the WOULD YOU? Puzzle</div>
+              <div id="goal-puzzle">○ Answer the Princess Question</div>
               <div id="goal-boss">🔒 Boss gate locked</div>
             </div>
           </div>
@@ -182,21 +182,23 @@ function mountLevel1(){
         <canvas id="relationship-canvas" width="1" height="1" hidden></canvas>
         <img class="story-art relationship-image" src="assets/story/would-you.png" alt="Scarlett and Olly in bed, with the words Would You?" />
         <div class="story-title">WOULD YOU...</div>
-        <div class="ironic-copy">Sometimes princesses have far too much going on in their heads to get their words out right. In cases like these one can either 1. try to be helpful or 2. take the piss. you choose the latter. press would you at the correct time to complete the challenge</div>
+        <div class="ironic-copy">Sometimes princesses have far too much going on in their heads to get their words out right. In cases like these one can either 1. try to be helpful or 2. take the piss. You chose the latter. Press WOULD YOU? at the correct time to complete the puzzle.</div>
         <div class="timing-track"><div id="timing-zone" class="timing-zone"></div><div id="timing-cursor" class="timing-cursor"></div></div>
         <div id="would-display" class="minigame-display">“Can I ask you a question... have you ever...”</div>
         <button id="would-tap" class="primary timing-button">WOULD YOU?</button>
         <p id="would-feedback" class="small">Listen for the phrase. The timing gets quicker each round.</p>
       </div></div>
 
-      <div id="puzzle" class="overlay hidden"><div class="overlay-box center">
-        <img class="story-art" src="assets/story/princess-puzzle-unique.png" alt="Princess-themed puzzle">
-        <div class="story-title">PRINCESS ETIQUETTE</div><p>What is the appropriate way to ask a princess to undress?</p>
-        <div class="answers">
-          <button data-answer="wrong">“Your Highness, may I assist you with your attire?”</button>
-          <button data-answer="correct">“Get your kit off, mate.”</button>
-          <button data-answer="wrong">“Would you kindly remove your garments?”</button>
-          <button data-answer="wrong">“Princess, the time has come to retire your dress.”</button>
+      <div id="puzzle" class="overlay hidden"><div class="overlay-box center quiz-box">
+        <img class="story-art quiz-image" src="assets/story/princess-quiz.png" alt="Scarlett, the kidnapped princess, with a warning about getting the answer right">
+        <div class="story-title">THE PRINCESS QUESTION</div>
+        <div class="ironic-copy quiz-copy">A simple question, apparently. The fate of your princess rests on your ability to demonstrate absolutely normal communication skills.</div>
+        <p class="quiz-question">What is the correct way to ask a princess to undress?</p>
+        <div class="answers quiz-answers">
+          <button data-answer="wrong"><strong>A.</strong> “Your Highness, may I assist you with your attire?”</button>
+          <button data-answer="wrong"><strong>B.</strong> “Would you kindly remove your garments?”</button>
+          <button data-answer="correct"><strong>C.</strong> “Get your kit off, mate.”</button>
+          <button data-answer="wrong"><strong>D.</strong> “Princess, the time has come to retire your dress.”</button>
         </div>
         <p id="puzzle-feedback" class="small"></p>
       </div></div>
