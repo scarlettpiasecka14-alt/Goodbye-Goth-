@@ -311,6 +311,57 @@ function drawCemetery(ctx,w,h){
   groundIsland([[520,92],[596,80],[632,112],[616,155],[548,160],[505,135]]);
   groundIsland([[690,445],[770,424],[808,450],[796,492],[732,510],[684,482]]);
 
+  // v3.2 architecture and tree pass: these sit above the earlier blocky silhouettes but below fog-of-war.
+  function detailedChapel(x,y,s=1){
+    ctx.save();ctx.translate(x,y);ctx.scale(s,s);
+    // shadow / foundation
+    ctx.fillStyle='rgba(0,0,0,.34)';ctx.fillRect(-88,78,176,15);
+    // main stone body
+    ctx.fillStyle='#5b5361';ctx.fillRect(-78,-6,156,85);ctx.strokeStyle='#29232d';ctx.lineWidth=4;ctx.strokeRect(-78,-6,156,85);
+    // roof and gable
+    ctx.fillStyle='#211923';ctx.beginPath();ctx.moveTo(-90,-6);ctx.lineTo(0,-68);ctx.lineTo(90,-6);ctx.closePath();ctx.fill();ctx.strokeStyle='#3f2c3f';ctx.lineWidth=4;ctx.stroke();
+    // tower
+    ctx.fillStyle='#6d6270';ctx.fillRect(42,-49,34,83);ctx.beginPath();ctx.moveTo(36,-49);ctx.lineTo(59,-78);ctx.lineTo(82,-49);ctx.closePath();ctx.fill();ctx.strokeStyle='#29232d';ctx.lineWidth=4;ctx.stroke();
+    // arched stained-glass window
+    ctx.fillStyle='#ef7fac';ctx.beginPath();ctx.arc(0,9,23,Math.PI,0);ctx.lineTo(23,33);ctx.lineTo(-23,33);ctx.closePath();ctx.fill();
+    ctx.strokeStyle='#322633';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(0,-12);ctx.lineTo(0,33);ctx.moveTo(-23,10);ctx.lineTo(23,10);ctx.stroke();
+    // doors
+    ctx.fillStyle='#241923';ctx.beginPath();ctx.roundRect(-22,33,44,46,9);ctx.fill();ctx.strokeStyle='#8f6d80';ctx.lineWidth=2;ctx.stroke();
+    ctx.fillStyle='#eab5ca';ctx.fillRect(2,56,4,6);
+    // buttresses / stone blocks
+    ctx.fillStyle='#746a76';ctx.fillRect(-89,10,12,66);ctx.fillRect(77,10,12,66);
+    ctx.strokeStyle='#8f8390';ctx.lineWidth=1;for(let yy=4;yy<72;yy+=14){ctx.beginPath();ctx.moveTo(-76,yy);ctx.lineTo(76,yy);ctx.stroke();}
+    // rose vines and tiny lanterns
+    vine(-70,66,24,-30,.75);vine(70,66,-24,-30,.75);gothicLamp(-53,80,.7);gothicLamp(53,80,.7);
+    ctx.restore();
+  }
+  function detailedCrypt(x,y,s=1){
+    ctx.save();ctx.translate(x,y);ctx.scale(s,s);
+    ctx.fillStyle='rgba(0,0,0,.32)';ctx.fillRect(-48,53,96,11);
+    ctx.fillStyle='#69616c';ctx.fillRect(-43,-6,86,58);ctx.strokeStyle='#2a232d';ctx.lineWidth=3;ctx.strokeRect(-43,-6,86,58);
+    ctx.fillStyle='#3a303b';ctx.beginPath();ctx.moveTo(-50,-6);ctx.lineTo(0,-38);ctx.lineTo(50,-6);ctx.closePath();ctx.fill();ctx.strokeStyle='#6f5c6d';ctx.stroke();
+    ctx.fillStyle='#2a202b';ctx.beginPath();ctx.roundRect(-18,17,36,35,7);ctx.fill();
+    ctx.fillStyle='#ef8fb4';ctx.fillRect(-3,25,6,11);
+    ctx.fillStyle='#8f8290';ctx.font='8px Georgia';ctx.textAlign='center';ctx.fillText('REST',0,7);ctx.fillText('IN PEACE',0,17);
+    ctx.strokeStyle='#8a7d8b';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-30,-1);ctx.lineTo(-30,18);ctx.moveTo(30,-1);ctx.lineTo(30,18);ctx.stroke();
+    vine(-39,49,18,-20,.55);vine(39,49,-18,-20,.55);candleCluster(-36,48,.55);candleCluster(36,48,.55);
+    ctx.restore();
+  }
+  function detailedTree(x,y,s=1){
+    ctx.save();ctx.translate(x,y);ctx.scale(s,s);
+    ctx.fillStyle='rgba(0,0,0,.36)';ctx.beginPath();ctx.ellipse(0,45,44,10,0,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#191116';ctx.lineWidth=15;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(0,42);ctx.lineTo(0,-22);ctx.lineTo(-22,-53);ctx.moveTo(0,-6);ctx.lineTo(31,-40);ctx.moveTo(-2,10);ctx.lineTo(-34,-15);ctx.stroke();
+    ctx.strokeStyle='#2d1826';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,31);ctx.lineTo(0,-26);ctx.moveTo(-2,-8);ctx.lineTo(-25,-47);ctx.moveTo(4,-4);ctx.lineTo(31,-38);ctx.stroke();
+    const crowns=[[-30,-52,30],[4,-63,34],[34,-40,27],[-10,-25,35],[18,-20,31]];
+    crowns.forEach(([cx,cy,r],i)=>{ctx.fillStyle=i%2?'#11131b':'#17151e';ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();});
+    [[-23,-43],[7,-58],[26,-34],[-2,-19],[18,-19]].forEach(([cx,cy])=>{ctx.fillStyle='#6d3158';ctx.beginPath();ctx.arc(cx,cy,7,0,Math.PI*2);ctx.fill();ctx.fillStyle='#bf5788';ctx.beginPath();ctx.arc(cx-2,cy-2,2.2,0,Math.PI*2);ctx.fill();});
+    ctx.restore();
+  }
+  detailedChapel(170,96,1.0);
+  detailedCrypt(785,135,1.0);
+  detailedCrypt(855,340,.95);
+  detailedTree(82,112,1.25);detailedTree(370,95,.95);detailedTree(905,110,1.25);detailedTree(280,455,.9);detailedTree(745,445,1.0);
+
   // More dramatic vignette and distant mist ribbons for depth.
   const mist=ctx.createRadialGradient(w*.52,h*.50,40,w*.52,h*.50,h*.62);mist.addColorStop(0,'rgba(186,146,190,0)');mist.addColorStop(.75,'rgba(186,146,190,.04)');mist.addColorStop(1,'rgba(8,6,12,.24)');ctx.fillStyle=mist;ctx.fillRect(0,0,w,h);
 
@@ -323,7 +374,7 @@ function drawOlly(ctx,x,y,s=.7,t=0,front=true,dir='right',moving=false){
   const bob=moving ? Math.sin(t*18)*1.6 : Math.sin(t*2)*0.4;
   // The supplied Olly artwork faces right. Only flip for horizontal movement;
   // keep the last horizontal facing while moving vertically.
-  const faceX = dir === 'left' ? -1 : 1;
+  const faceX = dir === 'right' ? -1 : 1;
   ctx.translate(x,y-bob);
   ctx.fillStyle='rgba(0,0,0,.36)';ctx.beginPath();ctx.ellipse(0,39*s,24*s,6*s,0,0,Math.PI*2);ctx.fill();
   if(ollySprite.complete && ollySprite.naturalWidth){
@@ -523,9 +574,9 @@ function drawZombieCombat(c,px,py,type,attack){
     rctx.clearRect(0,0,rctx.canvas.width,rctx.canvas.height);
   }
 function startRelationship(){
-    mode='relationship';relationshipRound=0;relationshipStep=0;relationshipDuration=3000;relationshipStart=performance.now();
+    mode='relationship';relationshipRound=0;relationshipStep=0;relationshipDuration=2600;relationshipStart=performance.now();
     ui.relationship.classList.remove('hidden');
-    ui.wouldFeedback.textContent='The princess is rambling. Your job is to weaponise your timing.';
+    ui.wouldFeedback.textContent='The princess is rambling. Your job is to weaponise your timing. Round 1 of 5.';
     ui.wouldDisplay.textContent='“Can I ask you a question...”';
     drawRelationshipArt();animateRelationship();
 }
@@ -535,20 +586,20 @@ function animateRelationship(){
       if(mode!=='relationship')return;
       const elapsed=t-relationshipStart;
       const pct=Math.min(1,elapsed/relationshipDuration);
-      const zoneStart=Math.min(.84 + relationshipRound*.025,.9);
-      const zoneWidth=Math.max(.07, .105-relationshipRound*.012);
+      const zoneStart=Math.min(.80 + relationshipRound*.025,.90);
+      const zoneWidth=Math.max(.055,.105-relationshipRound*.012);
       ui.timingCursor.style.left=`${pct*100}%`;
       ui.timingZone.style.left=`${zoneStart*100}%`;
       ui.timingZone.style.width=`${zoneWidth*100}%`;
       let line='“Can I ask you a question...”';
-      if(pct>=.22&&pct<.43) line='“Have you ever...”';
-      else if(pct>=.43&&pct<.63) line='“Do you like...”';
-      else if(pct>=.63&&pct<zoneStart) line='“What was I going to say?”';
+      if(pct>=.18&&pct<.36) line='“Have you ever...”';
+      else if(pct>=.36&&pct<.54) line='“Do you like...”';
+      else if(pct>=.54&&pct<zoneStart) line='“What was I going to say?”';
       else if(pct>=zoneStart) line='“WOULD YOU?”';
       ui.wouldDisplay.textContent=line;
       if(pct>=1){
         relationshipStart=performance.now();
-        ui.wouldFeedback.textContent='Too late. The princess has already escaped the sentence. She rambles again.';
+        ui.wouldFeedback.textContent='Too late. The princess has already escaped the sentence. She rambles again. Round '+(relationshipStep+1)+' of 5.';
       }
       relationshipRAF=requestAnimationFrame(tick);
     };
@@ -558,21 +609,22 @@ function completeRelationship(){
     if(mode!=='relationship')return;
     const elapsed=performance.now()-relationshipStart;
     const pct=elapsed/relationshipDuration;
-    const zoneStart=Math.min(.84 + relationshipRound*.025,.9);
-    const zoneEnd=zoneStart+Math.max(.07,.105-relationshipRound*.012);
+    const zoneStart=Math.min(.80 + relationshipRound*.025,.90);
+    const zoneEnd=zoneStart+Math.max(.055,.105-relationshipRound*.012);
     if(pct>=zoneStart&&pct<=zoneEnd){
       relationshipStep++;
-      if(relationshipStep>=3){
+      if(relationshipStep>=5){
         relationshipDone=true;mode='map';cancelAnimationFrame(relationshipRAF);ui.relationship.classList.add('hidden');
-        ui.dialogue.textContent='💕 Relationship Challenge complete. You survived the full ramble and pressed WOULD YOU? at exactly the right moment.';stats();
+        ui.dialogue.textContent='💕 Relationship Challenge complete. Five perfectly timed interruptions. Truly, romance is thriving.';stats();
       }else{
-        relationshipRound++;relationshipDuration=Math.max(2100,3000-relationshipStep*350);relationshipStart=performance.now();
-        ui.wouldFeedback.textContent='✅ PERFECT. She is already starting another ramble... Round '+(relationshipStep+1)+' of 3.';
+        relationshipRound++;relationshipDuration=[2600,2250,1950,1650,1400][relationshipRound]||1200;relationshipStart=performance.now();
+        ui.wouldFeedback.textContent='✅ PERFECT. She has started another ramble. Round '+(relationshipStep+1)+' of 5. Less time this time, because apparently love needed a difficulty curve.';
       }
     }else{
-      ui.wouldFeedback.textContent=pct<zoneStart?'❌ Too early. She has not reached “WOULD YOU?” yet.':'❌ Too late. She already said “WOULD YOU?”';
+      ui.wouldFeedback.textContent=pct<zoneStart?'❌ Too early. The phrase has not escaped her yet.':'❌ Too late. She has already said “WOULD YOU?” and is emotionally moving on.';
     }
 }
+
   function answerPuzzle(answer){if(mode!=='puzzle')return;if(answer==='correct'){puzzleSolved=true;mode='map';ui.puzzle.classList.add('hidden');ui.dialogue.textContent='🧩 Correct. Your princess etiquette is appalling. Fortunately, the Goths have standards even lower than yours. The boss gate is open.';stats()}else ui.puzzleFeedback.textContent='❌ Wrong. Even the cemetery is disappointed in you.'}
   function startBoss(){ui.bossReady.classList.add('hidden');ui.bossIntro.classList.add('hidden');target=null;combatCheckpoint={x,y};startCombat(true)}
   function start(){reveal();stats();drawMini();cancelAnimationFrame(relationshipRAF);clearInterval(enemyTimer);cancelAnimationFrame(raf);const loop=t=>{now=t;if(walkPulse>0 && t%99999>-1){} if(mode==='map')drawWorld(t);drawMini();raf=requestAnimationFrame(loop)};raf=requestAnimationFrame(loop);requestAnimationFrame(combatTick)}
