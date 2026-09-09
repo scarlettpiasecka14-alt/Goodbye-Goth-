@@ -208,7 +208,7 @@ function drawOlly(ctx,x,y,s=.7,t=0,front=true,dir='right',moving=false){
   const bob=moving ? Math.sin(t*18)*1.6 : Math.sin(t*2)*0.4;
   // The supplied Olly artwork faces right. Only flip for horizontal movement;
   // keep the last horizontal facing while moving vertically.
-  const faceX = dir === 'left' ? -1 : 1;
+  const faceX = dir === 'left' ? 1 : -1;
   ctx.translate(x,y-bob);
   ctx.fillStyle='rgba(0,0,0,.36)';ctx.beginPath();ctx.ellipse(0,39*s,24*s,6*s,0,0,Math.PI*2);ctx.fill();
   if(ollySprite.complete && ollySprite.naturalWidth){
@@ -222,10 +222,10 @@ function drawOlly(ctx,x,y,s=.7,t=0,front=true,dir='right',moving=false){
 }
 
 const ollySprite=new Image();
-ollySprite.src='assets/characters/olly.png?v=213';
+ollySprite.src='assets/characters/olly.png?v=214';
 const zombieSprites={shambler:new Image(),fire:new Image()};
-zombieSprites.shambler.src='assets/characters/zombie-goth.png?v=213';
-zombieSprites.fire.src='assets/characters/fire-goth.png?v=213';
+zombieSprites.shambler.src='assets/characters/zombie-goth.png?v=214';
+zombieSprites.fire.src='assets/characters/fire-goth.png?v=214';
 function drawZombieSprite(ctx,x,y,type,s=.75,t=0,attack=false){
   const img=zombieSprites[type]||zombieSprites.shambler;
   ctx.save();
