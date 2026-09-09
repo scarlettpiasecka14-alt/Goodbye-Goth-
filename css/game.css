@@ -422,3 +422,9 @@ html,body,#app{height:100%;overflow:hidden}
 .control-row{display:none!important}
 @media(max-width:900px){.game-layout{grid-template-columns:minmax(0,1fr) 150px}}
 @media(max-width:700px){.game-layout{grid-template-columns:1fr}.side-column{display:none}.help{display:none}}
+
+/* v3.1: approved Would You? artwork + dry, tongue-in-cheek challenge copy. */
+.relationship-image{display:block;width:min(780px,94%);max-height:44svh;object-fit:contain;margin:0 auto 10px;border:1px solid var(--line);border-radius:12px;background:#0b090d}
+.ironic-copy{max-width:760px;margin:0 auto 9px;color:#eadde5;font:600 clamp(.78rem,1.45vw,.98rem)/1.45 Georgia,serif;text-align:left}
+.relationship-box .timing-track{margin-top:5px}
+@media(max-width:700px){.relationship-image{max-height:33svh}.ironic-copy{font-size:.82rem}}

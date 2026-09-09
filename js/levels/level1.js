@@ -479,7 +479,7 @@ function drawZombieCombat(c,px,py,type,attack){
   function shootAtPointer(e){const r=ui.combatCanvas.getBoundingClientRect();shootAt((e.clientX-r.left)*(ui.combatCanvas.width/r.width),(e.clientY-r.top)*(ui.combatCanvas.height/r.height))}
   function combatDodge(){if(mode!=='combat')return;player.invuln=performance.now()+650;const dx=player.x<450?1:-1;player.x=Math.max(55,Math.min(845,player.x+dx*120));ui.combatStatus.textContent='↪ DODGE ROLL!';}
 
-  function endCombat(won){clearInterval(enemyTimer);cancelAnimationFrame(combatRaf);ui.combat.classList.add('hidden');mode='map';if(won){if(isBoss){ui.win.classList.remove('hidden');return}if(target){target.dead=true;kills++;target=null;ui.dialogue.textContent=kills===1?'✅ First Zombie Goth defeated. The cemetery path opens.':'✅ Both Zombie Goths defeated. Complete the two special events.'}}else{ui.deathText.textContent='The goth got you. Olly wakes at the last checkpoint, bruised but ready for another shot.';ui.death.classList.remove('hidden');mode='dead'}stats()}
+  function endCombat(won){clearInterval(enemyTimer);cancelAnimationFrame(combatRaf);ui.combat.classList.add('hidden');mode='map';if(won){if(isBoss){ui.win.classList.remove('hidden');return}if(target){target.dead=true;kills++;target=null;ui.dialogue.textContent=kills===1?'✅ First Zombie Goth defeated. A modest achievement, but one cannot expect miracles before lunch.':'✅ Both Zombie Goths defeated. Now complete the special events, because apparently fighting was only the easy bit.'}}else{ui.deathText.textContent='The goth got you. Olly wakes at the last checkpoint, bruised but ready for another shot.';ui.death.classList.remove('hidden');mode='dead'}stats()}
   function retryCombat(){ui.death.classList.add('hidden');hp=5;stats();if(combatCheckpoint){x=combatCheckpoint.x;y=combatCheckpoint.y;reveal()}mode='map';if(target||isBoss){setTimeout(()=>startCombat(isBoss),100)}}
   function backToMap(){ui.death.classList.add('hidden');hp=5;stats();if(combatCheckpoint){x=combatCheckpoint.x;y=combatCheckpoint.y;reveal()}mode='map';ui.dialogue.textContent='You retreat to the checkpoint. The goths are still waiting.'}
 
@@ -514,24 +514,18 @@ function drawZombieCombat(c,px,py,type,attack){
     }
 
     x=nx;y=ny;walkDir=dir;if(dir==='left'||dir==='right')facingDir=dir;walkPulse=1;setTimeout(()=>{walkPulse=0},180);
-    reveal();ui.dialogue.textContent='The cemetery reveals more of the path...';drawMini();checkTriggers();
+    reveal();ui.dialogue.textContent='The cemetery reveals more of the path. Apparently nobody thought to install signs.';drawMini();checkTriggers();
   }
   function interact(){checkTriggers()}
   function startEncounterFight(){ui.encounter.classList.add('hidden');startCombat(false)}
   function drawRelationshipArt(){
-    rctx.clearRect(0,0,720,250);
-    const grad=rctx.createLinearGradient(0,0,720,250);grad.addColorStop(0,'#211821');grad.addColorStop(1,'#0f0b12');rctx.fillStyle=grad;rctx.fillRect(0,0,720,250);
-    // Simple cartoon versions for this interaction only. The final character assets come later.
-    drawOlly(rctx,210,205,.95,relationshipRound*.4,true);
-    rctx.fillStyle='#e9a8bf';rctx.beginPath();rctx.ellipse(520,170,32,70,0,0,Math.PI*2);rctx.fill();
-    rctx.fillStyle='#2d2028';rctx.beginPath();rctx.ellipse(520,128,35,36,0,0,Math.PI*2);rctx.fill();
-    rctx.fillStyle='#d7a898';rctx.beginPath();rctx.arc(520,132,22,0,Math.PI*2);rctx.fill();
-    rctx.strokeStyle='#b88ca4';rctx.lineWidth=3;rctx.beginPath();rctx.arc(520,134,24,0,Math.PI*2);rctx.stroke();
-}
+    // The relationship screen now uses the approved illustrated artwork directly in the UI.
+    rctx.clearRect(0,0,rctx.canvas.width,rctx.canvas.height);
+  }
 function startRelationship(){
     mode='relationship';relationshipRound=0;relationshipStep=0;relationshipDuration=3000;relationshipStart=performance.now();
     ui.relationship.classList.remove('hidden');
-    ui.wouldFeedback.textContent='Wait for the ramble to reach the words “WOULD YOU?” Then press the button.';
+    ui.wouldFeedback.textContent='The princess is rambling. Your job is to weaponise your timing.';
     ui.wouldDisplay.textContent='“Can I ask you a question...”';
     drawRelationshipArt();animateRelationship();
 }
@@ -554,7 +548,7 @@ function animateRelationship(){
       ui.wouldDisplay.textContent=line;
       if(pct>=1){
         relationshipStart=performance.now();
-        ui.wouldFeedback.textContent='Missed it. She rambles again. Listen for the sudden “WOULD YOU?”';
+        ui.wouldFeedback.textContent='Too late. The princess has already escaped the sentence. She rambles again.';
       }
       relationshipRAF=requestAnimationFrame(tick);
     };
@@ -579,7 +573,7 @@ function completeRelationship(){
       ui.wouldFeedback.textContent=pct<zoneStart?'❌ Too early. She has not reached “WOULD YOU?” yet.':'❌ Too late. She already said “WOULD YOU?”';
     }
 }
-  function answerPuzzle(answer){if(mode!=='puzzle')return;if(answer==='correct'){puzzleSolved=true;mode='map';ui.puzzle.classList.add('hidden');ui.dialogue.textContent='🧩 Correct. Princess etiquette level: appalling. The boss gate is now open.';stats()}else ui.puzzleFeedback.textContent='❌ Wrong. Even the cemetery is disappointed in you.'}
+  function answerPuzzle(answer){if(mode!=='puzzle')return;if(answer==='correct'){puzzleSolved=true;mode='map';ui.puzzle.classList.add('hidden');ui.dialogue.textContent='🧩 Correct. Your princess etiquette is appalling. Fortunately, the Goths have standards even lower than yours. The boss gate is open.';stats()}else ui.puzzleFeedback.textContent='❌ Wrong. Even the cemetery is disappointed in you.'}
   function startBoss(){ui.bossReady.classList.add('hidden');ui.bossIntro.classList.add('hidden');target=null;combatCheckpoint={x,y};startCombat(true)}
   function start(){reveal();stats();drawMini();cancelAnimationFrame(relationshipRAF);clearInterval(enemyTimer);cancelAnimationFrame(raf);const loop=t=>{now=t;if(walkPulse>0 && t%99999>-1){} if(mode==='map')drawWorld(t);drawMini();raf=requestAnimationFrame(loop)};raf=requestAnimationFrame(loop);requestAnimationFrame(combatTick)}
   function primaryAction(){if(mode==='encounter')startEncounterFight();else if(mode==='combat')combatAttack();else if(mode==='map')checkTriggers()}

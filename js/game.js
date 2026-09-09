@@ -178,10 +178,11 @@ function mountLevel1(){
         <div class="story-actions"><button id="retry-combat" class="primary">TRY AGAIN</button><button id="back-map">BACK TO MAP</button></div>
       </div></div>
 
-      <div id="relationship" class="overlay hidden"><div class="overlay-box center relationship-box">
-        <canvas id="relationship-canvas" class="story-art relationship-art" width="720" height="250"></canvas>
+      <div id="relationship" class="overlay hidden"><div class="overlay-box center relationship-box ironic-box">
+        <canvas id="relationship-canvas" width="1" height="1" hidden></canvas>
+        <img class="story-art relationship-image" src="assets/story/would-you.png" alt="Scarlett and Olly in bed, with the words Would You?" />
         <div class="story-title">WOULD YOU...</div>
-        <p>Scarlett is talking. Press <strong>WOULD YOU?</strong> at exactly the right moment.</p>
+        <div class="ironic-copy">Sometimes princesses have far too much going on in their heads to get their words out right. In cases like these one can either 1. try to be helpful or 2. take the piss. you choose the latter. press would you at the correct time to complete the challenge</div>
         <div class="timing-track"><div id="timing-zone" class="timing-zone"></div><div id="timing-cursor" class="timing-cursor"></div></div>
         <div id="would-display" class="minigame-display">“Can I ask you a question... have you ever...”</div>
         <button id="would-tap" class="primary timing-button">WOULD YOU?</button>
