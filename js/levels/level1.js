@@ -175,29 +175,34 @@ function drawCemetery(ctx,w,h){
 
 function drawOlly(ctx,x,y,s=.7,t=0,front=true,dir='down',moving=false){
   ctx.save();
-  const bob=moving ? Math.abs(Math.sin(t*11))*1.2 : Math.sin(t*2)*0.4;
+  const bob=moving ? Math.sin(t*18)*1.6 : Math.sin(t*2)*0.4;
+  const faceX = dir === 'left' ? -1 : 1;
   ctx.translate(x,y-bob);
   ctx.fillStyle='rgba(0,0,0,.36)';ctx.beginPath();ctx.ellipse(0,39*s,24*s,6*s,0,0,Math.PI*2);ctx.fill();
   if(ollySprite.complete && ollySprite.naturalWidth){
-    const w=86*s,h=129*s;
-    ctx.drawImage(ollySprite,-w/2,-104*s,w,h);
+    const w=96*s,h=144*s;
+    ctx.save();
+    ctx.scale(faceX,1);
+    ctx.drawImage(ollySprite,-w/2,-114*s,w,h);
+    ctx.restore();
   }
   ctx.restore();
 }
 
 const ollySprite=new Image();
-ollySprite.src='assets/characters/olly.png?v=211';
+ollySprite.src='assets/characters/olly.png?v=212';
 const zombieSprites={shambler:new Image(),fire:new Image()};
-zombieSprites.shambler.src='assets/characters/zombie-goth.png?v=211';
-zombieSprites.fire.src='assets/characters/fire-goth.png?v=211';
+zombieSprites.shambler.src='assets/characters/zombie-goth.png?v=212';
+zombieSprites.fire.src='assets/characters/fire-goth.png?v=212';
 function drawZombieSprite(ctx,x,y,type,s=.75,t=0,attack=false){
   const img=zombieSprites[type]||zombieSprites.shambler;
   ctx.save();
-  ctx.translate(x,y+Math.sin(t*7)*1.5);
+  const bob=Math.sin(t*7)*1.5;
+  ctx.translate(x,y+bob);
   ctx.fillStyle='rgba(0,0,0,.34)';ctx.beginPath();ctx.ellipse(0,40*s,30*s,7*s,0,0,Math.PI*2);ctx.fill();
   if(img.complete && img.naturalWidth){
-    const w=96*s,h=144*s;
-    ctx.drawImage(img,-w/2,-118*s,w,h);
+    const w=108*s,h=162*s;
+    ctx.drawImage(img,-w/2,-132*s,w,h);
   }
   if(attack){ctx.strokeStyle=type==='fire'?'#ff6e4c':'#ef91ac';ctx.lineWidth=3*s;ctx.beginPath();ctx.arc(0,-6*s,40*s,0,Math.PI*2);ctx.stroke()}
   ctx.restore();
@@ -284,8 +289,8 @@ export function createLevel1(ui){
   c.save();c.translate(px,py);if(hurt)c.globalAlpha=.5;
   c.fillStyle='rgba(0,0,0,.25)';c.beginPath();c.ellipse(0,54*s,32*s,8*s,0,0,Math.PI*2);c.fill();
   if(ollySprite.complete && ollySprite.naturalWidth){
-    const w=104*s,h=156*s;
-    c.drawImage(ollySprite,-w/2,-126*s,w,h);
+    const w=116*s,h=174*s;
+    c.drawImage(ollySprite,-w/2,-140*s,w,h);
   }
   c.restore();
 }
