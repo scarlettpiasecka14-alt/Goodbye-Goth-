@@ -20,6 +20,32 @@ const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const wouldIcon=new Image(); wouldIcon.src='assets/icons/would-you.png';
 const quizIcon=new Image(); quizIcon.src='assets/icons/quiz.png';
 
+// 3.6 environment sprites: the maze remains the walkable skeleton, while these images provide the illustrated skin.
+const environmentSprites={church:new Image(),spookyhouse:new Image(),cypt:new Image(),tree:new Image(),bush:new Image(),candles:new Image(),angel:new Image(),lantern:new Image(),graves:[]};
+environmentSprites.church.src='assets/environment/church.webp?v=361';
+environmentSprites.spookyhouse.src='assets/environment/spookyhouse.webp?v=361';
+environmentSprites.cypt.src='assets/environment/cypt.webp?v=361';
+environmentSprites.tree.src='assets/environment/tree.webp?v=361';
+environmentSprites.bush.src='assets/environment/bush.webp?v=361';
+environmentSprites.candles.src='assets/environment/candles.webp?v=361';
+environmentSprites.angel.src='assets/environment/angelstatue.webp?v=361';
+environmentSprites.lantern.src='assets/environment/lantern.webp?v=361';
+for(let i=1;i<=15;i++){const img=new Image();img.src=`assets/environment/grave-${i}.webp?v=361`;environmentSprites.graves.push(img)}
+function drawEnvSprite(ctx,img,x,y,w,h){if(!img.complete||!img.naturalWidth)return;ctx.drawImage(img,x,y,w,h)}
+function drawEnvironmentSpriteLayer(ctx){
+  drawEnvSprite(ctx,environmentSprites.church,52,18,300,285);
+  drawEnvSprite(ctx,environmentSprites.spookyhouse,760,30,205,185);
+  drawEnvSprite(ctx,environmentSprites.cypt,425,355,225,205);
+  drawEnvSprite(ctx,environmentSprites.cypt,795,338,175,160);
+  [[18,30,165,152],[350,20,135,140],[815,190,150,158],[52,418,160,150],[748,438,140,132]].forEach(v=>drawEnvSprite(ctx,environmentSprites.tree,...v));
+  [[0,185,150,92],[295,285,140,86],[660,245,155,98],[875,432,125,84],[180,504,155,88],[600,505,145,94]].forEach(v=>drawEnvSprite(ctx,environmentSprites.bush,...v));
+  const graveSpots=[[18,176,66,82,1],[110,178,62,78,2],[245,188,62,84,3],[365,175,64,82,4],[520,245,62,82,5],[650,175,66,85,6],[882,206,60,80,7],[42,302,64,86,8],[318,425,62,82,9],[660,418,66,86,10],[880,304,62,82,11],[178,410,66,85,12],[530,500,62,80,13],[742,500,66,84,14],[930,496,62,80,15]];
+  graveSpots.forEach(([x,y,w,h,i])=>drawEnvSprite(ctx,environmentSprites.graves[i-1],x,y,w,h));
+  [[160,320,90,116],[710,312,86,112]].forEach(v=>drawEnvSprite(ctx,environmentSprites.angel,...v));
+  [[430,190,66,96],[742,188,66,96],[46,360,66,96],[940,352,66,96]].forEach(v=>drawEnvSprite(ctx,environmentSprites.lantern,...v));
+  [[302,212,130,110],[602,420,132,110],[832,260,110,96]].forEach(v=>drawEnvSprite(ctx,environmentSprites.candles,...v));
+}
+
 function rgba(c,a){return c.replace(')',`,${a})`).replace('rgb','rgba')}
 
 function drawCemetery(ctx,w,h){
@@ -364,6 +390,9 @@ function drawCemetery(ctx,w,h){
   detailedCrypt(855,340,.95);
   detailedTree(82,112,1.25);detailedTree(370,95,.95);detailedTree(905,110,1.25);detailedTree(280,455,.9);detailedTree(745,445,1.0);
 
+  // 3.6: real illustrated environment sprites sit over the existing playable maze.
+  drawEnvironmentSpriteLayer(ctx);
+
   // More dramatic vignette and distant mist ribbons for depth.
   const mist=ctx.createRadialGradient(w*.52,h*.50,40,w*.52,h*.50,h*.62);mist.addColorStop(0,'rgba(186,146,190,0)');mist.addColorStop(.75,'rgba(186,146,190,.04)');mist.addColorStop(1,'rgba(8,6,12,.24)');ctx.fillStyle=mist;ctx.fillRect(0,0,w,h);
 
@@ -432,7 +461,7 @@ export function createLevel1(ui){
     {x:8,y:6,type:'shambler',name:'GRAVEYARD SHAMBLER',hp:4,maxHp:4,dead:false,pattern:'Slow lunge'},
     {x:17,y:5,type:'fire',name:'FIRE GOTH',hp:5,maxHp:5,dead:false,pattern:'Throws fireballs'}
   ];
-  const relationship={x:12,y:8},puzzle={x:17,y:10},boss={x:20,y:8};
+  const relationship={x:12,y:10},puzzle={x:17,y:10},boss={x:20,y:8};
   let x=3,y=11,hp=5,mode='map',walkDir='right',facingDir='right',walkPulse=0,kills=0,relationshipDone=false,puzzleSolved=false,target=null,isBoss=false,combatHp=0,combatMax=1,enemyAttackPhase=null,enemyTimer=null,combatRaf=0,projectiles=[],player={x:135,y:260,invuln:0,aimX:500,aimY:180},combatCheckpoint=null,bossRoomEntered=false,relationshipStep=0,relationshipRound=0,relationshipStart=0,relationshipDuration=2600,relationshipAnimating=false,relationshipRAF=0;
   let now=0,raf=0;
 
@@ -462,12 +491,12 @@ export function createLevel1(ui){
     }
     enemies.forEach(e=>{if(!e.dead&&revealed[e.y][e.x])drawZombieSprite(ctx,e.x*TILE+20,e.y*TILE+38,e.type,.68,t/1000)});
     if(!relationshipDone&&revealed[relationship.y][relationship.x]){
-      if(wouldIcon.complete&&wouldIcon.naturalWidth) ctx.drawImage(wouldIcon,relationship.x*TILE-10,relationship.y*TILE-12,60,50);
-      else {ctx.fillStyle='#ef91ac';ctx.font='28px Georgia';ctx.textAlign='center';ctx.fillText('✣',relationship.x*TILE+20,relationship.y*TILE+29)}
+      if(wouldIcon.complete&&wouldIcon.naturalWidth) ctx.drawImage(wouldIcon,relationship.x*TILE-40,relationship.y*TILE-40,120,100);
+      else {ctx.fillStyle='#ef91ac';ctx.font='56px Georgia';ctx.textAlign='center';ctx.fillText('✣',relationship.x*TILE+20,relationship.y*TILE+38)}
     }
     if(!puzzleSolved&&revealed[puzzle.y][puzzle.x]){
-      if(quizIcon.complete&&quizIcon.naturalWidth) ctx.drawImage(quizIcon,puzzle.x*TILE-10,puzzle.y*TILE-12,62,62);
-      else {ctx.fillStyle='#e6c5d3';ctx.font='26px Georgia';ctx.textAlign='center';ctx.fillText('♥',puzzle.x*TILE+20,puzzle.y*TILE+29)}
+      if(quizIcon.complete&&quizIcon.naturalWidth) ctx.drawImage(quizIcon,puzzle.x*TILE-42,puzzle.y*TILE-42,124,124);
+      else {ctx.fillStyle='#e6c5d3';ctx.font='52px Georgia';ctx.textAlign='center';ctx.fillText('♥',puzzle.x*TILE+20,puzzle.y*TILE+38)}
     }
     if(revealed[boss.y][boss.x]){ctx.fillStyle=unlockedBoss()?'#f0cf8b':'#8c7584';ctx.font='24px Georgia';ctx.textAlign='center';ctx.fillText(unlockedBoss()?'✦':'🔒',boss.x*TILE+20,boss.y*TILE+29);if(unlockedBoss()){ctx.fillStyle='#ef91ac';ctx.font='bold 14px system-ui';ctx.fillText('GATE OPEN',boss.x*TILE+20,boss.y*TILE+56)}}
     if(bossRoomEntered){ctx.fillStyle='rgba(8,5,15,.55)';ctx.fillRect(21*TILE,6*TILE,3*TILE,5*TILE);ctx.strokeStyle='#8d617f';ctx.lineWidth=3;ctx.strokeRect(21*TILE+8,6*TILE+8,3*TILE-16,5*TILE-16);ctx.fillStyle='#f0d5e3';ctx.font='bold 15px Georgia';ctx.textAlign='center';ctx.fillText('CLASSIC GOTH',22*TILE+20,8*TILE+28)}
@@ -544,7 +573,9 @@ function drawZombieCombat(c,px,py,type,attack){
 
   function checkTriggers(){if(mode!=='map')return;let e=enemies.find(z=>!z.dead&&dist({x,y},{x:z.x,y:z.y})<1.01);if(e){target=e;combatCheckpoint={x,y};mode='encounter';drawEncounter(e.type);ui.encounterName.textContent=e.name;ui.encounterText.innerHTML=e.type==='shambler'?'<strong>Zombie Goth:</strong> “Mmm... black eyeliner...”<br><br>She shuffles closer. Then faster.':'<strong>Fire Goth:</strong> “ill burn you like the sun burns me...”<br><br>Flames gather in her hands.';ui.encounter.classList.remove('hidden');return}
     if(!relationshipDone&&dist({x,y},relationship)<1.01){startRelationship();return}
-    if(kills>=2&&!puzzleSolved&&dist({x,y},puzzle)<1.01){mode='puzzle';ui.puzzle.classList.remove('hidden');ui.puzzleFeedback.textContent='Choose wisely. The Goths have inexplicably made this a formal assessment.';return}
+    if(!puzzleSolved&&dist({x,y},puzzle)<1.01){
+      mode='puzzle';ui.puzzle.classList.remove('hidden');ui.puzzleFeedback.textContent='Choose wisely. The Goths have inexplicably made this a formal assessment.';return
+    }
     if(unlockedBoss()&&dist({x,y},boss)<1.01){mode='bossintro';ui.bossIntro.classList.remove('hidden');return}}
 
   function move(dir){
@@ -562,7 +593,7 @@ function drawZombieCombat(c,px,py,type,attack){
 
     // The locked boss gate cannot be crossed until all Level 1 objectives are complete.
     if(nx===20&&ny===8&&!unlockedBoss()){
-      ui.dialogue.textContent='🔒 The iron gate is sealed. Defeat both Zombie Goths, survive WOULD YOU?, and solve the question first.';
+      ui.dialogue.textContent='🔒 The iron gate is sealed. Complete the four requirements in any order: defeat 2 Goths, finish WOULD YOU?, and answer the Princess Question.';
       return;
     }
     // Crossing into the chamber creates the Level 1.5 threshold.
@@ -575,6 +606,26 @@ function drawZombieCombat(c,px,py,type,attack){
     x=nx;y=ny;walkDir=dir;if(dir==='left'||dir==='right')facingDir=dir;walkPulse=1;setTimeout(()=>{walkPulse=0},180);
     reveal();ui.dialogue.textContent='The cemetery reveals more of the path. Apparently nobody thought to install signs.';drawMini();checkTriggers();
   }
+  function canvasPointToWorld(e){
+    const rect=ui.canvas.getBoundingClientRect();
+    const vw=ui.canvas.clientWidth||1000, vh=ui.canvas.clientHeight||600, zoom=1.24;
+    const sx=(e.clientX-rect.left)*(vw/rect.width), sy=(e.clientY-rect.top)*(vh/rect.height);
+    const playerX=x*TILE+20, playerY=y*TILE+35;
+    const viewW=vw/zoom, viewH=vh/zoom;
+    const camX=Math.max(viewW/2,Math.min(1000-viewW/2,playerX));
+    const camY=Math.max(viewH/2,Math.min(600-viewH/2,playerY));
+    return {x:(sx-vw/2+camX*zoom)/zoom,y:(sy-vh/2+camY*zoom)/zoom};
+  }
+  ui.canvas.addEventListener('pointerdown',e=>{
+    if(mode!=='map')return;
+    const pt=canvasPointToWorld(e);
+    const hitChallenge=Math.hypot(pt.x-(relationship.x*TILE+20),pt.y-(relationship.y*TILE+20))<55;
+    const hitPuzzle=Math.hypot(pt.x-(puzzle.x*TILE+20),pt.y-(puzzle.y*TILE+20))<65;
+    if(hitChallenge&&!relationshipDone){startRelationship();return}
+    if(hitPuzzle&&!puzzleSolved){
+      mode='puzzle';ui.puzzle.classList.remove('hidden');ui.puzzleFeedback.textContent='Choose wisely. The Goths have inexplicably made this a formal assessment.';return
+    }
+  });
   function interact(){checkTriggers()}
   function startEncounterFight(){ui.encounter.classList.add('hidden');startCombat(false)}
   function drawRelationshipArt(){
@@ -623,7 +674,7 @@ function completeRelationship(){
       relationshipStep++;
       if(relationshipStep>=5){
         relationshipDone=true;mode='map';cancelAnimationFrame(relationshipRAF);ui.relationship.classList.add('hidden');
-        ui.dialogue.textContent='💕 Relationship Challenge complete. Five perfectly timed interruptions. Truly, romance is thriving.';stats();
+        ui.dialogue.textContent=unlockedBoss()?'💕 WOULD YOU? complete. Miraculously, the rest of the requirements are also done. The gate can now open.':'💕 WOULD YOU? complete. Five perfectly timed interruptions. One more requirement remains before the gate can open.';stats();
       }else{
         relationshipRound++;relationshipDuration=[2600,2250,1950,1650,1400][relationshipRound]||1200;relationshipStart=performance.now();
         ui.wouldFeedback.textContent='✅ PERFECT. She has started another ramble. Round '+(relationshipStep+1)+' of 5. Less time this time, because apparently love needed a difficulty curve.';
@@ -639,7 +690,7 @@ function completeRelationship(){
       puzzleSolved=true;
       mode='map';
       ui.puzzle.classList.add('hidden');
-      ui.dialogue.textContent='🧩 Correct. “Get your kit off, mate.” At last, a princess question answered with the appropriate level of charm. The boss gate is now open.';
+      ui.dialogue.textContent=unlockedBoss()?'🧩 Correct. “Get your kit off, mate.” Against all odds, the rest of the requirements are also complete. The gate can now open.':'🧩 Correct. “Get your kit off, mate.” One objective down. The Goths are still guarding the exit, because apparently there are rules.';
       stats();
     }else{
       ui.puzzleFeedback.textContent='❌ Incorrect. The princess remains imprisoned, and somewhere a goth has just judged you.';
