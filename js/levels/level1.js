@@ -1,11 +1,11 @@
 const MAP=[
   "#########################",
   "#########################",
-  "##..............#########",
-  "##..............#########",
-  "##..............#########",
-  "##..............#########",
-  "#####...#####...#####...#",
+  "##.....................##",
+  "##.....................##",
+  "##.....................##",
+  "##.....................##",
+  "#####...########...######",
   "#####...................#",
   "#####...................#",
   "##......................#",
@@ -22,35 +22,81 @@ const quizIcon=new Image(); quizIcon.src='assets/icons/quiz.png';
 
 // 3.6 environment sprites: the maze remains the walkable skeleton, while these images provide the illustrated skin.
 const environmentSprites={church:new Image(),spookyhouse:new Image(),cypt:new Image(),tree:new Image(),bush:new Image(),candles:new Image(),angel:new Image(),lantern:new Image(),graves:[]};
-environmentSprites.church.src='assets/environment/church.webp?v=370';
-environmentSprites.spookyhouse.src='assets/environment/spookyhouse.webp?v=370';
-environmentSprites.cypt.src='assets/environment/cypt.webp?v=370';
-environmentSprites.tree.src='assets/environment/tree.webp?v=370';
-environmentSprites.bush.src='assets/environment/bush.webp?v=370';
-environmentSprites.candles.src='assets/environment/candles.webp?v=370';
-environmentSprites.angel.src='assets/environment/angelstatue.webp?v=370';
-environmentSprites.lantern.src='assets/environment/lantern.webp?v=370';
-for(let i=1;i<=15;i++){const img=new Image();img.src=`assets/environment/grave-${i}.webp?v=370`;environmentSprites.graves.push(img)}
+environmentSprites.church.src='assets/environment/church.webp?v=380';
+environmentSprites.spookyhouse.src='assets/environment/spookyhouse.webp?v=380';
+environmentSprites.cypt.src='assets/environment/cypt.webp?v=380';
+environmentSprites.tree.src='assets/environment/tree.webp?v=380';
+environmentSprites.bush.src='assets/environment/bush.webp?v=380';
+environmentSprites.candles.src='assets/environment/candles.webp?v=380';
+environmentSprites.angel.src='assets/environment/angelstatue.webp?v=380';
+environmentSprites.lantern.src='assets/environment/lantern.webp?v=380';
+for(let i=1;i<=15;i++){const img=new Image();img.src=`assets/environment/grave-${i}.webp?v=380`;environmentSprites.graves.push(img)}
 function drawEnvSprite(ctx,img,x,y,w,h){if(!img.complete||!img.naturalWidth)return;ctx.drawImage(img,x,y,w,h)}
 function drawEnvironmentSpriteLayer(ctx){
-  // Major architecture: keep it off the main central route so the maze remains readable.
-  drawEnvSprite(ctx,environmentSprites.church,24,18,315,287);
-  drawEnvSprite(ctx,environmentSprites.spookyhouse,760,24,205,188);
-  drawEnvSprite(ctx,environmentSprites.cypt,420,350,225,205);
-  drawEnvSprite(ctx,environmentSprites.cypt,805,335,175,160);
+  // 3.8: keep the maze readable. Buildings and scenery sit in side plots,
+  // leaving the main stone lanes clear for Olly and the encounters.
 
-  // Reusable trees and bushes, deliberately varied in scale.
-  [[16,26,180,164],[350,22,132,138],[800,155,148,142],[42,430,170,154],[738,446,142,132]].forEach(v=>drawEnvSprite(ctx,environmentSprites.tree,...v));
-  [[0,185,145,92],[290,285,145,88],[660,245,160,100],[864,430,132,88],[165,505,168,92],[585,505,150,96]].forEach(v=>drawEnvSprite(ctx,environmentSprites.bush,...v));
+  // Far-edge architecture, with the church tucked into the upper-left corner.
+  drawEnvSprite(ctx,environmentSprites.church,-18,-28,276,270);
+  drawEnvSprite(ctx,environmentSprites.spookyhouse,790,24,178,165);
 
-  const graveSpots=[[18,176,66,82,1],[110,178,62,78,2],[245,188,62,84,3],[365,175,64,82,4],[520,245,62,82,5],[650,175,66,85,6],[882,206,60,80,7],[42,302,64,86,8],[318,425,62,82,9],[660,418,66,86,10],[880,304,62,80,11],[178,410,66,85,12],[530,500,62,80,13],[742,500,66,84,14],[930,496,62,80,15]];
+  // One central crypt and one separate lower-right mausoleum.
+  drawEnvSprite(ctx,environmentSprites.cypt,405,418,220,184);
+  drawEnvSprite(ctx,environmentSprites.cypt,822,408,172,160);
+
+  // Trees frame the cemetery and are deliberately kept off the central lanes.
+  [
+    [-16,338,158,146],
+    [350,24,146,142],
+    [842,168,126,126],
+    [852,478,144,134]
+  ].forEach(v=>drawEnvSprite(ctx,environmentSprites.tree,...v));
+
+  // A few reusable rose-bush masses, with varied scale.
+  [
+    [8,274,122,74],
+    [306,294,126,74],
+    [688,278,130,76],
+    [854,292,116,72],
+    [164,510,136,74],
+    [618,512,136,76]
+  ].forEach(v=>drawEnvSprite(ctx,environmentSprites.bush,...v));
+
+  // Distinct graves, mostly in side plots rather than on the central route.
+  const graveSpots=[
+    [28,168,60,78,1],
+    [116,176,58,76,2],
+    [244,166,58,78,3],
+    [520,176,58,78,4],
+    [660,170,60,80,5],
+    [908,180,56,76,6],
+    [42,432,60,80,7],
+    [254,432,60,80,8],
+    [692,438,60,80,9],
+    [940,434,56,76,10]
+  ];
   graveSpots.forEach(([x,y,w,h,i])=>drawEnvSprite(ctx,environmentSprites.graves[i-1],x,y,w,h));
 
-  [[160,320,90,116],[710,312,86,112]].forEach(v=>drawEnvSprite(ctx,environmentSprites.angel,...v));
-  [[430,190,66,96],[742,188,66,96],[46,360,66,96],[940,352,66,96]].forEach(v=>drawEnvSprite(ctx,environmentSprites.lantern,...v));
-  [[302,212,130,110],[602,420,132,110],[832,260,110,96]].forEach(v=>drawEnvSprite(ctx,environmentSprites.candles,...v));
-}
+  // Two angel statues create focal points without blocking a path.
+  drawEnvSprite(ctx,environmentSprites.angel,118,430,84,110);
+  drawEnvSprite(ctx,environmentSprites.angel,742,428,80,106);
 
+  // Lanterns mark route intersections so the playable lanes are visually obvious.
+  [
+    [172,328,56,84],
+    [474,308,56,84],
+    [704,326,56,84],
+    [932,318,56,84]
+  ].forEach(v=>drawEnvSprite(ctx,environmentSprites.lantern,...v));
+
+  // Candle clusters frame buildings rather than sitting in the middle of paths.
+  [
+    [46,346,112,94],
+    [468,354,116,96],
+    [796,328,108,92],
+    [696,510,112,94]
+  ].forEach(v=>drawEnvSprite(ctx,environmentSprites.candles,...v));
+}
 function rgba(c,a){return c.replace(')',`,${a})`).replace('rgb','rgba')}
 
 function drawCemetery(ctx,w,h){
@@ -83,20 +129,38 @@ function drawCemetery(ctx,w,h){
     ctx.beginPath();ctx.ellipse(gx,gy,18+(i%4)*3,5+(i%3)*2,0,0,Math.PI*2);ctx.fill();
   }
 
-  // Walkable routes follow the exact maze footprint.
+  // Walkable routes use irregular cobble seams instead of a visible tile grid.
   function floorTile(tx,ty){
     const px=tx*TILE, py=ty*TILE;
-    ctx.fillStyle='#4c4351';ctx.fillRect(px,py,TILE,TILE);
-    ctx.strokeStyle='rgba(117,99,117,.42)';ctx.lineWidth=1;ctx.strokeRect(px+.5,py+.5,TILE-1,TILE-1);
-    // broken cobbles, varied slightly per tile
-    const seed=(tx*17+ty*31)%5;
-    ctx.strokeStyle=seed%2?'rgba(45,37,48,.7)':'rgba(57,46,58,.72)';
-    ctx.lineWidth=1.2;
-    const yy=py+12+(seed%3)*3;
-    ctx.beginPath();ctx.moveTo(px+3,yy);ctx.lineTo(px+TILE-4,yy);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(px+8+(seed*4),py+28);ctx.lineTo(px+31,py+26);ctx.stroke();
+    const seed=Math.abs((tx*37+ty*73)%9);
+    ctx.fillStyle=(seed%3===0)?'#514756':'#5a4f5f';
+    ctx.fillRect(px,py,TILE,TILE);
+
+    ctx.strokeStyle='rgba(29,23,33,.72)';
+    ctx.lineWidth=1.7;
+    ctx.beginPath();
+    ctx.moveTo(px+4,py+15+(seed%3)*2);
+    ctx.quadraticCurveTo(px+18,py+10+(seed%4)*3,px+TILE-4,py+16+(seed%2));
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(px+7+(seed%4)*3,py+31);
+    ctx.quadraticCurveTo(px+20,py+25+(seed%3)*2,px+TILE-7,py+29-(seed%2)*2);
+    ctx.stroke();
+
+    ctx.fillStyle='rgba(214,185,201,.08)';
+    ctx.beginPath();
+    ctx.ellipse(px+12+(seed%3)*8,py+8+(seed%4)*5,4+(seed%2),2,0,0,Math.PI*2);
+    ctx.fill();
   }
   for(let yy=0;yy<ROWS;yy++) for(let xx=0;xx<COLS;xx++) if(isFloor(xx,yy)) floorTile(xx,yy);
+
+  // Narrow stone edging keeps the major lanes legible without swallowing them.
+  ctx.strokeStyle='rgba(24,18,29,.82)';
+  ctx.lineWidth=6;
+  [[80,322,360,322],[520,322,900,322],[250,558,820,558]].forEach(([x1,y1,x2,y2])=>{
+    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  });
 
   // Small route borders and ironwork, kept understated.
   function fence(x1,y1,x2,y2){
@@ -111,13 +175,6 @@ function drawCemetery(ctx,w,h){
   fence(24,6*TILE+12,10*TILE,6*TILE+12);
   fence(18*TILE,2*TILE+8,24*TILE,2*TILE+8);
   fence(5*TILE,12*TILE+8,13*TILE,12*TILE+8);
-
-  // A few natural shadow pockets to separate the plots from the paths.
-  function plot(x,y,pw,ph,rot=0){
-    ctx.save();ctx.translate(x,y);ctx.rotate(rot);ctx.fillStyle='rgba(6,5,9,.46)';
-    ctx.beginPath();ctx.roundRect(-pw/2,-ph/2,pw,ph,10);ctx.fill();ctx.strokeStyle='rgba(52,43,57,.75)';ctx.lineWidth=2;ctx.stroke();ctx.restore();
-  }
-  plot(150,220,100,58,-.06);plot(320,250,94,60,.05);plot(610,160,96,58,-.04);plot(760,340,118,64,.02);plot(910,245,88,60,-.05);
 
   // Illustrated environment sprites.
   drawEnvironmentSpriteLayer(ctx);
@@ -150,8 +207,8 @@ function drawOlly(ctx,x,y,s=.7,t=0,front=true,dir='right',moving=false){
 const ollySprite=new Image();
 ollySprite.src='assets/characters/olly.png?v=300';
 const zombieSprites={shambler:new Image(),chain:new Image()};
-zombieSprites.shambler.src='assets/characters/zombie-goth.png?v=370';
-zombieSprites.chain.src='assets/characters/chain-goth.webp?v=370';
+zombieSprites.shambler.src='assets/characters/zombie-goth.png?v=380';
+zombieSprites.chain.src='assets/characters/chain-goth.webp?v=380';
 function drawZombieSprite(ctx,x,y,type,s=.75,t=0,attack=false){
   const img=zombieSprites[type]||zombieSprites.shambler;
   ctx.save();
@@ -188,13 +245,13 @@ export function createLevel1(ui){
   const revealed=Array.from({length:ROWS},()=>Array(COLS).fill(false));
   const enemies=[
     {x:8,y:6,type:'shambler',name:'GRAVEYARD SHAMBLER',hp:4,maxHp:4,dead:false,pattern:'Slow lunge'},
-    {x:17,y:5,type:'chain',name:'CHAIN GOTH',hp:5,maxHp:5,dead:false,pattern:'Chain lash'}
+    {x:17,y:6,type:'chain',name:'CHAIN GOTH',hp:5,maxHp:5,dead:false,pattern:'Chain lash'}
   ];
-  const relationship={x:12,y:10},puzzle={x:17,y:10},boss={x:20,y:8};
+  const relationship={x:5,y:9},puzzle={x:19,y:11},boss={x:20,y:8};
   let x=3,y=11,hp=5,mode='map',walkDir='right',facingDir='right',walkPulse=0,kills=0,relationshipDone=false,puzzleSolved=false,target=null,isBoss=false,combatHp=0,combatMax=1,enemyAttackPhase=null,enemyTimer=null,combatRaf=0,projectiles=[],player={x:135,y:260,invuln:0,aimX:500,aimY:180},combatCheckpoint=null,bossRoomEntered=false,relationshipStep=0,relationshipRound=0,relationshipStart=0,relationshipDuration=2600,relationshipAnimating=false,relationshipRAF=0;
   let now=0,raf=0;
 
-  function reveal(){for(let yy=0;yy<ROWS;yy++)for(let xx=0;xx<COLS;xx++)if(Math.hypot(xx-x,yy-y)<=3.7)revealed[yy][xx]=true}
+  function reveal(){for(let yy=0;yy<ROWS;yy++)for(let xx=0;xx<COLS;xx++)if(Math.hypot(xx-x,yy-y)<=4.2)revealed[yy][xx]=true}
   function unlockedBoss(){return kills>=2&&relationshipDone&&puzzleSolved}
   function stats(){ui.hpEl.textContent=hp;ui.gothEl.textContent=`${kills}/2`;ui.relEl.textContent=relationshipDone?'Solved':'Locked';ui.puzzleEl.textContent=puzzleSolved?'Answered':'Locked';ui.goalGoths.innerHTML=kills>=2?'<span class="good">✓ Defeat the required Zombie Goths</span>':`○ Defeat the required Zombie Goths (${kills}/2)`;ui.goalRel.innerHTML=relationshipDone?'<span class="good">✓ WOULD YOU? Puzzle complete</span>':'○ Complete the WOULD YOU? Puzzle';ui.goalPuzzle.innerHTML=puzzleSolved?'<span class="good">✓ Princess Question answered</span>':'○ Answer the Princess Question';ui.goalBoss.innerHTML=unlockedBoss()?'<span class="good">✓ Boss gate unlocked</span>':'<span class="locked">🔒 Boss gate locked</span>'}
   function drawMini(){mctx.clearRect(0,0,250,180);mctx.fillStyle='#0d0b11';mctx.fillRect(0,0,250,180);for(let yy=0;yy<ROWS;yy++)for(let xx=0;xx<COLS;xx++){if(revealed[yy][xx]){mctx.fillStyle=isFloor(xx,yy)?'#57505b':'#17131b';mctx.fillRect(xx*10,yy*10,10,10)}else{mctx.fillStyle='#0c0a0e';mctx.fillRect(xx*10,yy*10,10,10)}}mctx.fillStyle='#f3eff0';mctx.beginPath();mctx.arc(x*10+5,y*10+5,3.5,0,Math.PI*2);mctx.fill();if(!relationshipDone&&revealed[relationship.y][relationship.x]){mctx.fillStyle='#ef91ac';mctx.fillRect(relationship.x*10+2,relationship.y*10+2,6,6)}if(!puzzleSolved&&revealed[puzzle.y][puzzle.x]){mctx.fillStyle='#e5c5d5';mctx.fillRect(puzzle.x*10+2,puzzle.y*10+2,6,6)}if(unlockedBoss()&&revealed[boss.y][boss.x]){mctx.fillStyle='#f0cf8b';mctx.fillRect(boss.x*10+2,boss.y*10+2,6,6)}}
@@ -218,13 +275,13 @@ export function createLevel1(ui){
       if(!revealed[yy][xx]){ctx.fillStyle='rgba(3,2,7,.92)';ctx.fillRect(xx*TILE,yy*TILE,TILE,TILE)}
       else if(!isFloor(xx,yy)){ctx.fillStyle='rgba(2,2,6,.28)';ctx.fillRect(xx*TILE,yy*TILE,TILE,TILE)}
     }
-    enemies.forEach(e=>{if(!e.dead&&revealed[e.y][e.x])drawZombieSprite(ctx,e.x*TILE+20,e.y*TILE+38,e.type,.68,t/1000)});
+    enemies.forEach(e=>{if(!e.dead&&revealed[e.y][e.x])drawZombieSprite(ctx,e.x*TILE+20,e.y*TILE+54,e.type,.62,t/1000)});
     if(!relationshipDone&&revealed[relationship.y][relationship.x]){
-      if(wouldIcon.complete&&wouldIcon.naturalWidth) ctx.drawImage(wouldIcon,relationship.x*TILE-40,relationship.y*TILE-40,120,100);
+      if(wouldIcon.complete&&wouldIcon.naturalWidth) ctx.drawImage(wouldIcon,relationship.x*TILE-58,relationship.y*TILE-58,156,132);
       else {ctx.fillStyle='#ef91ac';ctx.font='56px Georgia';ctx.textAlign='center';ctx.fillText('✣',relationship.x*TILE+20,relationship.y*TILE+38)}
     }
     if(!puzzleSolved&&revealed[puzzle.y][puzzle.x]){
-      if(quizIcon.complete&&quizIcon.naturalWidth) ctx.drawImage(quizIcon,puzzle.x*TILE-42,puzzle.y*TILE-42,124,124);
+      if(quizIcon.complete&&quizIcon.naturalWidth) ctx.drawImage(quizIcon,puzzle.x*TILE-58,puzzle.y*TILE-58,156,156);
       else {ctx.fillStyle='#e6c5d3';ctx.font='52px Georgia';ctx.textAlign='center';ctx.fillText('♥',puzzle.x*TILE+20,puzzle.y*TILE+38)}
     }
     if(revealed[boss.y][boss.x]){ctx.fillStyle=unlockedBoss()?'#f0cf8b':'#8c7584';ctx.font='24px Georgia';ctx.textAlign='center';ctx.fillText(unlockedBoss()?'✦':'🔒',boss.x*TILE+20,boss.y*TILE+29);if(unlockedBoss()){ctx.fillStyle='#ef91ac';ctx.font='bold 14px system-ui';ctx.fillText('GATE OPEN',boss.x*TILE+20,boss.y*TILE+56)}}
