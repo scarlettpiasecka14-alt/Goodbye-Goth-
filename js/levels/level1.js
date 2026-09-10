@@ -22,25 +22,30 @@ const quizIcon=new Image(); quizIcon.src='assets/icons/quiz.png';
 
 // 3.6 environment sprites: the maze remains the walkable skeleton, while these images provide the illustrated skin.
 const environmentSprites={church:new Image(),spookyhouse:new Image(),cypt:new Image(),tree:new Image(),bush:new Image(),candles:new Image(),angel:new Image(),lantern:new Image(),graves:[]};
-environmentSprites.church.src='assets/environment/church.webp?v=361';
-environmentSprites.spookyhouse.src='assets/environment/spookyhouse.webp?v=361';
-environmentSprites.cypt.src='assets/environment/cypt.webp?v=361';
-environmentSprites.tree.src='assets/environment/tree.webp?v=361';
-environmentSprites.bush.src='assets/environment/bush.webp?v=361';
-environmentSprites.candles.src='assets/environment/candles.webp?v=361';
-environmentSprites.angel.src='assets/environment/angelstatue.webp?v=361';
-environmentSprites.lantern.src='assets/environment/lantern.webp?v=361';
-for(let i=1;i<=15;i++){const img=new Image();img.src=`assets/environment/grave-${i}.webp?v=361`;environmentSprites.graves.push(img)}
+environmentSprites.church.src='assets/environment/church.webp?v=370';
+environmentSprites.spookyhouse.src='assets/environment/spookyhouse.webp?v=370';
+environmentSprites.cypt.src='assets/environment/cypt.webp?v=370';
+environmentSprites.tree.src='assets/environment/tree.webp?v=370';
+environmentSprites.bush.src='assets/environment/bush.webp?v=370';
+environmentSprites.candles.src='assets/environment/candles.webp?v=370';
+environmentSprites.angel.src='assets/environment/angelstatue.webp?v=370';
+environmentSprites.lantern.src='assets/environment/lantern.webp?v=370';
+for(let i=1;i<=15;i++){const img=new Image();img.src=`assets/environment/grave-${i}.webp?v=370`;environmentSprites.graves.push(img)}
 function drawEnvSprite(ctx,img,x,y,w,h){if(!img.complete||!img.naturalWidth)return;ctx.drawImage(img,x,y,w,h)}
 function drawEnvironmentSpriteLayer(ctx){
-  drawEnvSprite(ctx,environmentSprites.church,52,18,300,285);
-  drawEnvSprite(ctx,environmentSprites.spookyhouse,760,30,205,185);
-  drawEnvSprite(ctx,environmentSprites.cypt,425,355,225,205);
-  drawEnvSprite(ctx,environmentSprites.cypt,795,338,175,160);
-  [[18,30,165,152],[350,20,135,140],[815,190,150,158],[52,418,160,150],[748,438,140,132]].forEach(v=>drawEnvSprite(ctx,environmentSprites.tree,...v));
-  [[0,185,150,92],[295,285,140,86],[660,245,155,98],[875,432,125,84],[180,504,155,88],[600,505,145,94]].forEach(v=>drawEnvSprite(ctx,environmentSprites.bush,...v));
-  const graveSpots=[[18,176,66,82,1],[110,178,62,78,2],[245,188,62,84,3],[365,175,64,82,4],[520,245,62,82,5],[650,175,66,85,6],[882,206,60,80,7],[42,302,64,86,8],[318,425,62,82,9],[660,418,66,86,10],[880,304,62,82,11],[178,410,66,85,12],[530,500,62,80,13],[742,500,66,84,14],[930,496,62,80,15]];
+  // Major architecture: keep it off the main central route so the maze remains readable.
+  drawEnvSprite(ctx,environmentSprites.church,24,18,315,287);
+  drawEnvSprite(ctx,environmentSprites.spookyhouse,760,24,205,188);
+  drawEnvSprite(ctx,environmentSprites.cypt,420,350,225,205);
+  drawEnvSprite(ctx,environmentSprites.cypt,805,335,175,160);
+
+  // Reusable trees and bushes, deliberately varied in scale.
+  [[16,26,180,164],[350,22,132,138],[800,155,148,142],[42,430,170,154],[738,446,142,132]].forEach(v=>drawEnvSprite(ctx,environmentSprites.tree,...v));
+  [[0,185,145,92],[290,285,145,88],[660,245,160,100],[864,430,132,88],[165,505,168,92],[585,505,150,96]].forEach(v=>drawEnvSprite(ctx,environmentSprites.bush,...v));
+
+  const graveSpots=[[18,176,66,82,1],[110,178,62,78,2],[245,188,62,84,3],[365,175,64,82,4],[520,245,62,82,5],[650,175,66,85,6],[882,206,60,80,7],[42,302,64,86,8],[318,425,62,82,9],[660,418,66,86,10],[880,304,62,80,11],[178,410,66,85,12],[530,500,62,80,13],[742,500,66,84,14],[930,496,62,80,15]];
   graveSpots.forEach(([x,y,w,h,i])=>drawEnvSprite(ctx,environmentSprites.graves[i-1],x,y,w,h));
+
   [[160,320,90,116],[710,312,86,112]].forEach(v=>drawEnvSprite(ctx,environmentSprites.angel,...v));
   [[430,190,66,96],[742,188,66,96],[46,360,66,96],[940,352,66,96]].forEach(v=>drawEnvSprite(ctx,environmentSprites.lantern,...v));
   [[302,212,130,110],[602,420,132,110],[832,260,110,96]].forEach(v=>drawEnvSprite(ctx,environmentSprites.candles,...v));
@@ -49,357 +54,81 @@ function drawEnvironmentSpriteLayer(ctx){
 function rgba(c,a){return c.replace(')',`,${a})`).replace('rgb','rgba')}
 
 function drawCemetery(ctx,w,h){
-  // More illustrative, hand-drawn cemetery. The underlying walkable map stays the same.
+  // 3.7: clean cemetery base. The old blocky placeholder buildings/trees are gone.
+  // The maze remains the walkable skeleton; illustrated PNG/WebP sprites supply the scenery.
   const sky=ctx.createLinearGradient(0,0,0,h);
-  sky.addColorStop(0,'#1a1430');sky.addColorStop(.48,'#211733');sky.addColorStop(1,'#0b0910');
+  sky.addColorStop(0,'#171126');sky.addColorStop(.48,'#241935');sky.addColorStop(1,'#0a0810');
   ctx.fillStyle=sky;ctx.fillRect(0,0,w,h);
 
-  // Soft moon glow.
-  const glow=ctx.createRadialGradient(w*.79,h*.16,8,w*.79,h*.16,125);
-  glow.addColorStop(0,'rgba(255,196,225,.28)');glow.addColorStop(1,'rgba(255,196,225,0)');
+  // Distant silhouettes only, deliberately subtle so they don't compete with the real sprites.
+  ctx.fillStyle='rgba(12,9,18,.72)';
+  for(let i=0;i<19;i++){
+    const bx=i*58-16, bw=28+(i%3)*10, bh=58+(i%5)*13;
+    const by=h*.40;
+    ctx.fillRect(bx,by-bh,bw,bh);
+    ctx.beginPath();ctx.moveTo(bx-8,by-bh);ctx.lineTo(bx+bw/2,by-bh-18-(i%2)*8);ctx.lineTo(bx+bw+8,by-bh);ctx.closePath();ctx.fill();
+  }
+
+  // Moon + haze.
+  const glow=ctx.createRadialGradient(w*.80,h*.16,8,w*.80,h*.16,150);
+  glow.addColorStop(0,'rgba(255,190,224,.26)');glow.addColorStop(1,'rgba(255,190,224,0)');
   ctx.fillStyle=glow;ctx.fillRect(0,0,w,h);
-  ctx.fillStyle='#f2cadf';ctx.beginPath();ctx.arc(w*.79,h*.16,50,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='rgba(241,200,223,.88)';ctx.beginPath();ctx.arc(w*.80,h*.16,46,0,Math.PI*2);ctx.fill();
 
-  // Distant church spires / crypt skyline.
-  ctx.fillStyle='#0d0a15';
-  for(let i=0;i<17;i++){
-    const bx=i*64-18, bw=28+(i%3)*10, bh=72+(i%4)*26, base=h*.39;
-    ctx.fillRect(bx,base-bh,bw,bh);
-    ctx.beginPath();ctx.moveTo(bx-7,base-bh);ctx.lineTo(bx+bw/2,base-bh-28-(i%2)*10);ctx.lineTo(bx+bw+7,base-bh);ctx.closePath();ctx.fill();
-    if(i%4===1){ctx.fillStyle='#6e365b';ctx.fillRect(bx+bw*.42,base-bh+18,5,16);ctx.fillStyle='#0d0a15';}
+  // Ground.
+  ctx.fillStyle='#14101a';ctx.fillRect(0,h*.36,w,h*.64);
+  ctx.fillStyle='rgba(91,62,91,.10)';
+  for(let i=0;i<50;i++){
+    const gx=(i*97)%w, gy=h*.39+(i*71)%(h*.57);
+    ctx.beginPath();ctx.ellipse(gx,gy,18+(i%4)*3,5+(i%3)*2,0,0,Math.PI*2);ctx.fill();
   }
 
-  // Mossy grass base with subtle texture.
-  ctx.fillStyle='#11101a';ctx.fillRect(0,h*.37,w,h*.63);
-  for(let i=0;i<90;i++){
-    const gx=(i*83)%w, gy=h*.40+(i*47)%(h*.53);
-    ctx.strokeStyle=i%2?'#25202e':'#302736';ctx.lineWidth=1.5;
-    ctx.beginPath();ctx.moveTo(gx,gy+5);ctx.lineTo(gx+2,gy-2);ctx.moveTo(gx+3,gy+5);ctx.lineTo(gx+6,gy);ctx.stroke();
+  // Walkable routes follow the exact maze footprint.
+  function floorTile(tx,ty){
+    const px=tx*TILE, py=ty*TILE;
+    ctx.fillStyle='#4c4351';ctx.fillRect(px,py,TILE,TILE);
+    ctx.strokeStyle='rgba(117,99,117,.42)';ctx.lineWidth=1;ctx.strokeRect(px+.5,py+.5,TILE-1,TILE-1);
+    // broken cobbles, varied slightly per tile
+    const seed=(tx*17+ty*31)%5;
+    ctx.strokeStyle=seed%2?'rgba(45,37,48,.7)':'rgba(57,46,58,.72)';
+    ctx.lineWidth=1.2;
+    const yy=py+12+(seed%3)*3;
+    ctx.beginPath();ctx.moveTo(px+3,yy);ctx.lineTo(px+TILE-4,yy);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(px+8+(seed*4),py+28);ctx.lineTo(px+31,py+26);ctx.stroke();
   }
+  for(let yy=0;yy<ROWS;yy++) for(let xx=0;xx<COLS;xx++) if(isFloor(xx,yy)) floorTile(xx,yy);
 
-  // Main stone paths with individual cobbles and soft edge shadows.
-  function pathRect(x,y,pw,ph,horiz){
-    ctx.fillStyle='#302a36';ctx.fillRect(x+4,y+4,pw,ph);
-    ctx.fillStyle='#554858';ctx.fillRect(x,y,pw,ph);
-    ctx.strokeStyle='rgba(12,9,16,.65)';ctx.lineWidth=3;ctx.strokeRect(x,y,pw,ph);
-    ctx.strokeStyle='#746174';ctx.lineWidth=1.2;
-    if(horiz){for(let yy=y+12;yy<y+ph;yy+=15){ctx.beginPath();ctx.moveTo(x+3,yy);ctx.lineTo(x+pw-3,yy);ctx.stroke()}}
-    else{for(let xx=x+12;xx<x+pw;xx+=15){ctx.beginPath();ctx.moveTo(xx,y+3);ctx.lineTo(xx,y+ph-3);ctx.stroke()}}
-  }
-  pathRect(w*.18,h*.32,w*.65,h*.13,true);
-  pathRect(w*.44,h*.08,w*.15,h*.83,false);
-  pathRect(w*.07,h*.70,w*.74,h*.16,true);
-  // Connecting side paths matching the existing route.
-  pathRect(w*.09,h*.48,w*.19,h*.08,true);
-  pathRect(w*.74,h*.50,w*.17,h*.08,true);
-
-  // Trees with visible trunks and branching silhouettes.
-  function tree(x,y,scale=1){
-    ctx.save();ctx.translate(x,y);ctx.scale(scale,scale);
-    ctx.fillStyle='#21151b';ctx.fillRect(-8,10,16,62);
-    ctx.strokeStyle='#140d12';ctx.lineWidth=8;ctx.lineCap='round';
-    [[0,28,-28,4],[1,20,30,-2],[-2,4,-8,-34],[3,1,18,-31]].forEach(([x1,y1,x2,y2])=>{ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke()});
-    ctx.fillStyle='#0c1015';
-    [[-28,-2,34],[8,-15,38],[-8,16,35],[30,8,30]].forEach(([cx,cy,r])=>{ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill()});
-    ctx.fillStyle='rgba(86,35,73,.55)';ctx.beginPath();ctx.arc(10,-4,29,0,Math.PI*2);ctx.fill();
-    ctx.restore();
-  }
-  tree(70,85,1.35);tree(360,92,1.05);tree(825,74,1.30);tree(955,340,1.1);tree(260,395,.95);tree(690,412,1.0);
-
-  // Graves, with stone depth, carved crosses and inscriptions.
-  function grave(x,y,s=1,style=0){
-    ctx.save();ctx.translate(x,y);ctx.scale(s,s);
-    const stone=style%2?'#797080':'#6c6673';
-    ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(-17,22,34,7);
-    ctx.fillStyle='#39343f';ctx.fillRect(-18,4,36,27);
-    ctx.fillStyle=stone;ctx.beginPath();ctx.roundRect(-16,-6,32,30,8);ctx.fill();
-    ctx.fillStyle='#8f8895';ctx.fillRect(-10,-3,20,3);
-    ctx.strokeStyle='#b1a8b3';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(0,1);ctx.lineTo(0,13);ctx.moveTo(-6,7);ctx.lineTo(6,7);ctx.stroke();
-    ctx.fillStyle='#3e3742';ctx.font='5px Georgia';ctx.textAlign='center';ctx.fillText('♥',0,20);
-    if(style===2){ctx.fillStyle='#8d496c';ctx.beginPath();ctx.arc(-10,5,3,0,Math.PI*2);ctx.fill()}
-    ctx.restore();
-  }
-  const graves=[[42,170,1,0],[92,255,.9,1],[135,360,1.15,0],[210,214,.85,2],[272,170,1.0,0],[315,368,1.1,1],[390,245,.85,0],[465,165,.95,2],[535,310,.95,0],[600,190,1.05,1],[655,385,.9,0],[745,275,1.15,2],[815,178,.95,0],[895,370,1.05,1],[946,250,.9,0]];
-  graves.forEach(g=>grave(...g));
-
-  // Mausoleum / crypt buildings, with columns and doors.
-  function mausoleum(x,y,wid=88,hei=62){
-    ctx.save();ctx.translate(x,y);
-    ctx.fillStyle='#27222b';ctx.fillRect(-4,5,wid+8,hei+8);
-    ctx.fillStyle='#6a616d';ctx.fillRect(0,0,wid,hei);
-    ctx.fillStyle='#7d7280';ctx.beginPath();ctx.moveTo(-7,0);ctx.lineTo(wid/2,-27);ctx.lineTo(wid+7,0);ctx.closePath();ctx.fill();
-    ctx.strokeStyle='#8e8290';ctx.lineWidth=2;ctx.strokeRect(0,0,wid,hei);
-    ctx.fillStyle='#352e3a';ctx.fillRect(wid*.33,hei*.35,wid*.34,hei*.65);
-    ctx.fillStyle='#c8789c';ctx.fillRect(wid*.46,hei*.45,4,14);
-    ctx.fillStyle='#3d3541';ctx.fillRect(7,10,5,hei-18);ctx.fillRect(wid-12,10,5,hei-18);
-    ctx.fillStyle='#9e8d9d';ctx.font='10px Georgia';ctx.textAlign='center';ctx.fillText('REST',wid/2,19);ctx.fillText('IN PEACE',wid/2,31);
-    ctx.restore();
-  }
-  mausoleum(75,104,94,64);mausoleum(344,286,92,66);mausoleum(720,108,92,66);mausoleum(820,330,90,66);
-
-  // Church / spooky house at the upper-left, clearly recognisable.
-  ctx.fillStyle='#554c58';ctx.fillRect(91,74,157,98);
-  ctx.fillStyle='#2c2430';ctx.beginPath();ctx.moveTo(78,74);ctx.lineTo(169,20);ctx.lineTo(260,74);ctx.closePath();ctx.fill();
-  ctx.strokeStyle='#1c151e';ctx.lineWidth=5;ctx.stroke();
-  // tower
-  ctx.fillStyle='#5f5363';ctx.fillRect(194,38,38,92);ctx.beginPath();ctx.moveTo(187,38);ctx.lineTo(213,9);ctx.lineTo(239,38);ctx.closePath();ctx.fill();
-  ctx.fillStyle='#17121a';ctx.fillRect(104,105,23,22);ctx.fillRect(198,105,23,22);ctx.fillRect(152,108,30,64);
-  ctx.fillStyle='#f29ac1';ctx.fillRect(161,120,12,21);ctx.fillStyle='#8d5f7d';ctx.fillRect(209,54,8,14);
-  ctx.strokeStyle='#17121a';ctx.lineWidth=2;ctx.strokeRect(91,74,157,98);
-  // tiny cross
-  ctx.strokeStyle='#8f7c8d';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(213,14);ctx.lineTo(213,31);ctx.moveTo(207,22);ctx.lineTo(219,22);ctx.stroke();
-
-  // Angel statues on carved bases.
-  function angel(x,y,scale=1){
-    ctx.save();ctx.translate(x,y);ctx.scale(scale,scale);
-    ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(-18,36,36,7);
-    ctx.fillStyle='#8b8490';ctx.fillRect(-15,22,30,14);
-    ctx.fillStyle='#9c94a0';ctx.beginPath();ctx.arc(0,5,11,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#756e79';ctx.beginPath();ctx.moveTo(-9,13);ctx.lineTo(0,31);ctx.lineTo(9,13);ctx.closePath();ctx.fill();
-    ctx.fillStyle='#a59ca8';ctx.beginPath();ctx.ellipse(-16,15,12,6,-.45,0,Math.PI*2);ctx.ellipse(16,15,12,6,.45,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle='#5a5360';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-16,15);ctx.lineTo(-8,21);ctx.moveTo(16,15);ctx.lineTo(8,21);ctx.stroke();
-    ctx.restore();
-  }
-  angel(205,330,.95);angel(750,342,.92);angel(905,164,.8);
-
-  // Lanterns with real glows.
-  function lantern(x,y,scale=1){
-    ctx.save();ctx.translate(x,y);ctx.scale(scale,scale);
-    const lg=ctx.createRadialGradient(0,0,2,0,0,38);lg.addColorStop(0,'rgba(255,210,151,.34)');lg.addColorStop(1,'rgba(255,210,151,0)');ctx.fillStyle=lg;ctx.fillRect(-40,-40,80,80);
-    ctx.strokeStyle='#292129';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,-25);ctx.lineTo(0,15);ctx.stroke();
-    ctx.fillStyle='#2a2027';ctx.fillRect(-10,-11,20,25);ctx.strokeStyle='#76606d';ctx.lineWidth=1.5;ctx.strokeRect(-10,-11,20,25);
-    ctx.fillStyle='#ffd9a4';ctx.beginPath();ctx.arc(0,-1,6,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle='#221a20';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-7,-16);ctx.lineTo(0,-24);ctx.lineTo(7,-16);ctx.stroke();
-    ctx.restore();
-  }
-  [[48,300,1],[250,255,.9],[305,510,1],[535,205,.9],[640,500,1],[855,245,.95],[940,480,1]].forEach(a=>lantern(...a));
-
-  // Iron fences with more recognisable posts and spearheads.
+  // Small route borders and ironwork, kept understated.
   function fence(x1,y1,x2,y2){
-    ctx.strokeStyle='#16131b';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
-    const len=Math.hypot(x2-x1,y2-y1),steps=Math.max(1,Math.floor(len/22));
-    for(let i=0;i<=steps;i++){
-      const u=i/steps,px=x1+(x2-x1)*u,py=y1+(y2-y1)*u;
-      ctx.strokeStyle='#100d14';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(px,py+16);ctx.lineTo(px,py-15);ctx.stroke();
-      ctx.fillStyle='#d071a0';ctx.beginPath();ctx.moveTo(px,py-21);ctx.lineTo(px-3,py-15);ctx.lineTo(px+3,py-15);ctx.closePath();ctx.fill();
+    ctx.strokeStyle='#17121a';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+    const len=Math.hypot(x2-x1,y2-y1), n=Math.max(2,Math.floor(len/24));
+    for(let i=0;i<=n;i++){
+      const u=i/n, px=x1+(x2-x1)*u, py=y1+(y2-y1)*u;
+      ctx.strokeStyle='#0e0b12';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(px,py+10);ctx.lineTo(px,py-10);ctx.stroke();
+      ctx.fillStyle='#c55b90';ctx.beginPath();ctx.moveTo(px,py-15);ctx.lineTo(px-3,py-9);ctx.lineTo(px+3,py-9);ctx.closePath();ctx.fill();
     }
   }
-  fence(25,h*.63,w*.27,h*.63);fence(w*.60,h*.19,w*.92,h*.19);fence(w*.21,h*.92,w*.55,h*.92);
+  fence(24,6*TILE+12,10*TILE,6*TILE+12);
+  fence(18*TILE,2*TILE+8,24*TILE,2*TILE+8);
+  fence(5*TILE,12*TILE+8,13*TILE,12*TILE+8);
 
-  // Petals and small flowers.
-  ctx.fillStyle='#d95e91';for(let i=0;i<28;i++){const px=(i*127)%w,py=80+(i*67)%(h-100);ctx.beginPath();ctx.ellipse(px,py,5,2,((i%5)-2)*.2,0,Math.PI*2);ctx.fill();}
-  for(let i=0;i<12;i++){const fx=(i*157)%w,fy=h*.48+(i*41)%(h*.45);ctx.fillStyle='#ae3d73';ctx.beginPath();ctx.arc(fx,fy,3,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#2f4731';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(fx,fy+4);ctx.lineTo(fx,fy+10);ctx.stroke();}
+  // A few natural shadow pockets to separate the plots from the paths.
+  function plot(x,y,pw,ph,rot=0){
+    ctx.save();ctx.translate(x,y);ctx.rotate(rot);ctx.fillStyle='rgba(6,5,9,.46)';
+    ctx.beginPath();ctx.roundRect(-pw/2,-ph/2,pw,ph,10);ctx.fill();ctx.strokeStyle='rgba(52,43,57,.75)';ctx.lineWidth=2;ctx.stroke();ctx.restore();
+  }
+  plot(150,220,100,58,-.06);plot(320,250,94,60,.05);plot(610,160,96,58,-.04);plot(760,340,118,64,.02);plot(910,245,88,60,-.05);
 
-  // Boss gate, now clearly a physical iron arch with a blocked opening.
-  const gx=20*TILE+4, gy=8*TILE+2;
-  ctx.fillStyle='#2b2630';ctx.fillRect(gx-9,gy+4,10,75);ctx.fillRect(gx+78,gy+4,10,75);
-  ctx.strokeStyle='#19151d';ctx.lineWidth=7;ctx.beginPath();ctx.arc(gx+40,gy+40,45,Math.PI,0);ctx.stroke();
-  for(let i=0;i<7;i++){const px=gx+10+i*11;ctx.fillRect(px,gy+9,5,55);ctx.fillStyle='#b65c8d';ctx.beginPath();ctx.moveTo(px+2.5,gy+2);ctx.lineTo(px-1,gy+10);ctx.lineTo(px+6,gy+10);ctx.closePath();ctx.fill();ctx.fillStyle='#19151d';}
-  ctx.fillStyle='#0e0b12';ctx.fillRect(gx+12,gy+17,56,47);
-
-  // Extra hand-drawn details to break up the blocky feel: grave plots, cracks, ivy, roses and little stone chips.
-  function crack(x,y,s=1){
-    ctx.save();ctx.strokeStyle='#403945';ctx.lineWidth=1.4*s;ctx.lineCap='round';ctx.beginPath();
-    ctx.moveTo(x,y);ctx.lineTo(x-4*s,y+5*s);ctx.lineTo(x-1*s,y+10*s);ctx.lineTo(x-5*s,y+16*s);ctx.moveTo(x-4*s,y+5*s);ctx.lineTo(x+3*s,y+8*s);ctx.stroke();ctx.restore();
-  }
-  [[42,170,1],[135,360,1.05],[272,170,.9],[390,245,.8],[600,190,1],[815,178,.9],[895,370,.95]].forEach(a=>crack(...a));
-  function roseBush(x,y,s=1){
-    ctx.save();ctx.translate(x,y);ctx.scale(s,s);
-    ctx.strokeStyle='#34432f';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,16,0,0);ctx.stroke();
-    for(let i=0;i<4;i++){ctx.fillStyle='#31432f';ctx.beginPath();ctx.ellipse((i%2?7:-7),8+i*2,6,3,(i%2?-.5:.5),0,Math.PI*2);ctx.fill();}
-    [[0,0],[9,3],[-9,4]].forEach(([rx,ry],idx)=>{ctx.fillStyle=idx%2?'#c94679':'#e15388';ctx.beginPath();ctx.arc(rx,ry,4.5,0,Math.PI*2);ctx.fill();ctx.fillStyle='#f09ab5';ctx.beginPath();ctx.arc(rx-1,ry-1,1.2,0,Math.PI*2);ctx.fill();});
-    ctx.restore();
-  }
-  roseBush(105,198,.8);roseBush(236,336,.75);roseBush(578,232,.85);roseBush(862,302,.82);roseBush(928,202,.72);
-  // Small stone fragments and weeds around the plots.
-  for(let i=0;i<34;i++){
-    const px=(i*97)%w, py=h*.42+(i*53)%(h*.50);
-    ctx.fillStyle=i%3===0?'#77707d':'#4b4450';ctx.beginPath();ctx.ellipse(px,py,3+(i%2),2,((i%4)-1)*.2,0,Math.PI*2);ctx.fill();
-    if(i%4===0){ctx.strokeStyle='#34422f';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(px,py+6);ctx.lineTo(px-2,py);ctx.moveTo(px,py+6);ctx.lineTo(px+3,py+1);ctx.stroke();}
-  }
-  // Individual cobble seams on the walkways so the paths read as stone, not giant rectangles.
-  ctx.save();ctx.globalAlpha=.48;ctx.strokeStyle='#2d2632';ctx.lineWidth=1;
-  for(let yy=h*.335;yy<h*.455;yy+=18){
-    for(let xx=w*.19+(Math.floor((yy-h*.335)/18)%2)*9;xx<w*.83;xx+=34){ctx.beginPath();ctx.moveTo(xx,yy);ctx.lineTo(xx+26,yy);ctx.stroke();}
-  }
-  for(let yy=h*.715;yy<h*.84;yy+=18){
-    for(let xx=w*.08+(Math.floor((yy-h*.715)/18)%2)*9;xx<w*.82;xx+=34){ctx.beginPath();ctx.moveTo(xx,yy);ctx.lineTo(xx+26,yy);ctx.stroke();}
-  }
-  ctx.restore();
-
-  // Layered environmental detail pass: irregular plot edges, stone borders, shrubs, candles and signs.
-  function roundedPlot(x,y,pw,ph,rot=0){
-    ctx.save();ctx.translate(x,y);ctx.rotate(rot);ctx.fillStyle='rgba(8,6,10,.34)';ctx.beginPath();ctx.roundRect(-pw/2+4,-ph/2+5,pw,ph,8);ctx.fill();ctx.fillStyle='#1b1820';ctx.beginPath();ctx.roundRect(-pw/2,-ph/2,pw,ph,8);ctx.fill();ctx.strokeStyle='#39313d';ctx.lineWidth=2;ctx.stroke();ctx.restore();
-  }
-  [[120,225,86,54,-.08],[300,265,100,58,.06],[575,145,92,54,-.04],[730,350,118,60,.02],[915,320,88,56,-.06]].forEach(v=>roundedPlot(...v));
-
-  // Low stone edging around the main walkways, giving the routes a carved-in-place feel.
-  function stoneEdge(x,y,len,vertical=false){
-    ctx.save();ctx.fillStyle='#3b3440';ctx.strokeStyle='#1b1620';ctx.lineWidth=1.5;
-    const n=Math.max(2,Math.floor(len/24));
-    for(let i=0;i<n;i++){
-      const u=i/n, px=vertical?x:x+i*(len/n), py=vertical?y+i*(len/n):y;
-      const rw=vertical?10:18, rh=vertical?18:10;
-      ctx.beginPath();ctx.roundRect(px-rw/2,py-rh/2,rw,rh,3);ctx.fill();ctx.stroke();
-      ctx.fillStyle='#655867';ctx.beginPath();ctx.moveTo(px-rw*.25,py-rh*.15);ctx.lineTo(px+rw*.2,py-rh*.2);ctx.stroke();ctx.fillStyle='#3b3440';
-    }
-    ctx.restore();
-  }
-  stoneEdge(182,h*.305,w*.64,false);stoneEdge(438,h*.145,h*.70,true);stoneEdge(72,h*.69,w*.74,false);
-
-  // Individual pavers with chipped corners and alternating tones.
-  ctx.save();
-  const paveRows=[{x:185,y:h*.325,w:w*.64,h:h*.11},{x:75,y:h*.705,w:w*.74,h:h*.145},{x:443,y:h*.08,w:w*.14,h:h*.83}];
-  paveRows.forEach((r,ri)=>{
-    for(let yy=r.y+8;yy<r.y+r.h-5;yy+=18){
-      const offset=((Math.floor((yy-r.y)/18)+ri)%2)*10;
-      for(let xx=r.x+6-offset;xx<r.x+r.w-6;xx+=36){
-        const ww=29+(Math.floor(xx+yy)%7), hh=11+(Math.floor(xx*3+yy)%5);
-        ctx.fillStyle=((Math.floor(xx/36)+Math.floor(yy/18))%3===0)?'#625464':'#514654';
-        ctx.beginPath();ctx.roundRect(xx,yy,ww,hh,3);ctx.fill();
-        ctx.strokeStyle='#362e38';ctx.lineWidth=1;ctx.stroke();
-      }
-    }
-  });
-  ctx.restore();
-
-  // Tiny candle clusters and memorial flowers make the space feel inhabited rather than tiled.
-  function candleCluster(x,y,s=1){
-    ctx.save();ctx.translate(x,y);ctx.scale(s,s);
-    [[-9,3,12],[0,0,18],[10,5,9]].forEach(([cx,cy,ch],i)=>{ctx.fillStyle=i===1?'#8c6f75':'#6d5661';ctx.fillRect(cx-3,cy-ch,6,ch);ctx.fillStyle='#ffd69b';ctx.beginPath();ctx.arc(cx,cy-ch-3,2.5,0,Math.PI*2);ctx.fill();ctx.fillStyle='rgba(255,210,150,.14)';ctx.beginPath();ctx.arc(cx,cy-ch-3,11,0,Math.PI*2);ctx.fill();});
-    ctx.restore();
-  }
-  candleCluster(126,168,1);candleCluster(903,382,.9);candleCluster(548,330,.85);candleCluster(340,430,.8);
-
-  function shrub(x,y,s=1){
-    ctx.save();ctx.translate(x,y);ctx.scale(s,s);ctx.fillStyle='#202c25';ctx.beginPath();ctx.arc(-8,6,11,0,Math.PI*2);ctx.arc(7,5,13,0,Math.PI*2);ctx.arc(0,-4,10,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#46543a';ctx.lineWidth=1.4;for(let i=0;i<6;i++){ctx.beginPath();ctx.moveTo(-8+i*3,7);ctx.lineTo(-7+i*3,1);ctx.stroke()}ctx.restore();
-  }
-  shrub(55,225,.9);shrub(275,420,1.0);shrub(785,215,.85);shrub(960,410,.95);shrub(675,455,.8);
-
-  // Small gothic signs and memorial plaques with legible silhouettes.
-  function sign(x,y,text1,text2){
-    ctx.save();ctx.translate(x,y);ctx.fillStyle='#302632';ctx.fillRect(-31,0,62,48);ctx.strokeStyle='#7e5f73';ctx.lineWidth=2;ctx.strokeRect(-31,0,62,48);ctx.fillStyle='#ef91ac';ctx.font='bold 8px Georgia';ctx.textAlign='center';ctx.fillText(text1,0,17);ctx.fillText(text2,0,29);ctx.fillStyle='#1b131d';ctx.font='7px Georgia';ctx.fillText('♥',0,41);ctx.restore();
-  }
-  sign(92,454,'SWEET','DREAMS');sign(875,137,'KEEP','OUT');
-
-  // v3.0 detail pass: break up the geometry with hand-placed cemetery props.
-  function bench(x,y,s=1){
-    ctx.save();ctx.translate(x,y);ctx.scale(s,s);
-    ctx.fillStyle='#2a2028';ctx.fillRect(-23,-9,46,8);ctx.fillRect(-20,0,40,7);
-    ctx.fillStyle='#5c4350';ctx.fillRect(-25,-13,50,5);ctx.fillStyle='#332731';ctx.fillRect(-18,7,5,13);ctx.fillRect(13,7,5,13);
-    ctx.strokeStyle='#171219';ctx.lineWidth=2;ctx.strokeRect(-25,-13,50,5);ctx.restore();
-  }
-  [[150,278,.9],[470,300,.82],[750,470,.95]].forEach(v=>bench(...v));
-
-  function vine(x,y,dx,dy,s=1){
-    ctx.save();ctx.strokeStyle='#2d4531';ctx.lineWidth=2*s;ctx.beginPath();ctx.moveTo(x,y);ctx.bezierCurveTo(x+dx*.3,y+dy*.25,x+dx*.7,y+dy*.55,x+dx,y+dy);ctx.stroke();
-    for(let i=1;i<5;i++){const u=i/5,px=x+dx*u,py=y+dy*u;ctx.fillStyle='#3f5b3e';ctx.beginPath();ctx.ellipse(px-3,py,5,2,-.4,0,Math.PI*2);ctx.ellipse(px+3,py-2,5,2,.4,0,Math.PI*2);ctx.fill();}
-    ctx.restore();
-  }
-  vine(88,112,28,42,.8);vine(421,332,26,40,.75);vine(804,152,-24,44,.8);vine(888,365,24,35,.72);
-
-  function flowerBed(x,y,s=1){
-    ctx.save();ctx.translate(x,y);ctx.scale(s,s);ctx.fillStyle='#252f24';ctx.beginPath();ctx.ellipse(0,6,28,10,0,0,Math.PI*2);ctx.fill();
-    for(let i=0;i<7;i++){const px=-20+i*6,py=2+(i%2)*4;ctx.strokeStyle='#49633f';ctx.lineWidth=1.3;ctx.beginPath();ctx.moveTo(px,7);ctx.lineTo(px,py-7);ctx.stroke();ctx.fillStyle=i%2?'#d8588a':'#b94478';ctx.beginPath();ctx.arc(px,py-9,3.2,0,Math.PI*2);ctx.fill();ctx.fillStyle='#f5a5be';ctx.beginPath();ctx.arc(px-.8,py-9.8,1,0,Math.PI*2);ctx.fill();}
-    ctx.restore();
-  }
-  [[70,188,1],[190,336,.85],[350,205,.75],[585,370,.9],[760,240,.8],[930,430,.75]].forEach(v=>flowerBed(...v));
-
-  function stoneSteps(x,y,n=4,vertical=true){
-    ctx.save();ctx.translate(x,y);
-    for(let i=0;i<n;i++){const off=i*10;ctx.fillStyle=i%2?'#625564':'#746372';ctx.strokeStyle='#2c2530';ctx.lineWidth=2;
-      if(vertical){ctx.beginPath();ctx.roundRect(-34+i*3,off,68-i*6,9,2);ctx.fill();ctx.stroke();}
-      else{ctx.beginPath();ctx.roundRect(off,-22+i*2,9,44-i*4,2);ctx.fill();ctx.stroke();}
-    }ctx.restore();
-  }
-  stoneSteps(515,325,4,true);stoneSteps(330,420,4,false);stoneSteps(795,430,4,false);
-
-  function carvedGrave(x,y,s=1){
-    ctx.save();ctx.translate(x,y);ctx.scale(s,s);ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.ellipse(0,23,22,6,0,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#807684';ctx.beginPath();ctx.moveTo(-20,20);ctx.lineTo(-20,-4);ctx.quadraticCurveTo(0,-24,20,-4);ctx.lineTo(20,20);ctx.closePath();ctx.fill();ctx.strokeStyle='#3d3541';ctx.lineWidth=2;ctx.stroke();
-    ctx.strokeStyle='#b7a7b4';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-10);ctx.lineTo(0,6);ctx.moveTo(-7,-2);ctx.lineTo(7,-2);ctx.stroke();
-    ctx.fillStyle='#4c3b49';ctx.font='7px Georgia';ctx.textAlign='center';ctx.fillText('OLLY + SCARLETT',0,15);ctx.restore();
-  }
-  carvedGrave(610,265,.72);carvedGrave(250,470,.62);
-
-  function gothicLamp(x,y,s=1){
-    ctx.save();ctx.translate(x,y);ctx.scale(s,s);ctx.strokeStyle='#20181f';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,28,0,-2);ctx.stroke();
-    ctx.fillStyle='#30222a';ctx.fillRect(-9,-14,18,18);ctx.strokeStyle='#9f6b82';ctx.lineWidth=1.5;ctx.strokeRect(-9,-14,18,18);
-    ctx.fillStyle='#ffd9a6';ctx.beginPath();ctx.arc(0,-5,4.5,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle='#20181f';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-7,-16);ctx.lineTo(0,-24);ctx.lineTo(7,-16);ctx.stroke();
-    ctx.restore();
-  }
-  [[150,396,.8],[430,145,.9],[840,285,.8]].forEach(v=>gothicLamp(...v));
-
-  // A few irregular shadow-plots make the paths read as carved routes through ground, not giant rectangles.
-  function groundIsland(points){
-    ctx.save();ctx.fillStyle='rgba(12,10,16,.72)';ctx.beginPath();ctx.moveTo(...points[0]);for(let i=1;i<points.length;i++)ctx.lineTo(...points[i]);ctx.closePath();ctx.fill();ctx.strokeStyle='rgba(53,44,54,.8)';ctx.lineWidth=2;ctx.stroke();ctx.restore();
-  }
-  groundIsland([[24,220],[92,202],[118,225],[104,262],[54,270],[20,248]]);
-  groundIsland([[520,92],[596,80],[632,112],[616,155],[548,160],[505,135]]);
-  groundIsland([[690,445],[770,424],[808,450],[796,492],[732,510],[684,482]]);
-
-  // v3.2 architecture and tree pass: these sit above the earlier blocky silhouettes but below fog-of-war.
-  function detailedChapel(x,y,s=1){
-    ctx.save();ctx.translate(x,y);ctx.scale(s,s);
-    // shadow / foundation
-    ctx.fillStyle='rgba(0,0,0,.34)';ctx.fillRect(-88,78,176,15);
-    // main stone body
-    ctx.fillStyle='#5b5361';ctx.fillRect(-78,-6,156,85);ctx.strokeStyle='#29232d';ctx.lineWidth=4;ctx.strokeRect(-78,-6,156,85);
-    // roof and gable
-    ctx.fillStyle='#211923';ctx.beginPath();ctx.moveTo(-90,-6);ctx.lineTo(0,-68);ctx.lineTo(90,-6);ctx.closePath();ctx.fill();ctx.strokeStyle='#3f2c3f';ctx.lineWidth=4;ctx.stroke();
-    // tower
-    ctx.fillStyle='#6d6270';ctx.fillRect(42,-49,34,83);ctx.beginPath();ctx.moveTo(36,-49);ctx.lineTo(59,-78);ctx.lineTo(82,-49);ctx.closePath();ctx.fill();ctx.strokeStyle='#29232d';ctx.lineWidth=4;ctx.stroke();
-    // arched stained-glass window
-    ctx.fillStyle='#ef7fac';ctx.beginPath();ctx.arc(0,9,23,Math.PI,0);ctx.lineTo(23,33);ctx.lineTo(-23,33);ctx.closePath();ctx.fill();
-    ctx.strokeStyle='#322633';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(0,-12);ctx.lineTo(0,33);ctx.moveTo(-23,10);ctx.lineTo(23,10);ctx.stroke();
-    // doors
-    ctx.fillStyle='#241923';ctx.beginPath();ctx.roundRect(-22,33,44,46,9);ctx.fill();ctx.strokeStyle='#8f6d80';ctx.lineWidth=2;ctx.stroke();
-    ctx.fillStyle='#eab5ca';ctx.fillRect(2,56,4,6);
-    // buttresses / stone blocks
-    ctx.fillStyle='#746a76';ctx.fillRect(-89,10,12,66);ctx.fillRect(77,10,12,66);
-    ctx.strokeStyle='#8f8390';ctx.lineWidth=1;for(let yy=4;yy<72;yy+=14){ctx.beginPath();ctx.moveTo(-76,yy);ctx.lineTo(76,yy);ctx.stroke();}
-    // rose vines and tiny lanterns
-    vine(-70,66,24,-30,.75);vine(70,66,-24,-30,.75);gothicLamp(-53,80,.7);gothicLamp(53,80,.7);
-    ctx.restore();
-  }
-  function detailedCrypt(x,y,s=1){
-    ctx.save();ctx.translate(x,y);ctx.scale(s,s);
-    ctx.fillStyle='rgba(0,0,0,.32)';ctx.fillRect(-48,53,96,11);
-    ctx.fillStyle='#69616c';ctx.fillRect(-43,-6,86,58);ctx.strokeStyle='#2a232d';ctx.lineWidth=3;ctx.strokeRect(-43,-6,86,58);
-    ctx.fillStyle='#3a303b';ctx.beginPath();ctx.moveTo(-50,-6);ctx.lineTo(0,-38);ctx.lineTo(50,-6);ctx.closePath();ctx.fill();ctx.strokeStyle='#6f5c6d';ctx.stroke();
-    ctx.fillStyle='#2a202b';ctx.beginPath();ctx.roundRect(-18,17,36,35,7);ctx.fill();
-    ctx.fillStyle='#ef8fb4';ctx.fillRect(-3,25,6,11);
-    ctx.fillStyle='#8f8290';ctx.font='8px Georgia';ctx.textAlign='center';ctx.fillText('REST',0,7);ctx.fillText('IN PEACE',0,17);
-    ctx.strokeStyle='#8a7d8b';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-30,-1);ctx.lineTo(-30,18);ctx.moveTo(30,-1);ctx.lineTo(30,18);ctx.stroke();
-    vine(-39,49,18,-20,.55);vine(39,49,-18,-20,.55);candleCluster(-36,48,.55);candleCluster(36,48,.55);
-    ctx.restore();
-  }
-  function detailedTree(x,y,s=1){
-    ctx.save();ctx.translate(x,y);ctx.scale(s,s);
-    ctx.fillStyle='rgba(0,0,0,.36)';ctx.beginPath();ctx.ellipse(0,45,44,10,0,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle='#191116';ctx.lineWidth=15;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(0,42);ctx.lineTo(0,-22);ctx.lineTo(-22,-53);ctx.moveTo(0,-6);ctx.lineTo(31,-40);ctx.moveTo(-2,10);ctx.lineTo(-34,-15);ctx.stroke();
-    ctx.strokeStyle='#2d1826';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,31);ctx.lineTo(0,-26);ctx.moveTo(-2,-8);ctx.lineTo(-25,-47);ctx.moveTo(4,-4);ctx.lineTo(31,-38);ctx.stroke();
-    const crowns=[[-30,-52,30],[4,-63,34],[34,-40,27],[-10,-25,35],[18,-20,31]];
-    crowns.forEach(([cx,cy,r],i)=>{ctx.fillStyle=i%2?'#11131b':'#17151e';ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();});
-    [[-23,-43],[7,-58],[26,-34],[-2,-19],[18,-19]].forEach(([cx,cy])=>{ctx.fillStyle='#6d3158';ctx.beginPath();ctx.arc(cx,cy,7,0,Math.PI*2);ctx.fill();ctx.fillStyle='#bf5788';ctx.beginPath();ctx.arc(cx-2,cy-2,2.2,0,Math.PI*2);ctx.fill();});
-    ctx.restore();
-  }
-  detailedChapel(170,96,1.0);
-  detailedCrypt(785,135,1.0);
-  detailedCrypt(855,340,.95);
-  detailedTree(82,112,1.25);detailedTree(370,95,.95);detailedTree(905,110,1.25);detailedTree(280,455,.9);detailedTree(745,445,1.0);
-
-  // 3.6: real illustrated environment sprites sit over the existing playable maze.
+  // Illustrated environment sprites.
   drawEnvironmentSpriteLayer(ctx);
 
-  // More dramatic vignette and distant mist ribbons for depth.
-  const mist=ctx.createRadialGradient(w*.52,h*.50,40,w*.52,h*.50,h*.62);mist.addColorStop(0,'rgba(186,146,190,0)');mist.addColorStop(.75,'rgba(186,146,190,.04)');mist.addColorStop(1,'rgba(8,6,12,.24)');ctx.fillStyle=mist;ctx.fillRect(0,0,w,h);
-
-  // Light fog pools to make the reveal feel atmospheric rather than just black tiles.
-  const fog=ctx.createLinearGradient(0,h*.45,0,h);fog.addColorStop(0,'rgba(255,214,234,.01)');fog.addColorStop(.72,'rgba(172,133,170,.07)');fog.addColorStop(1,'rgba(96,71,101,.12)');ctx.fillStyle=fog;ctx.fillRect(0,0,w,h);
+  // Keep a little ambient mist without drawing over the readable sprite silhouettes.
+  const mist=ctx.createRadialGradient(w*.5,h*.46,30,w*.5,h*.46,h*.6);
+  mist.addColorStop(0,'rgba(188,150,188,0)');
+  mist.addColorStop(.72,'rgba(188,150,188,.045)');
+  mist.addColorStop(1,'rgba(8,6,12,.24)');
+  ctx.fillStyle=mist;ctx.fillRect(0,0,w,h);
 }
-
 function drawOlly(ctx,x,y,s=.7,t=0,front=true,dir='right',moving=false){
   ctx.save();
   const bob=moving ? Math.sin(t*18)*1.6 : Math.sin(t*2)*0.4;
@@ -420,9 +149,9 @@ function drawOlly(ctx,x,y,s=.7,t=0,front=true,dir='right',moving=false){
 
 const ollySprite=new Image();
 ollySprite.src='assets/characters/olly.png?v=300';
-const zombieSprites={shambler:new Image(),fire:new Image()};
-zombieSprites.shambler.src='assets/characters/zombie-goth.png?v=300';
-zombieSprites.fire.src='assets/characters/fire-goth.png?v=300';
+const zombieSprites={shambler:new Image(),chain:new Image()};
+zombieSprites.shambler.src='assets/characters/zombie-goth.png?v=370';
+zombieSprites.chain.src='assets/characters/chain-goth.webp?v=370';
 function drawZombieSprite(ctx,x,y,type,s=.75,t=0,attack=false){
   const img=zombieSprites[type]||zombieSprites.shambler;
   ctx.save();
@@ -459,7 +188,7 @@ export function createLevel1(ui){
   const revealed=Array.from({length:ROWS},()=>Array(COLS).fill(false));
   const enemies=[
     {x:8,y:6,type:'shambler',name:'GRAVEYARD SHAMBLER',hp:4,maxHp:4,dead:false,pattern:'Slow lunge'},
-    {x:17,y:5,type:'fire',name:'FIRE GOTH',hp:5,maxHp:5,dead:false,pattern:'Throws fireballs'}
+    {x:17,y:5,type:'chain',name:'CHAIN GOTH',hp:5,maxHp:5,dead:false,pattern:'Chain lash'}
   ];
   const relationship={x:12,y:10},puzzle={x:17,y:10},boss={x:20,y:8};
   let x=3,y=11,hp=5,mode='map',walkDir='right',facingDir='right',walkPulse=0,kills=0,relationshipDone=false,puzzleSolved=false,target=null,isBoss=false,combatHp=0,combatMax=1,enemyAttackPhase=null,enemyTimer=null,combatRaf=0,projectiles=[],player={x:135,y:260,invuln:0,aimX:500,aimY:180},combatCheckpoint=null,bossRoomEntered=false,relationshipStep=0,relationshipRound=0,relationshipStart=0,relationshipDuration=2600,relationshipAnimating=false,relationshipRAF=0;
@@ -571,7 +300,7 @@ function drawZombieCombat(c,px,py,type,attack){
   function retryCombat(){ui.death.classList.add('hidden');hp=5;stats();if(combatCheckpoint){x=combatCheckpoint.x;y=combatCheckpoint.y;reveal()}mode='map';if(target||isBoss){setTimeout(()=>startCombat(isBoss),100)}}
   function backToMap(){ui.death.classList.add('hidden');hp=5;stats();if(combatCheckpoint){x=combatCheckpoint.x;y=combatCheckpoint.y;reveal()}mode='map';ui.dialogue.textContent='You retreat to the checkpoint. The goths are still waiting.'}
 
-  function checkTriggers(){if(mode!=='map')return;let e=enemies.find(z=>!z.dead&&dist({x,y},{x:z.x,y:z.y})<1.01);if(e){target=e;combatCheckpoint={x,y};mode='encounter';drawEncounter(e.type);ui.encounterName.textContent=e.name;ui.encounterText.innerHTML=e.type==='shambler'?'<strong>Zombie Goth:</strong> “Mmm... black eyeliner...”<br><br>She shuffles closer. Then faster.':'<strong>Fire Goth:</strong> “ill burn you like the sun burns me...”<br><br>Flames gather in her hands.';ui.encounter.classList.remove('hidden');return}
+  function checkTriggers(){if(mode!=='map')return;let e=enemies.find(z=>!z.dead&&dist({x,y},{x:z.x,y:z.y})<1.01);if(e){target=e;combatCheckpoint={x,y};mode='encounter';drawEncounter(e.type);ui.encounterName.textContent=e.name;ui.encounterText.innerHTML=e.type==='shambler'?'<strong>Graveyard Shambler:</strong> “Mmm... black eyeliner...”<br><br>She shuffles closer. Then faster.':'<strong>Chain Goth:</strong> “Come here, mate.”<br><br>Her chain drags across the stones. This is probably bad.';ui.encounter.classList.remove('hidden');return}
     if(!relationshipDone&&dist({x,y},relationship)<1.01){startRelationship();return}
     if(!puzzleSolved&&dist({x,y},puzzle)<1.01){
       mode='puzzle';ui.puzzle.classList.remove('hidden');ui.puzzleFeedback.textContent='Choose wisely. The Goths have inexplicably made this a formal assessment.';return
