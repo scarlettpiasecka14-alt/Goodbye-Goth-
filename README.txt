@@ -1,11 +1,12 @@
-GOODBYE GOTH v3.6 COMPACT UPDATE
+Goodbye Goth 3.9.3
 
-This is a small patch for the EXISTING testing branch. Do NOT upload the whole assets folder again.
+THIS IS A CODE-ONLY PATCH.
 
-Upload/replace these exact paths in GitHub on the testing branch:
+Replace the existing repository file:
   js/levels/level1.js
-  assets/environment/*.webp
+with the file in:
+  js/levels/level1.js
 
-The new level1.js points to the compact WebP environment sprites. Your existing PNG assets can stay in the repo; they are no longer used by Level 1.
+Do not upload the file to the repository root.
 
-The quiz/activity order in v3.6 remains free-order. The boss gate still requires 2 kills + Would You completed + Princess question completed.
+This patch keeps the original Level 1 maze layout, removes the old procedural block buildings/trees/graves from the renderer, and uses the supplied cemetery sprites as the environment layer. It also keeps the activity markers click-only and the free-order objective progression.
