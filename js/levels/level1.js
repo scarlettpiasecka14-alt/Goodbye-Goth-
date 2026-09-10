@@ -17,6 +17,8 @@ const MAP=[
 ];
 const TILE=40,COLS=25,ROWS=15,isFloor=(x,y)=>x>=0&&y>=0&&x<COLS&&y<ROWS&&MAP[y][x]==='.';
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+const SAVE_KEY='goodbyeGothSave_v4';
+function safeParseSave(){try{const raw=localStorage.getItem(SAVE_KEY);return raw?JSON.parse(raw):null}catch{return null}}
 const wouldIcon=new Image(); wouldIcon.src='assets/icons/would-you.png';
 const quizIcon=new Image(); quizIcon.src='assets/icons/quiz.png';
 
@@ -170,7 +172,7 @@ export function createLevel1(ui){
     {x:18,y:10,type:'chain',name:'CHAIN GOTH',hp:5,maxHp:5,dead:false,pattern:'Long-range chain lash'}
   ];
   const relationship={x:5,y:9},puzzle={x:19,y:8},boss={x:20,y:8};
-  let x=3,y=11,hp=5,mode='map',walkDir='right',facingDir='right',walkPulse=0,kills=0,relationshipDone=false,puzzleSolved=false,target=null,isBoss=false,combatHp=0,combatMax=1,enemyAttackPhase=null,enemyTimer=null,combatRaf=0,projectiles=[],player={x:135,y:260,invuln:0,aimX:500,aimY:180},combatCheckpoint=null,bossRoomEntered=false,relationshipStep=0,relationshipRound=0,relationshipStart=0,relationshipDuration=2600,relationshipAnimating=false,relationshipRAF=0;
+  let x=3,y=11,hp=5,mode='map',walkDir='right',facingDir='right',walkPulse=0,kills=0,relationshipDone=false,puzzleSolved=false,keyCollected=false,inventory={},checkpoint='cemetery-entrance',target=null,isBoss=false,combatHp=0,combatMax=1,enemyAttackPhase=null,enemyTimer=null,combatRaf=0,projectiles=[],player={x:135,y:260,invuln:0,aimX:500,aimY:180},combatCheckpoint=null,bossRoomEntered=false,relationshipStep=0,relationshipRound=0,relationshipStart=0,relationshipDuration=2600,relationshipAnimating=false,relationshipRAF=0;
   let now=0,raf=0;
 
   function reveal(){for(let yy=0;yy<ROWS;yy++)for(let xx=0;xx<COLS;xx++)if(Math.hypot(xx-x,yy-y)<=3.7)revealed[yy][xx]=true}
@@ -426,8 +428,29 @@ function completeRelationship(){
     }
   }
   function startBoss(){ui.bossReady.classList.add('hidden');ui.bossIntro.classList.add('hidden');target=null;combatCheckpoint={x,y};startCombat(true)}
+  function saveGame(){
+    try{
+      const state={version:1,savedAt:new Date().toISOString(),level:1,x,y,hp,kills,relationshipDone,puzzleSolved,keyCollected,inventory,checkpoint,revealed,enemies:enemies.map(e=>({dead:e.dead,hp:e.hp}))};
+      localStorage.setItem(SAVE_KEY,JSON.stringify(state));
+      ui.dialogue.textContent='💾 Game saved. The Goths will have to wait.';
+      return true;
+    }catch(err){console.error('Goodbye Goth save failed',err);return false;}
+  }
+  function loadGame(){
+    const state=safeParseSave();
+    if(!state)return false;
+    try{
+      x=Number.isFinite(state.x)?state.x:x; y=Number.isFinite(state.y)?state.y:y; hp=Number.isFinite(state.hp)?state.hp:hp; kills=Number.isFinite(state.kills)?state.kills:kills;
+      relationshipDone=!!state.relationshipDone; puzzleSolved=!!state.puzzleSolved; keyCollected=!!state.keyCollected; inventory=state.inventory&&typeof state.inventory==='object'?state.inventory:{}; checkpoint=state.checkpoint||'cemetery-entrance';
+      if(Array.isArray(state.revealed)&&state.revealed.length===ROWS){for(let yy=0;yy<ROWS;yy++)for(let xx=0;xx<COLS;xx++)revealed[yy][xx]=!!state.revealed[yy]?.[xx];}
+      if(Array.isArray(state.enemies)){state.enemies.forEach((saved,i)=>{if(enemies[i]){enemies[i].dead=!!saved.dead;if(Number.isFinite(saved.hp))enemies[i].hp=saved.hp;}})}
+      mode='map'; target=null; bossRoomEntered=false;
+      reveal(); stats(); drawMini(); ui.dialogue.textContent='📂 Game loaded. Welcome back to the cemetery.';
+      return true;
+    }catch(err){console.error('Goodbye Goth load failed',err);return false;}
+  }
   function start(){reveal();stats();drawMini();cancelAnimationFrame(relationshipRAF);clearInterval(enemyTimer);cancelAnimationFrame(raf);const loop=t=>{now=t;if(walkPulse>0 && t%99999>-1){} if(mode==='map')drawWorld(t);drawMini();raf=requestAnimationFrame(loop)};raf=requestAnimationFrame(loop);requestAnimationFrame(combatTick)}
   function primaryAction(){if(mode==='encounter')startEncounterFight();else if(mode==='combat')combatAttack();else if(mode==='map')checkTriggers()}
 
-  return {start,move,primaryAction,interact,startEncounterFight,combatAttack,combatDodge,shootAtPointer,retryCombat,backToMap,completeRelationship,answerPuzzle,startBoss};
+  return {start,move,primaryAction,interact,startEncounterFight,combatAttack,combatDodge,shootAtPointer,retryCombat,backToMap,completeRelationship,answerPuzzle,startBoss,saveGame,loadGame};
 }
