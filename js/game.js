@@ -136,7 +136,7 @@ function mountLevel1(){
         <div class="play-column">
           <div class="world-wrap">
             <canvas id="world" width="1000" height="600" tabindex="0" aria-label="Level 1 haunted cemetery"></canvas>
-            <div class="help">Explore to reveal the cemetery • WASD / arrow keys move • Walk into the 🧩 and ❤️ markers to interact</div>
+            <div class="help">Explore to reveal the cemetery • WASD / arrow keys move • Click the 🧩 and ❤️ markers to interact</div>
           </div>
           <div id="dialogue" class="dialogue" aria-live="polite">You wake up somewhere very dark...</div>
         </div>

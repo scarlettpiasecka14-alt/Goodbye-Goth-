@@ -1,113 +1,119 @@
-const MAP=[
-  "#########################",
-  "#########################",
-  "##..............#########",
-  "##..............#########",
-  "##..............#########",
-  "##..............#########",
-  "#####...#####...#####...#",
-  "#####...................#",
-  "#####...................#",
-  "##......................#",
-  "##......................#",
-  "##...................####",
-  "##...................####",
-  "#########################",
-  "#########################"
-];
-const TILE=40,COLS=25,ROWS=15,isFloor=(x,y)=>x>=0&&y>=0&&x<COLS&&y<ROWS&&MAP[y][x]==='.';
-const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+const TILE=40,COLS=30,ROWS=20,WORLD_W=1200,WORLD_H=800;
+// Level 1 is deliberately open. The dotted route from Scarlett's paper sketch is only a suggestion,
+// not a corridor. Everything is walkable except the objects listed in OBSTACLES.
+const MAP=Array.from({length:ROWS},()=>'.'.repeat(COLS));
+const isFloor=(x,y)=>x>=0&&y>=0&&x<COLS&&y<ROWS;
 const SAVE_KEY='goodbyeGothSave_v4';
 function safeParseSave(){try{const raw=localStorage.getItem(SAVE_KEY);return raw?JSON.parse(raw):null}catch{return null}}
 const wouldIcon=new Image(); wouldIcon.src='assets/icons/would-you.png';
 const quizIcon=new Image(); quizIcon.src='assets/icons/quiz.png';
 
-const environmentSprites={church:new Image(),spookyhouse:new Image(),cypt:new Image(),tree:new Image(),bush:new Image(),candles:new Image(),angel:new Image(),lantern:new Image(),graves:[]};
-environmentSprites.church.src='assets/environment/church.webp?v=393';
-environmentSprites.spookyhouse.src='assets/environment/spookyhouse.webp?v=393';
-environmentSprites.cypt.src='assets/environment/cypt.webp?v=393';
-environmentSprites.tree.src='assets/environment/tree.webp?v=393';
-environmentSprites.bush.src='assets/environment/bush.webp?v=393';
-environmentSprites.candles.src='assets/environment/candles.webp?v=393';
-environmentSprites.angel.src='assets/environment/angelstatue.webp?v=393';
-environmentSprites.lantern.src='assets/environment/lantern.webp?v=393';
-for(let i=1;i<=15;i++){const img=new Image();img.src=`assets/environment/grave-${i}.webp?v=393`;environmentSprites.graves.push(img)}
+const environmentSprites={chapel:new Image(),mausoleum:new Image(),smallMausoleum:new Image(),treeLarge:new Image(),treeMedium:new Image(),treePink:new Image(),bush:new Image(),candles:new Image(),angel:new Image(),lantern:new Image(),graves:new Image(),gate:new Image()};
+environmentSprites.chapel.src='assets/environment/chapel.webp?v=410';
+environmentSprites.mausoleum.src='assets/environment/mausoleum.webp?v=410';
+environmentSprites.smallMausoleum.src='assets/environment/small-mausoleum.webp?v=410';
+environmentSprites.treeLarge.src='assets/environment/tree-large.webp?v=410';
+environmentSprites.treeMedium.src='assets/environment/tree-medium.webp?v=410';
+environmentSprites.treePink.src='assets/environment/tree-pink.webp?v=410';
+environmentSprites.bush.src='assets/environment/bush.webp?v=410';
+environmentSprites.candles.src='assets/environment/candles.webp?v=410';
+environmentSprites.angel.src='assets/environment/angel.webp?v=410';
+environmentSprites.lantern.src='assets/environment/lantern.webp?v=410';
+environmentSprites.graves.src='assets/environment/graves.webp?v=410';
+environmentSprites.gate.src='assets/environment/gate.webp?v=410';
 function drawEnvSprite(ctx,img,x,y,w,h){if(!img.complete||!img.naturalWidth)return;ctx.drawImage(img,x,y,w,h)}
 
+// Collision is based on sensible footprint rectangles, not the transparent pixels of the artwork.
+// This keeps the map easy to edit and prevents the old "black strip" / inaccessible-corner problem.
+const OBSTACLES=[
+  // Buildings
+  {x:75,y:55,w:315,h:250,label:'chapel'},
+  {x:795,y:70,w:190,h:210,label:'small-mausoleum'},
+  {x:560,y:575,w:300,h:190,label:'mausoleum'},
+  // Trees
+  {x:8,y:18,w:205,h:185,label:'tree'},
+  {x:455,y:8,w:195,h:185,label:'tree'},
+  {x:1000,y:260,w:175,h:190,label:'tree'},
+  {x:25,y:580,w:205,h:175,label:'tree'},
+  {x:895,y:575,w:210,h:185,label:'tree'},
+  // Bush/flower patches: solid enough to walk around, but smaller than the visual sprite.
+  {x:435,y:250,w:155,h:75,label:'bush'},
+  {x:965,y:175,w:150,h:78,label:'bush'},
+  {x:245,y:505,w:180,h:82,label:'bush'},
+  {x:855,y:480,w:175,h:82,label:'bush'},
+  {x:430,y:695,w:170,h:75,label:'bush'}
+];
+function circleRectHit(px,py,r,o){const cx=Math.max(o.x,Math.min(px,o.x+o.w)),cy=Math.max(o.y,Math.min(py,o.y+o.h));return Math.hypot(px-cx,py-cy)<r}
+function blockedWorld(px,py,r=15){if(px<20||py<20||px>WORLD_W-20||py>WORLD_H-20)return true;return OBSTACLES.some(o=>circleRectHit(px,py,r,o))}
+
 function drawCemetery(ctx,w,h){
-  // 3.9.3: keep the original maze layout, but replace all old placeholder buildings/trees/graves with the supplied illustrated sprites.
-  ctx.fillStyle='#0b0911';ctx.fillRect(0,0,w,h);
+  ctx.clearRect(0,0,w,h);
+  // Base ground. No tiled grey maze, no giant procedural blocks.
+  const bg=ctx.createLinearGradient(0,0,0,h);bg.addColorStop(0,'#171126');bg.addColorStop(.5,'#12101a');bg.addColorStop(1,'#0b0910');ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
 
-  // Distant purple night sky and moon, kept deliberately subtle so gameplay remains readable.
-  const sky=ctx.createLinearGradient(0,0,0,h*.48);
-  sky.addColorStop(0,'#181127');sky.addColorStop(1,'#211a31');ctx.fillStyle=sky;ctx.fillRect(0,0,w,h*.55);
-  const glow=ctx.createRadialGradient(w*.82,h*.13,8,w*.82,h*.13,120);glow.addColorStop(0,'rgba(255,201,226,.24)');glow.addColorStop(1,'rgba(255,201,226,0)');ctx.fillStyle=glow;ctx.fillRect(0,0,w,h*.4);
-  ctx.fillStyle='#eec8dc';ctx.beginPath();ctx.arc(w*.82,h*.14,38,0,Math.PI*2);ctx.fill();
+  // Soft moonlight and distant cemetery silhouettes.
+  ctx.fillStyle='rgba(32,25,48,.7)';for(let i=0;i<18;i++){const bx=i*76;ctx.beginPath();ctx.moveTo(bx,185);ctx.lineTo(bx+18,145);ctx.lineTo(bx+36,185);ctx.lineTo(bx+54,150);ctx.lineTo(bx+72,185);ctx.closePath();ctx.fill()}
+  const moon=ctx.createRadialGradient(1020,95,10,1020,95,120);moon.addColorStop(0,'rgba(244,207,226,.25)');moon.addColorStop(1,'rgba(244,207,226,0)');ctx.fillStyle=moon;ctx.fillRect(880,0,240,240);
+  ctx.fillStyle='#dcb7cd';ctx.globalAlpha=.65;ctx.beginPath();ctx.arc(1020,95,42,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
 
-  // Grass floor. No procedural block buildings or circular placeholder trees.
-  ctx.fillStyle='#12101a';ctx.fillRect(0,h*.34,w,h*.66);
-  for(let i=0;i<120;i++){
-    const gx=(i*83)%w, gy=h*.38+(i*47)%(h*.58);
-    ctx.strokeStyle=i%2?'#28222f':'#332738';ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(gx,gy+4);ctx.lineTo(gx+2,gy-2);ctx.moveTo(gx+3,gy+4);ctx.lineTo(gx+6,gy);ctx.stroke();
+  // Grass texture.
+  for(let i=0;i<260;i++){const gx=(i*97)%w,gy=20+(i*53)%(h-35);ctx.strokeStyle=i%3?'rgba(87,75,78,.28)':'rgba(116,92,102,.25)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(gx,gy+5);ctx.lineTo(gx+2,gy);ctx.moveTo(gx+4,gy+5);ctx.lineTo(gx+6,gy+1);ctx.stroke()}
+
+  // Broad cobblestone paths. These are visual routes only; free movement is allowed over the grass.
+  function pathRect(x,y,pw,ph){
+    ctx.fillStyle='#3e3644';ctx.fillRect(x,y,pw,ph);
+    ctx.fillStyle='rgba(111,94,112,.18)';ctx.fillRect(x+4,y+4,pw-8,ph-8);
+    ctx.strokeStyle='#1e1824';ctx.lineWidth=4;ctx.strokeRect(x,y,pw,ph);
+    ctx.strokeStyle='rgba(137,119,137,.42)';ctx.lineWidth=1.3;
+    for(let yy=y+14;yy<y+ph;yy+=28){ctx.beginPath();ctx.moveTo(x+3,yy);ctx.lineTo(x+pw-3,yy+((Math.floor(yy/28)%2)?2:-1));ctx.stroke()}
+    for(let xx=x+16;xx<x+pw;xx+=34){ctx.beginPath();ctx.moveTo(xx,y+3);ctx.lineTo(xx+((Math.floor(xx/34)%2)?3:-2),y+ph-3);ctx.stroke()}
+  }
+  pathRect(40,330,1120,115);                 // main east-west path
+  pathRect(430,190,120,410);                 // north-south connector
+  pathRect(110,445,210,95);                  // lower-left branch
+  pathRect(830,425,250,105);                 // lower-right branch
+  pathRect(1010,505,105,185);                // boss approach
+  pathRect(560,90,180,105);                   // upper connector
+
+  // Buildings sit in three separate pockets and never overlap each other.
+  drawEnvSprite(ctx,environmentSprites.chapel,55,35,330,285);
+  drawEnvSprite(ctx,environmentSprites.smallMausoleum,790,55,205,235);
+  drawEnvSprite(ctx,environmentSprites.mausoleum,545,555,325,225);
+
+  // Decorative trees can partially cover buildings, as requested.
+  [[0,5,225,205],[455,0,205,205],[995,245,205,220],[20,565,225,215],[890,560,230,220]].forEach(v=>drawEnvSprite(ctx,environmentSprites.treeLarge,...v));
+  [[360,20,150,155],[660,15,145,150],[1015,440,145,150]].forEach(v=>drawEnvSprite(ctx,environmentSprites.treeMedium,...v));
+  drawEnvSprite(ctx,environmentSprites.treePink,275,30,190,165);
+  // Bushes repeat around the paths without swallowing the interaction markers.
+  [[425,250,175,92],[955,165,180,95],[230,500,195,92],[845,475,195,94],[420,690,190,90]].forEach(v=>drawEnvSprite(ctx,environmentSprites.bush,...v));
+
+  // Grave sheet: use several cropped source regions from the supplied sheet.
+  if(environmentSprites.graves.complete&&environmentSprites.graves.naturalWidth){
+    const g=environmentSprites.graves;
+    const crops=[
+      [0,0,270,455,35,235,78,105],[270,0,255,455,190,225,76,105],[525,0,270,455,635,250,76,105],[795,0,260,455,700,420,78,105],
+      [0,455,270,390,55,470,78,105],[270,455,255,390,375,470,76,105],[525,455,270,390,665,470,78,105],[795,455,260,390,1025,455,78,105],
+      [0,845,270,354,250,610,78,105],[270,845,255,354,960,620,78,105]
+    ];
+    crops.forEach(([sx,sy,sw,sh,dx,dy,dw,dh])=>ctx.drawImage(g,sx,sy,sw,sh,dx,dy,dw,dh));
   }
 
-  // Illustrated architecture sits in dedicated, non-overlapping spaces.
-  drawEnvSprite(ctx,environmentSprites.church,8,18,325,298);
-  drawEnvSprite(ctx,environmentSprites.spookyhouse,735,45,215,196);
-  drawEnvSprite(ctx,environmentSprites.cypt,365,345,245,212);
-  drawEnvSprite(ctx,environmentSprites.cypt,820,326,165,150);
+  // Angels, candle clusters and lanterns are scenery, never interaction markers.
+  drawEnvSprite(ctx,environmentSprites.angel,125,455,105,145);
+  drawEnvSprite(ctx,environmentSprites.angel,965,425,105,145);
+  [[360,275,110,100],[670,300,110,100],[1050,300,110,100],[610,690,120,105]].forEach(v=>drawEnvSprite(ctx,environmentSprites.candles,...v));
+  [[55,300,65,105],[410,300,65,105],[710,300,65,105],[1090,300,65,105],[300,450,65,105],[1080,620,65,105]].forEach(v=>drawEnvSprite(ctx,environmentSprites.lantern,...v));
 
-  // Continuous stone paths matching the original maze: top branch, central spine, lower route and side connectors.
-  function stonePath(x,y,pw,ph,vertical=false){
-    ctx.fillStyle='rgba(20,14,24,.72)';ctx.fillRect(x+5,y+7,pw,ph);
-    ctx.fillStyle='#574b5d';ctx.fillRect(x,y,pw,ph);
-    ctx.strokeStyle='#221b27';ctx.lineWidth=4;ctx.strokeRect(x,y,pw,ph);
-    ctx.strokeStyle='#78687b';ctx.lineWidth=1.2;
-    if(vertical){
-      for(let xx=x+12;xx<x+pw;xx+=28){ctx.beginPath();ctx.moveTo(xx,y+3);ctx.lineTo(xx+((xx/28)%2?4:-3),y+ph-3);ctx.stroke();}
-      for(let yy=y+14;yy<y+ph;yy+=30){ctx.beginPath();ctx.moveTo(x+3,yy);ctx.lineTo(x+pw-3,yy);ctx.stroke();}
-    }else{
-      for(let yy=y+14;yy<y+ph;yy+=30){ctx.beginPath();ctx.moveTo(x+3,yy);ctx.lineTo(x+pw-3,yy+((yy/30)%2?2:-1));ctx.stroke();}
-      for(let xx=x+12;xx<x+pw;xx+=34){ctx.beginPath();ctx.moveTo(xx,y+3);ctx.lineTo(xx+3,y+ph-3);ctx.stroke();}
-    }
-  }
-  stonePath(w*.18,h*.33,w*.65,h*.13,false);
-  stonePath(w*.44,h*.08,w*.15,h*.82,true);
-  stonePath(w*.07,h*.70,w*.74,h*.16,false);
-  stonePath(w*.09,h*.48,w*.19,h*.08,false);
-  stonePath(w*.74,h*.50,w*.17,h*.08,false);
+  // Subtle fence fragments help sell the cemetery without creating walls across the map.
+  ctx.strokeStyle='rgba(30,24,34,.9)';ctx.lineWidth=5;
+  [[40,305,420,305],[745,305,1160,305],[40,555,430,555],[860,555,1160,555]].forEach(([x1,y1,x2,y2])=>{ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();for(let x=x1;x<x2;x+=35){ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,y1-8);ctx.lineTo(x,y1+8);ctx.stroke()}});
 
-  // Trees are now the supplied illustrated tree sprite, reused at different scales.
-  [[18,8,155,160],[332,18,132,138],[805,188,148,152],[22,430,165,145],[652,430,155,142]].forEach(v=>drawEnvSprite(ctx,environmentSprites.tree,...v));
-  // Bushes frame the routes but deliberately leave the interaction icons and enemy pockets clear.
-  [[0,185,150,88],[300,295,135,82],[650,245,145,92],[875,450,115,78],[168,500,150,82],[610,505,140,88]].forEach(v=>drawEnvSprite(ctx,environmentSprites.bush,...v));
+  // Pink petals across the open areas.
+  for(let i=0;i<55;i++){const px=(i*149)%w,py=35+(i*83)%(h-60);ctx.fillStyle=i%2?'rgba(231,101,150,.65)':'rgba(255,177,205,.45)';ctx.beginPath();ctx.ellipse(px,py,4,2,((i%7)-3)*.2,0,Math.PI*2);ctx.fill()}
 
-  // Grave variants, each used as a real sprite instead of a procedural placeholder.
-  const graveSpots=[
-    [22,320,58,86,1],[115,315,56,82,2],[255,300,62,86,3],[345,188,60,82,4],
-    [535,198,58,80,5],[642,312,60,84,6],[875,255,58,84,7],[80,520,62,84,8],
-    [280,520,60,78,9],[635,520,60,82,10],[915,520,58,78,11]
-  ];
-  graveSpots.forEach(([gx,gy,gw,gh,i])=>drawEnvSprite(ctx,environmentSprites.graves[i-1],gx,gy,gw,gh));
-
-  // Memorial groups and angels stay around, rather than on top of, the walkable markers.
-  [[160,355,88,114],[738,325,82,108]].forEach(v=>drawEnvSprite(ctx,environmentSprites.angel,...v));
-  [[430,187,62,92],[748,190,62,92],[50,362,62,92],[930,360,62,92]].forEach(v=>drawEnvSprite(ctx,environmentSprites.lantern,...v));
-  [[330,220,122,102],[585,360,128,104],[838,268,112,92]].forEach(v=>drawEnvSprite(ctx,environmentSprites.candles,...v));
-
-  // Small stone edging gives the paths definition without turning them into giant grey blocks.
-  ctx.strokeStyle='#322936';ctx.lineWidth=2;
-  function edgeLine(x1,y1,x2,y2){ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke()}
-  edgeLine(w*.18,h*.33,w*.83,h*.33);edgeLine(w*.18,h*.46,w*.83,h*.46);edgeLine(w*.07,h*.70,w*.81,h*.70);edgeLine(w*.07,h*.86,w*.81,h*.86);
-
-  // Light petals and a few foreground roses.
-  ctx.fillStyle='#d75f91';for(let i=0;i<34;i++){const px=(i*137)%w,py=75+(i*71)%(h-100);ctx.beginPath();ctx.ellipse(px,py,4.5,2,((i%5)-2)*.22,0,Math.PI*2);ctx.fill()}
-
-  // Boss gate in the lower-right approach. The actual blocking logic remains in movement code.
-  const gx=20*TILE+2,gy=8*TILE+4;
-  ctx.strokeStyle='#1a141d';ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(gx,gy+66);ctx.lineTo(gx,gy+12);ctx.quadraticCurveTo(gx+40,gy-25,gx+80,gy+12);ctx.lineTo(gx+80,gy+66);ctx.stroke();
-  for(let i=0;i<7;i++){const px=gx+9+i*11;ctx.strokeStyle='#27202a';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(px,gy+10);ctx.lineTo(px,gy+67);ctx.stroke()}
-  ctx.fillStyle='#f0cf8b';ctx.beginPath();ctx.arc(gx+40,gy+35,7,0,Math.PI*2);ctx.fill();
+  // Boss gate at the bottom-right, using the supplied iron-gate sprite.
+  drawEnvSprite(ctx,environmentSprites.gate,1010,610,185,125);
+  ctx.fillStyle='#f0cf8b';ctx.strokeStyle='#fff0c7';ctx.lineWidth=2;ctx.beginPath();ctx.arc(1100,668,8,0,Math.PI*2);ctx.fill();ctx.stroke();
 }
 
 function drawOlly(ctx,x,y,s=.7,t=0,front=true,dir='right',moving=false){
@@ -169,20 +175,22 @@ export function createLevel1(ui){
   const revealed=Array.from({length:ROWS},()=>Array(COLS).fill(false));
   const enemies=[
     {x:8,y:6,type:'shambler',name:'GRAVEYARD SHAMBLER',hp:4,maxHp:4,dead:false,pattern:'Slow lunge'},
-    {x:18,y:10,type:'chain',name:'CHAIN GOTH',hp:5,maxHp:5,dead:false,pattern:'Long-range chain lash'}
+    {x:23,y:14,type:'chain',name:'CHAIN GOTH',hp:5,maxHp:5,dead:false,pattern:'Long-range chain lash'}
   ];
-  const relationship={x:5,y:9},puzzle={x:19,y:8},boss={x:20,y:8};
-  let x=3,y=11,hp=5,mode='map',walkDir='right',facingDir='right',walkPulse=0,kills=0,relationshipDone=false,puzzleSolved=false,keyCollected=false,inventory={},checkpoint='cemetery-entrance',target=null,isBoss=false,combatHp=0,combatMax=1,enemyAttackPhase=null,enemyTimer=null,combatRaf=0,projectiles=[],player={x:135,y:260,invuln:0,aimX:500,aimY:180},combatCheckpoint=null,bossRoomEntered=false,relationshipStep=0,relationshipRound=0,relationshipStart=0,relationshipDuration=2600,relationshipAnimating=false,relationshipRAF=0;
+  // These are deliberately spread out so every objective has its own little destination.
+  const relationship={x:7,y:13},puzzle={x:21,y:5},boss={x:27,y:17},key={x:25,y:13};
+  let x=5,y=9,hp=5,mode='map',walkDir='right',facingDir='right',walkPulse=0,kills=0,relationshipDone=false,puzzleSolved=false,keyCollected=false,inventory={},checkpoint='cemetery-entrance',target=null,isBoss=false,combatHp=0,combatMax=1,enemyAttackPhase=null,enemyTimer=null,combatRaf=0,projectiles=[],player={x:135,y:260,invuln:0,aimX:500,aimY:180},combatCheckpoint=null,bossRoomEntered=false,relationshipStep=0,relationshipRound=0,relationshipStart=0,relationshipDuration=2600,relationshipAnimating=false,relationshipRAF=0;
   let now=0,raf=0;
 
   function reveal(){for(let yy=0;yy<ROWS;yy++)for(let xx=0;xx<COLS;xx++)if(Math.hypot(xx-x,yy-y)<=3.7)revealed[yy][xx]=true}
-  function unlockedBoss(){return kills>=2&&relationshipDone&&puzzleSolved}
+  function objectivesComplete(){return kills>=2&&relationshipDone&&puzzleSolved}
+  function unlockedBoss(){return objectivesComplete()&&keyCollected}
   function stats(){ui.hpEl.textContent=hp;ui.gothEl.textContent=`${kills}/2`;ui.relEl.textContent=relationshipDone?'Solved':'Locked';ui.puzzleEl.textContent=puzzleSolved?'Answered':'Locked';ui.goalGoths.innerHTML=kills>=2?'<span class="good">✓ Defeat the required Zombie Goths</span>':`○ Defeat the required Zombie Goths (${kills}/2)`;ui.goalRel.innerHTML=relationshipDone?'<span class="good">✓ WOULD YOU? Puzzle complete</span>':'○ Complete the WOULD YOU? Puzzle';ui.goalPuzzle.innerHTML=puzzleSolved?'<span class="good">✓ Princess Question answered</span>':'○ Answer the Princess Question';ui.goalBoss.innerHTML=unlockedBoss()?'<span class="good">✓ Boss gate unlocked</span>':'<span class="locked">🔒 Boss gate locked</span>'}
-  function drawMini(){mctx.clearRect(0,0,250,180);mctx.fillStyle='#0d0b11';mctx.fillRect(0,0,250,180);for(let yy=0;yy<ROWS;yy++)for(let xx=0;xx<COLS;xx++){if(revealed[yy][xx]){mctx.fillStyle=isFloor(xx,yy)?'#57505b':'#17131b';mctx.fillRect(xx*10,yy*10,10,10)}else{mctx.fillStyle='#0c0a0e';mctx.fillRect(xx*10,yy*10,10,10)}}mctx.fillStyle='#f3eff0';mctx.beginPath();mctx.arc(x*10+5,y*10+5,3.5,0,Math.PI*2);mctx.fill();if(!relationshipDone&&revealed[relationship.y][relationship.x]){mctx.fillStyle='#ef91ac';mctx.fillRect(relationship.x*10+1,relationship.y*10+1,8,8)}if(!puzzleSolved&&revealed[puzzle.y][puzzle.x]){mctx.fillStyle='#e5c5d5';mctx.fillRect(puzzle.x*10+1,puzzle.y*10+1,8,8)}if(unlockedBoss()&&revealed[boss.y][boss.x]){mctx.fillStyle='#f0cf8b';mctx.fillRect(boss.x*10+2,boss.y*10+2,6,6)}}
+  function drawMini(){mctx.clearRect(0,0,250,180);mctx.fillStyle='#0d0b11';mctx.fillRect(0,0,250,180);for(let yy=0;yy<ROWS;yy++)for(let xx=0;xx<COLS;xx++){if(revealed[yy][xx]){mctx.fillStyle=isFloor(xx,yy)?'#57505b':'#17131b';mctx.fillRect(xx*10,yy*10,10,10)}else{mctx.fillStyle='#0c0a0e';mctx.fillRect(xx*10,yy*10,10,10)}}mctx.fillStyle='#f3eff0';mctx.beginPath();mctx.arc(x*10+5,y*10+5,3.5,0,Math.PI*2);mctx.fill();if(kills>=2&&relationshipDone&&puzzleSolved&&!keyCollected&&revealed[key.y][key.x]){mctx.fillStyle='#f0cf8b';mctx.fillRect(key.x*10+2,key.y*10+2,6,6)}if(!relationshipDone&&revealed[relationship.y][relationship.x]){mctx.fillStyle='#ef91ac';mctx.fillRect(relationship.x*10+1,relationship.y*10+1,8,8)}if(!puzzleSolved&&revealed[puzzle.y][puzzle.x]){mctx.fillStyle='#e5c5d5';mctx.fillRect(puzzle.x*10+1,puzzle.y*10+1,8,8)}if(unlockedBoss()&&revealed[boss.y][boss.x]){mctx.fillStyle='#f0cf8b';mctx.fillRect(boss.x*10+2,boss.y*10+2,6,6)}}
   function drawWorld(t){
     ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
     const vw=ui.canvas.clientWidth||1000, vh=ui.canvas.clientHeight||600;
-    const WORLD_W=1000, WORLD_H=600, zoom=1.24;
+    const zoom=Math.max(1,Math.min(1.22,Math.max(vw/WORLD_W,vh/WORLD_H)*1.04));
     ctx.clearRect(0,0,ui.canvas.width,ui.canvas.height);
     const sx=ui.canvas.width/vw, sy=ui.canvas.height/vh;
     ctx.save();ctx.scale(sx,sy);
@@ -194,22 +202,27 @@ export function createLevel1(ui){
     ctx.translate(vw/2-camX*zoom,vh/2-camY*zoom);
     ctx.scale(zoom,zoom);
     drawCemetery(ctx,WORLD_W,WORLD_H);
-    // Fog-of-war stays tile-based, but now follows the zoomed camera just like the world.
-    for(let yy=0;yy<ROWS;yy++)for(let xx=0;xx<COLS;xx++){
-      if(!revealed[yy][xx]){ctx.fillStyle='rgba(3,2,7,.92)';ctx.fillRect(xx*TILE,yy*TILE,TILE,TILE)}
-      else if(!isFloor(xx,yy)){ctx.fillStyle='rgba(2,2,6,.28)';ctx.fillRect(xx*TILE,yy*TILE,TILE,TILE)}
-    }
+    // Soft fog-of-war. It no longer creates a wall of black squares, so unexplored space still feels like part of one continuous cemetery.
+    const playerWorldX=x*TILE+20,playerWorldY=y*TILE+35;
+    const fog=ctx.createRadialGradient(playerWorldX,playerWorldY,150,playerWorldX,playerWorldY,390);
+    fog.addColorStop(0,'rgba(5,3,10,0)');fog.addColorStop(.62,'rgba(5,3,10,.22)');fog.addColorStop(1,'rgba(5,3,10,.68)');
+    ctx.fillStyle=fog;ctx.fillRect(0,0,WORLD_W,WORLD_H);
     enemies.forEach(e=>{if(!e.dead&&revealed[e.y][e.x])drawZombieSprite(ctx,e.x*TILE+20,e.y*TILE+38,e.type,.68,t/1000)});
     if(!relationshipDone&&revealed[relationship.y][relationship.x]){
-      if(wouldIcon.complete&&wouldIcon.naturalWidth) ctx.drawImage(wouldIcon,relationship.x*TILE-40,relationship.y*TILE-40,120,100);
-      else {ctx.fillStyle='#ef91ac';ctx.font='56px Georgia';ctx.textAlign='center';ctx.fillText('✣',relationship.x*TILE+20,relationship.y*TILE+38)}
+      const rx=relationship.x*TILE+20,ry=relationship.y*TILE+25;
+      if(wouldIcon.complete&&wouldIcon.naturalWidth) ctx.drawImage(wouldIcon,rx-38,ry-38,76,76);
+      else {ctx.fillStyle='#ef91ac';ctx.font='42px Georgia';ctx.textAlign='center';ctx.fillText('♥',rx,ry+15)}
     }
     if(!puzzleSolved&&revealed[puzzle.y][puzzle.x]){
-      if(quizIcon.complete&&quizIcon.naturalWidth) ctx.drawImage(quizIcon,puzzle.x*TILE-42,puzzle.y*TILE-42,124,124);
-      else {ctx.fillStyle='#e6c5d3';ctx.font='52px Georgia';ctx.textAlign='center';ctx.fillText('♥',puzzle.x*TILE+20,puzzle.y*TILE+38)}
+      const px=puzzle.x*TILE+20,py=puzzle.y*TILE+25;
+      if(quizIcon.complete&&quizIcon.naturalWidth) ctx.drawImage(quizIcon,px-38,py-38,76,76);
+      else {ctx.fillStyle='#e6c5d3';ctx.font='42px Georgia';ctx.textAlign='center';ctx.fillText('✣',px,py+15)}
     }
-    if(revealed[boss.y][boss.x]){ctx.fillStyle=unlockedBoss()?'#f0cf8b':'#8c7584';ctx.font='24px Georgia';ctx.textAlign='center';ctx.fillText(unlockedBoss()?'✦':'🔒',boss.x*TILE+20,boss.y*TILE+29);if(unlockedBoss()){ctx.fillStyle='#ef91ac';ctx.font='bold 14px system-ui';ctx.fillText('GATE OPEN',boss.x*TILE+20,boss.y*TILE+56)}}
-    if(bossRoomEntered){ctx.fillStyle='rgba(8,5,15,.55)';ctx.fillRect(21*TILE,6*TILE,3*TILE,5*TILE);ctx.strokeStyle='#8d617f';ctx.lineWidth=3;ctx.strokeRect(21*TILE+8,6*TILE+8,3*TILE-16,5*TILE-16);ctx.fillStyle='#f0d5e3';ctx.font='bold 15px Georgia';ctx.textAlign='center';ctx.fillText('CLASSIC GOTH',22*TILE+20,8*TILE+28)}
+    if(kills>=2&&relationshipDone&&puzzleSolved&&!keyCollected&&revealed[key.y][key.x]){
+      ctx.fillStyle='#f0cf8b';ctx.strokeStyle='#fff0c7';ctx.lineWidth=2;ctx.beginPath();ctx.arc(key.x*TILE+20,key.y*TILE+24,12,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle='#f0cf8b';ctx.fillRect(key.x*TILE+29,key.y*TILE+21,20,6);ctx.fillStyle='#241a25';ctx.font='bold 11px system-ui';ctx.textAlign='center';ctx.fillText('KEY',key.x*TILE+20,key.y*TILE+47);
+    }
+    if(revealed[boss.y][boss.x]){ctx.fillStyle=unlockedBoss()?'#f0cf8b':'#8c7584';ctx.font='28px Georgia';ctx.textAlign='center';ctx.fillText(unlockedBoss()?'✦':'🔒',boss.x*TILE+20,boss.y*TILE+29);if(unlockedBoss()){ctx.fillStyle='#ef91ac';ctx.font='bold 13px system-ui';ctx.fillText('GATE OPEN',boss.x*TILE+20,boss.y*TILE+54)}}
+    if(bossRoomEntered){ctx.fillStyle='rgba(8,5,15,.35)';ctx.fillRect(1100,610,80,150);ctx.strokeStyle='#8d617f';ctx.lineWidth=3;ctx.strokeRect(1105,615,70,140);ctx.fillStyle='#f0d5e3';ctx.font='bold 15px Georgia';ctx.textAlign='center';ctx.fillText('CLASSIC GOTH',1140,685)}
     drawOlly(ctx,playerX,playerY,.78,t/1000,true,facingDir,walkPulse>0);
     ctx.restore();
   }
@@ -298,14 +311,16 @@ function drawZombieCombat(c,px,py,type,attack){
     if(mode!=='map')return;
     const dx=dir==='left'?-1:dir==='right'?1:0,dy=dir==='up'?-1:dir==='down'?1:0,nx=x+dx,ny=y+dy;
     if(!isFloor(nx,ny))return;
+    const candidateX=nx*TILE+20,candidateY=ny*TILE+35;
+    if(blockedWorld(candidateX,candidateY,15))return;
 
     // The locked boss gate cannot be crossed until all Level 1 objectives are complete.
-    if(nx===20&&ny===8&&!unlockedBoss()){
-      ui.dialogue.textContent='🔒 The iron gate is sealed. Complete the four requirements in any order: defeat 2 Goths, finish WOULD YOU?, and answer the Princess Question.';
+    if(nx===27&&ny===17&&!unlockedBoss()){
+      ui.dialogue.textContent='🔒 The iron gate is sealed. Complete the three objectives in any order, then collect the key to open the gate.';
       return;
     }
     // Crossing into the chamber creates the Level 1.5 threshold.
-    if(nx>=21&&x===20&&y===8&&unlockedBoss()){
+    if(nx>=28&&x===27&&y===17&&unlockedBoss()){
       x=nx;y=ny;walkDir=dir;if(dir==='left'||dir==='right')facingDir=dir;walkPulse=1;bossRoomEntered=true;mode='bossready';
       ui.bossReady.classList.remove('hidden');
       return;
@@ -316,12 +331,12 @@ function drawZombieCombat(c,px,py,type,attack){
   }
   function canvasPointToWorld(e){
     const rect=ui.canvas.getBoundingClientRect();
-    const vw=ui.canvas.clientWidth||1000, vh=ui.canvas.clientHeight||600, zoom=1.24;
+    const vw=ui.canvas.clientWidth||1000, vh=ui.canvas.clientHeight||600, zoom=Math.max(1,Math.min(1.22,Math.max(vw/WORLD_W,vh/WORLD_H)*1.04));
     const sx=(e.clientX-rect.left)*(vw/rect.width), sy=(e.clientY-rect.top)*(vh/rect.height);
     const playerX=x*TILE+20, playerY=y*TILE+35;
     const viewW=vw/zoom, viewH=vh/zoom;
-    const camX=Math.max(viewW/2,Math.min(1000-viewW/2,playerX));
-    const camY=Math.max(viewH/2,Math.min(600-viewH/2,playerY));
+    const camX=Math.max(viewW/2,Math.min(WORLD_W-viewW/2,playerX));
+    const camY=Math.max(viewH/2,Math.min(WORLD_H-viewH/2,playerY));
     return {x:(sx-vw/2+camX*zoom)/zoom,y:(sy-vh/2+camY*zoom)/zoom};
   }
   ui.canvas.addEventListener('pointerdown',e=>{
@@ -346,14 +361,18 @@ function drawZombieCombat(c,px,py,type,attack){
       return;
     }
 
-    const hitChallenge=Math.hypot(pt.x-(relationship.x*TILE+20),pt.y-(relationship.y*TILE+20))<60;
-    const hitPuzzle=Math.hypot(pt.x-(puzzle.x*TILE+20),pt.y-(puzzle.y*TILE+20))<60;
+    const hitChallenge=Math.hypot(pt.x-(relationship.x*TILE+20),pt.y-(relationship.y*TILE+25))<46;
+    const hitPuzzle=Math.hypot(pt.x-(puzzle.x*TILE+20),pt.y-(puzzle.y*TILE+25))<46;
+    const hitKey=Math.hypot(pt.x-(key.x*TILE+20),pt.y-(key.y*TILE+24))<40;
     if(hitChallenge&&!relationshipDone){startRelationship();return}
     if(hitPuzzle&&!puzzleSolved){
       mode='puzzle';
       ui.puzzle.classList.remove('hidden');
       ui.puzzleFeedback.textContent='Choose wisely. The Goths have inexplicably made this a formal assessment.';
       return;
+    }
+    if(hitKey&&objectivesComplete()&&!keyCollected){
+      keyCollected=true;inventory.key=1;ui.dialogue.textContent='🔑 A little brass key drops onto the cobblestones. Finally, a sensible piece of game design.';stats();return;
     }
   });
 
@@ -430,7 +449,7 @@ function completeRelationship(){
   function startBoss(){ui.bossReady.classList.add('hidden');ui.bossIntro.classList.add('hidden');target=null;combatCheckpoint={x,y};startCombat(true)}
   function saveGame(){
     try{
-      const state={version:1,savedAt:new Date().toISOString(),level:1,x,y,hp,kills,relationshipDone,puzzleSolved,keyCollected,inventory,checkpoint,revealed,enemies:enemies.map(e=>({dead:e.dead,hp:e.hp}))};
+      const state={version:2,savedAt:new Date().toISOString(),level:1,x,y,hp,kills,relationshipDone,puzzleSolved,keyCollected,inventory,checkpoint,revealed,enemies:enemies.map(e=>({dead:e.dead,hp:e.hp}))};
       localStorage.setItem(SAVE_KEY,JSON.stringify(state));
       ui.dialogue.textContent='💾 Game saved. The Goths will have to wait.';
       return true;
@@ -438,7 +457,7 @@ function completeRelationship(){
   }
   function loadGame(){
     const state=safeParseSave();
-    if(!state)return false;
+    if(!state || state.version!==2)return false;
     try{
       x=Number.isFinite(state.x)?state.x:x; y=Number.isFinite(state.y)?state.y:y; hp=Number.isFinite(state.hp)?state.hp:hp; kills=Number.isFinite(state.kills)?state.kills:kills;
       relationshipDone=!!state.relationshipDone; puzzleSolved=!!state.puzzleSolved; keyCollected=!!state.keyCollected; inventory=state.inventory&&typeof state.inventory==='object'?state.inventory:{}; checkpoint=state.checkpoint||'cemetery-entrance';
