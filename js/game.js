@@ -250,9 +250,12 @@ function mountLevel1(){
   window.addEventListener('keydown',e=>{
     const k=e.key.toLowerCase();
     if(['arrowup','arrowdown','arrowleft','arrowright',' ','w','a','s','d'].includes(k))e.preventDefault();
-    if(k==='arrowup'||k==='w')level.move('up'); if(k==='arrowdown'||k==='s')level.move('down');
-    if(k==='arrowleft'||k==='a')level.move('left'); if(k==='arrowright'||k==='d')level.move('right');
+    if(['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d'].includes(k))level.setMoveKey?.(k,true);
     if(k===' ')level.primaryAction();
+  });
+  window.addEventListener('keyup',e=>{
+    const k=e.key.toLowerCase();
+    if(['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d'].includes(k))level.setMoveKey?.(k,false);
   });
   level.start();
 }

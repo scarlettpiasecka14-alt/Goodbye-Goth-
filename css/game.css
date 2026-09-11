@@ -509,4 +509,7 @@ html,body,#app{height:100%;overflow:hidden}
 .save-status{margin-top:8px;min-height:1.2em}
 
 /* v5.0 clean cemetery map: preserve the supplied 3:2 artwork ratio. */
-#world{width:100%;height:auto;aspect-ratio:3/2;object-fit:contain;image-rendering:auto;}
+#world{width:100%;height:100%;aspect-ratio:auto;object-fit:fill;image-rendering:auto;}
+
+/* v6.2: map fills the game frame; no contain letterboxing. */
+#world{width:100% !important;height:100% !important;max-height:none !important;aspect-ratio:auto !important;object-fit:fill !important;}
