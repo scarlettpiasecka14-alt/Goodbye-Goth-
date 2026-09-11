@@ -77,6 +77,20 @@ export class StoryController {
 
     const textEl = document.getElementById('typing-story-text');
     const nextBtn = document.getElementById('typing-story-next');
+    if(this.step === 0){
+      const skip = document.createElement('button');
+      skip.id = 'story-skip-intro';
+      skip.className = 'story-skip-intro';
+      skip.type = 'button';
+      skip.textContent = 'SKIP INTRO →';
+      this.root.querySelector('.story-screen').appendChild(skip);
+      skip.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.cleanupTyping();
+        this.onComplete();
+      }, { once:true });
+    }
     let index = 0;
     this.isTyping = true;
     nextBtn.disabled = true;

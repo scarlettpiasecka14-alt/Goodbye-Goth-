@@ -3,17 +3,69 @@ import { createLevel1 } from './levels/level1.js';
 
 const root = document.getElementById('game-root');
 
+const SAVE_KEY = 'goodbyeGothSave_v6';
+
+function hasSaveGame(){
+  try { return !!localStorage.getItem(SAVE_KEY); } catch { return false; }
+}
+
+function startNewGame(){
+  try { localStorage.removeItem(SAVE_KEY); } catch {}
+  showIntro();
+}
+
+function loadSavedGame(){
+  if(!hasSaveGame()){
+    showTitleMessage('No saved game yet. Start a NEW GAME first.');
+    return;
+  }
+  mountLevel1(true);
+}
+
+function quitGame(){
+  // Browsers generally refuse window.close() unless this tab was script-opened.
+  window.close();
+  setTimeout(() => {
+    root.innerHTML = `
+      <section class="quit-screen" aria-label="Game quit">
+        <div class="quit-card">
+          <div class="quit-skull">☠</div>
+          <h1>GOODBYE, GOTH</h1>
+          <p>The game has been quit.</p>
+          <p class="small">Your browser may not allow a webpage to close its own tab. You can close this tab normally.</p>
+        </div>
+      </section>`;
+  }, 120);
+}
+
+function showTitleMessage(message){
+  const existing=document.getElementById('title-message');
+  if(existing) existing.textContent=message;
+  else {
+    const el=document.createElement('div');
+    el.id='title-message';
+    el.className='title-message';
+    el.textContent=message;
+    root.querySelector('.perfect-title-wrap')?.appendChild(el);
+  }
+}
+
 function showTitle(){
   root.innerHTML = `
     <section id="title-screen" class="panel title-screen perfect-title-screen" aria-label="Goodbye Goth title screen">
       <div class="perfect-title-wrap">
         <img class="perfect-title-art" src="assets/story/title-screen-perfect.png" alt="Goodbye Goth title screen">
-        <button id="title-start" class="perfect-title-hit" aria-label="Start New Game"></button>
-        <button id="title-skip" class="title-skip-intro" type="button">SKIP INTRO →</button>
+        <div class="title-menu" role="menu" aria-label="Main menu">
+          <button id="title-new" class="title-menu-btn primary-title-btn" type="button">NEW GAME</button>
+          <button id="title-load" class="title-menu-btn" type="button">LOAD GAME</button>
+          <button id="title-quit" class="title-menu-btn" type="button">QUIT</button>
+        </div>
       </div>
     </section>`;
-  document.getElementById('title-start').addEventListener('click', showIntro, { once:true });
-  document.getElementById('title-skip').addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); showGothAbyss(); }, { once:true });
+
+  document.getElementById('title-new').addEventListener('click', startNewGame, { once:true });
+  document.getElementById('title-load').addEventListener('click', loadSavedGame, { once:true });
+  document.getElementById('title-quit').addEventListener('click', quitGame, { once:true });
 }
 
 function showIntro(){
@@ -120,7 +172,7 @@ function showLevel1Intro(){
   );
 }
 
-function mountLevel1(){
+function mountLevel1(loadSaved=false){
   root.innerHTML = `
     <section class="panel game-screen" style="position:relative">
       <div class="game-head">
@@ -258,6 +310,12 @@ function mountLevel1(){
     if(['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d'].includes(k))level.setMoveKey?.(k,false);
   });
   level.start();
+  if(loadSaved){
+    requestAnimationFrame(() => {
+      const ok = level.loadGame();
+      if(!ok) showTitleMessage('No saved game found.');
+    });
+  }
 }
 
 showTitle();
