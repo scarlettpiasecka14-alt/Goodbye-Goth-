@@ -1,0 +1,292 @@
+const WORLD_W=1536,WORLD_H=1024;
+const SAVE_KEY='goodbyeGothSave_v6';
+function safeParseSave(){try{const raw=localStorage.getItem(SAVE_KEY);return raw?JSON.parse(raw):null}catch{return null}}
+
+const mapBackground=new Image();
+mapBackground.src='assets/environment/level1-map-bg.png?v=600';
+const ollySprite=new Image();
+ollySprite.src='assets/characters/olly.png?v=300';
+const wouldIcon=new Image(); wouldIcon.src='assets/icons/would-you.png';
+const quizIcon=new Image(); quizIcon.src='assets/icons/quiz.png';
+const zombieSprites={shambler:new Image(),chain:new Image()};
+zombieSprites.shambler.src='assets/characters/zombie-goth.png?v=300';
+zombieSprites.chain.src='assets/characters/chain-goth.webp?v=370';
+
+// Level 1 uses one continuous illustrated cemetery. There are no artificial black walkable gaps.
+// Collision is deliberately generous around scenery, while all interactive markers remain in clear open space.
+const OBSTACLES=[
+  // Major buildings in the new clean map.
+  {x:20,y:35,w:335,h:300,label:'church'},
+  {x:1265,y:45,w:250,h:285,label:'small-mausoleum'},
+  {x:520,y:625,w:390,h:300,label:'large-mausoleum'},
+  // Landscaped islands / planted areas. Everything else remains walkable cobblestone.
+  {x:535,y:20,w:385,h:275,label:'garden'},
+  {x:180,y:345,w:350,h:185,label:'garden'},
+  {x:560,y:350,w:380,h:215,label:'garden'},
+  {x:980,y:330,w:245,h:175,label:'garden'},
+  {x:1040,y:555,w:225,h:180,label:'garden'},
+  {x:35,y:565,w:430,h:415,label:'garden'},
+  {x:1240,y:570,w:295,h:420,label:'garden'}
+];
+function circleRectHit(px,py,r,o){const cx=Math.max(o.x,Math.min(px,o.x+o.w)),cy=Math.max(o.y,Math.min(py,o.y+o.h));return Math.hypot(px-cx,py-cy)<r}
+function blockedWorld(px,py,r=16){if(px<18||py<18||px>WORLD_W-18||py>WORLD_H-18)return true;return OBSTACLES.some(o=>circleRectHit(px,py,r,o))}
+
+function drawOlly(ctx,x,y,s=.78,t=0,front=true,dir='right',moving=false){
+  ctx.save();
+  const bob=moving?Math.sin(t*18)*1.5:Math.sin(t*2)*.35;
+  ctx.translate(x,y-bob);
+  ctx.fillStyle='rgba(0,0,0,.34)';ctx.beginPath();ctx.ellipse(0,38*s,23*s,6*s,0,0,Math.PI*2);ctx.fill();
+  if(ollySprite.complete&&ollySprite.naturalWidth){
+    const w=96*s,h=144*s;ctx.save();ctx.scale(dir==='left'?-1:1,1);ctx.drawImage(ollySprite,-w/2,-114*s,w,h);ctx.restore();
+  }
+  ctx.restore();
+}
+function drawZombieSprite(ctx,x,y,type,s=.68,t=0,attack=false){
+  const img=zombieSprites[type]||zombieSprites.shambler;ctx.save();ctx.translate(x,y+Math.sin(t*7)*1.5);
+  ctx.fillStyle='rgba(0,0,0,.34)';ctx.beginPath();ctx.ellipse(0,40*s,28*s,7*s,0,0,Math.PI*2);ctx.fill();
+  if(img.complete&&img.naturalWidth){const w=108*s,h=162*s;ctx.drawImage(img,-w/2,-132*s,w,h)}
+  if(attack){ctx.strokeStyle=type==='chain'?'#cfb7a5':'#ef91ac';ctx.lineWidth=3*s;ctx.beginPath();ctx.arc(0,-6*s,40*s,0,Math.PI*2);ctx.stroke()}
+  ctx.restore();
+}
+
+export function createLevel1(ui){
+  const ctx=ui.canvas.getContext('2d'),mctx=ui.miniMap.getContext('2d'),ectx=ui.encounterCanvas.getContext('2d'),cctx=ui.combatCanvas.getContext('2d'),rctx=ui.relationshipCanvas.getContext('2d');
+  const GRID=32,COLS=48,ROWS=32;
+  const revealed=Array.from({length:ROWS},()=>Array(COLS).fill(false));
+  const enemies=[
+    {x:15,y:9,type:'shambler',name:'GRAVEYARD SHAMBLER',hp:4,maxHp:4,dead:false,pattern:'Slow lunge'},
+    {x:29,y:20,type:'chain',name:'CHAIN GOTH',hp:5,maxHp:5,dead:false,pattern:'Long-range chain lash'}
+  ];
+  const relationship={x:9,y:21},puzzle={x:35,y:9},boss={x:43,y:25},key={x:39,y:20};
+  let x=3,y=15,hp=5,mode='map',walkDir='right',facingDir='right',walkPulse=0,kills=0,relationshipDone=false,puzzleSolved=false,keyCollected=false,inventory={},checkpoint='cemetery-entrance',target=null,isBoss=false,combatHp=0,combatMax=1,enemyAttackPhase=null,enemyTimer=null,combatRaf=0,projectiles=[],player={x:145,y:300,invuln:0,aimX:650,aimY:170},combatCheckpoint=null,bossRoomEntered=false,relationshipStep=0,relationshipRound=0,relationshipStart=0,relationshipDuration=2600,relationshipAnimating=false,relationshipRAF=0;
+  let now=0,raf=0;
+  const W2C=(gx,gy)=>({x:gx*GRID+16,y:gy*GRID+16});
+  function reveal(){for(let yy=0;yy<ROWS;yy++)for(let xx=0;xx<COLS;xx++)if(Math.hypot(xx-x,yy-y)<=5.5)revealed[yy][xx]=true}
+  function objectivesComplete(){return kills>=2&&relationshipDone&&puzzleSolved}
+  function unlockedBoss(){return objectivesComplete()&&keyCollected}
+  function stats(){ui.hpEl.textContent=hp;ui.gothEl.textContent=`${kills}/2`;ui.relEl.textContent=relationshipDone?'Solved':'Locked';ui.puzzleEl.textContent=puzzleSolved?'Answered':'Locked';ui.goalGoths.innerHTML=kills>=2?'<span class="good">✓ Defeat the required Zombie Goths</span>':`○ Defeat the required Zombie Goths (${kills}/2)`;ui.goalRel.innerHTML=relationshipDone?'<span class="good">✓ WOULD YOU? Puzzle complete</span>':'○ Complete the WOULD YOU? Puzzle';ui.goalPuzzle.innerHTML=puzzleSolved?'<span class="good">✓ Princess Question answered</span>':'○ Answer the Princess Question';ui.goalBoss.innerHTML=unlockedBoss()?'<span class="good">✓ Boss gate unlocked</span>':'<span class="locked">🔒 Boss gate locked</span>'}
+  function drawMini(){
+    mctx.clearRect(0,0,250,180);mctx.fillStyle='#0d0b11';mctx.fillRect(0,0,250,180);
+    mctx.drawImage(mapBackground,0,0,250,167);
+    const mx=(x*GRID+16)/WORLD_W*250,my=(y*GRID+16)/WORLD_H*167;
+    mctx.fillStyle='#fff';mctx.beginPath();mctx.arc(mx,my,4,0,Math.PI*2);mctx.fill();
+    const mark=(gx,gy,c)=>{const p=W2C(gx,gy);mctx.fillStyle=c;mctx.beginPath();mctx.arc(p.x/WORLD_W*250,p.y/WORLD_H*167,4,0,Math.PI*2);mctx.fill()};
+    if(!relationshipDone)mark(relationship.x,relationship.y,'#ef91ac');if(!puzzleSolved)mark(puzzle.x,puzzle.y,'#8fe9ff');if(!enemies[0].dead)mark(enemies[0].x,enemies[0].y,'#ef91ac');if(!enemies[1].dead)mark(enemies[1].x,enemies[1].y,'#ef91ac');if(!keyCollected&&objectivesComplete())mark(key.x,key.y,'#f0cf8b');mark(boss.x,boss.y,unlockedBoss()?'#f0cf8b':'#8f7286');
+  }
+  function drawWorld(t){
+    const vw=ui.canvas.clientWidth||1000,vh=ui.canvas.clientHeight||600;
+    const sx=ui.canvas.width/vw,sy=ui.canvas.height/vh;ctx.clearRect(0,0,ui.canvas.width,ui.canvas.height);ctx.save();ctx.scale(sx,sy);
+    const zoom=Math.max(1,Math.min(1.08,Math.max(vw/WORLD_W,vh/WORLD_H)*1.01));
+    const playerX=x*GRID+16,playerY=y*GRID+16,viewW=vw/zoom,viewH=vh/zoom;
+    const camX=Math.max(viewW/2,Math.min(WORLD_W-viewW/2,playerX)),camY=Math.max(viewH/2,Math.min(WORLD_H-viewH/2,playerY));
+    ctx.translate(vw/2-camX*zoom,vh/2-camY*zoom);ctx.scale(zoom,zoom);
+    if(mapBackground.complete&&mapBackground.naturalWidth)ctx.drawImage(mapBackground,0,0,WORLD_W,WORLD_H);else{ctx.fillStyle='#1b1420';ctx.fillRect(0,0,WORLD_W,WORLD_H)}
+    // The background is scenery only. Interactive objects are rendered separately so they remain clickable, movable, and collision-aware.
+    const drawMarker=(gx,gy,img,label,opts={})=>{
+      const p=W2C(gx,gy), pulse=1+Math.sin(t/260)*.035, w=opts.w||76, h=opts.h||76;
+      ctx.save();ctx.translate(p.x,p.y);ctx.scale(pulse,pulse);
+      ctx.shadowColor=opts.glow||'#f59ac2';ctx.shadowBlur=opts.glowBlur||14;
+      if(img&&img.complete&&img.naturalWidth){ctx.drawImage(img,-w/2,-h/2,w,h)}
+      else {ctx.font='42px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(opts.fallback||'✦',0,0)}
+      ctx.shadowBlur=0;ctx.fillStyle='#f7eaf1';ctx.font='700 15px Georgia';ctx.textAlign='center';ctx.textBaseline='top';
+      ctx.strokeStyle='rgba(20,12,24,.85)';ctx.lineWidth=5;ctx.strokeText(label,0,h/2+7);ctx.fillText(label,0,h/2+7);ctx.restore();
+    };
+    if(!relationshipDone)drawMarker(relationship.x,relationship.y,wouldIcon,'WOULD YOU?',{w:72,h:60,glow:'#ff82b7',fallback:'♥'});
+    if(!puzzleSolved)drawMarker(puzzle.x,puzzle.y,quizIcon,'PUZZLE',{w:70,h:56,glow:'#8fe9ff',fallback:'✣'});
+    enemies.forEach((enemy,i)=>{if(!enemy.dead){const p=W2C(enemy.x,enemy.y);drawZombieSprite(ctx,p.x,p.y,enemy.type,.72,t/1000,false);ctx.save();ctx.fillStyle='#f7eaf1';ctx.font='700 15px Georgia';ctx.textAlign='center';ctx.strokeStyle='rgba(20,12,24,.9)';ctx.lineWidth=5;ctx.strokeText('GOTH '+(i+1),p.x,p.y+66);ctx.fillText('GOTH '+(i+1),p.x,p.y+66);ctx.restore();}});
+    if(objectivesComplete()&&!keyCollected)drawMarker(key.x,key.y,null,'KEY',{w:62,h:62,glow:'#ffd36e',fallback:'🔑'});
+    drawOlly(ctx,playerX,playerY,.78,t/1000,true,facingDir,walkPulse>0);
+    ctx.restore();
+  }
+  function canvasPointToWorld(e){
+    const rect=ui.canvas.getBoundingClientRect(),vw=ui.canvas.clientWidth||1000,vh=ui.canvas.clientHeight||600;
+    const zoom=Math.max(1,Math.min(1.08,Math.max(vw/WORLD_W,vh/WORLD_H)*1.01));
+    const sx=(e.clientX-rect.left)*(vw/rect.width),sy=(e.clientY-rect.top)*(vh/rect.height),playerX=x*GRID+16,playerY=y*GRID+16,viewW=vw/zoom,viewH=vh/zoom;
+    const camX=Math.max(viewW/2,Math.min(WORLD_W-viewW/2,playerX)),camY=Math.max(viewH/2,Math.min(WORLD_H-viewH/2,playerY));
+    return {x:(sx-vw/2+camX*zoom)/zoom,y:(sy-vh/2+camY*zoom)/zoom};
+  }
+  function openEncounter(enemy){target=enemy;combatCheckpoint={x,y};mode='encounter';drawEncounter(enemy.type);ui.encounterName.textContent=enemy.name;ui.encounterText.innerHTML=enemy.type==='shambler'?'<strong>Zombie Goth:</strong> “Mmm... black eyeliner...”<br><br>She lunges toward you. Are you ready?':'<strong>Chain Goth:</strong> She slams her chain beside you and giggles mercilessly at your terrified expression.<br><br>Are you ready?';ui.encounter.classList.remove('hidden')}
+  ui.canvas.addEventListener('pointerdown',e=>{
+    if(mode!=='map')return;const pt=canvasPointToWorld(e);
+    const near=(gx,gy,r)=>{const p=W2C(gx,gy);return Math.hypot(pt.x-p.x,pt.y-p.y)<r};
+    const enemyHit=enemies.find(z=>!z.dead&&near(z.x,z.y,70));if(enemyHit){openEncounter(enemyHit);return}
+    if(!relationshipDone&&near(relationship.x,relationship.y,58)){startRelationship();return}
+    if(!puzzleSolved&&near(puzzle.x,puzzle.y,58)){mode='puzzle';ui.puzzle.classList.remove('hidden');ui.puzzleFeedback.textContent='Choose wisely. The Goths have inexplicably made this a formal assessment.';return}
+    if(objectivesComplete()&&!keyCollected&&near(key.x,key.y,55)){keyCollected=true;inventory.key=1;ui.dialogue.textContent='🔑 A little brass key drops onto the cobblestones. Finally, a sensible piece of game design.';stats();return}
+    if(near(boss.x,boss.y,72)){if(unlockedBoss()){bossRoomEntered=true;mode='bossready';ui.bossReady.classList.remove('hidden')}else{ui.dialogue.textContent='🔒 The gate is still locked. Complete every challenge, then collect the key.'}return}
+  });
+  function move(dir){
+    if(mode==='combat'){const step=18;if(dir==='left')player.x=Math.max(55,player.x-step);if(dir==='right')player.x=Math.min(845,player.x+step);if(dir==='up')player.y=Math.max(90,player.y-step);if(dir==='down')player.y=Math.min(400,player.y+step);return}
+    if(mode!=='map')return;
+    const step=18,dx=dir==='left'?-step:dir==='right'?step:0,dy=dir==='up'?-step:dir==='down'?step:0,nx=x*GRID+16+dx,ny=y*GRID+16+dy;
+    if(blockedWorld(nx,ny,15))return;
+    // Locked boss gate blocks only the gate footprint, not the surrounding cemetery.
+    if(nx>1315&&ny>745&&!unlockedBoss()){ui.dialogue.textContent='🔒 The ornate boss gate is sealed. You still have work to do.';return}
+    x=Math.round((nx-16)/GRID);y=Math.round((ny-16)/GRID);walkDir=dir;if(dir==='left'||dir==='right')facingDir=dir;walkPulse=1;setTimeout(()=>walkPulse=0,140);reveal();ui.dialogue.textContent='The cemetery is strangely peaceful. Somewhere nearby, a goth is probably plotting.';
+  }
+  function checkTriggers(){}
+  function interact(){return}
+
+function drawEncounter(type){
+  ectx.imageSmoothingEnabled=true;ectx.imageSmoothingQuality='high';
+  ectx.clearRect(0,0,720,300);const gg=ectx.createLinearGradient(0,0,0,300);gg.addColorStop(0,'#2e2436');gg.addColorStop(1,'#111016');ectx.fillStyle=gg;ectx.fillRect(0,0,720,300);for(let i=0;i<15;i++){ectx.fillStyle='#4d3b51';ectx.fillRect((i*61)%720,150+(i%4)*18,28,42)}drawOlly(ectx,180,245,.95,0,true);drawZombieSprite(ectx,520,235,type,.95,1.2,false);ectx.fillStyle='#f3e7ed';ectx.font='bold 18px Georgia';ectx.textAlign='center';ectx.fillText(type==='shambler'?'Mmm... black eyeliner...':'Mmm... accessories...',500,45)}
+
+  function resetCombatVisual(){projectiles=[];enemyAttackPhase=null;player={x:145,y:300,invuln:0,aimX:650,aimY:170};}
+  function drawCombat(t){
+    cctx.imageSmoothingEnabled=true;cctx.imageSmoothingQuality='high';
+    const w=900,h=450;
+    const g=cctx.createLinearGradient(0,0,0,h);g.addColorStop(0,'#241a2c');g.addColorStop(.55,'#17121c');g.addColorStop(1,'#0c090f');cctx.fillStyle=g;cctx.fillRect(0,0,w,h);
+    // Ground and cemetery details so the arena is visibly a fight, not a blank panel.
+    cctx.fillStyle='#211a25';cctx.fillRect(0,h-105,w,105);
+    cctx.fillStyle='#4a3b4e';for(let i=0;i<9;i++){const gx=40+i*105;cctx.fillRect(gx,h-165,5,60);cctx.fillRect(gx-12,h-165,29,5);}
+    cctx.fillStyle='#5d4a60';for(let i=0;i<14;i++){const gx=(i*71)%860+20,gy=70+(i%4)*45;cctx.fillRect(gx,gy,4,4);}
+    cctx.fillStyle='#d9c9d4';cctx.font='bold 14px system-ui';cctx.textAlign='left';cctx.fillText('MOVE • JUMP • DODGE • ATTACK',24,30);cctx.font='12px system-ui';cctx.fillStyle='#a99aaa';cctx.fillText('Watch the warning and react',24,49);
+    // Aim reticle
+    if(player.aimX&&player.aimY){cctx.strokeStyle='rgba(245,218,231,.65)';cctx.lineWidth=2;cctx.beginPath();cctx.arc(player.aimX,player.aimY,13,0,Math.PI*2);cctx.moveTo(player.aimX-19,player.aimY);cctx.lineTo(player.aimX-7,player.aimY);cctx.moveTo(player.aimX+7,player.aimY);cctx.lineTo(player.aimX+19,player.aimY);cctx.moveTo(player.aimX,player.aimY-19);cctx.lineTo(player.aimX,player.aimY-7);cctx.moveTo(player.aimX,player.aimY+7);cctx.lineTo(player.aimX,player.aimY+19);cctx.stroke();}
+    // Attack telegraphs
+    if(enemyAttackPhase){cctx.strokeStyle='#f05d79';cctx.lineWidth=6;cctx.setLineDash([12,8]);if(enemyAttackPhase.kind==='lunge'){cctx.beginPath();cctx.moveTo(enemyAttackPhase.x,enemyAttackPhase.y);cctx.lineTo(player.x,player.y);cctx.stroke();cctx.fillStyle='rgba(240,93,121,.18)';cctx.beginPath();cctx.moveTo(enemyAttackPhase.x,enemyAttackPhase.y);cctx.lineTo(player.x+46,player.y+46);cctx.lineTo(player.x-46,player.y-46);cctx.closePath();cctx.fill()}else{cctx.beginPath();cctx.arc(player.x,player.y,enemyAttackPhase.radius,0,Math.PI*2);cctx.stroke();cctx.fillStyle='rgba(240,93,121,.12)';cctx.beginPath();cctx.arc(player.x,player.y,enemyAttackPhase.radius,0,Math.PI*2);cctx.fill()}cctx.setLineDash([]);cctx.fillStyle='#ffd7e3';cctx.font='900 22px system-ui';cctx.textAlign='center';cctx.fillText('DODGE!',player.x,player.y-62);}
+    projectiles.forEach(p=>{cctx.fillStyle='#f7dbe6';cctx.beginPath();cctx.arc(p.x,p.y,5,0,Math.PI*2);cctx.fill();cctx.strokeStyle='#fff2f7';cctx.lineWidth=2;cctx.beginPath();cctx.moveTo(p.x,p.y);cctx.lineTo(p.x-p.vx*2,p.y-p.vy*2);cctx.stroke();});
+    drawOllyWorldCombat(player.x,player.y,1.0,player.aimX,player.aimY,performance.now()/1000,player.invuln>performance.now());
+    if(isBoss)drawBoss(cctx,690,250,1.25,performance.now()/1000,!!enemyAttackPhase,enemyPhaseNumber());else drawZombieSprite(cctx,690,255,target?.type||'shambler',1.0,performance.now()/1000,!!enemyAttackPhase);
+    // Enemy label / hit target
+    cctx.fillStyle='#f3e7ed';cctx.font='900 18px Georgia';cctx.textAlign='center';cctx.fillText(isBoss?'QUEEN GOTH':(target?.name||'ZOMBIE GOTH'),690,355);
+    cctx.fillStyle='#332635';cctx.fillRect(620,370,140,10);cctx.fillStyle='#ef91ac';cctx.fillRect(620,370,140*(combatHp/combatMax),10);
+  }
+  function drawOllyWorldCombat(c,px,py,s,ax,ay,t,hurt){
+  c.save();c.translate(px,py);if(hurt)c.globalAlpha=.5;
+  c.fillStyle='rgba(0,0,0,.25)';c.beginPath();c.ellipse(0,54*s,32*s,8*s,0,0,Math.PI*2);c.fill();
+  if(ollySprite.complete && ollySprite.naturalWidth){
+    const w=116*s,h=174*s;
+    c.drawImage(ollySprite,-w/2,-140*s,w,h);
+  }
+  c.restore();
+}
+function drawZombieCombat(c,px,py,type,attack){
+    // v2.9: use the same detailed zombie sprite in combat as on the map.
+    drawZombieSprite(c,px,py+20,type,1.0,performance.now()/1000,attack);
+  }
+  function enemyPhaseNumber(){if(!isBoss)return 1;const r=combatHp/combatMax;return r<=.34?3:r<=.67?2:1}
+
+  function startCombat(bossFight){
+    isBoss=bossFight;mode='combat';combatMax=bossFight?18:(target?.maxHp||4);combatHp=combatMax;resetCombatVisual();
+    ui.combatName.textContent=bossFight?'THE CLASSIC GOTH • QUEEN':target?.name||'ZOMBIE GOTH';
+    ui.combatPattern.textContent=bossFight?'Phase 1 • DODGE red warnings':(target?.pattern||'Watch red warnings • DODGE');
+    ui.enemyHp.style.width='100%';
+    ui.combatStatus.innerHTML=bossFight?'<strong>HOW TO FIGHT:</strong> Watch for attack warnings, dodge them, and strike the Queen Goth.':'<strong>HOW TO FIGHT:</strong> Move, jump and dodge her attacks. Your melee attack will be connected in the next combat pass.';
+    ui.combat.classList.remove('hidden');
+    clearInterval(enemyTimer);enemyTimer=setInterval(enemyAttackTick,bossFight?900:1250);
+    clearInterval(combatRaf);const loop=()=>{if(mode==='combat'){drawCombat(performance.now());combatRaf=requestAnimationFrame(loop)}};combatRaf=requestAnimationFrame(loop);
+  }
+  function enemyAttackTick(){if(mode!=='combat')return;const now=performance.now();const faster=isBoss&&enemyPhaseNumber()===3;const kind=(isBoss&&enemyPhaseNumber()===2)?'ring':'lunge';enemyAttackPhase={kind,x:isBoss?690:670,y:isBoss?250:255,radius:100};ui.combatStatus.textContent=kind==='lunge'?'⚠ She is about to charge. DODGE!':'🔥 Incoming fireball wave. DODGE!';setTimeout(()=>{if(mode!=='combat')return;const hit=performance.now()>player.invuln;if(hit){hp=Math.max(0,hp-1);stats();ui.combatStatus.textContent='💥 You were hit. Your health is now '+hp+'.';if(hp<=0){endCombat(false);return}}else ui.combatStatus.textContent='↪ Dodged! Hit back now.';enemyAttackPhase=null},faster?420:620)}
+
+  function shootAt(xm,ym){if(mode!=='combat')return;const dx=xm-player.x,dy=ym-player.y,len=Math.hypot(dx,dy)||1;const vx=dx/len*12,vy=dy/len*12;projectiles.push({kind:'arrow',x:player.x+vx,y:player.y+vy,vx,vy,ttl:90});player.aimX=xm;player.aimY=ym;ui.combatStatus.textContent='🏹 Arrow fired.';}
+  function updateProjectiles(){for(let i=projectiles.length-1;i>=0;i--){const p=projectiles[i];p.x+=p.vx;p.y+=p.vy;p.ttl--;if(p.kind==='arrow'&&Math.hypot(p.x-(isBoss?690:690),p.y-255)<48){combatHp=Math.max(0,combatHp-1);ui.enemyHp.style.width=(combatHp/combatMax*100)+'%';ui.combatStatus.textContent='🎯 Hit!';projectiles.splice(i,1);if(combatHp<=0){setTimeout(()=>endCombat(true),180)}}else if(p.ttl<=0||p.x<0||p.x>900||p.y<0||p.y>450)projectiles.splice(i,1)} }
+
+  function combatTick(){if(mode==='combat'){updateProjectiles();if(player.invuln>performance.now()){};requestAnimationFrame(combatTick)}}
+  window.addEventListener('pointermove',e=>{if(mode!=='combat')return;const r=ui.combatCanvas.getBoundingClientRect();player.aimX=(e.clientX-r.left)*(ui.combatCanvas.width/r.width);player.aimY=(e.clientY-r.top)*(ui.combatCanvas.height/r.height)});
+  ui.combatCanvas.addEventListener('pointerdown',e=>{if(mode!=='combat')return;shootAtPointer(e)});
+  window.addEventListener('keydown',e=>{if(mode!=='combat')return;const k=e.key.toLowerCase();if(['arrowleft','arrowright','arrowup','arrowdown',' ','shift'].includes(k))e.preventDefault();if(k===' '){combatAttack()}else if(k==='shift'){combatDodge()}else if(k==='arrowleft'||k==='arrowright'||k==='arrowup'||k==='arrowdown'){move(k.replace('arrow',''))}});
+  function combatAttack(){if(mode==='combat')shootAt(player.aimX,player.aimY)}
+  function shootAtPointer(e){const r=ui.combatCanvas.getBoundingClientRect();shootAt((e.clientX-r.left)*(ui.combatCanvas.width/r.width),(e.clientY-r.top)*(ui.combatCanvas.height/r.height))}
+  function combatDodge(){if(mode!=='combat')return;player.invuln=performance.now()+650;const dx=player.x<450?1:-1;player.x=Math.max(55,Math.min(845,player.x+dx*120));ui.combatStatus.textContent='↪ DODGE ROLL!';}
+
+  function endCombat(won){clearInterval(enemyTimer);cancelAnimationFrame(combatRaf);ui.combat.classList.add('hidden');mode='map';if(won){if(isBoss){ui.win.classList.remove('hidden');return}if(target){target.dead=true;kills++;target=null;ui.dialogue.textContent=kills===1?'✅ First Zombie Goth defeated. A modest achievement, but one cannot expect miracles before lunch.':'✅ Both Zombie Goths defeated. Now complete the special events, because apparently fighting was only the easy bit.'}}else{ui.deathText.textContent='The goth got you. Olly wakes at the last checkpoint, bruised but ready for another shot.';ui.death.classList.remove('hidden');mode='dead'}stats()}
+  function retryCombat(){ui.death.classList.add('hidden');hp=5;stats();if(combatCheckpoint){x=combatCheckpoint.x;y=combatCheckpoint.y;reveal()}mode='map';if(target||isBoss){setTimeout(()=>startCombat(isBoss),100)}}
+  function backToMap(){ui.death.classList.add('hidden');hp=5;stats();if(combatCheckpoint){x=combatCheckpoint.x;y=combatCheckpoint.y;reveal()}mode='map';ui.dialogue.textContent='You retreat to the checkpoint. The goths are still waiting.'}
+
+  function startEncounterFight(){ui.encounter.classList.add('hidden');startCombat(false)}
+  function drawRelationshipArt(){
+    // The relationship screen now uses the approved illustrated artwork directly in the UI.
+    rctx.clearRect(0,0,rctx.canvas.width,rctx.canvas.height);
+  }
+function startRelationship(){
+    mode='relationship';relationshipRound=0;relationshipStep=0;relationshipDuration=2600;relationshipStart=performance.now();
+    ui.relationship.classList.remove('hidden');
+    ui.wouldFeedback.textContent='The princess is rambling. Your job is to weaponise your timing. Round 1 of 5.';
+    ui.wouldDisplay.textContent='“Can I ask you a question...”';
+    drawRelationshipArt();animateRelationship();
+}
+function animateRelationship(){
+    cancelAnimationFrame(relationshipRAF);
+    const tick=t=>{
+      if(mode!=='relationship')return;
+      const elapsed=t-relationshipStart;
+      const pct=Math.min(1,elapsed/relationshipDuration);
+      const zoneStart=Math.min(.80 + relationshipRound*.025,.90);
+      const zoneWidth=Math.max(.055,.105-relationshipRound*.012);
+      ui.timingCursor.style.left=`${pct*100}%`;
+      ui.timingZone.style.left=`${zoneStart*100}%`;
+      ui.timingZone.style.width=`${zoneWidth*100}%`;
+      let line='“Can I ask you a question...”';
+      if(pct>=.18&&pct<.36) line='“Have you ever...”';
+      else if(pct>=.36&&pct<.54) line='“Do you like...”';
+      else if(pct>=.54&&pct<zoneStart) line='“What was I going to say?”';
+      else if(pct>=zoneStart) line='“WOULD YOU?”';
+      ui.wouldDisplay.textContent=line;
+      if(pct>=1){
+        relationshipStart=performance.now();
+        ui.wouldFeedback.textContent='Too late. The princess has already escaped the sentence. She rambles again. Round '+(relationshipStep+1)+' of 5.';
+      }
+      relationshipRAF=requestAnimationFrame(tick);
+    };
+    relationshipRAF=requestAnimationFrame(tick);
+}
+function completeRelationship(){
+    if(mode!=='relationship')return;
+    const elapsed=performance.now()-relationshipStart;
+    const pct=elapsed/relationshipDuration;
+    const zoneStart=Math.min(.80 + relationshipRound*.025,.90);
+    const zoneEnd=zoneStart+Math.max(.055,.105-relationshipRound*.012);
+    if(pct>=zoneStart&&pct<=zoneEnd){
+      relationshipStep++;
+      if(relationshipStep>=5){
+        relationshipDone=true;mode='map';cancelAnimationFrame(relationshipRAF);ui.relationship.classList.add('hidden');
+        ui.dialogue.textContent=unlockedBoss()?'💕 WOULD YOU? complete. Miraculously, the rest of the requirements are also done. The gate can now open.':'💕 WOULD YOU? complete. Five perfectly timed interruptions. One more requirement remains before the gate can open.';stats();
+      }else{
+        relationshipRound++;relationshipDuration=[2600,2250,1950,1650,1400][relationshipRound]||1200;relationshipStart=performance.now();
+        ui.wouldFeedback.textContent='✅ PERFECT. She has started another ramble. Round '+(relationshipStep+1)+' of 5. Less time this time, because apparently love needed a difficulty curve.';
+      }
+    }else{
+      ui.wouldFeedback.textContent=pct<zoneStart?'❌ Too early. The phrase has not escaped her yet.':'❌ Too late. She has already said “WOULD YOU?” and is emotionally moving on.';
+    }
+}
+
+  function answerPuzzle(answer){
+    if(mode!=='puzzle')return;
+    if(answer==='correct'){
+      puzzleSolved=true;
+      mode='map';
+      ui.puzzle.classList.add('hidden');
+      ui.dialogue.textContent=unlockedBoss()?'🧩 Correct. “Get your kit off, mate.” Against all odds, the rest of the requirements are also complete. The gate can now open.':'🧩 Correct. “Get your kit off, mate.” One objective down. The Goths are still guarding the exit, because apparently there are rules.';
+      stats();
+    }else{
+      ui.puzzleFeedback.textContent='❌ Incorrect. The princess remains imprisoned, and somewhere a goth has just judged you.';
+    }
+  }
+  function startBoss(){ui.bossReady.classList.add('hidden');ui.bossIntro.classList.add('hidden');target=null;combatCheckpoint={x,y};startCombat(true)}
+  function saveGame(){
+    try{
+      const state={version:3,savedAt:new Date().toISOString(),level:1,x,y,hp,kills,relationshipDone,puzzleSolved,keyCollected,inventory,checkpoint,revealed,enemies:enemies.map(e=>({dead:e.dead,hp:e.hp}))};
+      localStorage.setItem(SAVE_KEY,JSON.stringify(state));
+      ui.dialogue.textContent='💾 Game saved. The Goths will have to wait.';
+      return true;
+    }catch(err){console.error('Goodbye Goth save failed',err);return false;}
+  }
+  function loadGame(){
+    const state=safeParseSave();
+    if(!state || state.version!==3)return false;
+    try{
+      x=Number.isFinite(state.x)?state.x:x; y=Number.isFinite(state.y)?state.y:y; hp=Number.isFinite(state.hp)?state.hp:hp; kills=Number.isFinite(state.kills)?state.kills:kills;
+      relationshipDone=!!state.relationshipDone; puzzleSolved=!!state.puzzleSolved; keyCollected=!!state.keyCollected; inventory=state.inventory&&typeof state.inventory==='object'?state.inventory:{}; checkpoint=state.checkpoint||'cemetery-entrance';
+      if(Array.isArray(state.revealed)&&state.revealed.length===ROWS){for(let yy=0;yy<ROWS;yy++)for(let xx=0;xx<COLS;xx++)revealed[yy][xx]=!!state.revealed[yy]?.[xx];}
+      if(Array.isArray(state.enemies)){state.enemies.forEach((saved,i)=>{if(enemies[i]){enemies[i].dead=!!saved.dead;if(Number.isFinite(saved.hp))enemies[i].hp=saved.hp;}})}
+      mode='map'; target=null; bossRoomEntered=false;
+      reveal(); stats(); drawMini(); ui.dialogue.textContent='📂 Game loaded. Welcome back to the cemetery.';
+      return true;
+    }catch(err){console.error('Goodbye Goth load failed',err);return false;}
+  }
+  function start(){reveal();stats();drawMini();cancelAnimationFrame(relationshipRAF);clearInterval(enemyTimer);cancelAnimationFrame(raf);const loop=t=>{now=t;if(walkPulse>0 && t%99999>-1){} if(mode==='map')drawWorld(t);drawMini();raf=requestAnimationFrame(loop)};raf=requestAnimationFrame(loop);requestAnimationFrame(combatTick)}
+  function primaryAction(){if(mode==='encounter')startEncounterFight();else if(mode==='combat')combatAttack();else if(mode==='map')checkTriggers()}
+
+  return {start,move,primaryAction,interact,startEncounterFight,combatAttack,combatDodge,shootAtPointer,retryCombat,backToMap,completeRelationship,answerPuzzle,startBoss,saveGame,loadGame};
+}

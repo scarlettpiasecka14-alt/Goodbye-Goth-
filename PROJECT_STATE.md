@@ -1,22 +1,10 @@
-# Goodbye Goth - v4.1
+# Goodbye Goth — v5.0 Level 1 Map Rebuild
 
-## Level 1 map reset
-Level 1 has been rebuilt from Scarlett's hand-drawn map blueprint rather than patched from the previous maze.
-
-### Map rules
-- The dotted route in the paper sketch is an example route only.
-- The whole cemetery ground is freely walkable.
-- Buildings, trees and flower/bush patches have explicit collision footprints.
-- Interactive heart, puzzle and Goth markers are standalone clickable objects. Walking over/near them does not start an activity.
-- Three buildings are kept separate: chapel upper-left, small mausoleum upper-right, large mausoleum lower-middle.
-- Olly starts middle-left.
-- Relationship challenge: lower-left.
-- Zombie Goth 1: upper-left/middle.
-- Princess question: upper-right.
-- Chain Goth 2: lower-right.
-- Key appears after all three Level 1 objectives are completed.
-- Boss gate is bottom-right and only opens after the key is collected.
-- The camera follows Olly and the map has open edges, so there is no inaccessible black corner.
-
-## Save system
-- Level 1 saves use save format version 2 so old map saves are not loaded into the new geometry.
+- Level 1 cemetery map has been rebuilt around the approved 1536x1024 illustrated cemetery map.
+- The map is one continuous cobblestone cemetery with no artificial black walkable gaps.
+- Church, small mausoleum and large mausoleum are visually separate.
+- Goth 1, Goth 2, WOULD YOU?, Puzzle, Key and Boss Gate have dedicated clear locations.
+- Walking is passive: walking into an interactive location does NOT start it. The player must click the marker.
+- The camera follows Olly using the same world/camera foundation intended for larger future maps.
+- Save/load remains available through localStorage.
+- Chain Goth remains the second Level 1 enemy.
