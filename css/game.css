@@ -557,3 +557,77 @@ html,body,#app{height:100%;overflow:hidden}
   .quiz-box .quiz-image{max-height:26svh}
   .quiz-box .quiz-answers button{font-size:.84rem}
 }
+
+/* v4.6 recovery: restore the three-button main menu without changing the map UI. */
+.title-skip-intro{display:none !important;}
+.perfect-title-wrap{position:relative;overflow:visible;}
+.title-menu{
+  position:absolute;
+  left:50%;
+  bottom:1%;
+  transform:translateX(-50%);
+  z-index:20;
+  width:min(360px,40vw);
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+  padding:8px;
+  border:1px solid rgba(216,165,216,.75);
+  border-radius:16px;
+  background:rgba(15,9,19,.92);
+  box-shadow:0 10px 30px rgba(0,0,0,.35);
+}
+.title-menu-btn{
+  width:100%;
+  border:2px solid #d8a5d8;
+  border-radius:10px;
+  padding:9px 12px;
+  background:#29152f;
+  color:#fff4fb;
+  font:700 clamp(13px,1.25vw,18px) Georgia,serif;
+  letter-spacing:.08em;
+  cursor:pointer;
+  text-transform:uppercase;
+}
+.title-menu-btn:hover{background:#402040;}
+.primary-title-btn{background:#6f2f55;}
+.primary-title-btn:hover{background:#8b3b67;}
+.title-message{
+  position:absolute;
+  left:50%;
+  bottom:1.5%;
+  transform:translateX(-50%);
+  z-index:21;
+  padding:7px 12px;
+  border-radius:999px;
+  background:rgba(15,9,19,.95);
+  border:1px solid #d8a5d8;
+  color:#fff;
+  font-size:12px;
+}
+.story-skip-intro{
+  position:absolute;
+  top:20px;
+  right:20px;
+  z-index:15;
+  border:2px solid #d8a5d8;
+  border-radius:999px;
+  padding:8px 14px;
+  background:rgba(20,12,25,.9);
+  color:#fff4fb;
+  font:700 12px Georgia,serif;
+  cursor:pointer;
+  letter-spacing:.06em;
+}
+.story-skip-intro:hover{background:#402040;}
+.quit-screen{min-height:100svh;display:grid;place-items:center;background:#0e0912;color:#fff4fb;}
+.quit-card{width:min(560px,90vw);padding:35px;text-align:center;border:2px solid #8f668f;border-radius:20px;background:#1a0d24;box-shadow:0 18px 60px rgba(0,0,0,.45);}
+.quit-skull{font-size:60px;margin-bottom:10px;}
+.quit-card h1{margin:0 0 12px;font-family:Georgia,serif;}
+.save-hint{margin-top:6px;text-align:center;font-size:12px;opacity:.82;letter-spacing:.03em;}
+@media(max-width:700px){
+  .title-menu{width:min(340px,72vw);gap:5px;padding:7px;bottom:1%;}
+  .title-menu-btn{padding:8px 10px;}
+  .story-skip-intro{top:12px;right:12px;font-size:11px;}
+  .save-hint{font-size:11px;}
+}
