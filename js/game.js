@@ -214,6 +214,7 @@ function mountLevel1(loadSaved=false){
               <button id="save-game" type="button">SAVE GAME</button>
               <button id="load-game" type="button">LOAD GAME</button>
             </div>
+            <div class="save-hint">Press <strong>X</strong> at any time to save.</div>
             <div id="save-status" class="small save-status" aria-live="polite"></div>
           </div>
         </aside>
@@ -301,9 +302,13 @@ function mountLevel1(loadSaved=false){
   ui.combatCanvas.addEventListener('pointerdown',e=>level.shootAtPointer(e));
   window.addEventListener('keydown',e=>{
     const k=e.key.toLowerCase();
-    if(['arrowup','arrowdown','arrowleft','arrowright',' ','w','a','s','d'].includes(k))e.preventDefault();
+    if(['arrowup','arrowdown','arrowleft','arrowright',' ','w','a','s','d','x'].includes(k))e.preventDefault();
     if(['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d'].includes(k))level.setMoveKey?.(k,true);
     if(k===' ')level.primaryAction();
+    if(k==='x'){
+      const ok=level.saveGame();
+      if(ui.saveStatus) ui.saveStatus.textContent=ok?'Saved ✓':'Save failed';
+    }
   });
   window.addEventListener('keyup',e=>{
     const k=e.key.toLowerCase();

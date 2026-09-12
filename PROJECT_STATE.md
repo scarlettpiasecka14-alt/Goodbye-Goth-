@@ -14,5 +14,5 @@
 Replaced the previous cemetery background and grid-based movement presentation with a clean 1536x1024 character-free cemetery backdrop. Olly, both Goths, the Would You icon, the Princess Question icon, and the key are separate runtime sprites/objects. Movement uses continuous world coordinates and explicit collision rectangles.
 
 
-## v4.6
+## v4.6.1
 Main-menu and save/load patch: New Game, Load Game and Quit; intro skip moved to the first intro slide; Save/Load remains available during gameplay.
