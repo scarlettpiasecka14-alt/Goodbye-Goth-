@@ -6,11 +6,11 @@ const mapBackground=new Image();
 mapBackground.src='assets/environment/level1-map-bg.png?v=600';
 const ollySprite=new Image();
 ollySprite.src='assets/characters/olly.png?v=300';
-const wouldIcon=new Image(); wouldIcon.src='assets/icons/would-you.png';
-const quizIcon=new Image(); quizIcon.src='assets/icons/quiz.png';
+const wouldIcon=new Image(); wouldIcon.src='assets/icons/would-you.png?v=4512';
+const quizIcon=new Image(); quizIcon.src='assets/icons/quiz.png?v=4512';
 const zombieSprites={shambler:new Image(),chain:new Image()};
 zombieSprites.shambler.src='assets/characters/zombie-goth.png?v=300';
-zombieSprites.chain.src='assets/characters/chain-goth-clean.png?v=620';
+zombieSprites.chain.src='assets/characters/chain-goth-clean.png?v=4512';
 
 /* v6.0: a complete Level 1 rebuild.
    The background is a clean, character-free cemetery illustration.
@@ -52,10 +52,10 @@ export function createLevel1(ui){
   const GRID=32,COLS=48,ROWS=32;
   const revealed=Array.from({length:ROWS},()=>Array(COLS).fill(true));
   const enemies=[
-    {x:500,y:400,type:'shambler',name:'GRAVEYARD SHAMBLER',hp:4,maxHp:4,dead:false,pattern:'Slow lunge'},
-    {x:1090,y:535,type:'chain',name:'CHAIN GOTH',hp:5,maxHp:5,dead:false,pattern:'Long-range chain lash'}
+    {x:445,y:315,type:'shambler',name:'GRAVEYARD SHAMBLER',hp:4,maxHp:4,dead:false,pattern:'Slow lunge'},
+    {x:1120,y:600,type:'chain',name:'CHAIN GOTH',hp:5,maxHp:5,dead:false,pattern:'Long-range chain lash'}
   ];
-  const relationship={x:330,y:675},puzzle={x:1165,y:360},boss={x:1380,y:820},key={x:1200,y:700};
+  const relationship={x:520,y:600},puzzle={x:1015,y:455},boss={x:1380,y:820},key={x:1200,y:700};
   let x=470,y=520,hp=5,mode='map',walkDir='right',facingDir='right',walkPulse=0,kills=0,relationshipDone=false,puzzleSolved=false,keyCollected=false,inventory={},checkpoint='cemetery-entrance',target=null,isBoss=false,combatHp=0,combatMax=1,enemyAttackPhase=null,enemyTimer=null,combatRaf=0,projectiles=[],player={x:145,y:300,invuln:0,aimX:650,aimY:170},combatCheckpoint=null,bossRoomEntered=false,relationshipStep=0,relationshipRound=0,relationshipStart=0,relationshipDuration=2600,relationshipAnimating=false,relationshipRAF=0;
   let now=0,raf=0,lastMoveTime=0;
   const held={up:false,down:false,left:false,right:false};
@@ -114,8 +114,8 @@ export function createLevel1(ui){
     const camX=Math.max(viewW/2,Math.min(WORLD_W-viewW/2,playerX)),camY=Math.max(viewH/2,Math.min(WORLD_H-viewH/2,playerY));
     ctx.translate(vw/2-camX*zoom,vh/2-camY*zoom);ctx.scale(zoom,zoom);
     if(mapBackground.complete&&mapBackground.naturalWidth)ctx.drawImage(mapBackground,0,0,WORLD_W,WORLD_H);else{ctx.fillStyle='#1b1420';ctx.fillRect(0,0,WORLD_W,WORLD_H)}
-    if(!enemies[0].dead)drawZombieSprite(ctx,enemies[0].x,enemies[0].y,'shambler',.832,t/1000,false);
-    if(!enemies[1].dead)drawZombieSprite(ctx,enemies[1].x,enemies[1].y,'chain',.78,t/1000,false);
+    if(!enemies[0].dead)drawZombieSprite(ctx,enemies[0].x,enemies[0].y,'shambler',.64,t/1000,false);
+    if(!enemies[1].dead)drawZombieSprite(ctx,enemies[1].x,enemies[1].y,'chain',.60,t/1000,false);
     if(!relationshipDone)drawMarker(ctx,wouldIcon,relationship.x,relationship.y,74,74,'');
     if(!puzzleSolved)drawMarker(ctx,quizIcon,puzzle.x,puzzle.y,74,74,'');
     if(!keyCollected&&objectivesComplete()){
@@ -135,8 +135,8 @@ export function createLevel1(ui){
   ui.canvas.addEventListener('pointerdown',e=>{
     if(mode!=='map')return;const pt=canvasPointToWorld(e);const near=(px,py,r)=>Math.hypot(pt.x-px,pt.y-py)<r;
     const enemyHit=enemies.find(z=>!z.dead&&near(z.x,z.y,70));if(enemyHit){openEncounter(enemyHit);return}
-    if(!relationshipDone&&near(relationship.x,relationship.y,58)){startRelationship();return}
-    if(!puzzleSolved&&near(puzzle.x,puzzle.y,58)){mode='puzzle';ui.puzzle.classList.remove('hidden');ui.puzzleFeedback.textContent='Choose wisely. The Goths have inexplicably made this a formal assessment.';return}
+    if(!relationshipDone&&near(relationship.x,relationship.y,62)){startRelationship();return}
+    if(!puzzleSolved&&near(puzzle.x,puzzle.y,62)){mode='puzzle';ui.puzzle.classList.remove('hidden');ui.puzzleFeedback.textContent='Choose wisely. The Goths have inexplicably made this a formal assessment.';return}
     if(objectivesComplete()&&!keyCollected&&near(key.x,key.y,55)){keyCollected=true;inventory.key=1;ui.dialogue.textContent='🔑 A little brass key drops onto the cobblestones. Finally, a sensible piece of game design.';stats();return}
     if(near(boss.x,boss.y,72)){if(unlockedBoss()){bossRoomEntered=true;mode='bossready';ui.bossReady.classList.remove('hidden')}else{ui.dialogue.textContent='🔒 The gate is still locked. Complete every challenge, then collect the key.'}return}
   });
