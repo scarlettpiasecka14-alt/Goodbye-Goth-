@@ -1,18 +1,4 @@
-# Goodbye Goth — v6.0 Level 1 Map Rebuild
+Goodbye Goth v4.5.3 patch
 
-- Level 1 cemetery map has been rebuilt around the approved 1536x1024 illustrated cemetery map.
-- The map is one continuous cobblestone cemetery with no artificial black walkable gaps.
-- Church, small mausoleum and large mausoleum are visually separate.
-- Goth 1, Goth 2, WOULD YOU?, Puzzle, Key and Boss Gate have dedicated clear locations.
-- Walking is passive: walking into an interactive location does NOT start it. The player must click the marker.
-- The camera follows Olly using the same world/camera foundation intended for larger future maps.
-- Save/load remains available through localStorage.
-- Chain Goth remains the second Level 1 enemy.
-
-
-## v6.0: Level 1 full map rebuild
-Replaced the previous cemetery background and grid-based movement presentation with a clean 1536x1024 character-free cemetery backdrop. Olly, both Goths, the Would You icon, the Princess Question icon, and the key are separate runtime sprites/objects. Movement uses continuous world coordinates and explicit collision rectangles.
-
-
-## v4.6.1
-Main-menu and save/load patch: New Game, Load Game and Quit; intro skip moved to the first intro slide; Save/Load remains available during gameplay.
+"
+"Small Level 1 presentation patch. Canonical mapping is puzzle-piece icon = WOULD YOU? relationship challenge, goth-heart icon = Princess Question. Replaces the previous plain-heart WOULD YOU marker with a standalone puzzle-piece sprite. Tightens the Princess Question overlay so all four multiple-choice answers, including D, remain visible on desktop-sized screens.
