@@ -1,15 +1,7 @@
-Goodbye Goth v4.7.4 patch
+Goodbye Goth v4.7.5
 
-Replace only:
-- js/levels/level1.js
-- assets/icons/relationship-challenge.png
-- assets/icons/princess-question.png
+ONLY change in this patch: move the two Level 1 interactive icons.
+- Princess Question moved to the middle-top area: x=760, y=300
+- Relationship Challenge moved further down: x=360, y=800
 
-This patch:
-- Restores the exact supplied relationship-challenge puzzle-piece sprite.
-- Restores the exact supplied princess-question gothic-heart sprite.
-- Keeps relationship icon at 74px.
-- Makes princess-question icon 96px.
-- Makes both Level 1 Goths ~30% larger than before.
-- Moves both Goths and both interactive icons onto open cobblestone areas.
-- Keeps the v4.7 level-role architecture.
+No other Level 1 code or assets are changed.

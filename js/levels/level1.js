@@ -77,7 +77,7 @@ export function createLevel1(ui){
     {x:485,y:420,type:'shambler',name:'GRAVEYARD SHAMBLER',hp:4,maxHp:4,dead:false,pattern:'Slow lunge'},
     {x:1115,y:505,type:'chain',name:'CHAIN GOTH',hp:5,maxHp:5,dead:false,pattern:'Long-range chain lash'}
   ];
-  const relationshipChallenge={x:420,y:650},princessQuestion={x:1040,y:515},boss={x:1380,y:820},key={x:1200,y:700};
+  const relationshipChallenge={x:360,y:800},princessQuestion={x:760,y:300},boss={x:1380,y:820},key={x:1200,y:700};
   let x=470,y=520,hp=5,mode='map',walkDir='right',facingDir='right',walkPulse=0,kills=0,relationshipDone=false,puzzleSolved=false,keyCollected=false,inventory={},checkpoint='cemetery-entrance',target=null,isBoss=false,combatHp=0,combatMax=1,enemyAttackPhase=null,enemyTimer=null,combatRaf=0,projectiles=[],player={x:145,y:300,invuln:0,aimX:650,aimY:170},combatCheckpoint=null,bossRoomEntered=false,relationshipStep=0,relationshipRound=0,relationshipStart=0,relationshipDuration=2600,relationshipAnimating=false,relationshipRAF=0;
   let now=0,raf=0,lastMoveTime=0;
   const held={up:false,down:false,left:false,right:false};
