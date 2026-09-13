@@ -10,8 +10,8 @@ ollySprite.src='assets/characters/olly.png?v=300';
 // These shared icon references can be reused by every level. Only the activity
 // behind the role changes from level to level.
 const ICON_LIBRARY={
-  relationshipChallenge:'assets/icons/would-you.png',
-  princessQuestion:'assets/icons/quiz.png'
+  relationshipChallenge:'assets/icons/relationship-challenge.png',
+  princessQuestion:'assets/icons/princess-question.png'
 };
 const relationshipChallengeIcon=new Image();
 relationshipChallengeIcon.src=ICON_LIBRARY.relationshipChallenge;

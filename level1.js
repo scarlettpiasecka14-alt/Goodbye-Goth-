@@ -6,34 +6,33 @@ const mapBackground=new Image();
 mapBackground.src='assets/environment/level1-map-bg.png?v=600';
 const ollySprite=new Image();
 ollySprite.src='assets/characters/olly.png?v=300';
-const wouldIcon=new Image(); wouldIcon.src='assets/icons/would-you.png';
-const quizIcon=new Image(); quizIcon.src='assets/icons/quiz.png';
+// v4.7 activity architecture: the icon belongs to the ROLE, not to the level.
+// These shared icon references can be reused by every level. Only the activity
+// behind the role changes from level to level.
+const ICON_LIBRARY={
+  relationshipChallenge:'assets/icons/relationship-challenge.png',
+  princessQuestion:'assets/icons/princess-question.png'
+};
+const relationshipChallengeIcon=new Image();
+relationshipChallengeIcon.src=ICON_LIBRARY.relationshipChallenge;
+const princessQuestionIcon=new Image();
+princessQuestionIcon.src=ICON_LIBRARY.princessQuestion;
+
+const LEVEL_ACTIVITY_DATA={
+  1:{
+    relationshipChallenge:{id:'wouldYou',name:'WOULD YOU?',icon:ICON_LIBRARY.relationshipChallenge},
+    princessQuestion:{id:'undressQuestion',name:'Princess Question',icon:ICON_LIBRARY.princessQuestion}
+  },
+  2:{
+    relationshipChallenge:{id:'bathroomBurrito',name:'BATHROOM BURRITO',icon:ICON_LIBRARY.relationshipChallenge},
+    princessQuestion:{id:'chaosFairyGoth',name:'Which type of goth is known for frolicking in the woods?',icon:ICON_LIBRARY.princessQuestion}
+  }
+};
+const LEVEL_NUMBER=1;
+const ACTIVITY_DATA=LEVEL_ACTIVITY_DATA[LEVEL_NUMBER];
 const zombieSprites={shambler:new Image(),chain:new Image()};
 zombieSprites.shambler.src='assets/characters/zombie-goth.png?v=300';
-zombieSprites.chain.src='assets/characters/chain-goth.webp?v=370';
-
-// The supplied Chain Goth artwork has a white backing. We key out near-white pixels
-// at load time so the sprite becomes transparent without changing the source asset.
-let chainTransparentCanvas=null;
-function prepareChainSprite(){
-  if(!zombieSprites.chain.complete || !zombieSprites.chain.naturalWidth || chainTransparentCanvas) return;
-  const c=document.createElement('canvas');
-  c.width=zombieSprites.chain.naturalWidth; c.height=zombieSprites.chain.naturalHeight;
-  const cctx=c.getContext('2d');
-  cctx.drawImage(zombieSprites.chain,0,0);
-  const img=cctx.getImageData(0,0,c.width,c.height);
-  const d=img.data;
-  for(let i=0;i<d.length;i+=4){
-    const r=d[i],g=d[i+1],b=d[i+2];
-    const bright=(r+g+b)/3;
-    const neutral=Math.max(r,g,b)-Math.min(r,g,b) < 18;
-    if(bright > 222 && neutral) d[i+3]=0;
-    else if(bright > 190 && neutral) d[i+3]=Math.max(0,Math.round((222-bright)*255/32));
-  }
-  cctx.putImageData(img,0,0);
-  chainTransparentCanvas=c;
-}
-zombieSprites.chain.addEventListener('load',prepareChainSprite);
+zombieSprites.chain.src='assets/characters/chain-goth-clean.png?v=620';
 
 /* v6.0: a complete Level 1 rebuild.
    The background is a clean, character-free cemetery illustration.
@@ -41,17 +40,12 @@ zombieSprites.chain.addEventListener('load',prepareChainSprite);
    Walkability is handled by explicit collision rectangles, not by a tile grid.
 */
 const OBSTACLES=[
-  // Major structures. These are deliberately tight around the visible buildings.
-  {x:22,y:55,w:365,h:330,label:'church'},
-  {x:1225,y:45,w:250,h:315,label:'mausoleum'},
-  {x:565,y:735,w:420,h:270,label:'large-mausoleum'},
-  // Boss gate itself. The approach remains walkable.
-  {x:1325,y:805,w:160,h:130,label:'boss-gate'},
-  // Large edge trees / walls. Keep these out of the central pathways.
-  {x:0,y:0,w:95,h:235,label:'left-edge-trees'},
-  {x:1440,y:0,w:96,h:500,label:'right-edge-trees'},
-  {x:0,y:890,w:230,h:134,label:'bottom-left-tree'},
-  {x:1110,y:900,w:426,h:124,label:'bottom-right-trees'}
+  // Major structures only. Decorative gardens/trees are baked into the background
+  // and are intentionally not giant invisible barriers.
+  {x:15,y:0,w:410,h:385,label:'church'},
+  {x:1210,y:20,w:315,h:330,label:'upper-mausoleum'},
+  {x:560,y:735,w:410,h:289,label:'lower-mausoleum'},
+  {x:1330,y:770,w:190,h:120,label:'boss-gate'}
 ];
 function circleRectHit(px,py,r,o){const cx=Math.max(o.x,Math.min(px,o.x+o.w)),cy=Math.max(o.y,Math.min(py,o.y+o.h));return Math.hypot(px-cx,py-cy)<r}
 function blockedWorld(px,py,r=16){if(px<18||py<18||px>WORLD_W-18||py>WORLD_H-18)return true;return OBSTACLES.some(o=>circleRectHit(px,py,r,o))}
@@ -63,14 +57,14 @@ function drawOlly(ctx,x,y,s=.78,t=0,front=true,dir='right',moving=false){
   ctx.fillStyle='rgba(0,0,0,.34)';ctx.beginPath();ctx.ellipse(0,38*s,23*s,6*s,0,0,Math.PI*2);ctx.fill();
   if(ollySprite.complete&&ollySprite.naturalWidth){
     const w=96*s,h=144*s;
-    ctx.save();ctx.scale(dir==='left'?-1:1,1);ctx.drawImage(ollySprite,-w/2,-114*s,w,h);ctx.restore();
+    ctx.save();ctx.scale(dir==='right'?-1:1,1);ctx.drawImage(ollySprite,-w/2,-114*s,w,h);ctx.restore();
   }
   ctx.restore();
 }
 function drawZombieSprite(ctx,x,y,type,s=.68,t=0,attack=false){
   const img=zombieSprites[type]||zombieSprites.shambler;ctx.save();ctx.translate(x,y+Math.sin(t*7)*1.5);
   ctx.fillStyle='rgba(0,0,0,.34)';ctx.beginPath();ctx.ellipse(0,40*s,28*s,7*s,0,0,Math.PI*2);ctx.fill();
-  if(img.complete&&img.naturalWidth){const w=108*s,h=162*s; if(type==='chain'){prepareChainSprite(); if(chainTransparentCanvas) ctx.drawImage(chainTransparentCanvas,-w/2,-132*s,w,h); else ctx.drawImage(img,-w/2,-132*s,w,h);} else ctx.drawImage(img,-w/2,-132*s,w,h)}
+  if(img.complete&&img.naturalWidth){const w=108*s,h=162*s;ctx.drawImage(img,-w/2,-132*s,w,h)}
   if(attack){ctx.strokeStyle=type==='chain'?'#cfb7a5':'#ef91ac';ctx.lineWidth=3*s;ctx.beginPath();ctx.arc(0,-6*s,40*s,0,Math.PI*2);ctx.stroke()}
   ctx.restore();
 }
@@ -80,24 +74,49 @@ export function createLevel1(ui){
   const GRID=32,COLS=48,ROWS=32;
   const revealed=Array.from({length:ROWS},()=>Array(COLS).fill(true));
   const enemies=[
-    {x:525,y:320,type:'shambler',name:'GRAVEYARD SHAMBLER',hp:4,maxHp:4,dead:false,pattern:'Slow lunge'},
-    {x:1215,y:575,type:'chain',name:'CHAIN GOTH',hp:5,maxHp:5,dead:false,pattern:'Long-range chain lash'}
+    {x:445,y:315,type:'shambler',name:'GRAVEYARD SHAMBLER',hp:4,maxHp:4,dead:false,pattern:'Slow lunge'},
+    {x:1120,y:600,type:'chain',name:'CHAIN GOTH',hp:5,maxHp:5,dead:false,pattern:'Long-range chain lash'}
   ];
-  const relationship={x:330,y:700},puzzle={x:1170,y:430},boss={x:1400,y:860},key={x:1180,y:720};
-  let x=430,y=520,hp=5,mode='map',walkDir='right',facingDir='right',walkPulse=0,kills=0,relationshipDone=false,puzzleSolved=false,keyCollected=false,inventory={},checkpoint='cemetery-entrance',target=null,isBoss=false,combatHp=0,combatMax=1,enemyAttackPhase=null,enemyTimer=null,combatRaf=0,projectiles=[],player={x:145,y:300,invuln:0,aimX:650,aimY:170},combatCheckpoint=null,bossRoomEntered=false,relationshipStep=0,relationshipRound=0,relationshipStart=0,relationshipDuration=2600,relationshipAnimating=false,relationshipRAF=0;
-  let now=0,raf=0;
+  const relationshipChallenge={x:250,y:735},princessQuestion={x:1125,y:290},boss={x:1380,y:820},key={x:1200,y:700};
+  let x=470,y=520,hp=5,mode='map',walkDir='right',facingDir='right',walkPulse=0,kills=0,relationshipDone=false,puzzleSolved=false,keyCollected=false,inventory={},checkpoint='cemetery-entrance',target=null,isBoss=false,combatHp=0,combatMax=1,enemyAttackPhase=null,enemyTimer=null,combatRaf=0,projectiles=[],player={x:145,y:300,invuln:0,aimX:650,aimY:170},combatCheckpoint=null,bossRoomEntered=false,relationshipStep=0,relationshipRound=0,relationshipStart=0,relationshipDuration=2600,relationshipAnimating=false,relationshipRAF=0;
+  let now=0,raf=0,lastMoveTime=0;
+  const held={up:false,down:false,left:false,right:false};
+  function setMoveKey(key,down){ if(mode!=='map') return; const k=(key||'').toLowerCase(); if(k==='arrowup'||k==='w')held.up=down; if(k==='arrowdown'||k==='s')held.down=down; if(k==='arrowleft'||k==='a')held.left=down; if(k==='arrowright'||k==='d')held.right=down; }
+  function updateMovement(dt){
+    if(mode!=='map')return;
+    const speed=240;
+    let dx=(held.right?1:0)-(held.left?1:0);
+    let dy=(held.down?1:0)-(held.up?1:0);
+    if(!dx&&!dy){walkPulse=0;return;}
+    const len=Math.hypot(dx,dy)||1; dx=dx/len*speed*dt; dy=dy/len*speed*dt;
+    const tryMove=(nx,ny)=>{
+      if(blockedWorld(nx,ny,16))return false;
+      if(Math.hypot(nx-boss.x,ny-boss.y)<68&&!unlockedBoss())return false;
+      return true;
+    };
+    const nx=x+dx, ny=y+dy;
+    let moved=false;
+    if(tryMove(nx,y)){x=nx;moved=true;}
+    if(tryMove(x,ny)){y=ny;moved=true;}
+    if(moved){
+      walkPulse=1;
+      if(Math.abs(dx)>Math.abs(dy))facingDir=dx<0?'left':'right';
+      walkDir=Math.abs(dx)>Math.abs(dy)?(dx<0?'left':'right'):(dy<0?'up':'down');
+      ui.dialogue.textContent='The cemetery is strangely peaceful. Somewhere nearby, a goth is probably plotting.';
+    }
+  }
   const W2C=(gx,gy)=>({x:gx,y:gy});
   function reveal(){/* v6: Level 1 is fully visible. */}
   function objectivesComplete(){return kills>=2&&relationshipDone&&puzzleSolved}
   function unlockedBoss(){return objectivesComplete()&&keyCollected}
-  function stats(){ui.hpEl.textContent=hp;ui.gothEl.textContent=`${kills}/2`;ui.relEl.textContent=relationshipDone?'Solved':'Locked';ui.puzzleEl.textContent=puzzleSolved?'Answered':'Locked';ui.goalGoths.innerHTML=kills>=2?'<span class="good">✓ Defeat the required Zombie Goths</span>':`○ Defeat the required Zombie Goths (${kills}/2)`;ui.goalRel.innerHTML=relationshipDone?'<span class="good">✓ WOULD YOU? Puzzle complete</span>':'○ Complete the WOULD YOU? Puzzle';ui.goalPuzzle.innerHTML=puzzleSolved?'<span class="good">✓ Princess Question answered</span>':'○ Answer the Princess Question';ui.goalBoss.innerHTML=unlockedBoss()?'<span class="good">✓ Boss gate unlocked</span>':'<span class="locked">🔒 Boss gate locked</span>'}
+  function stats(){ui.hpEl.textContent=hp;ui.gothEl.textContent=`${kills}/2`;ui.relEl.textContent=relationshipDone?'Solved':'Locked';ui.puzzleEl.textContent=puzzleSolved?'Answered':'Locked';ui.goalGoths.innerHTML=kills>=2?'<span class="good">✓ Defeat the required Zombie Goths</span>':`○ Defeat the required Zombie Goths (${kills}/2)`;ui.goalRel.innerHTML=relationshipDone?`<span class="good">✓ ${ACTIVITY_DATA.relationshipChallenge.name} complete</span>`:`○ Complete the ${ACTIVITY_DATA.relationshipChallenge.name} Challenge`;ui.goalPuzzle.innerHTML=puzzleSolved?'<span class="good">✓ Princess Question answered</span>':'○ Answer the Princess Question';ui.goalBoss.innerHTML=unlockedBoss()?'<span class="good">✓ Boss gate unlocked</span>':'<span class="locked">🔒 Boss gate locked</span>'}
   function drawMini(){
     mctx.clearRect(0,0,250,180);mctx.fillStyle='#0d0b11';mctx.fillRect(0,0,250,180);
     if(mapBackground.complete&&mapBackground.naturalWidth)mctx.drawImage(mapBackground,0,0,250,167);
     const marker=(px,py,c,r=4)=>{mctx.fillStyle=c;mctx.beginPath();mctx.arc(px/WORLD_W*250,py/WORLD_H*167,r,0,Math.PI*2);mctx.fill()};
     marker(x,y,'#fff',4);
-    if(!relationshipDone)marker(relationship.x,relationship.y,'#ef91ac');
-    if(!puzzleSolved)marker(puzzle.x,puzzle.y,'#9deaff');
+    if(!relationshipDone)marker(relationshipChallenge.x,relationshipChallenge.y,'#ef91ac');
+    if(!puzzleSolved)marker(princessQuestion.x,princessQuestion.y,'#9deaff');
     if(!enemies[0].dead)marker(enemies[0].x,enemies[0].y,'#ef91ac',4);
     if(!enemies[1].dead)marker(enemies[1].x,enemies[1].y,'#ef91ac',4);
     if(!keyCollected&&objectivesComplete())marker(key.x,key.y,'#f0cf8b',4);
@@ -112,15 +131,15 @@ export function createLevel1(ui){
   function drawWorld(t){
     const vw=ui.canvas.clientWidth||1000,vh=ui.canvas.clientHeight||600;
     const sx=ui.canvas.width/vw,sy=ui.canvas.height/vh;ctx.clearRect(0,0,ui.canvas.width,ui.canvas.height);ctx.save();ctx.scale(sx,sy);
-    const zoom=Math.max(1.12,Math.min(1.28,Math.max(vw/WORLD_W,vh/WORLD_H)*1.18));
+    const zoom=1.24;
     const playerX=x,playerY=y,viewW=vw/zoom,viewH=vh/zoom;
     const camX=Math.max(viewW/2,Math.min(WORLD_W-viewW/2,playerX)),camY=Math.max(viewH/2,Math.min(WORLD_H-viewH/2,playerY));
     ctx.translate(vw/2-camX*zoom,vh/2-camY*zoom);ctx.scale(zoom,zoom);
     if(mapBackground.complete&&mapBackground.naturalWidth)ctx.drawImage(mapBackground,0,0,WORLD_W,WORLD_H);else{ctx.fillStyle='#1b1420';ctx.fillRect(0,0,WORLD_W,WORLD_H)}
     if(!enemies[0].dead)drawZombieSprite(ctx,enemies[0].x,enemies[0].y,'shambler',.64,t/1000,false);
     if(!enemies[1].dead)drawZombieSprite(ctx,enemies[1].x,enemies[1].y,'chain',.60,t/1000,false);
-    if(!relationshipDone)drawMarker(ctx,wouldIcon,relationship.x,relationship.y,74,74,'');
-    if(!puzzleSolved)drawMarker(ctx,quizIcon,puzzle.x,puzzle.y,74,74,'');
+    if(!relationshipDone)drawMarker(ctx,relationshipChallengeIcon,relationshipChallenge.x,relationshipChallenge.y,74,74,'');
+    if(!puzzleSolved)drawMarker(ctx,princessQuestionIcon,princessQuestion.x,princessQuestion.y,74,74,'');
     if(!keyCollected&&objectivesComplete()){
       ctx.save();ctx.translate(key.x,key.y);ctx.shadowColor='#ffe49b';ctx.shadowBlur=20;ctx.fillStyle='#f5d27e';ctx.beginPath();ctx.arc(0,0,10+Math.sin(t/180)*2,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#fff2c7';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(8,0);ctx.lineTo(30,0);ctx.lineTo(30,8);ctx.moveTo(20,0);ctx.lineTo(20,-7);ctx.stroke();ctx.restore();
     }
@@ -129,7 +148,7 @@ export function createLevel1(ui){
   }
   function canvasPointToWorld(e){
     const rect=ui.canvas.getBoundingClientRect(),vw=ui.canvas.clientWidth||1000,vh=ui.canvas.clientHeight||600;
-    const zoom=Math.max(1.12,Math.min(1.28,Math.max(vw/WORLD_W,vh/WORLD_H)*1.18));
+    const zoom=1.24;
     const sx=(e.clientX-rect.left)*(vw/rect.width),sy=(e.clientY-rect.top)*(vh/rect.height),viewW=vw/zoom,viewH=vh/zoom;
     const camX=Math.max(viewW/2,Math.min(WORLD_W-viewW/2,x)),camY=Math.max(viewH/2,Math.min(WORLD_H-viewH/2,y));
     return {x:(sx-vw/2+camX*zoom)/zoom,y:(sy-vh/2+camY*zoom)/zoom};
@@ -138,18 +157,12 @@ export function createLevel1(ui){
   ui.canvas.addEventListener('pointerdown',e=>{
     if(mode!=='map')return;const pt=canvasPointToWorld(e);const near=(px,py,r)=>Math.hypot(pt.x-px,pt.y-py)<r;
     const enemyHit=enemies.find(z=>!z.dead&&near(z.x,z.y,70));if(enemyHit){openEncounter(enemyHit);return}
-    if(!relationshipDone&&near(relationship.x,relationship.y,58)){startRelationship();return}
-    if(!puzzleSolved&&near(puzzle.x,puzzle.y,58)){mode='puzzle';ui.puzzle.classList.remove('hidden');ui.puzzleFeedback.textContent='Choose wisely. The Goths have inexplicably made this a formal assessment.';return}
+    if(!relationshipDone&&near(relationshipChallenge.x,relationshipChallenge.y,58)){startRelationship();return}
+    if(!puzzleSolved&&near(princessQuestion.x,princessQuestion.y,58)){mode='puzzle';ui.puzzle.classList.remove('hidden');ui.puzzleFeedback.textContent='Choose wisely. The Goths have inexplicably made this a formal assessment.';return}
     if(objectivesComplete()&&!keyCollected&&near(key.x,key.y,55)){keyCollected=true;inventory.key=1;ui.dialogue.textContent='🔑 A little brass key drops onto the cobblestones. Finally, a sensible piece of game design.';stats();return}
     if(near(boss.x,boss.y,72)){if(unlockedBoss()){bossRoomEntered=true;mode='bossready';ui.bossReady.classList.remove('hidden')}else{ui.dialogue.textContent='🔒 The gate is still locked. Complete every challenge, then collect the key.'}return}
   });
-  function move(dir){
-    if(mode!=='map')return;
-    const step=18,dx=dir==='left'?-step:dir==='right'?step:0,dy=dir==='up'?-step:dir==='down'?step:0,nx=x+dx,ny=y+dy;
-    if(blockedWorld(nx,ny,17))return;
-    if(Math.hypot(nx-boss.x,ny-boss.y)<72&&!unlockedBoss()){ui.dialogue.textContent='🔒 The ornate gate is sealed. Complete the cemetery challenges first.';return}
-    x=nx;y=ny;walkDir=dir;if(dir==='left'||dir==='right')facingDir=dir;walkPulse=1;setTimeout(()=>walkPulse=0,140);ui.dialogue.textContent='The cemetery is strangely peaceful. Somewhere nearby, a goth is probably plotting.';
-  }
+  function move(dir){ setMoveKey(dir,true); setTimeout(()=>setMoveKey(dir,false),45); }
   function checkTriggers(){}
   function interact(){return}
 
@@ -311,8 +324,8 @@ function completeRelationship(){
       stats(); drawMini(); ui.dialogue.textContent='📂 Game loaded. Welcome back to the cemetery.'; return true;
     }catch(err){console.error('Goodbye Goth load failed',err);return false;}
   }
-  function start(){stats();drawMini();cancelAnimationFrame(relationshipRAF);clearInterval(enemyTimer);cancelAnimationFrame(raf);const loop=t=>{now=t;if(mode==='map')drawWorld(t);drawMini();raf=requestAnimationFrame(loop)};raf=requestAnimationFrame(loop);requestAnimationFrame(combatTick)}
+  function start(){stats();drawMini();cancelAnimationFrame(relationshipRAF);clearInterval(enemyTimer);cancelAnimationFrame(raf);const loop=t=>{const dt=Math.min(0.04,(t-(now||t))/1000);now=t;if(mode==='map')updateMovement(dt);if(walkPulse>0)walkPulse=0;drawWorld(t);drawMini();raf=requestAnimationFrame(loop)};raf=requestAnimationFrame(loop);requestAnimationFrame(combatTick)}
   function primaryAction(){if(mode==='encounter')startEncounterFight();else if(mode==='combat')combatAttack();else if(mode==='map')checkTriggers()}
 
-  return {start,move,primaryAction,interact,startEncounterFight,combatAttack,combatDodge,shootAtPointer,retryCombat,backToMap,completeRelationship,answerPuzzle,startBoss,saveGame,loadGame};
+  return {start,move,setMoveKey,primaryAction,interact,startEncounterFight,combatAttack,combatDodge,shootAtPointer,retryCombat,backToMap,completeRelationship,answerPuzzle,startBoss,saveGame,loadGame};
 }
