@@ -6,8 +6,30 @@ const mapBackground=new Image();
 mapBackground.src='assets/environment/level1-map-bg.png?v=600';
 const ollySprite=new Image();
 ollySprite.src='assets/characters/olly.png?v=300';
-const wouldIcon=new Image(); wouldIcon.src='assets/icons/would-you.png';
-const quizIcon=new Image(); quizIcon.src='assets/icons/quiz.png';
+// v4.7 activity architecture: the icon belongs to the ROLE, not to the level.
+// These shared icon references can be reused by every level. Only the activity
+// behind the role changes from level to level.
+const ICON_LIBRARY={
+  relationshipChallenge:'assets/icons/would-you.png',
+  princessQuestion:'assets/icons/quiz.png'
+};
+const relationshipChallengeIcon=new Image();
+relationshipChallengeIcon.src=ICON_LIBRARY.relationshipChallenge;
+const princessQuestionIcon=new Image();
+princessQuestionIcon.src=ICON_LIBRARY.princessQuestion;
+
+const LEVEL_ACTIVITY_DATA={
+  1:{
+    relationshipChallenge:{id:'wouldYou',name:'WOULD YOU?',icon:ICON_LIBRARY.relationshipChallenge},
+    princessQuestion:{id:'undressQuestion',name:'Princess Question',icon:ICON_LIBRARY.princessQuestion}
+  },
+  2:{
+    relationshipChallenge:{id:'bathroomBurrito',name:'BATHROOM BURRITO',icon:ICON_LIBRARY.relationshipChallenge},
+    princessQuestion:{id:'chaosFairyGoth',name:'Which type of goth is known for frolicking in the woods?',icon:ICON_LIBRARY.princessQuestion}
+  }
+};
+const LEVEL_NUMBER=1;
+const ACTIVITY_DATA=LEVEL_ACTIVITY_DATA[LEVEL_NUMBER];
 const zombieSprites={shambler:new Image(),chain:new Image()};
 zombieSprites.shambler.src='assets/characters/zombie-goth.png?v=300';
 zombieSprites.chain.src='assets/characters/chain-goth-clean.png?v=620';
@@ -55,7 +77,7 @@ export function createLevel1(ui){
     {x:445,y:315,type:'shambler',name:'GRAVEYARD SHAMBLER',hp:4,maxHp:4,dead:false,pattern:'Slow lunge'},
     {x:1120,y:600,type:'chain',name:'CHAIN GOTH',hp:5,maxHp:5,dead:false,pattern:'Long-range chain lash'}
   ];
-  const relationship={x:250,y:735},puzzle={x:1125,y:290},boss={x:1380,y:820},key={x:1200,y:700};
+  const relationshipChallenge={x:250,y:735},princessQuestion={x:1125,y:290},boss={x:1380,y:820},key={x:1200,y:700};
   let x=470,y=520,hp=5,mode='map',walkDir='right',facingDir='right',walkPulse=0,kills=0,relationshipDone=false,puzzleSolved=false,keyCollected=false,inventory={},checkpoint='cemetery-entrance',target=null,isBoss=false,combatHp=0,combatMax=1,enemyAttackPhase=null,enemyTimer=null,combatRaf=0,projectiles=[],player={x:145,y:300,invuln:0,aimX:650,aimY:170},combatCheckpoint=null,bossRoomEntered=false,relationshipStep=0,relationshipRound=0,relationshipStart=0,relationshipDuration=2600,relationshipAnimating=false,relationshipRAF=0;
   let now=0,raf=0,lastMoveTime=0;
   const held={up:false,down:false,left:false,right:false};
@@ -87,14 +109,14 @@ export function createLevel1(ui){
   function reveal(){/* v6: Level 1 is fully visible. */}
   function objectivesComplete(){return kills>=2&&relationshipDone&&puzzleSolved}
   function unlockedBoss(){return objectivesComplete()&&keyCollected}
-  function stats(){ui.hpEl.textContent=hp;ui.gothEl.textContent=`${kills}/2`;ui.relEl.textContent=relationshipDone?'Solved':'Locked';ui.puzzleEl.textContent=puzzleSolved?'Answered':'Locked';ui.goalGoths.innerHTML=kills>=2?'<span class="good">✓ Defeat the required Zombie Goths</span>':`○ Defeat the required Zombie Goths (${kills}/2)`;ui.goalRel.innerHTML=relationshipDone?'<span class="good">✓ WOULD YOU? Puzzle complete</span>':'○ Complete the WOULD YOU? Puzzle';ui.goalPuzzle.innerHTML=puzzleSolved?'<span class="good">✓ Princess Question answered</span>':'○ Answer the Princess Question';ui.goalBoss.innerHTML=unlockedBoss()?'<span class="good">✓ Boss gate unlocked</span>':'<span class="locked">🔒 Boss gate locked</span>'}
+  function stats(){ui.hpEl.textContent=hp;ui.gothEl.textContent=`${kills}/2`;ui.relEl.textContent=relationshipDone?'Solved':'Locked';ui.puzzleEl.textContent=puzzleSolved?'Answered':'Locked';ui.goalGoths.innerHTML=kills>=2?'<span class="good">✓ Defeat the required Zombie Goths</span>':`○ Defeat the required Zombie Goths (${kills}/2)`;ui.goalRel.innerHTML=relationshipDone?`<span class="good">✓ ${ACTIVITY_DATA.relationshipChallenge.name} complete</span>`:`○ Complete the ${ACTIVITY_DATA.relationshipChallenge.name} Challenge`;ui.goalPuzzle.innerHTML=puzzleSolved?'<span class="good">✓ Princess Question answered</span>':'○ Answer the Princess Question';ui.goalBoss.innerHTML=unlockedBoss()?'<span class="good">✓ Boss gate unlocked</span>':'<span class="locked">🔒 Boss gate locked</span>'}
   function drawMini(){
     mctx.clearRect(0,0,250,180);mctx.fillStyle='#0d0b11';mctx.fillRect(0,0,250,180);
     if(mapBackground.complete&&mapBackground.naturalWidth)mctx.drawImage(mapBackground,0,0,250,167);
     const marker=(px,py,c,r=4)=>{mctx.fillStyle=c;mctx.beginPath();mctx.arc(px/WORLD_W*250,py/WORLD_H*167,r,0,Math.PI*2);mctx.fill()};
     marker(x,y,'#fff',4);
-    if(!relationshipDone)marker(relationship.x,relationship.y,'#ef91ac');
-    if(!puzzleSolved)marker(puzzle.x,puzzle.y,'#9deaff');
+    if(!relationshipDone)marker(relationshipChallenge.x,relationshipChallenge.y,'#ef91ac');
+    if(!puzzleSolved)marker(princessQuestion.x,princessQuestion.y,'#9deaff');
     if(!enemies[0].dead)marker(enemies[0].x,enemies[0].y,'#ef91ac',4);
     if(!enemies[1].dead)marker(enemies[1].x,enemies[1].y,'#ef91ac',4);
     if(!keyCollected&&objectivesComplete())marker(key.x,key.y,'#f0cf8b',4);
@@ -116,8 +138,8 @@ export function createLevel1(ui){
     if(mapBackground.complete&&mapBackground.naturalWidth)ctx.drawImage(mapBackground,0,0,WORLD_W,WORLD_H);else{ctx.fillStyle='#1b1420';ctx.fillRect(0,0,WORLD_W,WORLD_H)}
     if(!enemies[0].dead)drawZombieSprite(ctx,enemies[0].x,enemies[0].y,'shambler',.64,t/1000,false);
     if(!enemies[1].dead)drawZombieSprite(ctx,enemies[1].x,enemies[1].y,'chain',.60,t/1000,false);
-    if(!relationshipDone)drawMarker(ctx,wouldIcon,relationship.x,relationship.y,74,74,'');
-    if(!puzzleSolved)drawMarker(ctx,quizIcon,puzzle.x,puzzle.y,74,74,'');
+    if(!relationshipDone)drawMarker(ctx,relationshipChallengeIcon,relationshipChallenge.x,relationshipChallenge.y,74,74,'');
+    if(!puzzleSolved)drawMarker(ctx,princessQuestionIcon,princessQuestion.x,princessQuestion.y,74,74,'');
     if(!keyCollected&&objectivesComplete()){
       ctx.save();ctx.translate(key.x,key.y);ctx.shadowColor='#ffe49b';ctx.shadowBlur=20;ctx.fillStyle='#f5d27e';ctx.beginPath();ctx.arc(0,0,10+Math.sin(t/180)*2,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#fff2c7';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(8,0);ctx.lineTo(30,0);ctx.lineTo(30,8);ctx.moveTo(20,0);ctx.lineTo(20,-7);ctx.stroke();ctx.restore();
     }
@@ -135,8 +157,8 @@ export function createLevel1(ui){
   ui.canvas.addEventListener('pointerdown',e=>{
     if(mode!=='map')return;const pt=canvasPointToWorld(e);const near=(px,py,r)=>Math.hypot(pt.x-px,pt.y-py)<r;
     const enemyHit=enemies.find(z=>!z.dead&&near(z.x,z.y,70));if(enemyHit){openEncounter(enemyHit);return}
-    if(!relationshipDone&&near(relationship.x,relationship.y,58)){startRelationship();return}
-    if(!puzzleSolved&&near(puzzle.x,puzzle.y,58)){mode='puzzle';ui.puzzle.classList.remove('hidden');ui.puzzleFeedback.textContent='Choose wisely. The Goths have inexplicably made this a formal assessment.';return}
+    if(!relationshipDone&&near(relationshipChallenge.x,relationshipChallenge.y,58)){startRelationship();return}
+    if(!puzzleSolved&&near(princessQuestion.x,princessQuestion.y,58)){mode='puzzle';ui.puzzle.classList.remove('hidden');ui.puzzleFeedback.textContent='Choose wisely. The Goths have inexplicably made this a formal assessment.';return}
     if(objectivesComplete()&&!keyCollected&&near(key.x,key.y,55)){keyCollected=true;inventory.key=1;ui.dialogue.textContent='🔑 A little brass key drops onto the cobblestones. Finally, a sensible piece of game design.';stats();return}
     if(near(boss.x,boss.y,72)){if(unlockedBoss()){bossRoomEntered=true;mode='bossready';ui.bossReady.classList.remove('hidden')}else{ui.dialogue.textContent='🔒 The gate is still locked. Complete every challenge, then collect the key.'}return}
   });

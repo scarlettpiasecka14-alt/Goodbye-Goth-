@@ -1,13 +1,21 @@
-# Goodbye Goth — v4.6 recovery patch
+# Goodbye Goth v4.7
 
-Restores the v4.6 main-menu and intro/save behaviour on top of the currently working v4.5.x Level 1 map.
+v4.7 establishes level-specific activity architecture without changing Level 1 gameplay visuals.
 
-Main menu: NEW GAME, LOAD GAME, QUIT.
-NEW GAME clears the save and starts the intro.
-LOAD GAME resumes the saved Level 1 state.
-QUIT uses the browser-safe close fallback.
-The SKIP INTRO control is only on the first intro slide.
-The existing SKIP CUTSCENE control is unchanged.
-Gameplay SAVE GAME and X-to-save remain available.
+Canonical roles:
+- relationshipChallenge: the relationship mini-game for the current level.
+- princessQuestion: the princess-focused question for the current level.
 
-This patch intentionally does not replace the Level 1 map or current sprites.
+Shared icon library:
+- relationship challenge icon is reused across levels.
+- princess question icon is reused across levels.
+
+Level 1:
+- relationshipChallenge -> Would You?
+- princessQuestion -> Princess Question about asking a princess to undress
+
+Level 2 registered content:
+- relationshipChallenge -> Bathroom Burrito
+- princessQuestion -> Chaos Fairy Goth question
+
+Important: the role name does not identify the activity. The current level's LEVEL_ACTIVITY_DATA selects the activity. This prevents Level 1 content from leaking into later levels.
