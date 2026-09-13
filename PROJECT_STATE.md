@@ -1,21 +1,10 @@
-# Goodbye Goth v4.7
+# Goodbye Goth v4.7.1
 
-v4.7 establishes level-specific activity architecture without changing Level 1 gameplay visuals.
+Fix for icon regression in v4.7.
 
-Canonical roles:
-- relationshipChallenge: the relationship mini-game for the current level.
-- princessQuestion: the princess-focused question for the current level.
+Canonical icon mapping:
+- `assets/icons/would-you.png` = relationship challenge icon / puzzle piece
+- `assets/icons/quiz.png` = princess question icon / gothic heart
 
-Shared icon library:
-- relationship challenge icon is reused across levels.
-- princess question icon is reused across levels.
-
-Level 1:
-- relationshipChallenge -> Would You?
-- princessQuestion -> Princess Question about asking a princess to undress
-
-Level 2 registered content:
-- relationshipChallenge -> Bathroom Burrito
-- princessQuestion -> Chaos Fairy Goth question
-
-Important: the role name does not identify the activity. The current level's LEVEL_ACTIVITY_DATA selects the activity. This prevents Level 1 content from leaking into later levels.
+Level 1 and Level 2 activity architecture remains role-based: the icon identifies the role, while level data identifies the activity.
+No map, movement, camera, save/load, menu, or combat changes are included in this patch.
