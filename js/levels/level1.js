@@ -10,8 +10,8 @@ ollySprite.src='assets/characters/olly.png?v=300';
 // These shared icon references can be reused by every level. Only the activity
 // behind the role changes from level to level.
 const ICON_LIBRARY={
-  relationshipChallenge:'assets/icons/relationship-challenge.png',
-  princessQuestion:'assets/icons/princess-question.png'
+  relationshipChallenge:'assets/icons/relationship-challenge.png?v=472',
+  princessQuestion:'assets/icons/princess-question.png?v=472'
 };
 const relationshipChallengeIcon=new Image();
 relationshipChallengeIcon.src=ICON_LIBRARY.relationshipChallenge;
@@ -74,10 +74,10 @@ export function createLevel1(ui){
   const GRID=32,COLS=48,ROWS=32;
   const revealed=Array.from({length:ROWS},()=>Array(COLS).fill(true));
   const enemies=[
-    {x:445,y:315,type:'shambler',name:'GRAVEYARD SHAMBLER',hp:4,maxHp:4,dead:false,pattern:'Slow lunge'},
-    {x:1120,y:600,type:'chain',name:'CHAIN GOTH',hp:5,maxHp:5,dead:false,pattern:'Long-range chain lash'}
+    {x:485,y:420,type:'shambler',name:'GRAVEYARD SHAMBLER',hp:4,maxHp:4,dead:false,pattern:'Slow lunge'},
+    {x:1115,y:505,type:'chain',name:'CHAIN GOTH',hp:5,maxHp:5,dead:false,pattern:'Long-range chain lash'}
   ];
-  const relationshipChallenge={x:250,y:735},princessQuestion={x:1125,y:290},boss={x:1380,y:820},key={x:1200,y:700};
+  const relationshipChallenge={x:420,y:650},princessQuestion={x:1040,y:515},boss={x:1380,y:820},key={x:1200,y:700};
   let x=470,y=520,hp=5,mode='map',walkDir='right',facingDir='right',walkPulse=0,kills=0,relationshipDone=false,puzzleSolved=false,keyCollected=false,inventory={},checkpoint='cemetery-entrance',target=null,isBoss=false,combatHp=0,combatMax=1,enemyAttackPhase=null,enemyTimer=null,combatRaf=0,projectiles=[],player={x:145,y:300,invuln:0,aimX:650,aimY:170},combatCheckpoint=null,bossRoomEntered=false,relationshipStep=0,relationshipRound=0,relationshipStart=0,relationshipDuration=2600,relationshipAnimating=false,relationshipRAF=0;
   let now=0,raf=0,lastMoveTime=0;
   const held={up:false,down:false,left:false,right:false};
@@ -136,10 +136,10 @@ export function createLevel1(ui){
     const camX=Math.max(viewW/2,Math.min(WORLD_W-viewW/2,playerX)),camY=Math.max(viewH/2,Math.min(WORLD_H-viewH/2,playerY));
     ctx.translate(vw/2-camX*zoom,vh/2-camY*zoom);ctx.scale(zoom,zoom);
     if(mapBackground.complete&&mapBackground.naturalWidth)ctx.drawImage(mapBackground,0,0,WORLD_W,WORLD_H);else{ctx.fillStyle='#1b1420';ctx.fillRect(0,0,WORLD_W,WORLD_H)}
-    if(!enemies[0].dead)drawZombieSprite(ctx,enemies[0].x,enemies[0].y,'shambler',.64,t/1000,false);
-    if(!enemies[1].dead)drawZombieSprite(ctx,enemies[1].x,enemies[1].y,'chain',.60,t/1000,false);
+    if(!enemies[0].dead)drawZombieSprite(ctx,enemies[0].x,enemies[0].y,'shambler',.84,t/1000,false);
+    if(!enemies[1].dead)drawZombieSprite(ctx,enemies[1].x,enemies[1].y,'chain',.82,t/1000,false);
     if(!relationshipDone)drawMarker(ctx,relationshipChallengeIcon,relationshipChallenge.x,relationshipChallenge.y,74,74,'');
-    if(!puzzleSolved)drawMarker(ctx,princessQuestionIcon,princessQuestion.x,princessQuestion.y,74,74,'');
+    if(!puzzleSolved)drawMarker(ctx,princessQuestionIcon,princessQuestion.x,princessQuestion.y,96,96,'');
     if(!keyCollected&&objectivesComplete()){
       ctx.save();ctx.translate(key.x,key.y);ctx.shadowColor='#ffe49b';ctx.shadowBlur=20;ctx.fillStyle='#f5d27e';ctx.beginPath();ctx.arc(0,0,10+Math.sin(t/180)*2,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#fff2c7';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(8,0);ctx.lineTo(30,0);ctx.lineTo(30,8);ctx.moveTo(20,0);ctx.lineTo(20,-7);ctx.stroke();ctx.restore();
     }
