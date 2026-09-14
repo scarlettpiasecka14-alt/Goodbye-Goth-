@@ -10,8 +10,8 @@ ollySprite.src='assets/characters/olly.png?v=300';
 // These shared icon references can be reused by every level. Only the activity
 // behind the role changes from level to level.
 const ICON_LIBRARY={
-  relationshipChallenge:'assets/icons/relationship-challenge.png?v=476',
-  princessQuestion:'assets/icons/princess-question.png?v=476'
+  relationshipChallenge:'assets/icons/relationship-challenge.png?v=477',
+  princessQuestion:'assets/icons/princess-question.png?v=477'
 };
 const relationshipChallengeIcon=new Image();
 relationshipChallengeIcon.src=ICON_LIBRARY.relationshipChallenge;
@@ -36,8 +36,8 @@ const ACTIVITY_DATA=LEVEL_ACTIVITY_DATA[LEVEL_NUMBER];
 const ENCOUNTER_DATA={
   zombieGoth:{role:'zombieGoth',name:'ZOMBIE GOTH',image:'assets/encounters/level1/zombie-goth-encounter.png?v=500',text:'The zombie goth reaches for you with her claws moaning about the burning sun. You stumble backwards partially blinded by the light. Are you ready?'},
   chainGoth:{role:'chainGoth',name:'CHAIN GOTH',image:'assets/encounters/level1/chain-goth-encounter.png?v=500',text:'You encounter the chain goth, she raises her chain high above her head demanding eyeliner. You turn expecting a blow that never comes. Are you ready?'},
-  relationshipChallenge:{role:'relationshipChallenge',name:'RELATIONSHIP CHALLENGE',image:'assets/encounters/level1/relationship-challenge-encounter.png?v=500',text:"You've encountered a relationship challenge. Because apparently rescuing your kidnapped girlfriend wasn't already testing the relationship enough. Are you ready?"},
-  princessQuestion:{role:'princessQuestion',name:'PRINCESS QUESTION',image:'assets/encounters/level1/princess-question-encounter.png?v=500',text:"You've encountered a princess question. Answer correctly to prove your love for your princess. Are you ready?"}
+  relationshipChallenge:{role:'relationshipChallenge',name:'RELATIONSHIP CHALLENGE',image:'assets/encounters/level1/relationship-challenge-encounter.png?v=501',text:"You've encountered a relationship challenge. Because apparently rescuing your kidnapped girlfriend wasn't already testing the relationship enough. Are you ready?"},
+  princessQuestion:{role:'princessQuestion',name:'PRINCESS QUESTION',image:'assets/encounters/level1/princess-question-encounter.png?v=501',text:"You've encountered a princess question. Answer correctly to prove your love for your princess. Are you ready?"}
 };
 const zombieSprites={shambler:new Image(),chain:new Image()};
 zombieSprites.shambler.src='assets/characters/zombie-goth.png?v=300';
@@ -191,7 +191,7 @@ export function createLevel1(ui){
   function openPrincessQuestion(){
     mode='puzzle';
     const img=document.querySelector('#puzzle .quiz-image');
-    if(img)img.src='assets/encounters/level1/princess-question-art.png?v=500';
+    if(img)img.src='assets/encounters/level1/princess-question-art.png?v=501';
     ui.puzzle.classList.remove('hidden');
     ui.puzzleFeedback.textContent='Choose wisely. The Goths have inexplicably made this a formal assessment.';
   }

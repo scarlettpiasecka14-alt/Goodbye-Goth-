@@ -1,18 +1,19 @@
-Goodbye Goth v5.0
+Goodbye Goth v5.0.1
 
-New reusable interaction encounter system for Level 1.
+Changes:
+- Encounter artwork now uses full-width 1920x1080 artwork without the old image borders.
+- Artwork is not stretched; it preserves its 16:9 ratio.
+- Added the supplied Level 1 encounter artwork at the paths expected by v5.0.
+- Removed the redundant "THE PRINCESS QUESTION" heading from the second Princess Question screen.
+- Princess Question slide 2 uses the supplied PrincessQuestionArt image.
+- Existing interaction logic is otherwise unchanged.
 
-Files:
+Files to replace/add:
+- css/game.css
 - js/game.js
 - js/levels/level1.js
-- css/game.css
-- assets/encounters/level1/*
-
-Behaviour:
-- Clicking an interaction opens a two-option encounter screen.
-- I'M READY starts the interaction.
-- KEEP EXPLORING closes it without completion.
-- Zombie Goth / Chain Goth -> combat after I'M READY.
-- Relationship Challenge -> existing WOULD YOU? activity after I'M READY.
-- Princess Question -> Princess Question screen/quiz after I'M READY.
-- Artwork is never stretched. Each image is contained responsively so its aspect ratio is preserved.
+- assets/encounters/level1/chain-goth-encounter.png
+- assets/encounters/level1/zombie-goth-encounter.png
+- assets/encounters/level1/relationship-challenge-encounter.png
+- assets/encounters/level1/princess-question-encounter.png
+- assets/encounters/level1/princess-question-art.png
