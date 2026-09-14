@@ -220,10 +220,14 @@ function mountLevel1(loadSaved=false){
         </aside>
       </div>
 
-      <div id="encounter" class="overlay hidden"><div class="overlay-box center">
-        <canvas id="encounter-canvas" class="story-art" width="720" height="300"></canvas>
-        <div id="encounter-name" class="story-title">ZOMBIE GOTH</div>
-        <p id="encounter-text"></p><button id="encounter-fight" class="primary">FIGHT</button>
+      <div id="encounter" class="overlay hidden"><div class="overlay-box center encounter-box">
+        <img id="encounter-image" class="encounter-art" alt="Encounter artwork">
+        <div id="encounter-name" class="story-title">ENCOUNTER</div>
+        <p id="encounter-text" class="encounter-copy"></p>
+        <div class="encounter-actions">
+          <button id="encounter-ready" class="primary" type="button">I'M READY</button>
+          <button id="encounter-explore" type="button">KEEP EXPLORING</button>
+        </div>
       </div></div>
 
       <div id="combat" class="overlay hidden"><div class="overlay-box">
@@ -280,7 +284,7 @@ function mountLevel1(loadSaved=false){
     hpEl:document.getElementById('hp'), gothEl:document.getElementById('goth-count'), relEl:document.getElementById('rel-state'), puzzleEl:document.getElementById('puzzle-state'),
     goalGoths:document.getElementById('goal-goths'), goalRel:document.getElementById('goal-rel'), goalPuzzle:document.getElementById('goal-puzzle'), goalBoss:document.getElementById('goal-boss'), checkpoint:document.getElementById('checkpoint'),
     saveGame:document.getElementById('save-game'), loadGame:document.getElementById('load-game'), saveStatus:document.getElementById('save-status'),
-    encounter:document.getElementById('encounter'), encounterCanvas:document.getElementById('encounter-canvas'), encounterName:document.getElementById('encounter-name'), encounterText:document.getElementById('encounter-text'), encounterFight:document.getElementById('encounter-fight'),
+    encounter:document.getElementById('encounter'), encounterImage:document.getElementById('encounter-image'), encounterName:document.getElementById('encounter-name'), encounterText:document.getElementById('encounter-text'), encounterReady:document.getElementById('encounter-ready'), encounterExplore:document.getElementById('encounter-explore'),
     combat:document.getElementById('combat'), combatCanvas:document.getElementById('combat-canvas'), combatName:document.getElementById('combat-name'), combatPattern:document.getElementById('combat-pattern'), enemyHp:document.getElementById('enemy-hp'), combatStatus:document.getElementById('combat-status'), combatAttack:document.getElementById('combat-attack'), combatDodge:document.getElementById('combat-dodge'),
     death:document.getElementById('death'), deathText:document.getElementById('death-text'), retryCombat:document.getElementById('retry-combat'), backMap:document.getElementById('back-map'),
     relationship:document.getElementById('relationship'), relationshipCanvas:document.getElementById('relationship-canvas'), wouldDisplay:document.getElementById('would-display'), wouldTap:document.getElementById('would-tap'), wouldFeedback:document.getElementById('would-feedback'), timingZone:document.getElementById('timing-zone'), timingCursor:document.getElementById('timing-cursor'),
@@ -290,7 +294,8 @@ function mountLevel1(loadSaved=false){
   const level = createLevel1(ui);
   ui.saveGame.addEventListener('click',()=>{ const ok=level.saveGame(); ui.saveStatus.textContent=ok?'Saved ✓':'Save failed'; });
   ui.loadGame.addEventListener('click',()=>{ const ok=level.loadGame(); ui.saveStatus.textContent=ok?'Loaded ✓':'No save found'; });
-  ui.encounterFight.addEventListener('click',()=>level.startEncounterFight());
+  ui.encounterReady.addEventListener('click',()=>level.confirmEncounter());
+  ui.encounterExplore.addEventListener('click',()=>level.closeEncounter());
   ui.combatAttack.addEventListener('click',()=>level.combatAttack());
   ui.combatDodge.addEventListener('click',()=>level.combatDodge());
   ui.retryCombat.addEventListener('click',()=>level.retryCombat());

@@ -1,7 +1,18 @@
-Goodbye Goth v4.7.5
+Goodbye Goth v5.0
 
-ONLY change in this patch: move the two Level 1 interactive icons.
-- Princess Question moved to the middle-top area: x=760, y=300
-- Relationship Challenge moved further down: x=360, y=800
+New reusable interaction encounter system for Level 1.
 
-No other Level 1 code or assets are changed.
+Files:
+- js/game.js
+- js/levels/level1.js
+- css/game.css
+- assets/encounters/level1/*
+
+Behaviour:
+- Clicking an interaction opens a two-option encounter screen.
+- I'M READY starts the interaction.
+- KEEP EXPLORING closes it without completion.
+- Zombie Goth / Chain Goth -> combat after I'M READY.
+- Relationship Challenge -> existing WOULD YOU? activity after I'M READY.
+- Princess Question -> Princess Question screen/quiz after I'M READY.
+- Artwork is never stretched. Each image is contained responsively so its aspect ratio is preserved.

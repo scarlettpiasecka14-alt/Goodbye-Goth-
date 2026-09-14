@@ -32,6 +32,13 @@ const LEVEL_ACTIVITY_DATA={
 };
 const LEVEL_NUMBER=1;
 const ACTIVITY_DATA=LEVEL_ACTIVITY_DATA[LEVEL_NUMBER];
+
+const ENCOUNTER_DATA={
+  zombieGoth:{role:'zombieGoth',name:'ZOMBIE GOTH',image:'assets/encounters/level1/zombie-goth-encounter.png?v=500',text:'The zombie goth reaches for you with her claws moaning about the burning sun. You stumble backwards partially blinded by the light. Are you ready?'},
+  chainGoth:{role:'chainGoth',name:'CHAIN GOTH',image:'assets/encounters/level1/chain-goth-encounter.png?v=500',text:'You encounter the chain goth, she raises her chain high above her head demanding eyeliner. You turn expecting a blow that never comes. Are you ready?'},
+  relationshipChallenge:{role:'relationshipChallenge',name:'RELATIONSHIP CHALLENGE',image:'assets/encounters/level1/relationship-challenge-encounter.png?v=500',text:"You've encountered a relationship challenge. Because apparently rescuing your kidnapped girlfriend wasn't already testing the relationship enough. Are you ready?"},
+  princessQuestion:{role:'princessQuestion',name:'PRINCESS QUESTION',image:'assets/encounters/level1/princess-question-encounter.png?v=500',text:"You've encountered a princess question. Answer correctly to prove your love for your princess. Are you ready?"}
+};
 const zombieSprites={shambler:new Image(),chain:new Image()};
 zombieSprites.shambler.src='assets/characters/zombie-goth.png?v=300';
 zombieSprites.chain.src='assets/characters/chain-goth-clean.png?v=620';
@@ -72,7 +79,7 @@ function drawZombieSprite(ctx,x,y,type,s=.68,t=0,attack=false){
 }
 
 export function createLevel1(ui){
-  const ctx=ui.canvas.getContext('2d'),mctx=ui.miniMap.getContext('2d'),ectx=ui.encounterCanvas.getContext('2d'),cctx=ui.combatCanvas.getContext('2d'),rctx=ui.relationshipCanvas.getContext('2d');
+  const ctx=ui.canvas.getContext('2d'),mctx=ui.miniMap.getContext('2d'),cctx=ui.combatCanvas.getContext('2d'),rctx=ui.relationshipCanvas.getContext('2d');
   const GRID=32,COLS=48,ROWS=32;
   const revealed=Array.from({length:ROWS},()=>Array(COLS).fill(true));
   const enemies=[
@@ -155,22 +162,56 @@ export function createLevel1(ui){
     const camX=Math.max(viewW/2,Math.min(WORLD_W-viewW/2,x)),camY=Math.max(viewH/2,Math.min(WORLD_H-viewH/2,y));
     return {x:(sx-vw/2+camX*zoom)/zoom,y:(sy-vh/2+camY*zoom)/zoom};
   }
-  function openEncounter(enemy){target=enemy;combatCheckpoint={x,y};mode='encounter';drawEncounter(enemy.type);ui.encounterName.textContent=enemy.name;ui.encounterText.innerHTML=enemy.type==='shambler'?'<strong>Zombie Goth:</strong> “Mmm... black eyeliner...”<br><br>She lunges toward you. Are you ready?':'<strong>Chain Goth:</strong> She slams her chain beside you and giggles mercilessly at your terrified expression.<br><br>Are you ready?';ui.encounter.classList.remove('hidden')}
+  let pendingInteraction=null;
+  function openInteractionEncounter(kind,enemy=null){
+    const data=ENCOUNTER_DATA[kind];
+    if(!data)return;
+    pendingInteraction={kind,enemy};
+    combatCheckpoint={x,y};
+    mode='encounter';
+    ui.encounterImage.src=data.image;
+    ui.encounterName.textContent=data.name;
+    ui.encounterText.textContent=data.text;
+    ui.encounter.classList.remove('hidden');
+  }
+  function closeEncounter(){
+    ui.encounter.classList.add('hidden');
+    pendingInteraction=null;
+    mode='map';
+  }
+  function confirmEncounter(){
+    const p=pendingInteraction;
+    if(!p)return;
+    ui.encounter.classList.add('hidden');
+    pendingInteraction=null;
+    if(p.kind==='zombieGoth'||p.kind==='chainGoth'){target=p.enemy;mode='map';startCombat(false);return;}
+    if(p.kind==='relationshipChallenge'){mode='map';startRelationship();return;}
+    if(p.kind==='princessQuestion'){mode='map';openPrincessQuestion();return;}
+  }
+  function openPrincessQuestion(){
+    mode='puzzle';
+    const img=document.querySelector('#puzzle .quiz-image');
+    if(img)img.src='assets/encounters/level1/princess-question-art.png?v=500';
+    ui.puzzle.classList.remove('hidden');
+    ui.puzzleFeedback.textContent='Choose wisely. The Goths have inexplicably made this a formal assessment.';
+  }
   ui.canvas.addEventListener('pointerdown',e=>{
-    if(mode!=='map')return;const pt=canvasPointToWorld(e);const near=(px,py,r)=>Math.hypot(pt.x-px,pt.y-py)<r;
-    const enemyHit=enemies.find(z=>!z.dead&&near(z.x,z.y,70));if(enemyHit){openEncounter(enemyHit);return}
-    if(!relationshipDone&&near(relationshipChallenge.x,relationshipChallenge.y,58)){startRelationship();return}
-    if(!puzzleSolved&&near(princessQuestion.x,princessQuestion.y,58)){mode='puzzle';ui.puzzle.classList.remove('hidden');ui.puzzleFeedback.textContent='Choose wisely. The Goths have inexplicably made this a formal assessment.';return}
-    if(objectivesComplete()&&!keyCollected&&near(key.x,key.y,55)){keyCollected=true;inventory.key=1;ui.dialogue.textContent='🔑 A little brass key drops onto the cobblestones. Finally, a sensible piece of game design.';stats();return}
-    if(near(boss.x,boss.y,72)){if(unlockedBoss()){bossRoomEntered=true;mode='bossready';ui.bossReady.classList.remove('hidden')}else{ui.dialogue.textContent='🔒 The gate is still locked. Complete every challenge, then collect the key.'}return}
+    if(mode!=='map')return;
+    const pt=canvasPointToWorld(e);
+    const near=(px,py,r)=>Math.hypot(pt.x-px,pt.y-py)<r;
+    const enemyHit=enemies.find(z=>!z.dead&&near(z.x,z.y,70));
+    if(enemyHit){openInteractionEncounter(enemyHit.type==='shambler'?'zombieGoth':'chainGoth',enemyHit);return;}
+    if(!relationshipDone&&near(relationshipChallenge.x,relationshipChallenge.y,58)){openInteractionEncounter('relationshipChallenge');return;}
+    if(!puzzleSolved&&near(princessQuestion.x,princessQuestion.y,58)){openInteractionEncounter('princessQuestion');return;}
+    if(objectivesComplete()&&!keyCollected&&near(key.x,key.y,55)){keyCollected=true;inventory.key=1;ui.dialogue.textContent='🔑 A little brass key drops onto the cobblestones. Finally, a sensible piece of game design.';stats();return;}
+    if(near(boss.x,boss.y,72)){if(unlockedBoss()){bossRoomEntered=true;mode='bossready';ui.bossReady.classList.remove('hidden')}else{ui.dialogue.textContent='🔒 The gate is still locked. Complete every challenge, then collect the key.'}return;}
   });
+
   function move(dir){ setMoveKey(dir,true); setTimeout(()=>setMoveKey(dir,false),45); }
   function checkTriggers(){}
   function interact(){return}
 
-function drawEncounter(type){
-  ectx.imageSmoothingEnabled=true;ectx.imageSmoothingQuality='high';
-  ectx.clearRect(0,0,720,300);const gg=ectx.createLinearGradient(0,0,0,300);gg.addColorStop(0,'#2e2436');gg.addColorStop(1,'#111016');ectx.fillStyle=gg;ectx.fillRect(0,0,720,300);for(let i=0;i<15;i++){ectx.fillStyle='#4d3b51';ectx.fillRect((i*61)%720,150+(i%4)*18,28,42)}drawOlly(ectx,180,245,.95,0,true);drawZombieSprite(ectx,520,235,type,.95,1.2,false);ectx.fillStyle='#f3e7ed';ectx.font='bold 18px Georgia';ectx.textAlign='center';ectx.fillText(type==='shambler'?'Mmm... black eyeliner...':'Mmm... accessories...',500,45)}
+function drawEncounter(){ /* v5.0: encounter artwork is rendered by the overlay image. */ }
 
   function resetCombatVisual(){projectiles=[];enemyAttackPhase=null;player={x:145,y:300,invuln:0,aimX:650,aimY:170};}
   function drawCombat(t){
@@ -329,5 +370,5 @@ function completeRelationship(){
   function start(){stats();drawMini();cancelAnimationFrame(relationshipRAF);clearInterval(enemyTimer);cancelAnimationFrame(raf);const loop=t=>{const dt=Math.min(0.04,(t-(now||t))/1000);now=t;if(mode==='map')updateMovement(dt);if(walkPulse>0)walkPulse=0;drawWorld(t);drawMini();raf=requestAnimationFrame(loop)};raf=requestAnimationFrame(loop);requestAnimationFrame(combatTick)}
   function primaryAction(){if(mode==='encounter')startEncounterFight();else if(mode==='combat')combatAttack();else if(mode==='map')checkTriggers()}
 
-  return {start,move,setMoveKey,primaryAction,interact,startEncounterFight,combatAttack,combatDodge,shootAtPointer,retryCombat,backToMap,completeRelationship,answerPuzzle,startBoss,saveGame,loadGame};
+  return {start,move,setMoveKey,primaryAction,interact,confirmEncounter,closeEncounter,combatAttack,combatDodge,shootAtPointer,retryCombat,backToMap,completeRelationship,answerPuzzle,startBoss,saveGame,loadGame};
 }
