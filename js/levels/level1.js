@@ -89,7 +89,7 @@ export function createLevel1(ui){
   const relationshipChallenge={x:360,y:800},princessQuestion={x:760,y:300},boss={x:1380,y:820},key={x:1200,y:700};
   const MAX_HP=100;
   const COMBAT_W=1440, COMBAT_H=810;
-  let x=470,y=520,hp=100,maxHp=100,mode='map',walkDir='right',facingDir='right',walkPulse=0,kills=0,relationshipDone=false,puzzleSolved=false,keyCollected=false,inventory={},checkpoint='cemetery-entrance',target=null,isBoss=false,combatHp=0,combatMax=1,enemyAttackPhase=null,enemyTimer=null,combatRaf=0,combatCheckpoint=null,bossRoomEntered=false,relationshipStep=0,relationshipRound=0,relationshipStart=0,relationshipDuration=2600,relationshipAnimating=false,relationshipRAF=0,comboCount=0,attackCooldownUntil=0,lastAttackAt=0,attackAnimUntil=0,jumpT=0,jumping=false,jumpOffset=0,dodgeUntil=0,combatLastFrame=0,combatFacing='right';
+  let x=470,y=520,hp=100,maxHp=100,mode='map',walkDir='right',facingDir='right',walkPulse=0,kills=0,relationshipDone=false,puzzleSolved=false,keyCollected=false,inventory={},checkpoint='cemetery-entrance',target=null,isBoss=false,combatHp=0,combatMax=1,enemyAttackPhase=null,enemyTimer=null,combatRaf=0,combatCheckpoint=null,bossRoomEntered=false,relationshipStep=0,relationshipRound=0,relationshipStart=0,relationshipDuration=2600,relationshipAnimating=false,relationshipRAF=0,comboCount=0,attackCooldownUntil=0,lastAttackAt=0,attackAnimUntil=0,jumpT=0,jumping=false,jumpOffset=0,dodgeUntil=0,combatLastFrame=0,combatFacing='right',player={x:270,y:COMBAT_H/2,invuln:0,aimX:0,aimY:0};
   let now=0,raf=0,lastMoveTime=0;
   const held={up:false,down:false,left:false,right:false};
   function setMoveKey(key,down){
