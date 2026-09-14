@@ -178,11 +178,16 @@ function mountLevel1(loadSaved=false){
       <div class="game-head">
         <div><strong>LEVEL 1</strong><div class="small">THE HAUNTED CEMETERY</div></div>
         <div class="stats">
-          <span class="pill">❤️ <span id="hp">5</span></span>
           <span class="pill">🧟 <span id="goth-count">0/2</span></span>
           <span class="pill">🧩 <span id="rel-state">Locked</span></span>
-          <span class="pill">❤️ <span id="puzzle-state">Locked</span></span>
+          <span class="pill">♥ <span id="puzzle-state">Locked</span></span>
         </div>
+      </div>
+
+      <div id="player-hud" class="player-hud" aria-label="Olly health">
+        <div class="player-hud-name">OLLY</div>
+        <div class="player-hud-bar"><div id="player-hp-fill" class="player-hp-fill"></div></div>
+        <div id="player-hp-text" class="player-hp-text">100 / 100 HP</div>
       </div>
       <div class="game-layout">
         <div class="play-column">
@@ -230,12 +235,25 @@ function mountLevel1(loadSaved=false){
         </div>
       </div></div>
 
-      <div id="combat" class="overlay hidden"><div class="overlay-box">
-        <div class="combat-ui"><strong id="combat-name">ZOMBIE GOTH</strong><span id="combat-pattern" class="small">Watch the warning • DODGE • FIRE ARROWS</span></div>
-        <div class="bar" style="margin-top:7px"><div id="enemy-hp"></div></div>
-        <div class="combat-arena"><canvas id="combat-canvas" width="900" height="450"></canvas></div>
-        <div id="combat-status" class="combat-note"><strong>HOW TO FIGHT:</strong> Click the enemy or the arena to fire an arrow. When a red warning appears, press <strong>DODGE</strong>. You can also use ← → ↑ ↓ to move Olly.</div>
-        <div class="combat-actions"><button id="combat-attack" class="primary">🏹 FIRE ARROW</button><button id="combat-dodge">↪ DODGE</button></div>
+      <div id="combat" class="overlay hidden"><div class="overlay-box combat-box">
+        <div class="combat-topline">
+          <div>
+            <strong id="combat-name">ZOMBIE GOTH</strong>
+            <div id="combat-pattern" class="small">Move with WASD / arrows • left click to punch • right click to dodge • SPACE to jump</div>
+          </div>
+          <div class="combat-enemy-hp-wrap">
+            <div class="combat-enemy-hp-label">ENEMY HP <span id="enemy-hp-text">50 / 50</span></div>
+            <div class="bar"><div id="enemy-hp"></div></div>
+          </div>
+        </div>
+
+        <div class="combat-arena"><canvas id="combat-canvas" width="1440" height="810" aria-label="Combat arena"></canvas></div>
+
+        <div id="combat-status" class="combat-note"><strong>HOW TO FIGHT:</strong> Get close to the Goth, face her and LEFT CLICK to punch. Three quick attacks are allowed before a short cooldown. SPACE jumps.</div>
+        <div class="combat-actions">
+          <button id="combat-attack" class="primary">👊 PUNCH</button>
+          <button id="combat-dodge">↪ DODGE</button>
+        </div>
       </div></div>
 
       <div id="death" class="overlay hidden"><div class="overlay-box center death-card">
@@ -280,11 +298,11 @@ function mountLevel1(loadSaved=false){
 
   const ui = {
     canvas:document.getElementById('world'), miniMap:document.getElementById('mini-map'), dialogue:document.getElementById('dialogue'),
-    hpEl:document.getElementById('hp'), gothEl:document.getElementById('goth-count'), relEl:document.getElementById('rel-state'), puzzleEl:document.getElementById('puzzle-state'),
+    hpEl:document.getElementById('player-hp-text'), hpFill:document.getElementById('player-hp-fill'), gothEl:document.getElementById('goth-count'), relEl:document.getElementById('rel-state'), puzzleEl:document.getElementById('puzzle-state'),
     goalGoths:document.getElementById('goal-goths'), goalRel:document.getElementById('goal-rel'), goalPuzzle:document.getElementById('goal-puzzle'), goalBoss:document.getElementById('goal-boss'), checkpoint:document.getElementById('checkpoint'),
     saveGame:document.getElementById('save-game'), loadGame:document.getElementById('load-game'), saveStatus:document.getElementById('save-status'),
     encounter:document.getElementById('encounter'), encounterImage:document.getElementById('encounter-image'), encounterName:document.getElementById('encounter-name'), encounterText:document.getElementById('encounter-text'), encounterReady:document.getElementById('encounter-ready'), encounterExplore:document.getElementById('encounter-explore'),
-    combat:document.getElementById('combat'), combatCanvas:document.getElementById('combat-canvas'), combatName:document.getElementById('combat-name'), combatPattern:document.getElementById('combat-pattern'), enemyHp:document.getElementById('enemy-hp'), combatStatus:document.getElementById('combat-status'), combatAttack:document.getElementById('combat-attack'), combatDodge:document.getElementById('combat-dodge'),
+    combat:document.getElementById('combat'), combatCanvas:document.getElementById('combat-canvas'), combatName:document.getElementById('combat-name'), combatPattern:document.getElementById('combat-pattern'), enemyHp:document.getElementById('enemy-hp'), enemyHpText:document.getElementById('enemy-hp-text'), combatStatus:document.getElementById('combat-status'), combatAttack:document.getElementById('combat-attack'), combatDodge:document.getElementById('combat-dodge'),
     death:document.getElementById('death'), deathText:document.getElementById('death-text'), retryCombat:document.getElementById('retry-combat'), backMap:document.getElementById('back-map'),
     relationship:document.getElementById('relationship'), relationshipCanvas:document.getElementById('relationship-canvas'), wouldDisplay:document.getElementById('would-display'), wouldTap:document.getElementById('would-tap'), wouldFeedback:document.getElementById('would-feedback'), timingZone:document.getElementById('timing-zone'), timingCursor:document.getElementById('timing-cursor'),
     puzzle:document.getElementById('puzzle'), puzzleFeedback:document.getElementById('puzzle-feedback'), bossIntro:document.getElementById('boss-intro'), bossStart:document.getElementById('boss-start'), win:document.getElementById('win'), replay:document.getElementById('replay')
@@ -303,7 +321,11 @@ function mountLevel1(loadSaved=false){
   ui.bossStart.addEventListener('click',()=>level.startBoss());
   ui.replay.addEventListener('click',()=>mountLevel1());
   document.querySelectorAll('[data-answer]').forEach(b=>b.addEventListener('click',()=>level.answerPuzzle(b.dataset.answer)));
-  ui.combatCanvas.addEventListener('pointerdown',e=>level.shootAtPointer(e));
+  ui.combatCanvas.addEventListener('pointerdown',e=>{
+    if(e.button===0) level.combatAttack();
+    if(e.button===2) level.combatDodge();
+  });
+  ui.combatCanvas.addEventListener('contextmenu',e=>e.preventDefault());
   window.addEventListener('keydown',e=>{
     const k=e.key.toLowerCase();
     if(['arrowup','arrowdown','arrowleft','arrowright',' ','w','a','s','d','x'].includes(k))e.preventDefault();

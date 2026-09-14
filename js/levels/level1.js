@@ -83,14 +83,23 @@ export function createLevel1(ui){
   const GRID=32,COLS=48,ROWS=32;
   const revealed=Array.from({length:ROWS},()=>Array(COLS).fill(true));
   const enemies=[
-    {x:485,y:420,type:'shambler',name:'GRAVEYARD SHAMBLER',hp:4,maxHp:4,dead:false,pattern:'Slow lunge'},
-    {x:1115,y:505,type:'chain',name:'CHAIN GOTH',hp:5,maxHp:5,dead:false,pattern:'Long-range chain lash'}
+    {x:485,y:420,type:'shambler',name:'ZOMBIE GOTH',hp:50,maxHp:50,dead:false,pattern:'Scratch • Lunge'},
+    {x:1115,y:505,type:'chain',name:'CHAIN GOTH',hp:50,maxHp:50,dead:false,pattern:'Whip • Chain Slam'}
   ];
   const relationshipChallenge={x:360,y:800},princessQuestion={x:760,y:300},boss={x:1380,y:820},key={x:1200,y:700};
-  let x=470,y=520,hp=5,mode='map',walkDir='right',facingDir='right',walkPulse=0,kills=0,relationshipDone=false,puzzleSolved=false,keyCollected=false,inventory={},checkpoint='cemetery-entrance',target=null,isBoss=false,combatHp=0,combatMax=1,enemyAttackPhase=null,enemyTimer=null,combatRaf=0,projectiles=[],player={x:145,y:300,invuln:0,aimX:650,aimY:170},combatCheckpoint=null,bossRoomEntered=false,relationshipStep=0,relationshipRound=0,relationshipStart=0,relationshipDuration=2600,relationshipAnimating=false,relationshipRAF=0;
+  const MAX_HP=100;
+  const COMBAT_W=1440, COMBAT_H=810;
+  let x=470,y=520,hp=100,maxHp=100,mode='map',walkDir='right',facingDir='right',walkPulse=0,kills=0,relationshipDone=false,puzzleSolved=false,keyCollected=false,inventory={},checkpoint='cemetery-entrance',target=null,isBoss=false,combatHp=0,combatMax=1,enemyAttackPhase=null,enemyTimer=null,combatRaf=0,combatCheckpoint=null,bossRoomEntered=false,relationshipStep=0,relationshipRound=0,relationshipStart=0,relationshipDuration=2600,relationshipAnimating=false,relationshipRAF=0,comboCount=0,attackCooldownUntil=0,lastAttackAt=0,attackAnimUntil=0,jumpT=0,jumping=false,jumpOffset=0,dodgeUntil=0,combatLastFrame=0,combatFacing='right';
   let now=0,raf=0,lastMoveTime=0;
   const held={up:false,down:false,left:false,right:false};
-  function setMoveKey(key,down){ if(mode!=='map') return; const k=(key||'').toLowerCase(); if(k==='arrowup'||k==='w')held.up=down; if(k==='arrowdown'||k==='s')held.down=down; if(k==='arrowleft'||k==='a')held.left=down; if(k==='arrowright'||k==='d')held.right=down; }
+  function setMoveKey(key,down){
+    const k=(key||'').toLowerCase();
+    if(mode!=='map'&&mode!=='combat') return;
+    if(k==='arrowup'||k==='w')held.up=down;
+    if(k==='arrowdown'||k==='s')held.down=down;
+    if(k==='arrowleft'||k==='a')held.left=down;
+    if(k==='arrowright'||k==='d')held.right=down;
+  }
   function updateMovement(dt){
     if(mode!=='map')return;
     const speed=240;
@@ -118,7 +127,19 @@ export function createLevel1(ui){
   function reveal(){/* v6: Level 1 is fully visible. */}
   function objectivesComplete(){return kills>=2&&relationshipDone&&puzzleSolved}
   function unlockedBoss(){return objectivesComplete()&&keyCollected}
-  function stats(){ui.hpEl.textContent=hp;ui.gothEl.textContent=`${kills}/2`;ui.relEl.textContent=relationshipDone?'Solved':'Locked';ui.puzzleEl.textContent=puzzleSolved?'Answered':'Locked';ui.goalGoths.innerHTML=kills>=2?'<span class="good">✓ Defeat the required Zombie Goths</span>':`○ Defeat the required Zombie Goths (${kills}/2)`;ui.goalRel.innerHTML=relationshipDone?`<span class="good">✓ ${ACTIVITY_DATA.relationshipChallenge.name} complete</span>`:`○ Complete the ${ACTIVITY_DATA.relationshipChallenge.name} Challenge`;ui.goalPuzzle.innerHTML=puzzleSolved?'<span class="good">✓ Princess Question answered</span>':'○ Answer the Princess Question';ui.goalBoss.innerHTML=unlockedBoss()?'<span class="good">✓ Boss gate unlocked</span>':'<span class="locked">🔒 Boss gate locked</span>'}
+  function stats(){
+    hp=Math.max(0,Math.min(maxHp,hp));
+    ui.hpEl.textContent=`${hp} / ${maxHp} HP`;
+    if(ui.hpFill)ui.hpFill.style.width=(hp/maxHp*100)+'%';
+    ui.gothEl.textContent=`${kills}/2`;
+    ui.relEl.textContent=relationshipDone?'Solved':'Locked';
+    ui.puzzleEl.textContent=puzzleSolved?'Answered':'Locked';
+    ui.goalGoths.innerHTML=kills>=2?'<span class="good">✓ Defeat the required Zombie Goths</span>':`○ Defeat the required Zombie Goths (${kills}/2)`;
+    ui.goalRel.innerHTML=relationshipDone?`<span class="good">✓ ${ACTIVITY_DATA.relationshipChallenge.name} complete</span>`:`○ Complete the ${ACTIVITY_DATA.relationshipChallenge.name} Challenge`;
+    ui.goalPuzzle.innerHTML=puzzleSolved?'<span class="good">✓ Princess Question answered</span>':'○ Answer the Princess Question';
+    ui.goalBoss.innerHTML=unlockedBoss()?'<span class="good">✓ Boss gate unlocked</span>':'<span class="locked">🔒 Boss gate locked</span>';
+  }
+
   function drawMini(){
     mctx.clearRect(0,0,250,180);mctx.fillStyle='#0d0b11';mctx.fillRect(0,0,250,180);
     if(mapBackground.complete&&mapBackground.naturalWidth)mctx.drawImage(mapBackground,0,0,250,167);
@@ -213,74 +234,92 @@ export function createLevel1(ui){
 
 function drawEncounter(){ /* v5.0: encounter artwork is rendered by the overlay image. */ }
 
-  function resetCombatVisual(){projectiles=[];enemyAttackPhase=null;player={x:145,y:300,invuln:0,aimX:650,aimY:170};}
-  function drawCombat(t){
-    cctx.imageSmoothingEnabled=true;cctx.imageSmoothingQuality='high';
-    const w=900,h=450;
-    const g=cctx.createLinearGradient(0,0,0,h);g.addColorStop(0,'#241a2c');g.addColorStop(.55,'#17121c');g.addColorStop(1,'#0c090f');cctx.fillStyle=g;cctx.fillRect(0,0,w,h);
-    // Ground and cemetery details so the arena is visibly a fight, not a blank panel.
-    cctx.fillStyle='#211a25';cctx.fillRect(0,h-105,w,105);
-    cctx.fillStyle='#4a3b4e';for(let i=0;i<9;i++){const gx=40+i*105;cctx.fillRect(gx,h-165,5,60);cctx.fillRect(gx-12,h-165,29,5);}
-    cctx.fillStyle='#5d4a60';for(let i=0;i<14;i++){const gx=(i*71)%860+20,gy=70+(i%4)*45;cctx.fillRect(gx,gy,4,4);}
-    cctx.fillStyle='#d9c9d4';cctx.font='bold 14px system-ui';cctx.textAlign='left';cctx.fillText('MOVE • JUMP • DODGE • ATTACK',24,30);cctx.font='12px system-ui';cctx.fillStyle='#a99aaa';cctx.fillText('Watch the warning and react',24,49);
-    // Aim reticle
-    if(player.aimX&&player.aimY){cctx.strokeStyle='rgba(245,218,231,.65)';cctx.lineWidth=2;cctx.beginPath();cctx.arc(player.aimX,player.aimY,13,0,Math.PI*2);cctx.moveTo(player.aimX-19,player.aimY);cctx.lineTo(player.aimX-7,player.aimY);cctx.moveTo(player.aimX+7,player.aimY);cctx.lineTo(player.aimX+19,player.aimY);cctx.moveTo(player.aimX,player.aimY-19);cctx.lineTo(player.aimX,player.aimY-7);cctx.moveTo(player.aimX,player.aimY+7);cctx.lineTo(player.aimX,player.aimY+19);cctx.stroke();}
-    // Attack telegraphs
-    if(enemyAttackPhase){cctx.strokeStyle='#f05d79';cctx.lineWidth=6;cctx.setLineDash([12,8]);if(enemyAttackPhase.kind==='lunge'){cctx.beginPath();cctx.moveTo(enemyAttackPhase.x,enemyAttackPhase.y);cctx.lineTo(player.x,player.y);cctx.stroke();cctx.fillStyle='rgba(240,93,121,.18)';cctx.beginPath();cctx.moveTo(enemyAttackPhase.x,enemyAttackPhase.y);cctx.lineTo(player.x+46,player.y+46);cctx.lineTo(player.x-46,player.y-46);cctx.closePath();cctx.fill()}else{cctx.beginPath();cctx.arc(player.x,player.y,enemyAttackPhase.radius,0,Math.PI*2);cctx.stroke();cctx.fillStyle='rgba(240,93,121,.12)';cctx.beginPath();cctx.arc(player.x,player.y,enemyAttackPhase.radius,0,Math.PI*2);cctx.fill()}cctx.setLineDash([]);cctx.fillStyle='#ffd7e3';cctx.font='900 22px system-ui';cctx.textAlign='center';cctx.fillText('DODGE!',player.x,player.y-62);}
-    projectiles.forEach(p=>{cctx.fillStyle='#f7dbe6';cctx.beginPath();cctx.arc(p.x,p.y,5,0,Math.PI*2);cctx.fill();cctx.strokeStyle='#fff2f7';cctx.lineWidth=2;cctx.beginPath();cctx.moveTo(p.x,p.y);cctx.lineTo(p.x-p.vx*2,p.y-p.vy*2);cctx.stroke();});
-    drawOllyWorldCombat(player.x,player.y,1.0,player.aimX,player.aimY,performance.now()/1000,player.invuln>performance.now());
-    if(isBoss)drawBoss(cctx,690,250,1.25,performance.now()/1000,!!enemyAttackPhase,enemyPhaseNumber());else drawZombieSprite(cctx,690,255,target?.type||'shambler',1.0,performance.now()/1000,!!enemyAttackPhase);
-    // Enemy label / hit target
-    cctx.fillStyle='#f3e7ed';cctx.font='900 18px Georgia';cctx.textAlign='center';cctx.fillText(isBoss?'QUEEN GOTH':(target?.name||'ZOMBIE GOTH'),690,355);
-    cctx.fillStyle='#332635';cctx.fillRect(620,370,140,10);cctx.fillStyle='#ef91ac';cctx.fillRect(620,370,140*(combatHp/combatMax),10);
+  function resetCombatVisual(){
+    enemyAttackPhase=null; comboCount=0; attackCooldownUntil=0; lastAttackAt=0; attackAnimUntil=0;
+    jumping=false; jumpT=0; jumpOffset=0; dodgeUntil=0; combatLastFrame=0;
+    const enemyX=COMBAT_W-320;
+    player={x:270,y:COMBAT_H/2,invuln:0,aimX:enemyX,aimY:COMBAT_H/2};
+    combatFacing=enemyX>=player.x?'right':'left';
   }
-  function drawOllyWorldCombat(c,px,py,s,ax,ay,t,hurt){
-  c.save();c.translate(px,py);if(hurt)c.globalAlpha=.5;
-  c.fillStyle='rgba(0,0,0,.25)';c.beginPath();c.ellipse(0,54*s,32*s,8*s,0,0,Math.PI*2);c.fill();
-  if(ollySprite.complete && ollySprite.naturalWidth){
-    const w=116*s,h=174*s;
-    c.drawImage(ollySprite,-w/2,-140*s,w,h);
+  function updateCombatMovement(dt){
+    if(mode!=='combat')return;
+    const speed=430;
+    let dx=(held.right?1:0)-(held.left?1:0), dy=(held.down?1:0)-(held.up?1:0);
+    if(dx||dy){
+      const len=Math.hypot(dx,dy)||1; dx=dx/len*speed*dt; dy=dy/len*speed*dt;
+      player.x=Math.max(80,Math.min(COMBAT_W-80,player.x+dx));
+      player.y=Math.max(135,Math.min(COMBAT_H-110,player.y+dy));
+      if(Math.abs(dx)>=Math.abs(dy))combatFacing=dx<0?'left':'right';
+    }
+    if(jumping){ jumpT+=dt/.68; if(jumpT>=1){jumpT=1;jumping=false;} jumpOffset=-Math.sin(jumpT*Math.PI)*120; }
+    else jumpOffset=0;
   }
-  c.restore();
-}
-function drawZombieCombat(c,px,py,type,attack){
-    // v2.9: use the same detailed zombie sprite in combat as on the map.
-    drawZombieSprite(c,px,py+20,type,1.0,performance.now()/1000,attack);
+  function jump(){
+    if(mode!=='combat'||jumping)return;
+    jumping=true; jumpT=0; ui.combatStatus.innerHTML='<strong>JUMP!</strong> Jumping gives you space to react.';
   }
-  function enemyPhaseNumber(){if(!isBoss)return 1;const r=combatHp/combatMax;return r<=.34?3:r<=.67?2:1}
-
+  function drawCombatBackground(c){
+    c.clearRect(0,0,COMBAT_W,COMBAT_H);
+    const g=c.createLinearGradient(0,0,0,COMBAT_H); g.addColorStop(0,'#23192a');g.addColorStop(.52,'#17111b');g.addColorStop(1,'#0b080e');
+    c.fillStyle=g;c.fillRect(0,0,COMBAT_W,COMBAT_H);
+    c.fillStyle='#201824';c.fillRect(0,COMBAT_H-150,COMBAT_W,150);
+    c.fillStyle='#4b3b50';for(let i=0;i<18;i++){const gx=40+i*84;c.fillRect(gx,COMBAT_H-220,5,70);c.fillRect(gx-14,COMBAT_H-220,33,5);}
+    c.fillStyle='rgba(255,255,255,.08)';for(let i=0;i<55;i++){const gx=(i*97)%COMBAT_W,gy=95+(i*53)%500;c.fillRect(gx,gy,3,3);}
+    c.fillStyle='#f0dfe8';c.font='900 22px system-ui';c.textAlign='left';c.fillText('THE HAUNTED CEMETERY',34,44);
+    c.font='14px system-ui';c.fillStyle='#bca9b8';c.fillText('Get close • face the Goth • LEFT CLICK to punch',34,70);
+  }
+  function drawCombat(){
+    cctx.imageSmoothingEnabled=true;cctx.imageSmoothingQuality='high';drawCombatBackground(cctx);
+    const enemyX=COMBAT_W-320,enemyY=COMBAT_H/2,nowMs=performance.now();
+    if(dodgeUntil>nowMs){cctx.save();cctx.globalAlpha=.28;cctx.fillStyle='#f5dce8';cctx.beginPath();cctx.arc(player.x,player.y+jumpOffset,62,0,Math.PI*2);cctx.fill();cctx.restore();}
+    if(attackAnimUntil>nowMs){
+      const progress=1-(attackAnimUntil-nowMs)/220,punchX=player.x+(combatFacing==='right'?42:-42)*(0.35+progress*.65),punchY=player.y+jumpOffset-28;
+      cctx.save();cctx.strokeStyle='#f7d7e4';cctx.lineWidth=9;cctx.lineCap='round';cctx.beginPath();cctx.moveTo(player.x+(combatFacing==='right'?25:-25),player.y+jumpOffset-35);cctx.lineTo(punchX,punchY);cctx.stroke();cctx.fillStyle='#fff1f7';cctx.beginPath();cctx.arc(punchX,punchY,13+progress*5,0,Math.PI*2);cctx.fill();cctx.restore();
+    }
+    drawOllyWorldCombat(cctx,player.x,player.y,1.1,combatFacing,nowMs/1000,player.invuln>nowMs,jumpOffset);
+    drawZombieSprite(cctx,enemyX,enemyY,target?.type||'shambler',1.18,nowMs/1000,false);
+    cctx.fillStyle='#f3e7ed';cctx.font='900 24px Georgia';cctx.textAlign='center';cctx.fillText(isBoss?'CLASSIC GOTH':(target?.name||'ZOMBIE GOTH'),enemyX,enemyY+120);
+    cctx.fillStyle='#352737';cctx.fillRect(enemyX-120,enemyY+140,240,16);cctx.fillStyle='#ef91ac';cctx.fillRect(enemyX-120,enemyY+140,240*(combatHp/combatMax),16);cctx.fillStyle='#f0dfe8';cctx.font='700 16px system-ui';cctx.fillText('ENEMY',enemyX,enemyY+132);
+    if(jumping){cctx.fillStyle='#f6dfe8';cctx.font='900 18px system-ui';cctx.fillText('JUMP',player.x,player.y+jumpOffset-110);}
+    if(nowMs<attackCooldownUntil){const seconds=Math.max(0,(attackCooldownUntil-nowMs)/1000);cctx.fillStyle='#efb7c9';cctx.font='900 20px system-ui';cctx.fillText(`RECOVERING ${seconds.toFixed(1)}s`,COMBAT_W/2,COMBAT_H-36);}
+    else{cctx.fillStyle='#c9b6c2';cctx.font='700 15px system-ui';const remaining=Math.max(0,3-comboCount);cctx.fillText(`${remaining} punch${remaining===1?'':'es'} before cooldown`,COMBAT_W/2,COMBAT_H-36);}
+  }
+  function drawOllyWorldCombat(c,px,py,s,dir,t,hurt,offsetY=0){
+    c.save();c.translate(px,py+offsetY);if(hurt)c.globalAlpha=.5;c.fillStyle='rgba(0,0,0,.25)';c.beginPath();c.ellipse(0,54*s-offsetY*.08,36*s,9*s,0,0,Math.PI*2);c.fill();
+    if(ollySprite.complete&&ollySprite.naturalWidth){const bob=Math.sin(t*8)*1.3,attackShift=attackAnimUntil>performance.now()?(dir==='right'?12:-12):0,w=128*s,h=192*s;c.save();c.translate(attackShift,bob);c.scale(dir==='right'?-1:1,1);c.drawImage(ollySprite,-w/2,-154*s,w,h);c.restore();}c.restore();
+  }
   function startCombat(bossFight){
-    isBoss=bossFight;mode='combat';combatMax=bossFight?18:(target?.maxHp||4);combatHp=combatMax;resetCombatVisual();
-    ui.combatName.textContent=bossFight?'THE CLASSIC GOTH • QUEEN':target?.name||'ZOMBIE GOTH';
-    ui.combatPattern.textContent=bossFight?'Phase 1 • DODGE red warnings':(target?.pattern||'Watch red warnings • DODGE');
-    ui.enemyHp.style.width='100%';
-    ui.combatStatus.innerHTML=bossFight?'<strong>HOW TO FIGHT:</strong> Watch for attack warnings, dodge them, and strike the Queen Goth.':'<strong>HOW TO FIGHT:</strong> Move, jump and dodge her attacks. Your melee attack will be connected in the next combat pass.';
-    ui.combat.classList.remove('hidden');
-    clearInterval(enemyTimer);enemyTimer=setInterval(enemyAttackTick,bossFight?900:1250);
-    clearInterval(combatRaf);const loop=()=>{if(mode==='combat'){drawCombat(performance.now());combatRaf=requestAnimationFrame(loop)}};combatRaf=requestAnimationFrame(loop);
+    isBoss=bossFight;mode='combat';combatMax=bossFight?100:(target?.maxHp||50);combatHp=combatMax;resetCombatVisual();
+    ui.combatName.textContent=bossFight?'THE CLASSIC GOTH • QUEEN':target?.name||'ZOMBIE GOTH';ui.combatPattern.textContent='WASD / arrows move • LEFT CLICK punch • RIGHT CLICK dodge • SPACE jump';
+    ui.enemyHp.style.width='100%';ui.enemyHpText.textContent=`${combatHp} / ${combatMax}`;ui.combatStatus.innerHTML='<strong>HOW TO FIGHT:</strong> Get close to the Goth and face her. LEFT CLICK to punch. Three quick punches trigger a short cooldown. SPACE jumps. RIGHT CLICK dodges.';ui.combat.classList.remove('hidden');
+    clearInterval(enemyTimer);enemyTimer=null;cancelAnimationFrame(combatRaf);combatLastFrame=performance.now();
+    const loop=(t)=>{if(mode!=='combat')return;const dt=Math.min(.033,(t-combatLastFrame)/1000||0);combatLastFrame=t;updateCombatMovement(dt);drawCombat();combatRaf=requestAnimationFrame(loop);};
+    combatRaf=requestAnimationFrame(loop);
   }
-  function enemyAttackTick(){if(mode!=='combat')return;const now=performance.now();const faster=isBoss&&enemyPhaseNumber()===3;const kind=(isBoss&&enemyPhaseNumber()===2)?'ring':'lunge';enemyAttackPhase={kind,x:isBoss?690:670,y:isBoss?250:255,radius:100};ui.combatStatus.textContent=kind==='lunge'?'⚠ She is about to charge. DODGE!':'🔥 Incoming fireball wave. DODGE!';setTimeout(()=>{if(mode!=='combat')return;const hit=performance.now()>player.invuln;if(hit){hp=Math.max(0,hp-1);stats();ui.combatStatus.textContent='💥 You were hit. Your health is now '+hp+'.';if(hp<=0){endCombat(false);return}}else ui.combatStatus.textContent='↪ Dodged! Hit back now.';enemyAttackPhase=null},faster?420:620)}
-
-  function shootAt(xm,ym){if(mode!=='combat')return;const dx=xm-player.x,dy=ym-player.y,len=Math.hypot(dx,dy)||1;const vx=dx/len*12,vy=dy/len*12;projectiles.push({kind:'arrow',x:player.x+vx,y:player.y+vy,vx,vy,ttl:90});player.aimX=xm;player.aimY=ym;ui.combatStatus.textContent='🏹 Arrow fired.';}
-  function updateProjectiles(){for(let i=projectiles.length-1;i>=0;i--){const p=projectiles[i];p.x+=p.vx;p.y+=p.vy;p.ttl--;if(p.kind==='arrow'&&Math.hypot(p.x-(isBoss?690:690),p.y-255)<48){combatHp=Math.max(0,combatHp-1);ui.enemyHp.style.width=(combatHp/combatMax*100)+'%';ui.combatStatus.textContent='🎯 Hit!';projectiles.splice(i,1);if(combatHp<=0){setTimeout(()=>endCombat(true),180)}}else if(p.ttl<=0||p.x<0||p.x>900||p.y<0||p.y>450)projectiles.splice(i,1)} }
-
-  function combatTick(){if(mode==='combat'){updateProjectiles();if(player.invuln>performance.now()){};requestAnimationFrame(combatTick)}}
-  window.addEventListener('pointermove',e=>{if(mode!=='combat')return;const r=ui.combatCanvas.getBoundingClientRect();player.aimX=(e.clientX-r.left)*(ui.combatCanvas.width/r.width);player.aimY=(e.clientY-r.top)*(ui.combatCanvas.height/r.height)});
-  ui.combatCanvas.addEventListener('pointerdown',e=>{if(mode!=='combat')return;shootAtPointer(e)});
-  window.addEventListener('keydown',e=>{if(mode!=='combat')return;const k=e.key.toLowerCase();if(['arrowleft','arrowright','arrowup','arrowdown',' ','shift'].includes(k))e.preventDefault();if(k===' '){combatAttack()}else if(k==='shift'){combatDodge()}else if(k==='arrowleft'||k==='arrowright'||k==='arrowup'||k==='arrowdown'){move(k.replace('arrow',''))}});
-  function combatAttack(){if(mode==='combat')shootAt(player.aimX,player.aimY)}
-  function shootAtPointer(e){const r=ui.combatCanvas.getBoundingClientRect();shootAt((e.clientX-r.left)*(ui.combatCanvas.width/r.width),(e.clientY-r.top)*(ui.combatCanvas.height/r.height))}
-  function combatDodge(){if(mode!=='combat')return;player.invuln=performance.now()+650;const dx=player.x<450?1:-1;player.x=Math.max(55,Math.min(845,player.x+dx*120));ui.combatStatus.textContent='↪ DODGE ROLL!';}
-
-  function endCombat(won){clearInterval(enemyTimer);cancelAnimationFrame(combatRaf);ui.combat.classList.add('hidden');mode='map';if(won){if(isBoss){ui.win.classList.remove('hidden');return}if(target){target.dead=true;kills++;target=null;ui.dialogue.textContent=kills===1?'✅ First Zombie Goth defeated. A modest achievement, but one cannot expect miracles before lunch.':'✅ Both Zombie Goths defeated. Now complete the special events, because apparently fighting was only the easy bit.'}}else{ui.deathText.textContent='The goth got you. Olly wakes at the last checkpoint, bruised but ready for another shot.';ui.death.classList.remove('hidden');mode='dead'}stats()}
-  function retryCombat(){ui.death.classList.add('hidden');hp=5;stats();if(combatCheckpoint){x=combatCheckpoint.x;y=combatCheckpoint.y;reveal()}mode='map';if(target||isBoss){setTimeout(()=>startCombat(isBoss),100)}}
-  function backToMap(){ui.death.classList.add('hidden');hp=5;stats();if(combatCheckpoint){x=combatCheckpoint.x;y=combatCheckpoint.y;reveal()}mode='map';ui.dialogue.textContent='You retreat to the checkpoint. The goths are still waiting.'}
-
-  function startEncounterFight(){ui.encounter.classList.add('hidden');startCombat(false)}
-  function drawRelationshipArt(){
-    // The relationship screen now uses the approved illustrated artwork directly in the UI.
-    rctx.clearRect(0,0,rctx.canvas.width,rctx.canvas.height);
+  function combatAttack(){
+    if(mode!=='combat')return;const nowMs=performance.now();
+    if(nowMs<attackCooldownUntil){ui.combatStatus.textContent='⏳ Your three-hit combo is cooling down. Back away, then go again.';return;}
+    if(nowMs-lastAttackAt>900)comboCount=0;
+    const enemyX=COMBAT_W-320,enemyY=COMBAT_H/2,dx=enemyX-player.x,dy=enemyY-(player.y+jumpOffset),distance=Math.hypot(dx,dy);combatFacing=dx<0?'left':'right';
+    comboCount++;lastAttackAt=nowMs;attackAnimUntil=nowMs+220;const jumpAttack=jumping||jumpOffset<-35;
+    if(distance<=155){const damage=jumpAttack?15:10;combatHp=Math.max(0,combatHp-damage);ui.enemyHp.style.width=(combatHp/combatMax*100)+'%';ui.enemyHpText.textContent=`${combatHp} / ${combatMax}`;ui.combatStatus.textContent=jumpAttack?`💥 JUMP ATTACK! ${damage} damage.`:`👊 HIT! ${damage} damage.`;if(combatHp<=0){setTimeout(()=>endCombat(true),180);return;}}
+    else ui.combatStatus.textContent='👊 Punch missed. Get closer to the Goth.';
+    if(comboCount>=3){comboCount=3;attackCooldownUntil=nowMs+850;ui.combatStatus.textContent+=' ⚠️ Combo complete. Cooldown!';}
   }
+  function combatDodge(){
+    if(mode!=='combat')return;const nowMs=performance.now();if(nowMs<dodgeUntil){ui.combatStatus.textContent='↪ Dodge is still recovering.';return;}
+    const direction=combatFacing==='left'?-1:1;player.x=Math.max(80,Math.min(COMBAT_W-80,player.x+direction*180));player.invuln=nowMs+500;dodgeUntil=nowMs+500;ui.combatStatus.textContent='↪ DODGE! You are briefly invulnerable.';
+  }
+  function endCombat(won){
+    clearInterval(enemyTimer);enemyTimer=null;cancelAnimationFrame(combatRaf);ui.combat.classList.add('hidden');mode='map';
+    if(won){if(isBoss){hp=maxHp;stats();ui.win.classList.remove('hidden');return;}if(target){target.dead=true;target.hp=0;kills++;target=null;ui.dialogue.textContent=kills===1?'✅ Zombie Goth defeated. Your health carries into the next fight.':'✅ Both Zombie Goths defeated. Now complete the special events, because apparently fighting was only the easy bit.';}}
+    else{ui.deathText.textContent='The Goth got you. Olly wakes at the last checkpoint, bruised but ready for another shot.';ui.death.classList.remove('hidden');mode='dead';}stats();
+  }
+  function retryCombat(){ui.death.classList.add('hidden');hp=maxHp;stats();if(combatCheckpoint){x=combatCheckpoint.x;y=combatCheckpoint.y;reveal();}mode='map';if(target||isBoss)setTimeout(()=>startCombat(isBoss),100);}
+  function backToMap(){ui.death.classList.add('hidden');if(combatCheckpoint){x=combatCheckpoint.x;y=combatCheckpoint.y;reveal();}mode='map';ui.dialogue.textContent='You retreat to the checkpoint. The goths are still waiting.';stats();}
+
+  function shootAtPointer(){if(mode==='combat')combatAttack();}
+
 function startRelationship(){
     mode='relationship';relationshipRound=0;relationshipStep=0;relationshipDuration=2600;relationshipStart=performance.now();
     ui.relationship.classList.remove('hidden');
@@ -348,7 +387,7 @@ function completeRelationship(){
   function startBoss(){ui.bossReady.classList.add('hidden');ui.bossIntro.classList.add('hidden');target=null;combatCheckpoint={x,y};startCombat(true)}
   function saveGame(){
     try{
-      const state={version:3,savedAt:new Date().toISOString(),level:1,x,y,hp,kills,relationshipDone,puzzleSolved,keyCollected,inventory,checkpoint,enemies:enemies.map(e=>({dead:e.dead,hp:e.hp}))};
+      const state={version:4,savedAt:new Date().toISOString(),level:1,x,y,hp,maxHp,kills,relationshipDone,puzzleSolved,keyCollected,inventory,checkpoint,enemies:enemies.map(e=>({dead:e.dead,hp:e.hp}))};
       localStorage.setItem(SAVE_KEY,JSON.stringify(state));
       ui.dialogue.textContent='💾 Game saved. The Goths will have to wait.';
       return true;
@@ -356,19 +395,22 @@ function completeRelationship(){
   }
   function loadGame(){
     const state=safeParseSave();
-    if(!state || ![2,3].includes(state.version))return false;
+    if(!state || ![2,3,4].includes(state.version))return false;
     try{
       x=Number.isFinite(state.x)?Math.min(WORLD_W-40,Math.max(40,state.x)):x;
       y=Number.isFinite(state.y)?Math.min(WORLD_H-40,Math.max(40,state.y)):y;
-      hp=Number.isFinite(state.hp)?state.hp:hp; kills=Number.isFinite(state.kills)?state.kills:kills;
+      maxHp=Number.isFinite(state.maxHp)?Math.max(100,state.maxHp):100;
+      if(state.version>=4){ hp=Number.isFinite(state.hp)?state.hp:maxHp; }
+      else { const legacyHearts=Number.isFinite(state.hp)?state.hp:5; hp=Math.round(Math.max(0,Math.min(5,legacyHearts))/5*maxHp); }
+      kills=Number.isFinite(state.kills)?state.kills:kills;
       relationshipDone=!!state.relationshipDone; puzzleSolved=!!state.puzzleSolved; keyCollected=!!state.keyCollected; inventory=state.inventory&&typeof state.inventory==='object'?state.inventory:{}; checkpoint=state.checkpoint||'cemetery-entrance';
       if(Array.isArray(state.enemies)){state.enemies.forEach((saved,i)=>{if(enemies[i]){enemies[i].dead=!!saved.dead;if(Number.isFinite(saved.hp))enemies[i].hp=saved.hp;}})}
       mode='map'; target=null; bossRoomEntered=false;
       stats(); drawMini(); ui.dialogue.textContent='📂 Game loaded. Welcome back to the cemetery.'; return true;
     }catch(err){console.error('Goodbye Goth load failed',err);return false;}
   }
-  function start(){stats();drawMini();cancelAnimationFrame(relationshipRAF);clearInterval(enemyTimer);cancelAnimationFrame(raf);const loop=t=>{const dt=Math.min(0.04,(t-(now||t))/1000);now=t;if(mode==='map')updateMovement(dt);if(walkPulse>0)walkPulse=0;drawWorld(t);drawMini();raf=requestAnimationFrame(loop)};raf=requestAnimationFrame(loop);requestAnimationFrame(combatTick)}
-  function primaryAction(){if(mode==='encounter')startEncounterFight();else if(mode==='combat')combatAttack();else if(mode==='map')checkTriggers()}
+  function start(){stats();drawMini();cancelAnimationFrame(relationshipRAF);clearInterval(enemyTimer);cancelAnimationFrame(raf);const loop=t=>{const dt=Math.min(0.04,(t-(now||t))/1000);now=t;if(mode==='map')updateMovement(dt);if(walkPulse>0)walkPulse=0;drawWorld(t);drawMini();raf=requestAnimationFrame(loop)};raf=requestAnimationFrame(loop)}
+  function primaryAction(){if(mode==='encounter')startEncounterFight();else if(mode==='combat')jump();else if(mode==='map')checkTriggers()}
 
   return {start,move,setMoveKey,primaryAction,interact,confirmEncounter,closeEncounter,combatAttack,combatDodge,shootAtPointer,retryCombat,backToMap,completeRelationship,answerPuzzle,startBoss,saveGame,loadGame};
 }
