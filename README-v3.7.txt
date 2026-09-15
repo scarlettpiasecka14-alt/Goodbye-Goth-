@@ -1,4 +1,4 @@
-GOODBYE GOTH v3.7 - COMPACT UPDATE
+GOODBYE GOTH v3.7 - COMPACT UPDATEs
 
 Upload the contents of this ZIP to the GitHub `testing` branch.
 
