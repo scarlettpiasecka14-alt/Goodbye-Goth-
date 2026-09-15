@@ -3,17 +3,69 @@ import { createLevel1 } from './levels/level1.js';
 
 const root = document.getElementById('game-root');
 
+const SAVE_KEY = 'goodbyeGothSave_v6';
+
+function hasSaveGame(){
+  try { return !!localStorage.getItem(SAVE_KEY); } catch { return false; }
+}
+
+function startNewGame(){
+  try { localStorage.removeItem(SAVE_KEY); } catch {}
+  showIntro();
+}
+
+function loadSavedGame(){
+  if(!hasSaveGame()){
+    showTitleMessage('No saved game yet. Start a NEW GAME first.');
+    return;
+  }
+  mountLevel1(true);
+}
+
+function quitGame(){
+  // Browsers generally refuse window.close() unless this tab was script-opened.
+  window.close();
+  setTimeout(() => {
+    root.innerHTML = `
+      <section class="quit-screen" aria-label="Game quit">
+        <div class="quit-card">
+          <div class="quit-skull">☠</div>
+          <h1>GOODBYE, GOTH</h1>
+          <p>The game has been quit.</p>
+          <p class="small">Your browser may not allow a webpage to close its own tab. You can close this tab normally.</p>
+        </div>
+      </section>`;
+  }, 120);
+}
+
+function showTitleMessage(message){
+  const existing=document.getElementById('title-message');
+  if(existing) existing.textContent=message;
+  else {
+    const el=document.createElement('div');
+    el.id='title-message';
+    el.className='title-message';
+    el.textContent=message;
+    root.querySelector('.perfect-title-wrap')?.appendChild(el);
+  }
+}
+
 function showTitle(){
   root.innerHTML = `
     <section id="title-screen" class="panel title-screen perfect-title-screen" aria-label="Goodbye Goth title screen">
       <div class="perfect-title-wrap">
         <img class="perfect-title-art" src="assets/story/title-screen-perfect.png" alt="Goodbye Goth title screen">
-        <button id="title-start" class="perfect-title-hit" aria-label="Start New Game"></button>
-        <button id="title-skip" class="title-skip-intro" type="button">SKIP INTRO →</button>
+        <div class="title-menu" role="menu" aria-label="Main menu">
+          <button id="title-new" class="title-menu-btn primary-title-btn" type="button">NEW GAME</button>
+          <button id="title-load" class="title-menu-btn" type="button">LOAD GAME</button>
+          <button id="title-quit" class="title-menu-btn" type="button">QUIT</button>
+        </div>
       </div>
     </section>`;
-  document.getElementById('title-start').addEventListener('click', showIntro, { once:true });
-  document.getElementById('title-skip').addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); showGothAbyss(); }, { once:true });
+
+  document.getElementById('title-new').addEventListener('click', startNewGame, { once:true });
+  document.getElementById('title-load').addEventListener('click', loadSavedGame, { once:true });
+  document.getElementById('title-quit').addEventListener('click', quitGame, { once:true });
 }
 
 function showIntro(){
@@ -120,17 +172,22 @@ function showLevel1Intro(){
   );
 }
 
-function mountLevel1(){
+function mountLevel1(loadSaved=false){
   root.innerHTML = `
     <section class="panel game-screen" style="position:relative">
       <div class="game-head">
         <div><strong>LEVEL 1</strong><div class="small">THE HAUNTED CEMETERY</div></div>
         <div class="stats">
-          <span class="pill">❤️ <span id="hp">5</span></span>
           <span class="pill">🧟 <span id="goth-count">0/2</span></span>
           <span class="pill">🧩 <span id="rel-state">Locked</span></span>
-          <span class="pill">❤️ <span id="puzzle-state">Locked</span></span>
+          <span class="pill">♥ <span id="puzzle-state">Locked</span></span>
         </div>
+      </div>
+
+      <div id="player-hud" class="player-hud" aria-label="Olly health">
+        <div class="player-hud-name">OLLY</div>
+        <div class="player-hud-bar"><div id="player-hp-fill" class="player-hp-fill"></div></div>
+        <div id="player-hp-text" class="player-hp-text">100 / 100 HP</div>
       </div>
       <div class="game-layout">
         <div class="play-column">
@@ -162,23 +219,46 @@ function mountLevel1(){
               <button id="save-game" type="button">SAVE GAME</button>
               <button id="load-game" type="button">LOAD GAME</button>
             </div>
+            <div class="save-hint">Press <strong>X</strong> at any time to save.</div>
             <div id="save-status" class="small save-status" aria-live="polite"></div>
           </div>
         </aside>
       </div>
 
-      <div id="encounter" class="overlay hidden"><div class="overlay-box center">
-        <canvas id="encounter-canvas" class="story-art" width="720" height="300"></canvas>
-        <div id="encounter-name" class="story-title">ZOMBIE GOTH</div>
-        <p id="encounter-text"></p><button id="encounter-fight" class="primary">FIGHT</button>
+      <div id="inventory" class="overlay hidden" style="z-index:40"><div class="overlay-box center" style="width:min(620px,92vw)">
+        <div class="story-title">INVENTORY</div>
+        <p class="small" style="margin-top:10px">Your inventory is empty.</p>
       </div></div>
 
-      <div id="combat" class="overlay hidden"><div class="overlay-box">
-        <div class="combat-ui"><strong id="combat-name">ZOMBIE GOTH</strong><span id="combat-pattern" class="small">Watch the warning • DODGE • FIRE ARROWS</span></div>
-        <div class="bar" style="margin-top:7px"><div id="enemy-hp"></div></div>
-        <div class="combat-arena"><canvas id="combat-canvas" width="900" height="450"></canvas></div>
-        <div id="combat-status" class="combat-note"><strong>HOW TO FIGHT:</strong> Click the enemy or the arena to fire an arrow. When a red warning appears, press <strong>DODGE</strong>. You can also use ← → ↑ ↓ to move Olly.</div>
-        <div class="combat-actions"><button id="combat-attack" class="primary">🏹 FIRE ARROW</button><button id="combat-dodge">↪ DODGE</button></div>
+      <div id="encounter" class="overlay hidden"><div class="overlay-box center encounter-box">
+        <img id="encounter-image" class="encounter-art" alt="Encounter artwork">
+        <div id="encounter-name" class="story-title">ENCOUNTER</div>
+        <p id="encounter-text" class="encounter-copy"></p>
+        <div class="encounter-actions">
+          <button id="encounter-ready" class="primary" type="button">I'M READY</button>
+          <button id="encounter-explore" type="button">KEEP EXPLORING</button>
+        </div>
+      </div></div>
+
+      <div id="combat" class="overlay hidden"><div class="overlay-box combat-box">
+        <div class="combat-topline">
+          <div>
+            <strong id="combat-name">ZOMBIE GOTH</strong>
+            <div id="combat-pattern" class="small">Move with WASD / arrows • left click to punch • right click to dodge • SPACE to jump</div>
+          </div>
+          <div class="combat-enemy-hp-wrap">
+            <div class="combat-enemy-hp-label">ENEMY HP <span id="enemy-hp-text">50 / 50</span></div>
+            <div class="bar"><div id="enemy-hp"></div></div>
+          </div>
+        </div>
+
+        <div class="combat-arena"><canvas id="combat-canvas" width="1440" height="810" aria-label="Combat arena"></canvas></div>
+
+        <div id="combat-status" class="combat-note"><strong>HOW TO FIGHT:</strong> Get close to the Goth, face her and LEFT CLICK to punch. Three quick attacks are allowed before a short cooldown. SPACE jumps.</div>
+        <div class="combat-actions">
+          <button id="combat-attack" class="primary">👊 PUNCH</button>
+          <button id="combat-dodge">↪ DODGE</button>
+        </div>
       </div></div>
 
       <div id="death" class="overlay hidden"><div class="overlay-box center death-card">
@@ -199,7 +279,6 @@ function mountLevel1(){
 
       <div id="puzzle" class="overlay hidden"><div class="overlay-box center quiz-box">
         <img class="story-art quiz-image" src="assets/story/princess-quiz.png" alt="Scarlett, the kidnapped princess, with a warning about getting the answer right">
-        <div class="story-title">THE PRINCESS QUESTION</div>
         <div class="ironic-copy quiz-copy">A simple question, apparently. The fate of your princess rests on your ability to demonstrate absolutely normal communication skills.</div>
         <p class="quiz-question">What is the correct way to ask a princess to undress?</p>
         <div class="answers quiz-answers">
@@ -224,11 +303,11 @@ function mountLevel1(){
 
   const ui = {
     canvas:document.getElementById('world'), miniMap:document.getElementById('mini-map'), dialogue:document.getElementById('dialogue'),
-    hpEl:document.getElementById('hp'), gothEl:document.getElementById('goth-count'), relEl:document.getElementById('rel-state'), puzzleEl:document.getElementById('puzzle-state'),
+    hpEl:document.getElementById('player-hp-text'), hpFill:document.getElementById('player-hp-fill'), gothEl:document.getElementById('goth-count'), relEl:document.getElementById('rel-state'), puzzleEl:document.getElementById('puzzle-state'),
     goalGoths:document.getElementById('goal-goths'), goalRel:document.getElementById('goal-rel'), goalPuzzle:document.getElementById('goal-puzzle'), goalBoss:document.getElementById('goal-boss'), checkpoint:document.getElementById('checkpoint'),
-    saveGame:document.getElementById('save-game'), loadGame:document.getElementById('load-game'), saveStatus:document.getElementById('save-status'),
-    encounter:document.getElementById('encounter'), encounterCanvas:document.getElementById('encounter-canvas'), encounterName:document.getElementById('encounter-name'), encounterText:document.getElementById('encounter-text'), encounterFight:document.getElementById('encounter-fight'),
-    combat:document.getElementById('combat'), combatCanvas:document.getElementById('combat-canvas'), combatName:document.getElementById('combat-name'), combatPattern:document.getElementById('combat-pattern'), enemyHp:document.getElementById('enemy-hp'), combatStatus:document.getElementById('combat-status'), combatAttack:document.getElementById('combat-attack'), combatDodge:document.getElementById('combat-dodge'),
+    saveGame:document.getElementById('save-game'), loadGame:document.getElementById('load-game'), saveStatus:document.getElementById('save-status'), inventory:document.getElementById('inventory'),
+    encounter:document.getElementById('encounter'), encounterImage:document.getElementById('encounter-image'), encounterName:document.getElementById('encounter-name'), encounterText:document.getElementById('encounter-text'), encounterReady:document.getElementById('encounter-ready'), encounterExplore:document.getElementById('encounter-explore'),
+    combat:document.getElementById('combat'), combatCanvas:document.getElementById('combat-canvas'), combatName:document.getElementById('combat-name'), combatPattern:document.getElementById('combat-pattern'), enemyHp:document.getElementById('enemy-hp'), enemyHpText:document.getElementById('enemy-hp-text'), combatStatus:document.getElementById('combat-status'), combatAttack:document.getElementById('combat-attack'), combatDodge:document.getElementById('combat-dodge'),
     death:document.getElementById('death'), deathText:document.getElementById('death-text'), retryCombat:document.getElementById('retry-combat'), backMap:document.getElementById('back-map'),
     relationship:document.getElementById('relationship'), relationshipCanvas:document.getElementById('relationship-canvas'), wouldDisplay:document.getElementById('would-display'), wouldTap:document.getElementById('would-tap'), wouldFeedback:document.getElementById('would-feedback'), timingZone:document.getElementById('timing-zone'), timingCursor:document.getElementById('timing-cursor'),
     puzzle:document.getElementById('puzzle'), puzzleFeedback:document.getElementById('puzzle-feedback'), bossIntro:document.getElementById('boss-intro'), bossStart:document.getElementById('boss-start'), win:document.getElementById('win'), replay:document.getElementById('replay')
@@ -237,7 +316,8 @@ function mountLevel1(){
   const level = createLevel1(ui);
   ui.saveGame.addEventListener('click',()=>{ const ok=level.saveGame(); ui.saveStatus.textContent=ok?'Saved ✓':'Save failed'; });
   ui.loadGame.addEventListener('click',()=>{ const ok=level.loadGame(); ui.saveStatus.textContent=ok?'Loaded ✓':'No save found'; });
-  ui.encounterFight.addEventListener('click',()=>level.startEncounterFight());
+  ui.encounterReady.addEventListener('click',()=>level.confirmEncounter());
+  ui.encounterExplore.addEventListener('click',()=>level.closeEncounter());
   ui.combatAttack.addEventListener('click',()=>level.combatAttack());
   ui.combatDodge.addEventListener('click',()=>level.combatDodge());
   ui.retryCombat.addEventListener('click',()=>level.retryCombat());
@@ -246,27 +326,45 @@ function mountLevel1(){
   ui.bossStart.addEventListener('click',()=>level.startBoss());
   ui.replay.addEventListener('click',()=>mountLevel1());
   document.querySelectorAll('[data-answer]').forEach(b=>b.addEventListener('click',()=>level.answerPuzzle(b.dataset.answer)));
-  ui.combatCanvas.addEventListener('pointerdown',e=>level.shootAtPointer(e));
-  const heldKeys=new Set();
+  ui.combatCanvas.addEventListener('pointerdown',e=>{
+    if(e.button===0) level.combatAttack();
+    if(e.button===2) level.combatDodge();
+  });
+  ui.combatCanvas.addEventListener('contextmenu',e=>e.preventDefault());
+  function toggleInventory(){
+    if(!ui.inventory) return;
+    const open = ui.inventory.classList.toggle('hidden') === false;
+    if(open){
+      level.setMoveKey?.('w',false); level.setMoveKey?.('a',false); level.setMoveKey?.('s',false); level.setMoveKey?.('d',false);
+      ui.inventory.setAttribute('aria-hidden','false');
+    } else {
+      ui.inventory.setAttribute('aria-hidden','true');
+    }
+  }
+
   window.addEventListener('keydown',e=>{
     const k=e.key.toLowerCase();
-    if(['arrowup','arrowdown','arrowleft','arrowright',' ','w','a','s','d'].includes(k))e.preventDefault();
-    if(['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d'].includes(k)) heldKeys.add(k);
-    if(k===' ') level.primaryAction();
+    if(k==='y' && !e.repeat){ e.preventDefault(); toggleInventory(); return; }
+    if(!ui.inventory?.classList.contains('hidden')) return;
+    if(['arrowup','arrowdown','arrowleft','arrowright',' ','w','a','s','d','x'].includes(k))e.preventDefault();
+    if(['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d'].includes(k))level.setMoveKey?.(k,true);
+    if(k===' ')level.primaryAction();
+    if(k==='x'){
+      const ok=level.saveGame();
+      if(ui.saveStatus) ui.saveStatus.textContent=ok?'Saved ✓':'Save failed';
+    }
   });
-  window.addEventListener('keyup',e=>{heldKeys.delete(e.key.toLowerCase())});
-  let movementFrame=0,lastMove=performance.now();
-  const movementLoop=(t)=>{
-    const elapsed=Math.min(40,t-lastMove); lastMove=t;
-    // Multiple move calls per frame give smooth, responsive held-key movement.
-    if(heldKeys.has('arrowup')||heldKeys.has('w')) level.move('up');
-    if(heldKeys.has('arrowdown')||heldKeys.has('s')) level.move('down');
-    if(heldKeys.has('arrowleft')||heldKeys.has('a')) level.move('left');
-    if(heldKeys.has('arrowright')||heldKeys.has('d')) level.move('right');
-    movementFrame=requestAnimationFrame(movementLoop);
-  };
+  window.addEventListener('keyup',e=>{
+    const k=e.key.toLowerCase();
+    if(['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d'].includes(k))level.setMoveKey?.(k,false);
+  });
   level.start();
-  movementFrame=requestAnimationFrame(movementLoop);
+  if(loadSaved){
+    requestAnimationFrame(() => {
+      const ok = level.loadGame();
+      if(!ok) showTitleMessage('No saved game found.');
+    });
+  }
 }
 
 showTitle();
