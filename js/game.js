@@ -188,6 +188,7 @@ function mountLevel1(loadSaved=false){
         <div class="player-hud-name">OLLY</div>
         <div class="player-hud-bar"><div id="player-hp-fill" class="player-hp-fill"></div></div>
         <div id="player-hp-text" class="player-hp-text">100 / 100 HP</div>
+        <button id="inventory-button" type="button" style="width:100%;margin-top:7px;min-height:34px;padding:6px 10px;font-size:12px;">🎒 INVENTORY</button>
       </div>
       <div class="game-layout">
         <div class="play-column">
@@ -224,6 +225,12 @@ function mountLevel1(loadSaved=false){
           </div>
         </aside>
       </div>
+
+      <div id="inventory" class="overlay hidden" style="z-index:40"><div class="overlay-box center" style="width:min(620px,92vw)">
+        <div class="story-title">INVENTORY</div>
+        <p class="small" style="margin-top:10px">Your inventory is empty.</p>
+        <button id="inventory-close" type="button" class="primary" style="margin-top:12px;">CLOSE</button>
+      </div></div>
 
       <div id="encounter" class="overlay hidden"><div class="overlay-box center encounter-box">
         <img id="encounter-image" class="encounter-art" alt="Encounter artwork">
@@ -300,7 +307,7 @@ function mountLevel1(loadSaved=false){
     canvas:document.getElementById('world'), miniMap:document.getElementById('mini-map'), dialogue:document.getElementById('dialogue'),
     hpEl:document.getElementById('player-hp-text'), hpFill:document.getElementById('player-hp-fill'), gothEl:document.getElementById('goth-count'), relEl:document.getElementById('rel-state'), puzzleEl:document.getElementById('puzzle-state'),
     goalGoths:document.getElementById('goal-goths'), goalRel:document.getElementById('goal-rel'), goalPuzzle:document.getElementById('goal-puzzle'), goalBoss:document.getElementById('goal-boss'), checkpoint:document.getElementById('checkpoint'),
-    saveGame:document.getElementById('save-game'), loadGame:document.getElementById('load-game'), saveStatus:document.getElementById('save-status'),
+    saveGame:document.getElementById('save-game'), loadGame:document.getElementById('load-game'), saveStatus:document.getElementById('save-status'), inventory:document.getElementById('inventory'), inventoryButton:document.getElementById('inventory-button'), inventoryClose:document.getElementById('inventory-close'),
     encounter:document.getElementById('encounter'), encounterImage:document.getElementById('encounter-image'), encounterName:document.getElementById('encounter-name'), encounterText:document.getElementById('encounter-text'), encounterReady:document.getElementById('encounter-ready'), encounterExplore:document.getElementById('encounter-explore'),
     combat:document.getElementById('combat'), combatCanvas:document.getElementById('combat-canvas'), combatName:document.getElementById('combat-name'), combatPattern:document.getElementById('combat-pattern'), enemyHp:document.getElementById('enemy-hp'), enemyHpText:document.getElementById('enemy-hp-text'), combatStatus:document.getElementById('combat-status'), combatAttack:document.getElementById('combat-attack'), combatDodge:document.getElementById('combat-dodge'),
     death:document.getElementById('death'), deathText:document.getElementById('death-text'), retryCombat:document.getElementById('retry-combat'), backMap:document.getElementById('back-map'),
@@ -326,8 +333,23 @@ function mountLevel1(loadSaved=false){
     if(e.button===2) level.combatDodge();
   });
   ui.combatCanvas.addEventListener('contextmenu',e=>e.preventDefault());
+  function toggleInventory(){
+    if(!ui.inventory) return;
+    const open = ui.inventory.classList.toggle('hidden') === false;
+    if(open){
+      level.setMoveKey?.('w',false); level.setMoveKey?.('a',false); level.setMoveKey?.('s',false); level.setMoveKey?.('d',false);
+      ui.inventory.setAttribute('aria-hidden','false');
+    } else {
+      ui.inventory.setAttribute('aria-hidden','true');
+    }
+  }
+  ui.inventoryButton?.addEventListener('click',()=>toggleInventory(true));
+  ui.inventoryClose?.addEventListener('click',()=>toggleInventory(false));
+
   window.addEventListener('keydown',e=>{
     const k=e.key.toLowerCase();
+    if(k==='y' && !e.repeat){ e.preventDefault(); toggleInventory(); return; }
+    if(!ui.inventory?.classList.contains('hidden')) return;
     if(['arrowup','arrowdown','arrowleft','arrowright',' ','w','a','s','d','x'].includes(k))e.preventDefault();
     if(['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d'].includes(k))level.setMoveKey?.(k,true);
     if(k===' ')level.primaryAction();
