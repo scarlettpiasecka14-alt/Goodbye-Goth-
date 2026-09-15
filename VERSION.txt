@@ -1,0 +1,3 @@
+Goodbye Goth v6.0
+Testing-branch patch.
+Replace js/game.js, js/levels/level1.js, and css/game.css.

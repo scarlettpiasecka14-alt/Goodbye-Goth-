@@ -187,8 +187,15 @@ function mountLevel1(loadSaved=false){
       <div id="player-hud" class="player-hud" aria-label="Olly health">
         <div class="player-hud-name">OLLY</div>
         <div class="player-hud-bar"><div id="player-hp-fill" class="player-hp-fill"></div></div>
-        <div id="player-hp-text" class="player-hp-text">100 / 100 HP</div>
+        <div id="player-hp-text" class="player-hp-text">5 / 5 HP</div>
       </div>
+      <button id="inventory-toggle" class="inventory-toggle" type="button" aria-expanded="false">Y • INVENTORY</button>
+      <aside id="inventory-panel" class="inventory-panel hidden" aria-label="Inventory">
+        <div class="inventory-title">INVENTORY</div>
+        <div id="inventory-items" class="inventory-items"></div>
+        <div id="inventory-equipped" class="inventory-equipped">Equipped: FISTS</div>
+        <div class="small">Press Y to open/close. When you obtain a bow, Y also switches your equipped weapon.</div>
+      </aside>
       <div class="game-layout">
         <div class="play-column">
           <div class="world-wrap">
@@ -257,7 +264,9 @@ function mountLevel1(loadSaved=false){
       </div></div>
 
       <div id="death" class="overlay hidden"><div class="overlay-box center death-card">
-        <div class="death-title">YOU DIED</div><p id="death-text">The Goths have won this round.</p>
+        <div class="death-title">YOU DIED</div>
+        <div class="kidnap-scene" aria-hidden="true"><div class="kidnap-olly">🧍</div><div class="kidnap-goth">🧟‍♀️</div></div>
+        <p id="death-text">The Goths have won this round.</p>
         <div class="story-actions"><button id="retry-combat" class="primary">TRY AGAIN</button><button id="back-map">BACK TO MAP</button></div>
       </div></div>
 
@@ -298,7 +307,7 @@ function mountLevel1(loadSaved=false){
 
   const ui = {
     canvas:document.getElementById('world'), miniMap:document.getElementById('mini-map'), dialogue:document.getElementById('dialogue'),
-    hpEl:document.getElementById('player-hp-text'), hpFill:document.getElementById('player-hp-fill'), gothEl:document.getElementById('goth-count'), relEl:document.getElementById('rel-state'), puzzleEl:document.getElementById('puzzle-state'),
+    hpEl:document.getElementById('player-hp-text'), hpFill:document.getElementById('player-hp-fill'), gothEl:document.getElementById('goth-count'), relEl:document.getElementById('rel-state'), puzzleEl:document.getElementById('puzzle-state'), inventoryToggle:document.getElementById('inventory-toggle'), inventoryPanel:document.getElementById('inventory-panel'), inventoryItems:document.getElementById('inventory-items'), inventoryEquipped:document.getElementById('inventory-equipped'),
     goalGoths:document.getElementById('goal-goths'), goalRel:document.getElementById('goal-rel'), goalPuzzle:document.getElementById('goal-puzzle'), goalBoss:document.getElementById('goal-boss'), checkpoint:document.getElementById('checkpoint'),
     saveGame:document.getElementById('save-game'), loadGame:document.getElementById('load-game'), saveStatus:document.getElementById('save-status'),
     encounter:document.getElementById('encounter'), encounterImage:document.getElementById('encounter-image'), encounterName:document.getElementById('encounter-name'), encounterText:document.getElementById('encounter-text'), encounterReady:document.getElementById('encounter-ready'), encounterExplore:document.getElementById('encounter-explore'),
@@ -315,6 +324,7 @@ function mountLevel1(loadSaved=false){
   ui.encounterExplore.addEventListener('click',()=>level.closeEncounter());
   ui.combatAttack.addEventListener('click',()=>level.combatAttack());
   ui.combatDodge.addEventListener('click',()=>level.combatDodge());
+  ui.inventoryToggle.addEventListener('click',()=>level.toggleInventory());
   ui.retryCombat.addEventListener('click',()=>level.retryCombat());
   ui.backMap.addEventListener('click',()=>level.backToMap());
   ui.wouldTap.addEventListener('click',()=>level.completeRelationship());
@@ -331,6 +341,7 @@ function mountLevel1(loadSaved=false){
     if(['arrowup','arrowdown','arrowleft','arrowright',' ','w','a','s','d','x'].includes(k))e.preventDefault();
     if(['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d'].includes(k))level.setMoveKey?.(k,true);
     if(k===' ')level.primaryAction();
+    if(k==='y')level.toggleInventory();
     if(k==='x'){
       const ok=level.saveGame();
       if(ui.saveStatus) ui.saveStatus.textContent=ok?'Saved ✓':'Save failed';
