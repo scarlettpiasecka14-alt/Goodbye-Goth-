@@ -230,6 +230,9 @@ export function createLevel1(ui) {
     const MAX_HP = 100;
     const COMBAT_W = 1440,
         COMBAT_H = 810;
+    const combatBackgroundImage = new Image();
+    combatBackgroundImage.src = 'assets/environment/combat-background-level1.png';
+
     let x = 470,
         y = 520,
         hp = 100,
@@ -638,33 +641,24 @@ export function createLevel1(ui) {
     }
     function drawCombatBackground(c) {
         c.clearRect(0, 0, COMBAT_W, COMBAT_H);
-        const g = c.createLinearGradient(0, 0, 0, COMBAT_H);
-        g.addColorStop(0, '#23192a');
-        g.addColorStop(.52, '#17111b');
-        g.addColorStop(1, '#0b080e');
-        c.fillStyle = g;
-        c.fillRect(0, 0, COMBAT_W, COMBAT_H);
-        c.fillStyle = '#201824';
-        c.fillRect(0, COMBAT_H - 150, COMBAT_W, 150);
-        c.fillStyle = '#4b3b50';
-        for (let i = 0; i < 18; i++) {
-            const gx = 40 + i * 84;
-            c.fillRect(gx, COMBAT_H - 220, 5, 70);
-            c.fillRect(gx - 14, COMBAT_H - 220, 33, 5);
+        if (combatBackgroundImage.complete && combatBackgroundImage.naturalWidth > 0) {
+            c.drawImage(combatBackgroundImage, 0, 0, COMBAT_W, COMBAT_H);
+        } else {
+            const g = c.createLinearGradient(0, 0, 0, COMBAT_H);
+            g.addColorStop(0, '#23192a');
+            g.addColorStop(.52, '#17111b');
+            g.addColorStop(1, '#0b080e');
+            c.fillStyle = g;
+            c.fillRect(0, 0, COMBAT_W, COMBAT_H);
+            c.fillStyle = '#201824';
+            c.fillRect(0, COMBAT_H - 150, COMBAT_W, 150);
+            c.fillStyle = '#4b3b50';
+            for (let i = 0; i < 18; i++) {
+                const gx = 40 + i * 84;
+                c.fillRect(gx, COMBAT_H - 220, 5, 70);
+                c.fillRect(gx - 14, COMBAT_H - 220, 33, 5);
+            }
         }
-        c.fillStyle = 'rgba(255,255,255,.08)';
-        for (let i = 0; i < 55; i++) {
-            const gx = (i * 97) % COMBAT_W,
-                gy = 95 + (i * 53) % 500;
-            c.fillRect(gx, gy, 3, 3);
-        }
-        c.fillStyle = '#f0dfe8';
-        c.font = '900 22px system-ui';
-        c.textAlign = 'left';
-        c.fillText('THE HAUNTED CEMETERY', 34, 44);
-        c.font = '14px system-ui';
-        c.fillStyle = '#bca9b8';
-        c.fillText('Get close • face the Goth • LEFT CLICK to punch', 34, 70);
     }
     function drawCombat() {
         cctx.imageSmoothingEnabled = true;
@@ -900,6 +894,7 @@ export function createLevel1(ui) {
         ui.relationship.classList.remove('hidden');
         ui.wouldFeedback.textContent = 'The princess is rambling. Your job is to weaponise your timing. Round 1 of 5.';
         ui.wouldDisplay.textContent = '“Can I ask you a question...”';
+        drawRelationshipArt();
         animateRelationship();
     }
     function animateRelationship() {

@@ -141,7 +141,7 @@ html,body,#app{height:100%;overflow:hidden}
 }
 
 /* v0.7 combat readability / opaque modal fix */
-.combat.overlay{padding:12px}.combat .overlay-box{width:min(100%,920px);overflow:hidden}.combat-actions button{min-width:145px}.combat-ui .small{color:#e7c8d5}.combat-arena{background:#17111a}
+.combat.overlay{position:fixed;inset:0;padding:0;z-index:100;background:#07050a}.combat .overlay-box{width:100vw;max-width:none;height:100vh;max-height:none;overflow:hidden;border-radius:0;padding:14px 22px 16px;display:flex;flex-direction:column;box-sizing:border-box}.combat-actions button{min-width:145px}.combat-ui .small{color:#e7c8d5}.combat-arena{background:#17111a}
 
 /* v1.4: robust 4:3 intro sizing. Keep the full artwork visible and prevent Safari flex/percentage-height collapse. */
 #game-root{width:100%;height:100%;min-width:0;min-height:0;display:flex;align-items:stretch;justify-content:center}
@@ -692,3 +692,15 @@ html,body,#app{height:100%;overflow:hidden}
 .inventory-empty-copy{margin:16px auto 10px;max-width:520px;color:var(--muted);font:700 14px/1.45 Georgia,serif}
 .inventory-close-button{min-width:120px}
 @media(max-width:600px){.inventory-slots{grid-template-columns:repeat(5,minmax(48px,1fr));gap:6px}.inventory-box{padding:16px 12px 14px!important}}
+
+/* Full-screen combat layout */
+.combat .combat-topline{flex:0 0 auto}
+.combat .combat-arena{flex:1 1 auto;min-height:0;margin:8px 0}
+.combat .combat-arena canvas{width:100%;height:100%;aspect-ratio:auto;object-fit:fill}
+.combat .combat-note{flex:0 0 auto}
+.combat .combat-actions{flex:0 0 auto;padding-top:8px}
+@media(max-width:700px){
+  .combat .overlay-box{padding:10px}
+  .combat .combat-note{font-size:12px}
+  .combat .combat-arena{margin:6px 0}
+}

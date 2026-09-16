@@ -157,6 +157,7 @@ function showControls(){
           <div class="control-item"><span class="control-key">LEFT CLICK</span><span class="control-action">Attack</span></div>
           <div class="control-item"><span class="control-key">LEFT CLICK / ENTER</span><span class="control-action">Pick up / interact</span></div>
           <div class="control-item"><span class="control-key">Y</span><span class="control-action">Open inventory</span></div>
+          <div class="control-item"><span class="control-key">X</span><span class="control-action">Save game</span></div>
         </div>
         <button id="controls-next" class="controls-next" type="button">CLICK TO CONTINUE →</button>
       </div>
