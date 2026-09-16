@@ -360,6 +360,11 @@ function mountLevel1(loadSaved=false){
     const k=e.key.toLowerCase();
     if(k==='y' && !e.repeat){ e.preventDefault(); toggleInventory(); return; }
     if(!ui.inventory?.classList.contains('hidden')) return;
+    if(k==='r' && !ui.combat.classList.contains('hidden')){
+      e.preventDefault();
+      if(!e.repeat) level.combatDodge?.();
+      return;
+    }
     if(['arrowup','arrowdown','arrowleft','arrowright',' ','w','a','s','d','x'].includes(k))e.preventDefault();
     if(['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d'].includes(k))level.setMoveKey?.(k,true);
     if(k===' ')level.primaryAction();
