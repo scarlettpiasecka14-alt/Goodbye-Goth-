@@ -229,7 +229,11 @@ export function createLevel1(ui) {
         };
     const MAX_HP = 100;
     const COMBAT_W = 1440,
-        COMBAT_H = 810;
+        COMBAT_H = 810,
+        COMBAT_GROUND_Y = 470;
+    const combatBackgroundImage = new Image();
+    combatBackgroundImage.src = 'assets/environment/combat-background-level1.png';
+
     let x = 470,
         y = 520,
         hp = 100,
@@ -596,10 +600,10 @@ export function createLevel1(ui) {
         const enemyX = COMBAT_W - 320;
         player = {
             x: 270,
-            y: COMBAT_H / 2,
+            y: COMBAT_GROUND_Y,
             invuln: 0,
             aimX: enemyX,
-            aimY: COMBAT_H / 2
+            aimY: COMBAT_GROUND_Y
         };
         combatFacing = enemyX >= player.x ? 'right' : 'left';
     }
@@ -638,40 +642,31 @@ export function createLevel1(ui) {
     }
     function drawCombatBackground(c) {
         c.clearRect(0, 0, COMBAT_W, COMBAT_H);
-        const g = c.createLinearGradient(0, 0, 0, COMBAT_H);
-        g.addColorStop(0, '#23192a');
-        g.addColorStop(.52, '#17111b');
-        g.addColorStop(1, '#0b080e');
-        c.fillStyle = g;
-        c.fillRect(0, 0, COMBAT_W, COMBAT_H);
-        c.fillStyle = '#201824';
-        c.fillRect(0, COMBAT_H - 150, COMBAT_W, 150);
-        c.fillStyle = '#4b3b50';
-        for (let i = 0; i < 18; i++) {
-            const gx = 40 + i * 84;
-            c.fillRect(gx, COMBAT_H - 220, 5, 70);
-            c.fillRect(gx - 14, COMBAT_H - 220, 33, 5);
+        if (combatBackgroundImage.complete && combatBackgroundImage.naturalWidth > 0) {
+            c.drawImage(combatBackgroundImage, 0, 0, COMBAT_W, COMBAT_H);
+        } else {
+            const g = c.createLinearGradient(0, 0, 0, COMBAT_H);
+            g.addColorStop(0, '#23192a');
+            g.addColorStop(.52, '#17111b');
+            g.addColorStop(1, '#0b080e');
+            c.fillStyle = g;
+            c.fillRect(0, 0, COMBAT_W, COMBAT_H);
+            c.fillStyle = '#201824';
+            c.fillRect(0, COMBAT_H - 150, COMBAT_W, 150);
+            c.fillStyle = '#4b3b50';
+            for (let i = 0; i < 18; i++) {
+                const gx = 40 + i * 84;
+                c.fillRect(gx, COMBAT_H - 220, 5, 70);
+                c.fillRect(gx - 14, COMBAT_H - 220, 33, 5);
+            }
         }
-        c.fillStyle = 'rgba(255,255,255,.08)';
-        for (let i = 0; i < 55; i++) {
-            const gx = (i * 97) % COMBAT_W,
-                gy = 95 + (i * 53) % 500;
-            c.fillRect(gx, gy, 3, 3);
-        }
-        c.fillStyle = '#f0dfe8';
-        c.font = '900 22px system-ui';
-        c.textAlign = 'left';
-        c.fillText('THE HAUNTED CEMETERY', 34, 44);
-        c.font = '14px system-ui';
-        c.fillStyle = '#bca9b8';
-        c.fillText('Get close • face the Goth • LEFT CLICK to punch', 34, 70);
     }
     function drawCombat() {
         cctx.imageSmoothingEnabled = true;
         cctx.imageSmoothingQuality = 'high';
         drawCombatBackground(cctx);
         const enemyX = COMBAT_W - 320,
-            enemyY = COMBAT_H / 2,
+            enemyY = COMBAT_GROUND_Y,
             nowMs = performance.now();
         if (dodgeUntil > nowMs) {
             cctx.save();
@@ -702,17 +697,6 @@ export function createLevel1(ui) {
         }
         drawOllyWorldCombat(cctx, player.x, player.y, 1.1, combatFacing, nowMs / 1000, player.invuln > nowMs, jumpOffset);
         drawZombieSprite(cctx, enemyX, enemyY, target?.type || 'shambler', 1.18, nowMs / 1000, false);
-        cctx.fillStyle = '#f3e7ed';
-        cctx.font = '900 24px Georgia';
-        cctx.textAlign = 'center';
-        cctx.fillText(isBoss ? 'CLASSIC GOTH' : (target?.name || 'ZOMBIE GOTH'), enemyX, enemyY + 120);
-        cctx.fillStyle = '#352737';
-        cctx.fillRect(enemyX - 120, enemyY + 140, 240, 16);
-        cctx.fillStyle = '#ef91ac';
-        cctx.fillRect(enemyX - 120, enemyY + 140, 240 * (combatHp / combatMax), 16);
-        cctx.fillStyle = '#f0dfe8';
-        cctx.font = '700 16px system-ui';
-        cctx.fillText('ENEMY', enemyX, enemyY + 132);
         if (jumping) {
             cctx.fillStyle = '#f6dfe8';
             cctx.font = '900 18px system-ui';
@@ -760,10 +744,9 @@ export function createLevel1(ui) {
         combatHp = combatMax;
         resetCombatVisual();
         ui.combatName.textContent = bossFight ? 'THE CLASSIC GOTH • QUEEN' : target?.name || 'ZOMBIE GOTH';
-        ui.combatPattern.textContent = 'WASD / arrows move • LEFT CLICK punch • RIGHT CLICK dodge • SPACE jump';
         ui.enemyHp.style.width = '100%';
         ui.enemyHpText.textContent = `${combatHp} / ${combatMax}`;
-        ui.combatStatus.innerHTML = '<strong>HOW TO FIGHT:</strong> Get close to the Goth and face her. LEFT CLICK to punch. Three quick punches trigger a short cooldown. SPACE jumps. RIGHT CLICK dodges.';
+        ui.combatStatus.textContent = 'The Goth is staring you down. Get close.';
         ui.combat.classList.remove('hidden');
         clearInterval(enemyTimer);
         enemyTimer = null;
@@ -812,7 +795,7 @@ export function createLevel1(ui) {
             }
         }
         else
-            ui.combatStatus.textContent = '👊 Punch missed. Get closer to the Goth.';
+            ui.combatStatus.textContent = '👊 Too far. Get closer.';
         if (comboCount >= 3) {
             comboCount = 3;
             attackCooldownUntil = nowMs + 850;
@@ -900,6 +883,7 @@ export function createLevel1(ui) {
         ui.relationship.classList.remove('hidden');
         ui.wouldFeedback.textContent = 'The princess is rambling. Your job is to weaponise your timing. Round 1 of 5.';
         ui.wouldDisplay.textContent = '“Can I ask you a question...”';
+        drawRelationshipArt();
         animateRelationship();
     }
     function animateRelationship() {

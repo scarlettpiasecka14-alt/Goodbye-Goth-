@@ -256,7 +256,6 @@ function mountLevel1(loadSaved=false){
         <div class="combat-topline">
           <div>
             <strong id="combat-name">ZOMBIE GOTH</strong>
-            <div id="combat-pattern" class="small">Move with WASD / arrows • left click to punch • right click to dodge • SPACE to jump</div>
           </div>
           <div class="combat-enemy-hp-wrap">
             <div class="combat-enemy-hp-label">ENEMY HP <span id="enemy-hp-text">50 / 50</span></div>
@@ -266,11 +265,7 @@ function mountLevel1(loadSaved=false){
 
         <div class="combat-arena"><canvas id="combat-canvas" width="1440" height="810" aria-label="Combat arena"></canvas></div>
 
-        <div id="combat-status" class="combat-note"><strong>HOW TO FIGHT:</strong> Get close to the Goth, face her and LEFT CLICK to punch. Three quick attacks are allowed before a short cooldown. SPACE jumps.</div>
-        <div class="combat-actions">
-          <button id="combat-attack" class="primary">👊 PUNCH</button>
-          <button id="combat-dodge">↪ DODGE</button>
-        </div>
+        <div id="combat-status" class="combat-note">The Goth is staring you down.</div>
       </div></div>
 
       <div id="death" class="overlay hidden"><div class="overlay-box center death-card">
@@ -319,7 +314,7 @@ function mountLevel1(loadSaved=false){
     goalGoths:document.getElementById('goal-goths'), goalRel:document.getElementById('goal-rel'), goalPuzzle:document.getElementById('goal-puzzle'), goalBoss:document.getElementById('goal-boss'), checkpoint:document.getElementById('checkpoint'),
     saveGame:document.getElementById('save-game'), loadGame:document.getElementById('load-game'), saveStatus:document.getElementById('save-status'), inventory:document.getElementById('inventory'), inventoryButton:document.getElementById('inventory-button'), inventoryClose:document.getElementById('inventory-close'),
     encounter:document.getElementById('encounter'), encounterImage:document.getElementById('encounter-image'), encounterName:document.getElementById('encounter-name'), encounterText:document.getElementById('encounter-text'), encounterReady:document.getElementById('encounter-ready'), encounterExplore:document.getElementById('encounter-explore'),
-    combat:document.getElementById('combat'), combatCanvas:document.getElementById('combat-canvas'), combatName:document.getElementById('combat-name'), combatPattern:document.getElementById('combat-pattern'), enemyHp:document.getElementById('enemy-hp'), enemyHpText:document.getElementById('enemy-hp-text'), combatStatus:document.getElementById('combat-status'), combatAttack:document.getElementById('combat-attack'), combatDodge:document.getElementById('combat-dodge'),
+    combat:document.getElementById('combat'), combatCanvas:document.getElementById('combat-canvas'), combatName:document.getElementById('combat-name'), enemyHp:document.getElementById('enemy-hp'), enemyHpText:document.getElementById('enemy-hp-text'), combatStatus:document.getElementById('combat-status'),
     death:document.getElementById('death'), deathText:document.getElementById('death-text'), retryCombat:document.getElementById('retry-combat'), backMap:document.getElementById('back-map'),
     relationship:document.getElementById('relationship'), relationshipCanvas:document.getElementById('relationship-canvas'), wouldDisplay:document.getElementById('would-display'), wouldTap:document.getElementById('would-tap'), wouldFeedback:document.getElementById('would-feedback'), timingZone:document.getElementById('timing-zone'), timingCursor:document.getElementById('timing-cursor'),
     puzzle:document.getElementById('puzzle'), puzzleFeedback:document.getElementById('puzzle-feedback'), bossIntro:document.getElementById('boss-intro'), bossStart:document.getElementById('boss-start'), win:document.getElementById('win'), replay:document.getElementById('replay')
@@ -330,8 +325,6 @@ function mountLevel1(loadSaved=false){
   ui.loadGame.addEventListener('click',()=>{ const ok=level.loadGame(); ui.saveStatus.textContent=ok?'Loaded ✓':'No save found'; });
   ui.encounterReady.addEventListener('click',()=>level.confirmEncounter());
   ui.encounterExplore.addEventListener('click',()=>level.closeEncounter());
-  ui.combatAttack.addEventListener('click',()=>level.combatAttack());
-  ui.combatDodge.addEventListener('click',()=>level.combatDodge());
   ui.retryCombat.addEventListener('click',()=>level.retryCombat());
   ui.backMap.addEventListener('click',()=>level.backToMap());
   ui.wouldTap.addEventListener('click',()=>level.completeRelationship());
