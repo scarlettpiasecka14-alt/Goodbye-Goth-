@@ -229,7 +229,8 @@ export function createLevel1(ui) {
         };
     const MAX_HP = 100;
     const COMBAT_W = 1440,
-        COMBAT_H = 810;
+        COMBAT_H = 810,
+        COMBAT_GROUND_Y = 470;
     const combatBackgroundImage = new Image();
     combatBackgroundImage.src = 'assets/environment/combat-background-level1.png';
 
@@ -599,10 +600,10 @@ export function createLevel1(ui) {
         const enemyX = COMBAT_W - 320;
         player = {
             x: 270,
-            y: COMBAT_H / 2,
+            y: COMBAT_GROUND_Y,
             invuln: 0,
             aimX: enemyX,
-            aimY: COMBAT_H / 2
+            aimY: COMBAT_GROUND_Y
         };
         combatFacing = enemyX >= player.x ? 'right' : 'left';
     }
@@ -665,7 +666,7 @@ export function createLevel1(ui) {
         cctx.imageSmoothingQuality = 'high';
         drawCombatBackground(cctx);
         const enemyX = COMBAT_W - 320,
-            enemyY = COMBAT_H / 2,
+            enemyY = COMBAT_GROUND_Y,
             nowMs = performance.now();
         if (dodgeUntil > nowMs) {
             cctx.save();
@@ -757,7 +758,7 @@ export function createLevel1(ui) {
         ui.combatPattern.textContent = 'WASD / arrows move • LEFT CLICK punch • RIGHT CLICK dodge • SPACE jump';
         ui.enemyHp.style.width = '100%';
         ui.enemyHpText.textContent = `${combatHp} / ${combatMax}`;
-        ui.combatStatus.innerHTML = '<strong>HOW TO FIGHT:</strong> Get close to the Goth and face her. LEFT CLICK to punch. Three quick punches trigger a short cooldown. SPACE jumps. RIGHT CLICK dodges.';
+        ui.combatStatus.textContent = 'The Goth is staring you down. Get close.';
         ui.combat.classList.remove('hidden');
         clearInterval(enemyTimer);
         enemyTimer = null;
@@ -806,7 +807,7 @@ export function createLevel1(ui) {
             }
         }
         else
-            ui.combatStatus.textContent = '👊 Punch missed. Get closer to the Goth.';
+            ui.combatStatus.textContent = '👊 Too far. Get closer.';
         if (comboCount >= 3) {
             comboCount = 3;
             attackCooldownUntil = nowMs + 850;

@@ -19,7 +19,7 @@ button:hover{background:#372636}button:focus-visible{outline:3px solid var(--pin
 .player-hud{position:absolute;top:58px;right:174px;z-index:12;width:205px;padding:7px 10px;border:1px solid var(--line);border-radius:11px;background:rgba(32,24,34,.94);box-shadow:0 6px 18px rgba(0,0,0,.28);pointer-events:none}.player-hud-name{font:900 12px/1 system-ui,sans-serif;letter-spacing:.12em;margin-bottom:5px}.player-hud-bar{height:12px;border:1px solid #7b3a4a;border-radius:999px;background:#160c11;overflow:hidden}.player-hp-fill{height:100%;width:100%;background:var(--danger);transition:width .16s ease,background .16s ease}.player-hp-text{margin-top:4px;font:700 12px/1 system-ui,sans-serif;color:#f7edf2;text-align:right}.player-hud[data-low="true"] .player-hp-fill{background:#b8344f}.player-hud button{pointer-events:auto}
 #world{display:block;width:100%;height:min(55vh,540px);min-height:390px;border:1px solid var(--line);border-radius:13px;background:#0a080d}.world-wrap{padding:8px}.help{text-align:center;color:var(--muted);font:11px system-ui,sans-serif;padding:5px}.dialogue{margin:0 6px 6px;padding:8px 11px;min-height:44px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;line-height:1.4}.control-row{display:flex;justify-content:center;gap:9px;align-items:center;flex-wrap:wrap;padding:0 8px 8px}.dpad{display:grid;grid-template-columns:repeat(3,42px);gap:5px}.dpad button{min-height:39px;padding:5px}.objective-list{font:11px system-ui,sans-serif;line-height:1.35}.objective-list div{margin:7px 0}.good{color:var(--good)}.locked{color:var(--muted)}.mini-map{display:block;width:100%;height:auto;background:#121018;border:1px solid var(--line);border-radius:9px}.legend{display:flex;gap:10px;flex-wrap:wrap;font:11px system-ui,sans-serif;color:var(--muted);margin-top:6px}
 .overlay{position:absolute;inset:9px;z-index:30;display:grid;place-items:center;background:#0c0910;border-radius:13px;padding:10px}.overlay-box{width:min(100%,760px);max-height:100%;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:13px}.center{text-align:center}.story-art{display:block;width:100%;max-height:360px;object-fit:contain;margin:0 auto 9px;border:1px solid var(--line);border-radius:11px;background:#0b090d}.answers{display:grid;gap:7px;margin-top:10px}.answers button{text-align:left}.minigame-display{min-height:80px;display:grid;place-items:center;padding:12px;margin:9px 0;background:#18121b;border:1px dashed var(--line);border-radius:10px;font-size:clamp(1.2rem,4vw,2rem)}
-.combat-ui{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}.bar{height:12px;border:1px solid var(--line);background:#0f0b11;border-radius:999px;overflow:hidden}.bar>div{height:100%;background:var(--pink);width:100%;transition:width .12s}.combat-arena{border:1px solid var(--line);border-radius:11px;overflow:hidden;margin:9px 0;position:relative}.combat-arena canvas{display:block;width:100%;height:auto;aspect-ratio:16/9;background:#17111a;cursor:crosshair;touch-action:none}.combat-actions{display:flex;justify-content:center;gap:7px;flex-wrap:wrap}.combat-note{padding:9px 11px;margin:6px 0;border:1px solid var(--line);border-radius:9px;background:#18121b;min-height:40px}.death-card{border:1px solid #9b4a5a;background:#24131a}.death-title{font-size:clamp(2.3rem,8vw,4rem);color:#f17f97;font-weight:900;letter-spacing:-.06em}.win-title{font-size:clamp(2rem,7vw,3.3rem);font-weight:900;letter-spacing:-.05em}
+.combat-ui{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}.bar{height:12px;border:1px solid var(--line);background:#0f0b11;border-radius:999px;overflow:hidden}.bar>div{height:100%;background:var(--pink);width:100%;transition:width .12s}.combat-arena{border:1px solid var(--line);border-radius:11px;overflow:hidden;margin:9px 0;position:relative}.combat-arena canvas{display:block;width:100%;height:auto;aspect-ratio:16/9;background:#17111a;cursor:crosshair;touch-action:none}.combat-actions{display:flex;justify-content:center;gap:7px;flex-wrap:wrap}.combat-note{padding:7px 10px;margin:5px 0;border:1px solid var(--line);border-radius:9px;background:#18121b;min-height:34px;font-size:13px}.death-card{border:1px solid #9b4a5a;background:#24131a}.death-title{font-size:clamp(2.3rem,8vw,4rem);color:#f17f97;font-weight:900;letter-spacing:-.06em}.win-title{font-size:clamp(2rem,7vw,3.3rem);font-weight:900;letter-spacing:-.05em}
 @media(min-width:901px){
   #app{padding:6px}
   .game-head{padding:7px 10px}
@@ -141,7 +141,7 @@ html,body,#app{height:100%;overflow:hidden}
 }
 
 /* v0.7 combat readability / opaque modal fix */
-.combat.overlay{position:fixed;inset:0;padding:0;z-index:100;background:#07050a}.combat .overlay-box{width:100vw;max-width:none;height:100vh;max-height:none;overflow:hidden;border-radius:0;padding:14px 22px 16px;display:flex;flex-direction:column;box-sizing:border-box}.combat-actions button{min-width:145px}.combat-ui .small{color:#e7c8d5}.combat-arena{background:#17111a}
+#combat.overlay{position:fixed;inset:0;width:100vw;height:100dvh;padding:0;z-index:100;background:#07050a;border-radius:0;display:grid;place-items:stretch}#combat .overlay-box{width:100vw;max-width:none;height:100dvh;max-height:none;overflow:hidden;border-radius:0;padding:12px 22px 14px;display:flex;flex-direction:column;box-sizing:border-box}.combat-actions button{min-width:145px}.combat-ui .small{color:#e7c8d5}.combat-arena{background:#17111a}
 
 /* v1.4: robust 4:3 intro sizing. Keep the full artwork visible and prevent Safari flex/percentage-height collapse. */
 #game-root{width:100%;height:100%;min-width:0;min-height:0;display:flex;align-items:stretch;justify-content:center}
@@ -694,13 +694,13 @@ html,body,#app{height:100%;overflow:hidden}
 @media(max-width:600px){.inventory-slots{grid-template-columns:repeat(5,minmax(48px,1fr));gap:6px}.inventory-box{padding:16px 12px 14px!important}}
 
 /* Full-screen combat layout */
-.combat .combat-topline{flex:0 0 auto}
-.combat .combat-arena{flex:1 1 auto;min-height:0;margin:8px 0}
-.combat .combat-arena canvas{width:100%;height:100%;aspect-ratio:auto;object-fit:fill}
-.combat .combat-note{flex:0 0 auto}
-.combat .combat-actions{flex:0 0 auto;padding-top:8px}
+#combat .combat-topline{flex:0 0 auto}
+#combat .combat-arena{flex:1 1 auto;min-height:0;margin:8px 0}
+#combat .combat-arena canvas{width:100%;height:100%;aspect-ratio:auto;object-fit:fill}
+#combat .combat-note{flex:0 0 auto}
+#combat .combat-actions{flex:0 0 auto;padding-top:8px}
 @media(max-width:700px){
-  .combat .overlay-box{padding:10px}
-  .combat .combat-note{font-size:12px}
-  .combat .combat-arena{margin:6px 0}
+  #combat .overlay-box{padding:10px}
+  #combat .combat-note{font-size:12px}
+  #combat .combat-arena{margin:6px 0}
 }

@@ -266,7 +266,7 @@ function mountLevel1(loadSaved=false){
 
         <div class="combat-arena"><canvas id="combat-canvas" width="1440" height="810" aria-label="Combat arena"></canvas></div>
 
-        <div id="combat-status" class="combat-note"><strong>HOW TO FIGHT:</strong> Get close to the Goth, face her and LEFT CLICK to punch. Three quick attacks are allowed before a short cooldown. SPACE jumps.</div>
+        <div id="combat-status" class="combat-note">The Goth is staring you down.</div>
         <div class="combat-actions">
           <button id="combat-attack" class="primary">👊 PUNCH</button>
           <button id="combat-dodge">↪ DODGE</button>
