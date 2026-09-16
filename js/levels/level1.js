@@ -155,7 +155,7 @@ function drawOlly(ctx, x, y, s=.78, t=0, front=true, dir='right', moving=false) 
     }
     ctx.restore();
 }
-function drawZombieSprite(ctx, x, y, type, s=.68, t=0, attack=false) {
+function drawZombieSprite(ctx, x, y, type, s=.68, t=0, attack=false, face='left') {
     const img = zombieSprites[type] || zombieSprites.shambler;
     ctx.save();
     ctx.translate(x, y + Math.sin(t * 7) * 1.5);
@@ -166,14 +166,17 @@ function drawZombieSprite(ctx, x, y, type, s=.68, t=0, attack=false) {
     if (img.complete && img.naturalWidth) {
         const w = 108 * s,
             h = 162 * s;
-        ctx.drawImage(img, -w / 2, -132 * s, w, h)
+        ctx.save();
+        ctx.scale(face === 'right' ? -1 : 1, 1);
+        ctx.drawImage(img, -w / 2, -132 * s, w, h);
+        ctx.restore();
     }
     if (attack) {
         ctx.strokeStyle = type === 'chain' ? '#cfb7a5' : '#ef91ac';
         ctx.lineWidth = 3 * s;
         ctx.beginPath();
         ctx.arc(0, -6 * s, 40 * s, 0, Math.PI * 2);
-        ctx.stroke()
+        ctx.stroke();
     }
     ctx.restore();
 }
@@ -671,7 +674,9 @@ export function createLevel1(ui) {
         drawCombatBackground(cctx);
         const enemyX = COMBAT_W - 320,
             enemyY = COMBAT_GROUND_Y,
-            nowMs = performance.now();
+            nowMs = performance.now(),
+            enemyFace = player.x < enemyX ? 'left' : 'right',
+            enemyScale = (target?.type || 'shambler') === 'chain' ? 1.68 : 1.60;
         if (dodgeUntil > nowMs) {
             cctx.save();
             cctx.globalAlpha = .28;
@@ -720,7 +725,7 @@ export function createLevel1(ui) {
             cctx.restore();
         }
         drawOllyWorldCombat(cctx, player.x, player.y, 1.1, combatFacing, nowMs / 1000, player.invuln > nowMs, jumpOffset);
-        drawZombieSprite(cctx, enemyX, enemyY, target?.type || 'shambler', 1.18, nowMs / 1000, false);
+        drawZombieSprite(cctx, enemyX, enemyY, target?.type || 'shambler', enemyScale, nowMs / 1000, false, enemyFace);
         if (jumping) {
             cctx.fillStyle = '#f6dfe8';
             cctx.font = '900 18px system-ui';
