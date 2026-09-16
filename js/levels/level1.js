@@ -676,7 +676,13 @@ export function createLevel1(ui) {
             enemyY = COMBAT_GROUND_Y,
             nowMs = performance.now(),
             enemyFace = player.x < enemyX ? 'left' : 'right',
-            enemyScale = (target?.type || 'shambler') === 'chain' ? 1.68 : 1.60;
+            enemyType = target?.type || 'shambler',
+            // The Chain Goth artwork is authored facing the opposite direction,
+            // so invert only her combat-facing value.
+            enemyDrawFace = enemyType === 'chain'
+                ? (enemyFace === 'left' ? 'right' : 'left')
+                : enemyFace,
+            enemyScale = enemyType === 'chain' ? 1.68 : 1.60;
         if (dodgeUntil > nowMs) {
             cctx.save();
             cctx.globalAlpha = .28;
@@ -725,7 +731,7 @@ export function createLevel1(ui) {
             cctx.restore();
         }
         drawOllyWorldCombat(cctx, player.x, player.y, 1.1, combatFacing, nowMs / 1000, player.invuln > nowMs, jumpOffset);
-        drawZombieSprite(cctx, enemyX, enemyY, target?.type || 'shambler', enemyScale, nowMs / 1000, false, enemyFace);
+        drawZombieSprite(cctx, enemyX, enemyY, enemyType, enemyScale, nowMs / 1000, false, enemyDrawFace);
         if (jumping) {
             cctx.fillStyle = '#f6dfe8';
             cctx.font = '900 18px system-ui';
@@ -949,7 +955,6 @@ export function createLevel1(ui) {
         ui.relationship.classList.remove('hidden');
         ui.wouldFeedback.textContent = 'The princess is rambling. Your job is to weaponise your timing. Round 1 of 5.';
         ui.wouldDisplay.textContent = '“Can I ask you a question...”';
-        drawRelationshipArt();
         animateRelationship();
     }
     function animateRelationship() {
