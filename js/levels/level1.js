@@ -268,6 +268,7 @@ export function createLevel1(ui) {
         heavyAttackCooldownUntil = 0,
         lastAttackAt = 0,
         attackAnimUntil = 0,
+        heavyAttackAnimUntil = 0,
         jumpT = 0,
         jumping = false,
         jumpOffset = 0,
@@ -594,6 +595,7 @@ export function createLevel1(ui) {
         heavyAttackCooldownUntil = 0;
         lastAttackAt = 0;
         attackAnimUntil = 0;
+        heavyAttackAnimUntil = 0;
         jumping = false;
         jumpT = 0;
         jumpOffset = 0;
@@ -694,6 +696,26 @@ export function createLevel1(ui) {
             cctx.fillStyle = '#fff1f7';
             cctx.beginPath();
             cctx.arc(punchX, punchY, 13 + progress * 5, 0, Math.PI * 2);
+            cctx.fill();
+            cctx.restore();
+        }
+        if (heavyAttackAnimUntil > nowMs) {
+            const progress = 1 - (heavyAttackAnimUntil - nowMs) / 360,
+                dir = combatFacing === 'right' ? 1 : -1,
+                arcRadius = 95 + progress * 28,
+                arcY = player.y + jumpOffset - 55;
+            cctx.save();
+            cctx.strokeStyle = '#ffe2ef';
+            cctx.lineWidth = 12;
+            cctx.lineCap = 'round';
+            cctx.beginPath();
+            const start = dir === 1 ? Math.PI * 0.78 : Math.PI * 0.22;
+            const end = dir === 1 ? Math.PI * 1.22 : Math.PI * 0.78;
+            cctx.arc(player.x, arcY, arcRadius, start, end, dir === -1);
+            cctx.stroke();
+            cctx.fillStyle = 'rgba(255,226,239,.28)';
+            cctx.beginPath();
+            cctx.arc(player.x + dir * 70, arcY, 42 + progress * 12, 0, Math.PI * 2);
             cctx.fill();
             cctx.restore();
         }
@@ -799,7 +821,13 @@ export function createLevel1(ui) {
 
         combatFacing = dx < 0 ? 'left' : 'right';
         lastAttackAt = nowMs;
-        attackAnimUntil = nowMs + 220;
+
+        if (isJumpAttack) {
+            heavyAttackCooldownUntil = nowMs + 15000;
+            heavyAttackAnimUntil = nowMs + 360;
+        } else {
+            attackAnimUntil = nowMs + 220;
+        }
 
         if (distance <= 155) {
             const damage = isJumpAttack ? 20 : 10;
@@ -808,7 +836,6 @@ export function createLevel1(ui) {
             ui.enemyHpText.textContent = `${combatHp} / ${combatMax}`;
 
             if (isJumpAttack) {
-                heavyAttackCooldownUntil = nowMs + 15000;
                 ui.combatStatus.textContent = `💥 HEAVY HIT! ${damage} damage. Heavy attack on cooldown for 15s.`;
             } else {
                 comboCount++;
@@ -821,7 +848,7 @@ export function createLevel1(ui) {
             }
         } else {
             ui.combatStatus.textContent = isJumpAttack
-                ? '💥 Heavy attack missed. Get closer.'
+                ? '💥 Heavy attack missed. Get closer. 15s cooldown.'
                 : '👊 Too far. Get closer.';
 
             // A normal punch that misses still counts as a swing,
