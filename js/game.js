@@ -156,6 +156,7 @@ function showControls(){
           <div class="control-item"><span class="control-key">RIGHT CLICK</span><span class="control-action">Roll</span></div>
           <div class="control-item"><span class="control-key">LEFT CLICK</span><span class="control-action">Attack</span></div>
           <div class="control-item"><span class="control-key">LEFT CLICK / ENTER</span><span class="control-action">Pick up / interact</span></div>
+          <div class="control-item"><span class="control-key">Y</span><span class="control-action">Open inventory</span></div>
         </div>
         <button id="controls-next" class="controls-next" type="button">CLICK TO CONTINUE →</button>
       </div>
@@ -188,7 +189,7 @@ function mountLevel1(loadSaved=false){
         <div class="player-hud-name">OLLY</div>
         <div class="player-hud-bar"><div id="player-hp-fill" class="player-hp-fill"></div></div>
         <div id="player-hp-text" class="player-hp-text">100 / 100 HP</div>
-        <button id="inventory-button" type="button" style="width:100%;margin-top:7px;min-height:34px;padding:6px 10px;font-size:12px;">🎒 INVENTORY</button>
+        <button id="inventory-button" type="button" style="width:100%;margin-top:7px;min-height:34px;padding:6px 10px;font-size:12px;">🎒 INVENTORY <span id="inventory-count">0/10</span></button>
       </div>
       <div class="game-layout">
         <div class="play-column">
@@ -226,11 +227,19 @@ function mountLevel1(loadSaved=false){
         </aside>
       </div>
 
-      <div id="inventory" class="overlay hidden" style="z-index:40"><div class="overlay-box center" style="width:min(620px,92vw)">
-        <div class="story-title">INVENTORY</div>
-        <p class="small" style="margin-top:10px">Your inventory is empty.</p>
-        <button id="inventory-close" type="button" class="primary" style="margin-top:12px;">CLOSE</button>
-      </div></div>
+      <div id="inventory" class="overlay hidden" style="z-index:40">
+        <div class="overlay-box center inventory-box">
+          <div class="inventory-kicker">OLLY'S BAG</div>
+          <div class="story-title">INVENTORY</div>
+          <div class="inventory-capacity"><span id="inventory-count-large">0 / 10 ITEMS</span></div>
+          <div class="inventory-slots" aria-label="Inventory slots">
+            <div class="inventory-slot">01</div><div class="inventory-slot">02</div><div class="inventory-slot">03</div><div class="inventory-slot">04</div><div class="inventory-slot">05</div>
+            <div class="inventory-slot">06</div><div class="inventory-slot">07</div><div class="inventory-slot">08</div><div class="inventory-slot">09</div><div class="inventory-slot">10</div>
+          </div>
+          <p class="inventory-empty-copy">Nothing in here yet. A suspiciously empty bag.</p>
+          <button id="inventory-close" type="button" class="primary inventory-close-button">CLOSE</button>
+        </div>
+      </div>
 
       <div id="encounter" class="overlay hidden"><div class="overlay-box center encounter-box">
         <img id="encounter-image" class="encounter-art" alt="Encounter artwork">
