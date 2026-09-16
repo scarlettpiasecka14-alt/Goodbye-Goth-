@@ -331,11 +331,18 @@ function mountLevel1(loadSaved=false){
   ui.bossStart.addEventListener('click',()=>level.startBoss());
   ui.replay.addEventListener('click',()=>mountLevel1());
   document.querySelectorAll('[data-answer]').forEach(b=>b.addEventListener('click',()=>level.answerPuzzle(b.dataset.answer)));
-  ui.combatCanvas.addEventListener('pointerdown',e=>{
-    if(e.button===0) level.combatAttack();
-    if(e.button===2) level.combatDodge();
+  ui.combatCanvas.addEventListener('mousedown',e=>{
+    if(e.button!==0 && e.button!==2) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if(e.button===0){
+      level.combatAttack();
+    } else if(e.button===2){
+      level.combatDodge();
+    }
   });
   ui.combatCanvas.addEventListener('contextmenu',e=>e.preventDefault());
+  ui.combatCanvas.addEventListener('auxclick',e=>e.preventDefault());
   function toggleInventory(){
     if(!ui.inventory) return;
     const open = ui.inventory.classList.toggle('hidden') === false;

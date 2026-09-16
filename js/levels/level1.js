@@ -265,6 +265,7 @@ export function createLevel1(ui) {
         relationshipRAF = 0,
         comboCount = 0,
         attackCooldownUntil = 0,
+        heavyAttackCooldownUntil = 0,
         lastAttackAt = 0,
         attackAnimUntil = 0,
         jumpT = 0,
@@ -590,6 +591,7 @@ export function createLevel1(ui) {
         enemyAttackPhase = null;
         comboCount = 0;
         attackCooldownUntil = 0;
+        heavyAttackCooldownUntil = 0;
         lastAttackAt = 0;
         attackAnimUntil = 0;
         jumping = false;
@@ -746,7 +748,10 @@ export function createLevel1(ui) {
         ui.combatName.textContent = bossFight ? 'THE CLASSIC GOTH • QUEEN' : target?.name || 'ZOMBIE GOTH';
         ui.enemyHp.style.width = '100%';
         ui.enemyHpText.textContent = `${combatHp} / ${combatMax}`;
-        ui.combatStatus.textContent = 'The Goth is staring you down. Get close.';
+        ui.combatStatus.textContent =
+            (target?.name || '').toUpperCase().includes('CHAIN GOTH')
+                ? 'The Chain Goth is quick. Jump and attack mid-air for a heavier hit.'
+                : 'The Goth is staring you down. Get close.';
         ui.combat.classList.remove('hidden');
         clearInterval(enemyTimer);
         enemyTimer = null;
@@ -766,40 +771,69 @@ export function createLevel1(ui) {
     function combatAttack() {
         if (mode !== 'combat')
             return;
+
         const nowMs = performance.now();
-        if (nowMs < attackCooldownUntil) {
-            ui.combatStatus.textContent = '⏳ Your three-hit combo is cooling down. Back away, then go again.';
+        const isJumpAttack = jumping || jumpOffset < -35;
+
+        // Heavy/jump attack has its own long cooldown.
+        if (isJumpAttack) {
+            if (nowMs < heavyAttackCooldownUntil) {
+                const seconds = Math.ceil((heavyAttackCooldownUntil - nowMs) / 1000);
+                ui.combatStatus.textContent = `💥 Heavy attack recovering. ${seconds}s.`;
+                return;
+            }
+        } else if (nowMs < attackCooldownUntil) {
+            const seconds = Math.ceil((attackCooldownUntil - nowMs) / 1000);
+            ui.combatStatus.textContent = `⏳ Combo recovering. ${seconds}s.`;
             return;
         }
-        if (nowMs - lastAttackAt > 900)
+
+        if (!isJumpAttack && nowMs - lastAttackAt > 900)
             comboCount = 0;
+
         const enemyX = COMBAT_W - 320,
-            enemyY = COMBAT_H / 2,
+            enemyY = COMBAT_GROUND_Y,
             dx = enemyX - player.x,
             dy = enemyY - (player.y + jumpOffset),
             distance = Math.hypot(dx, dy);
+
         combatFacing = dx < 0 ? 'left' : 'right';
-        comboCount++;
         lastAttackAt = nowMs;
         attackAnimUntil = nowMs + 220;
-        const jumpAttack = jumping || jumpOffset < -35;
+
         if (distance <= 155) {
-            const damage = jumpAttack ? 15 : 10;
+            const damage = isJumpAttack ? 20 : 10;
             combatHp = Math.max(0, combatHp - damage);
             ui.enemyHp.style.width = (combatHp / combatMax * 100) + '%';
             ui.enemyHpText.textContent = `${combatHp} / ${combatMax}`;
-            ui.combatStatus.textContent = jumpAttack ? `💥 JUMP ATTACK! ${damage} damage.` : `👊 HIT! ${damage} damage.`;
+
+            if (isJumpAttack) {
+                heavyAttackCooldownUntil = nowMs + 15000;
+                ui.combatStatus.textContent = `💥 HEAVY HIT! ${damage} damage. Heavy attack on cooldown for 15s.`;
+            } else {
+                comboCount++;
+                ui.combatStatus.textContent = `👊 HIT! ${damage} damage.`;
+            }
+
             if (combatHp <= 0) {
                 setTimeout(() => endCombat(true), 180);
                 return;
             }
+        } else {
+            ui.combatStatus.textContent = isJumpAttack
+                ? '💥 Heavy attack missed. Get closer.'
+                : '👊 Too far. Get closer.';
+
+            // A normal punch that misses still counts as a swing,
+            // but does not advance the three-hit combo.
+            if (!isJumpAttack)
+                comboCount = Math.min(comboCount + 1, 2);
         }
-        else
-            ui.combatStatus.textContent = '👊 Too far. Get closer.';
-        if (comboCount >= 3) {
+
+        if (!isJumpAttack && comboCount >= 3) {
             comboCount = 3;
-            attackCooldownUntil = nowMs + 850;
-            ui.combatStatus.textContent += ' ⚠️ Combo complete. Cooldown!';
+            attackCooldownUntil = nowMs + 5000;
+            ui.combatStatus.textContent += ' ⚠️ Combo complete. 5s cooldown!';
         }
     }
     function combatDodge() {
