@@ -14,6 +14,24 @@ const mapBackground = new Image();
 mapBackground.src = 'assets/environment/level1-map-bg.png?v=600';
 const ollySprite = new Image();
 ollySprite.src = 'assets/characters/olly.png?v=300';
+
+// Combat animation frames extracted from the supplied Olly sprite sheet.
+const ollyCombatSprites = {
+    idle: [],
+    dodge: [],
+    jump: [],
+    heavy: [],
+    punch: []
+};
+for (const action of Object.keys(ollyCombatSprites)) {
+    const count = action === 'jump' ? 6 : 5;
+    for (let i = 1; i <= count; i++) {
+        const img = new Image();
+        img.src = `assets/characters/olly/${action}/${i}.png?v=655`;
+        ollyCombatSprites[action].push(img);
+    }
+}
+
 // v4.7 activity architecture: the icon belongs to the ROLE, not to the level.
 // These shared icon references can be reused by every level. Only the activity
 // behind the role changes from level to level.
@@ -266,6 +284,7 @@ export function createLevel1(ui) {
         relationshipDuration = 2600,
         relationshipAnimating = false,
         relationshipRAF = 0,
+        relationshipTimer = 0,
         comboCount = 0,
         attackCooldownUntil = 0,
         heavyAttackCooldownUntil = 0,
@@ -278,6 +297,9 @@ export function createLevel1(ui) {
         dodgeUntil = 0,
         combatLastFrame = 0,
         combatFacing = 'right',
+        combatAnim = 'idle',
+        combatAnimStart = 0,
+        combatAnimDuration = 0,
         player = {
             x: 270,
             y: COMBAT_H / 2,
@@ -604,6 +626,9 @@ export function createLevel1(ui) {
         jumpOffset = 0;
         dodgeUntil = 0;
         combatLastFrame = 0;
+        combatAnim = 'idle';
+        combatAnimStart = 0;
+        combatAnimDuration = 0;
         const enemyX = COMBAT_W - 320;
         player = {
             x: 270,
@@ -645,6 +670,7 @@ export function createLevel1(ui) {
             return;
         jumping = true;
         jumpT = 0;
+        setCombatAnimation('jump', 680);
         ui.combatStatus.innerHTML = '<strong>JUMP!</strong> Jumping gives you space to react.';
     }
     function drawCombatBackground(c) {
@@ -667,6 +693,27 @@ export function createLevel1(ui) {
                 c.fillRect(gx - 14, COMBAT_H - 220, 33, 5);
             }
         }
+    }
+    function setCombatAnimation(name, duration) {
+        combatAnim = name;
+        combatAnimStart = performance.now();
+        combatAnimDuration = duration;
+    }
+    function getCombatAnimationFrame(nowMs) {
+        const active = combatAnim !== 'idle' && nowMs < combatAnimStart + combatAnimDuration;
+        let name = active ? combatAnim : (jumping ? 'jump' : 'idle');
+        const frames = ollyCombatSprites[name] || ollyCombatSprites.idle;
+        if (!frames.length)
+            return null;
+        if (name === 'jump') {
+            const idx = Math.max(0, Math.min(frames.length - 1, Math.floor(jumpT * frames.length)));
+            return frames[idx];
+        }
+        if (!active)
+            return frames[0];
+        const pct = Math.max(0, Math.min(.999, (nowMs - combatAnimStart) / combatAnimDuration));
+        const idx = Math.min(frames.length - 1, Math.floor(pct * frames.length));
+        return frames[idx];
     }
     function drawCombat() {
         cctx.imageSmoothingEnabled = true;
@@ -759,15 +806,18 @@ export function createLevel1(ui) {
         c.beginPath();
         c.ellipse(0, 54 * s - offsetY * .08, 36 * s, 9 * s, 0, 0, Math.PI * 2);
         c.fill();
-        if (ollySprite.complete && ollySprite.naturalWidth) {
-            const bob = Math.sin(t * 8) * 1.3,
-                attackShift = attackAnimUntil > performance.now() ? (dir === 'right' ? 12 : -12) : 0,
-                w = 128 * s,
-                h = 192 * s;
+
+        const frame = getCombatAnimationFrame(performance.now());
+        if (frame && frame.complete && frame.naturalWidth) {
+            const h = 205 * s;
+            const w = h * (frame.naturalWidth / frame.naturalHeight);
+            const bob = (combatAnim === 'idle' && !jumping) ? Math.sin(t * 8) * 1.3 : 0;
+            const attackShift = (combatAnim === 'punch' || combatAnim === 'heavy')
+                ? (dir === 'right' ? 12 : -12) : 0;
             c.save();
             c.translate(attackShift, bob);
             c.scale(dir === 'right' ? -1 : 1, 1);
-            c.drawImage(ollySprite, -w / 2, -154 * s, w, h);
+            c.drawImage(frame, -w / 2, 38 * s - h, w, h);
             c.restore();
         }
         c.restore();
@@ -836,8 +886,10 @@ export function createLevel1(ui) {
         if (isJumpAttack) {
             heavyAttackCooldownUntil = nowMs + 15000;
             heavyAttackAnimUntil = nowMs + 360;
+            setCombatAnimation('heavy', 360);
         } else {
             attackAnimUntil = nowMs + 220;
+            setCombatAnimation('punch', 280);
         }
 
         if (distance <= 155) {
@@ -886,6 +938,7 @@ export function createLevel1(ui) {
         player.x = Math.max(80, Math.min(COMBAT_W - 80, player.x + direction * 180));
         player.invuln = nowMs + 500;
         dodgeUntil = nowMs + 500;
+        setCombatAnimation('dodge', 500);
         ui.combatStatus.textContent = '↪ DODGE! You are briefly invulnerable.';
     }
     function endCombat(won) {
@@ -952,14 +1005,17 @@ export function createLevel1(ui) {
         relationshipStep = 0;
         relationshipDuration = 2600;
         relationshipStart = performance.now();
+        clearInterval(relationshipTimer);
+        cancelAnimationFrame(relationshipRAF);
         ui.relationship.classList.remove('hidden');
         ui.wouldFeedback.textContent = 'The princess is rambling. Your job is to weaponise your timing. Round 1 of 5.';
         ui.wouldDisplay.textContent = '“Can I ask you a question...”';
         animateRelationship();
     }
     function animateRelationship() {
+        clearInterval(relationshipTimer);
         cancelAnimationFrame(relationshipRAF);
-        const tick = t => {
+        const updateRelationship = (t) => {
             if (mode !== 'relationship')
                 return;
             const elapsed = t - relationshipStart;
@@ -983,9 +1039,9 @@ export function createLevel1(ui) {
                 relationshipStart = performance.now();
                 ui.wouldFeedback.textContent = 'Too late. The princess has already escaped the sentence. She rambles again. Round ' + (relationshipStep + 1) + ' of 5.';
             }
-            relationshipRAF = requestAnimationFrame(tick);
         };
-        relationshipRAF = requestAnimationFrame(tick);
+        updateRelationship(performance.now());
+        relationshipTimer = setInterval(() => updateRelationship(performance.now()), 16);
     }
     function completeRelationship() {
         if (mode !== 'relationship')
@@ -999,6 +1055,7 @@ export function createLevel1(ui) {
             if (relationshipStep >= 5) {
                 relationshipDone = true;
                 mode = 'map';
+                clearInterval(relationshipTimer);
                 cancelAnimationFrame(relationshipRAF);
                 ui.relationship.classList.add('hidden');
                 ui.dialogue.textContent = unlockedBoss() ? '💕 WOULD YOU? complete. Miraculously, the rest of the requirements are also done. The gate can now open.' : '💕 WOULD YOU? complete. Five perfectly timed interruptions. One more requirement remains before the gate can open.';
@@ -1111,6 +1168,7 @@ export function createLevel1(ui) {
     function start() {
         stats();
         drawMini();
+        clearInterval(relationshipTimer);
         cancelAnimationFrame(relationshipRAF);
         clearInterval(enemyTimer);
         cancelAnimationFrame(raf);
