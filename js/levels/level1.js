@@ -24,11 +24,11 @@ const ollyCombatSprites = {
     heavy: [1,2,3,4,5].map(n => new Image()),
     punch: [1,2,3,4,5].map(n => new Image())
 };
-ollyCombatSprites.idle.src = 'assets/characters/combat/olly-idle.png?v=657';
-ollyCombatSprites.dodge.forEach((img, i) => img.src = `assets/characters/combat/olly-dodge-${i+1}.png?v=657`);
-ollyCombatSprites.jump.forEach((img, i) => img.src = `assets/characters/combat/olly-jump-${i+1}.png?v=657`);
-ollyCombatSprites.heavy.forEach((img, i) => img.src = `assets/characters/combat/olly-heavy-${i+1}.png?v=657`);
-ollyCombatSprites.punch.forEach((img, i) => img.src = `assets/characters/combat/olly-punch-${i+1}.png?v=657`);
+ollyCombatSprites.idle.src = 'assets/characters/combat/olly-idle.png?v=658';
+ollyCombatSprites.dodge.forEach((img, i) => img.src = `assets/characters/combat/olly-dodge-${i+1}.png?v=658`);
+ollyCombatSprites.jump.forEach((img, i) => img.src = `assets/characters/combat/olly-jump-${i+1}.png?v=658`);
+ollyCombatSprites.heavy.forEach((img, i) => img.src = `assets/characters/combat/olly-heavy-${i+1}.png?v=658`);
+ollyCombatSprites.punch.forEach((img, i) => img.src = `assets/characters/combat/olly-punch-${i+1}.png?v=658`);
 // v4.7 activity architecture: the icon belongs to the ROLE, not to the level.
 // These shared icon references can be reused by every level. Only the activity
 // behind the role changes from level to level.
@@ -287,6 +287,8 @@ export function createLevel1(ui) {
         lastAttackAt = 0,
         attackAnimUntil = 0,
         heavyAttackAnimUntil = 0,
+        heavyLungeStartX = 0,
+        heavyLungeTargetX = 0,
         jumpT = 0,
         jumping = false,
         jumpOffset = 0,
@@ -641,24 +643,33 @@ export function createLevel1(ui) {
         if (mode !== 'combat')
             return;
         const speed = 430;
+        const enemyX = COMBAT_W - 320;
+        const playerMaxX = enemyX - 115;
         let dx = (held.right ? 1 : 0) - (held.left ? 1 : 0),
             dy = (held.down ? 1 : 0) - (held.up ? 1 : 0);
         if (dx || dy) {
             const len = Math.hypot(dx, dy) || 1;
             dx = dx / len * speed * dt;
             dy = dy / len * speed * dt;
-            player.x = Math.max(80, Math.min(COMBAT_W - 80, player.x + dx));
+            player.x = Math.max(80, Math.min(playerMaxX, player.x + dx));
             player.y = Math.max(135, Math.min(COMBAT_H - 110, player.y + dy));
             if (Math.abs(dx) >= Math.abs(dy))
                 combatFacing = dx < 0 ? 'left' : 'right';
         }
+        if (heavyAttackAnimUntil > performance.now()) {
+            const p = Math.max(0, Math.min(1, (performance.now() - (heavyAttackAnimUntil - 1200)) / 1200));
+            const eased = 1 - Math.pow(1 - p, 3);
+            player.x = heavyLungeStartX + (heavyLungeTargetX - heavyLungeStartX) * eased;
+            player.x = Math.max(80, Math.min(playerMaxX, player.x));
+        }
         if (jumping) {
-            jumpT += dt / .68;
+            const jumpDuration = combatAnimationState === 'heavy' ? 1.2 : 1.0;
+            jumpT += dt / jumpDuration;
             if (jumpT >= 1) {
                 jumpT = 1;
                 jumping = false;
             }
-            jumpOffset = -Math.sin(jumpT * Math.PI) * 120;
+            jumpOffset = -Math.sin(jumpT * Math.PI) * (combatAnimationState === 'heavy' ? 150 : 120);
         }
         else {
             jumpOffset = 0;
@@ -673,8 +684,8 @@ export function createLevel1(ui) {
         jumpT = 0;
         combatAnimationState = 'jump';
         combatAnimationStart = performance.now();
-        combatAnimationUntil = combatAnimationStart + 680;
-        ui.combatStatus.innerHTML = '<strong>JUMP!</strong> Jumping gives you space to react.';
+        combatAnimationUntil = combatAnimationStart + 1000;
+        ui.combatStatus.textContent = 'Jump! Use the air to close the distance or react.';
     }
     function drawCombatBackground(c) {
         c.clearRect(0, 0, COMBAT_W, COMBAT_H);
@@ -698,27 +709,41 @@ export function createLevel1(ui) {
         }
     }
     function getCombatAnimationFrame(nowMs) {
-        if (combatAnimationState === 'dodge') {
-            const frames = ollyCombatSprites.dodge;
-            const p = Math.max(0, Math.min(0.999, (nowMs - combatAnimationStart) / 700));
-            return { img: frames[Math.min(frames.length - 1, Math.floor(p * frames.length))], state: 'dodge', progress: p, drawDir: combatDodgeDirection > 0 ? 'right' : 'left', height: 182 };
+        let frames = null, state = combatAnimationState, duration = 0, height = 200;
+        if (state === 'dodge') {
+            frames = ollyCombatSprites.dodge;
+            duration = 1200;
+            height = 198;
         }
-        if (combatAnimationState === 'heavy') {
-            const frames = ollyCombatSprites.heavy;
-            const p = Math.max(0, Math.min(0.999, (nowMs - combatAnimationStart) / 820));
-            return { img: frames[Math.min(frames.length - 1, Math.floor(p * frames.length))], state: 'heavy', progress: p, drawDir: combatFacing, height: 204 };
+        else if (state === 'heavy') {
+            frames = ollyCombatSprites.heavy;
+            duration = 1200;
+            height = 204;
         }
-        if (combatAnimationState === 'punch') {
-            const frames = ollyCombatSprites.punch;
-            const p = Math.max(0, Math.min(0.999, (nowMs - combatAnimationStart) / 680));
-            return { img: frames[Math.min(frames.length - 1, Math.floor(p * frames.length))], state: 'punch', progress: p, drawDir: combatFacing, height: 198 };
+        else if (state === 'punch') {
+            frames = ollyCombatSprites.punch;
+            duration = 900;
+            height = 198;
         }
-        if (jumping || combatAnimationState === 'jump') {
-            const frames = ollyCombatSprites.jump;
-            const p = Math.max(0, Math.min(0.999, jumpT || (nowMs - combatAnimationStart) / 680));
-            return { img: frames[Math.min(frames.length - 1, Math.floor(p * frames.length))], state: 'jump', progress: p, drawDir: combatFacing, height: 202 };
+        else if (jumping || state === 'jump') {
+            frames = ollyCombatSprites.jump;
+            duration = 1000;
+            height = 202;
         }
-        return { img: ollyCombatSprites.idle, state: 'idle', progress: 0, drawDir: combatFacing, height: 198 };
+        else {
+            return { img: ollyCombatSprites.idle, state: 'idle', progress: 0, drawDir: combatFacing, height: 190 };
+        }
+        const p = Math.max(0, Math.min(0.999, (nowMs - combatAnimationStart) / duration));
+        const idx = Math.min(frames.length - 1, Math.floor(p * frames.length));
+        return {
+            img: frames[idx],
+            state,
+            progress: p,
+            frameIndex: idx,
+            drawDir: state === 'dodge' ? (combatDodgeDirection > 0 ? 'right' : 'left') : combatFacing,
+            height,
+            duration
+        };
     }
 
     function drawCombat() {
@@ -741,16 +766,6 @@ export function createLevel1(ui) {
                 combatAnimationState = 'idle';
                 combatAnimationUntil = 0;
             }
-        }
-
-        if (dodgeUntil > nowMs) {
-            cctx.save();
-            cctx.globalAlpha = .22;
-            cctx.fillStyle = '#f5dce8';
-            cctx.beginPath();
-            cctx.arc(player.x, player.y + jumpOffset, 62, 0, Math.PI * 2);
-            cctx.fill();
-            cctx.restore();
         }
 
         const anim = getCombatAnimationFrame(nowMs);
@@ -782,8 +797,11 @@ export function createLevel1(ui) {
         c.fill();
         const img = anim?.img;
         if (img && img.complete && img.naturalWidth) {
-            const h = anim.height || 198,
-                w = h * (img.naturalWidth / img.naturalHeight),
+            const maxH = anim.height || 198,
+                maxW = 300,
+                scale = Math.min(maxH / img.naturalHeight, maxW / img.naturalWidth),
+                w = img.naturalWidth * scale,
+                h = img.naturalHeight * scale,
                 dir = anim.drawDir || combatFacing;
             c.save();
             c.scale(dir === 'left' ? -1 : 1, 1);
@@ -855,18 +873,21 @@ export function createLevel1(ui) {
 
         if (isJumpAttack) {
             heavyAttackCooldownUntil = nowMs + 15000;
-            heavyAttackAnimUntil = nowMs + 820;
+            heavyAttackAnimUntil = nowMs + 1200;
             combatAnimationState = 'heavy';
             combatAnimationStart = nowMs;
-            combatAnimationUntil = nowMs + 820;
+            combatAnimationUntil = nowMs + 1200;
+            const attackTargetX = dx >= 0 ? enemyX - 112 : enemyX + 112;
+            heavyLungeStartX = player.x;
+            heavyLungeTargetX = attackTargetX;
         } else {
-            attackAnimUntil = nowMs + 680;
+            attackAnimUntil = nowMs + 900;
             combatAnimationState = 'punch';
             combatAnimationStart = nowMs;
-            combatAnimationUntil = nowMs + 680;
+            combatAnimationUntil = nowMs + 900;
         }
 
-        if (distance <= 155) {
+        if (distance <= 180) {
             const damage = isJumpAttack ? 20 : 10;
             combatHp = Math.max(0, combatHp - damage);
             ui.enemyHp.style.width = (combatHp / combatMax * 100) + '%';
@@ -913,10 +934,10 @@ export function createLevel1(ui) {
         combatDodgeDirection = direction;
         player.x = Math.max(80, Math.min(COMBAT_W - 80, player.x + direction * 180));
         player.invuln = nowMs + 700;
-        dodgeUntil = nowMs + 700;
+        dodgeUntil = nowMs + 1200;
         combatAnimationState = 'dodge';
         combatAnimationStart = nowMs;
-        combatAnimationUntil = nowMs + 700;
+        combatAnimationUntil = nowMs + 1200;
         ui.combatStatus.textContent = '↪ DODGE! You are briefly invulnerable.';
     }
     function endCombat(won) {

@@ -1,5 +1,5 @@
-GOODBYE GOTH v6.5.7
-Olly Animation Cleanup + Level 1 Entry Art
+GOODBYE GOTH v6.5.8
+Combat Animation + Heavy Attack Lunge Cleanup
 
 Active paths in this package:
 - css/game.css
@@ -10,12 +10,16 @@ Active paths in this package:
 - assets/characters/combat/*
 
 Changes:
-- Uses the supplied Olly combat sprite sheet as properly cropped transparent animation frames.
-- Preserves each frame's natural aspect ratio to stop Olly stretching.
-- Corrects Olly's combat-facing direction so attacks face the Goth.
-- Removes the old canvas attack-effect overlays that were contributing to visual clutter.
-- Slows punch, dodge, jump and heavy-attack animation playback so the poses are readable.
-- Removes the large on-canvas JUMP label.
-- Makes dodge travel away from the Goth instead of toward it.
-- Replaces the Level 1 entrance artwork with the supplied updated image.
-- Does not change map rendering, inventory, Would You logic, or the combat background.
+- Removes the translucent dodge circle effect entirely.
+- Slows dodge playback to 1.2s so each pose is readable.
+- Slows jump playback to 1.0s and heavy attack playback to 1.2s.
+- Slows punch playback to 0.9s.
+- Caps combat sprite draw dimensions so wide animation frames cannot balloon and make Olly look stretched.
+- Keeps each sprite's natural aspect ratio.
+- Prevents Olly from walking through the Goth and appearing behind her.
+- Reworks heavy/jump attack movement so Olly lunges forward toward the Goth during the attack rather than only jumping vertically.
+- Gives the heavy attack a slightly more forgiving 180px hit range to match the lunge.
+- Replaces the floating JUMP label with contextual status text.
+- Keeps existing punch/dodge/jump/heavy mechanics and cooldowns intact.
+- Does not change map rendering, inventory, Would You, or the combat background.
+- No new idle sprite is introduced in this patch because no replacement idle asset was supplied; idle sizing is tightened while preserving the current asset.
