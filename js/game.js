@@ -167,7 +167,7 @@ function showControls(){
 
 function showLevel1Intro(){
   showImageTransitionScreen(
-    'assets/story/level1-entrance.png?v=655',
+    'assets/story/level1-entrance.png?v=657',
     'Level 1: The Cemetery. Enter if you dare.',
     mountLevel1,
     'Level 1 entrance'

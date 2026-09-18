@@ -15,23 +15,20 @@ mapBackground.src = 'assets/environment/level1-map-bg.png?v=600';
 const ollySprite = new Image();
 ollySprite.src = 'assets/characters/olly.png?v=300';
 
-// Combat animation frames extracted from the supplied Olly sprite sheet.
+// Combat animation frames are cropped from the supplied sprite sheet so each
+// pose keeps its own aspect ratio and stray sprite-sheet labels never render.
 const ollyCombatSprites = {
-    idle: [],
-    dodge: [],
-    jump: [],
-    heavy: [],
-    punch: []
+    idle: new Image(),
+    dodge: [1,2,3,4,5].map(n => new Image()),
+    jump: [1,2,3,4,5,6].map(n => new Image()),
+    heavy: [1,2,3,4,5].map(n => new Image()),
+    punch: [1,2,3,4,5].map(n => new Image())
 };
-for (const action of Object.keys(ollyCombatSprites)) {
-    const count = action === 'jump' ? 6 : 5;
-    for (let i = 1; i <= count; i++) {
-        const img = new Image();
-        img.src = `assets/characters/olly/${action}/${i}.png?v=655`;
-        ollyCombatSprites[action].push(img);
-    }
-}
-
+ollyCombatSprites.idle.src = 'assets/characters/combat/olly-idle.png?v=657';
+ollyCombatSprites.dodge.forEach((img, i) => img.src = `assets/characters/combat/olly-dodge-${i+1}.png?v=657`);
+ollyCombatSprites.jump.forEach((img, i) => img.src = `assets/characters/combat/olly-jump-${i+1}.png?v=657`);
+ollyCombatSprites.heavy.forEach((img, i) => img.src = `assets/characters/combat/olly-heavy-${i+1}.png?v=657`);
+ollyCombatSprites.punch.forEach((img, i) => img.src = `assets/characters/combat/olly-punch-${i+1}.png?v=657`);
 // v4.7 activity architecture: the icon belongs to the ROLE, not to the level.
 // These shared icon references can be reused by every level. Only the activity
 // behind the role changes from level to level.
@@ -284,7 +281,6 @@ export function createLevel1(ui) {
         relationshipDuration = 2600,
         relationshipAnimating = false,
         relationshipRAF = 0,
-        relationshipTimer = 0,
         comboCount = 0,
         attackCooldownUntil = 0,
         heavyAttackCooldownUntil = 0,
@@ -297,9 +293,10 @@ export function createLevel1(ui) {
         dodgeUntil = 0,
         combatLastFrame = 0,
         combatFacing = 'right',
-        combatAnim = 'idle',
-        combatAnimStart = 0,
-        combatAnimDuration = 0,
+        combatAnimationState = 'idle',
+        combatAnimationStart = 0,
+        combatAnimationUntil = 0,
+        combatDodgeDirection = -1,
         player = {
             x: 270,
             y: COMBAT_H / 2,
@@ -626,9 +623,10 @@ export function createLevel1(ui) {
         jumpOffset = 0;
         dodgeUntil = 0;
         combatLastFrame = 0;
-        combatAnim = 'idle';
-        combatAnimStart = 0;
-        combatAnimDuration = 0;
+        combatAnimationState = 'idle';
+        combatAnimationStart = 0;
+        combatAnimationUntil = 0;
+        combatDodgeDirection = -1;
         const enemyX = COMBAT_W - 320;
         player = {
             x: 270,
@@ -662,15 +660,20 @@ export function createLevel1(ui) {
             }
             jumpOffset = -Math.sin(jumpT * Math.PI) * 120;
         }
-        else
+        else {
             jumpOffset = 0;
+            if (combatAnimationState === 'jump' && !jumping)
+                combatAnimationState = 'idle';
+        }
     }
     function jump() {
         if (mode !== 'combat' || jumping)
             return;
         jumping = true;
         jumpT = 0;
-        setCombatAnimation('jump', 680);
+        combatAnimationState = 'jump';
+        combatAnimationStart = performance.now();
+        combatAnimationUntil = combatAnimationStart + 680;
         ui.combatStatus.innerHTML = '<strong>JUMP!</strong> Jumping gives you space to react.';
     }
     function drawCombatBackground(c) {
@@ -694,27 +697,30 @@ export function createLevel1(ui) {
             }
         }
     }
-    function setCombatAnimation(name, duration) {
-        combatAnim = name;
-        combatAnimStart = performance.now();
-        combatAnimDuration = duration;
-    }
     function getCombatAnimationFrame(nowMs) {
-        const active = combatAnim !== 'idle' && nowMs < combatAnimStart + combatAnimDuration;
-        let name = active ? combatAnim : (jumping ? 'jump' : 'idle');
-        const frames = ollyCombatSprites[name] || ollyCombatSprites.idle;
-        if (!frames.length)
-            return null;
-        if (name === 'jump') {
-            const idx = Math.max(0, Math.min(frames.length - 1, Math.floor(jumpT * frames.length)));
-            return frames[idx];
+        if (combatAnimationState === 'dodge') {
+            const frames = ollyCombatSprites.dodge;
+            const p = Math.max(0, Math.min(0.999, (nowMs - combatAnimationStart) / 700));
+            return { img: frames[Math.min(frames.length - 1, Math.floor(p * frames.length))], state: 'dodge', progress: p, drawDir: combatDodgeDirection > 0 ? 'right' : 'left', height: 182 };
         }
-        if (!active)
-            return frames[0];
-        const pct = Math.max(0, Math.min(.999, (nowMs - combatAnimStart) / combatAnimDuration));
-        const idx = Math.min(frames.length - 1, Math.floor(pct * frames.length));
-        return frames[idx];
+        if (combatAnimationState === 'heavy') {
+            const frames = ollyCombatSprites.heavy;
+            const p = Math.max(0, Math.min(0.999, (nowMs - combatAnimationStart) / 820));
+            return { img: frames[Math.min(frames.length - 1, Math.floor(p * frames.length))], state: 'heavy', progress: p, drawDir: combatFacing, height: 204 };
+        }
+        if (combatAnimationState === 'punch') {
+            const frames = ollyCombatSprites.punch;
+            const p = Math.max(0, Math.min(0.999, (nowMs - combatAnimationStart) / 680));
+            return { img: frames[Math.min(frames.length - 1, Math.floor(p * frames.length))], state: 'punch', progress: p, drawDir: combatFacing, height: 198 };
+        }
+        if (jumping || combatAnimationState === 'jump') {
+            const frames = ollyCombatSprites.jump;
+            const p = Math.max(0, Math.min(0.999, jumpT || (nowMs - combatAnimationStart) / 680));
+            return { img: frames[Math.min(frames.length - 1, Math.floor(p * frames.length))], state: 'jump', progress: p, drawDir: combatFacing, height: 202 };
+        }
+        return { img: ollyCombatSprites.idle, state: 'idle', progress: 0, drawDir: combatFacing, height: 198 };
     }
+
     function drawCombat() {
         cctx.imageSmoothingEnabled = true;
         cctx.imageSmoothingQuality = 'high';
@@ -724,66 +730,33 @@ export function createLevel1(ui) {
             nowMs = performance.now(),
             enemyFace = player.x < enemyX ? 'left' : 'right',
             enemyType = target?.type || 'shambler',
-            // The Chain Goth artwork is authored facing the opposite direction,
-            // so invert only her combat-facing value.
+            // Chain Goth artwork is authored facing the opposite direction.
             enemyDrawFace = enemyType === 'chain'
                 ? (enemyFace === 'left' ? 'right' : 'left')
                 : enemyFace,
             enemyScale = enemyType === 'chain' ? 1.68 : 1.60;
+
+        if (combatAnimationUntil && nowMs >= combatAnimationUntil && combatAnimationState !== 'idle') {
+            if (combatAnimationState !== 'jump' || !jumping) {
+                combatAnimationState = 'idle';
+                combatAnimationUntil = 0;
+            }
+        }
+
         if (dodgeUntil > nowMs) {
             cctx.save();
-            cctx.globalAlpha = .28;
+            cctx.globalAlpha = .22;
             cctx.fillStyle = '#f5dce8';
             cctx.beginPath();
             cctx.arc(player.x, player.y + jumpOffset, 62, 0, Math.PI * 2);
             cctx.fill();
             cctx.restore();
         }
-        if (attackAnimUntil > nowMs) {
-            const progress = 1 - (attackAnimUntil - nowMs) / 220,
-                punchX = player.x + (combatFacing === 'right' ? 42 : -42) * (0.35 + progress * .65),
-                punchY = player.y + jumpOffset - 28;
-            cctx.save();
-            cctx.strokeStyle = '#f7d7e4';
-            cctx.lineWidth = 9;
-            cctx.lineCap = 'round';
-            cctx.beginPath();
-            cctx.moveTo(player.x + (combatFacing === 'right' ? 25 : -25), player.y + jumpOffset - 35);
-            cctx.lineTo(punchX, punchY);
-            cctx.stroke();
-            cctx.fillStyle = '#fff1f7';
-            cctx.beginPath();
-            cctx.arc(punchX, punchY, 13 + progress * 5, 0, Math.PI * 2);
-            cctx.fill();
-            cctx.restore();
-        }
-        if (heavyAttackAnimUntil > nowMs) {
-            const progress = 1 - (heavyAttackAnimUntil - nowMs) / 360,
-                dir = combatFacing === 'right' ? 1 : -1,
-                arcRadius = 95 + progress * 28,
-                arcY = player.y + jumpOffset - 55;
-            cctx.save();
-            cctx.strokeStyle = '#ffe2ef';
-            cctx.lineWidth = 12;
-            cctx.lineCap = 'round';
-            cctx.beginPath();
-            const start = dir === 1 ? Math.PI * 0.78 : Math.PI * 0.22;
-            const end = dir === 1 ? Math.PI * 1.22 : Math.PI * 0.78;
-            cctx.arc(player.x, arcY, arcRadius, start, end, dir === -1);
-            cctx.stroke();
-            cctx.fillStyle = 'rgba(255,226,239,.28)';
-            cctx.beginPath();
-            cctx.arc(player.x + dir * 70, arcY, 42 + progress * 12, 0, Math.PI * 2);
-            cctx.fill();
-            cctx.restore();
-        }
-        drawOllyWorldCombat(cctx, player.x, player.y, 1.1, combatFacing, nowMs / 1000, player.invuln > nowMs, jumpOffset);
+
+        const anim = getCombatAnimationFrame(nowMs);
+        drawOllyWorldCombat(cctx, player.x, player.y, anim, nowMs / 1000, player.invuln > nowMs, jumpOffset);
         drawZombieSprite(cctx, enemyX, enemyY, enemyType, enemyScale, nowMs / 1000, false, enemyDrawFace);
-        if (jumping) {
-            cctx.fillStyle = '#f6dfe8';
-            cctx.font = '900 18px system-ui';
-            cctx.fillText('JUMP', player.x, player.y + jumpOffset - 110);
-        }
+
         if (nowMs < attackCooldownUntil) {
             const seconds = Math.max(0, (attackCooldownUntil - nowMs) / 1000);
             cctx.fillStyle = '#efb7c9';
@@ -797,27 +770,24 @@ export function createLevel1(ui) {
             cctx.fillText(`${remaining} punch${remaining === 1 ? '' : 'es'} before cooldown`, COMBAT_W / 2, COMBAT_H - 36);
         }
     }
-    function drawOllyWorldCombat(c, px, py, s, dir, t, hurt, offsetY=0) {
+
+    function drawOllyWorldCombat(c, px, py, anim, t, hurt, offsetY=0) {
         c.save();
         c.translate(px, py + offsetY);
         if (hurt)
             c.globalAlpha = .5;
         c.fillStyle = 'rgba(0,0,0,.25)';
         c.beginPath();
-        c.ellipse(0, 54 * s - offsetY * .08, 36 * s, 9 * s, 0, 0, Math.PI * 2);
+        c.ellipse(0, 8, 40, 9, 0, 0, Math.PI * 2);
         c.fill();
-
-        const frame = getCombatAnimationFrame(performance.now());
-        if (frame && frame.complete && frame.naturalWidth) {
-            const h = 205 * s;
-            const w = h * (frame.naturalWidth / frame.naturalHeight);
-            const bob = (combatAnim === 'idle' && !jumping) ? Math.sin(t * 8) * 1.3 : 0;
-            const attackShift = (combatAnim === 'punch' || combatAnim === 'heavy')
-                ? (dir === 'right' ? 12 : -12) : 0;
+        const img = anim?.img;
+        if (img && img.complete && img.naturalWidth) {
+            const h = anim.height || 198,
+                w = h * (img.naturalWidth / img.naturalHeight),
+                dir = anim.drawDir || combatFacing;
             c.save();
-            c.translate(attackShift, bob);
-            c.scale(dir === 'right' ? -1 : 1, 1);
-            c.drawImage(frame, -w / 2, 38 * s - h, w, h);
+            c.scale(dir === 'left' ? -1 : 1, 1);
+            c.drawImage(img, -w / 2, -h, w, h);
             c.restore();
         }
         c.restore();
@@ -885,11 +855,15 @@ export function createLevel1(ui) {
 
         if (isJumpAttack) {
             heavyAttackCooldownUntil = nowMs + 15000;
-            heavyAttackAnimUntil = nowMs + 360;
-            setCombatAnimation('heavy', 360);
+            heavyAttackAnimUntil = nowMs + 820;
+            combatAnimationState = 'heavy';
+            combatAnimationStart = nowMs;
+            combatAnimationUntil = nowMs + 820;
         } else {
-            attackAnimUntil = nowMs + 220;
-            setCombatAnimation('punch', 280);
+            attackAnimUntil = nowMs + 680;
+            combatAnimationState = 'punch';
+            combatAnimationStart = nowMs;
+            combatAnimationUntil = nowMs + 680;
         }
 
         if (distance <= 155) {
@@ -934,11 +908,15 @@ export function createLevel1(ui) {
             ui.combatStatus.textContent = '↪ Dodge is still recovering.';
             return;
         }
-        const direction = combatFacing === 'left' ? -1 : 1;
+        // Dodge away from the Goth. Looking at the enemy and moving away are separate concepts.
+        const direction = combatFacing === 'right' ? -1 : 1;
+        combatDodgeDirection = direction;
         player.x = Math.max(80, Math.min(COMBAT_W - 80, player.x + direction * 180));
-        player.invuln = nowMs + 500;
-        dodgeUntil = nowMs + 500;
-        setCombatAnimation('dodge', 500);
+        player.invuln = nowMs + 700;
+        dodgeUntil = nowMs + 700;
+        combatAnimationState = 'dodge';
+        combatAnimationStart = nowMs;
+        combatAnimationUntil = nowMs + 700;
         ui.combatStatus.textContent = '↪ DODGE! You are briefly invulnerable.';
     }
     function endCombat(won) {
@@ -1005,17 +983,14 @@ export function createLevel1(ui) {
         relationshipStep = 0;
         relationshipDuration = 2600;
         relationshipStart = performance.now();
-        clearInterval(relationshipTimer);
-        cancelAnimationFrame(relationshipRAF);
         ui.relationship.classList.remove('hidden');
         ui.wouldFeedback.textContent = 'The princess is rambling. Your job is to weaponise your timing. Round 1 of 5.';
         ui.wouldDisplay.textContent = '“Can I ask you a question...”';
         animateRelationship();
     }
     function animateRelationship() {
-        clearInterval(relationshipTimer);
         cancelAnimationFrame(relationshipRAF);
-        const updateRelationship = (t) => {
+        const tick = t => {
             if (mode !== 'relationship')
                 return;
             const elapsed = t - relationshipStart;
@@ -1039,9 +1014,9 @@ export function createLevel1(ui) {
                 relationshipStart = performance.now();
                 ui.wouldFeedback.textContent = 'Too late. The princess has already escaped the sentence. She rambles again. Round ' + (relationshipStep + 1) + ' of 5.';
             }
+            relationshipRAF = requestAnimationFrame(tick);
         };
-        updateRelationship(performance.now());
-        relationshipTimer = setInterval(() => updateRelationship(performance.now()), 16);
+        relationshipRAF = requestAnimationFrame(tick);
     }
     function completeRelationship() {
         if (mode !== 'relationship')
@@ -1055,7 +1030,6 @@ export function createLevel1(ui) {
             if (relationshipStep >= 5) {
                 relationshipDone = true;
                 mode = 'map';
-                clearInterval(relationshipTimer);
                 cancelAnimationFrame(relationshipRAF);
                 ui.relationship.classList.add('hidden');
                 ui.dialogue.textContent = unlockedBoss() ? '💕 WOULD YOU? complete. Miraculously, the rest of the requirements are also done. The gate can now open.' : '💕 WOULD YOU? complete. Five perfectly timed interruptions. One more requirement remains before the gate can open.';
@@ -1168,7 +1142,6 @@ export function createLevel1(ui) {
     function start() {
         stats();
         drawMini();
-        clearInterval(relationshipTimer);
         cancelAnimationFrame(relationshipRAF);
         clearInterval(enemyTimer);
         cancelAnimationFrame(raf);

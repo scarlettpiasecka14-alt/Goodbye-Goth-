@@ -1,20 +1,21 @@
-GOODBYE GOTH v6.5.6
-Combat animation + Level 1 entry art
+GOODBYE GOTH v6.5.7
+Olly Animation Cleanup + Level 1 Entry Art
 
-ACTIVE FILES
+Active paths in this package:
 - css/game.css
 - js/game.js
 - js/levels/level1.js
+- assets/environment/combat-background-level1.png
 - assets/story/level1-entrance.png
-- assets/characters/olly-combat-sheet.png
-- assets/characters/olly/{idle,dodge,jump,heavy,punch}/*.png
+- assets/characters/combat/*
 
-CHANGES
-1. Olly combat now uses the supplied sprite artwork for idle, dodge, jump, heavy/jump attack and punch animations.
-2. Existing combat controls, damage and cooldowns are preserved.
-3. Level 1 entrance art is replaced with the newly supplied Level1EntryFix artwork.
-4. Would You timing loop uses a robust timer-based animation so the cursor/text continues updating in Safari.
-5. Map renderer, map background, inventory and combat background are otherwise unchanged.
-
-UPLOAD
-Upload each file into the matching existing repository folder. Do not upload the ZIP itself into the repo root.
+Changes:
+- Uses the supplied Olly combat sprite sheet as properly cropped transparent animation frames.
+- Preserves each frame's natural aspect ratio to stop Olly stretching.
+- Corrects Olly's combat-facing direction so attacks face the Goth.
+- Removes the old canvas attack-effect overlays that were contributing to visual clutter.
+- Slows punch, dodge, jump and heavy-attack animation playback so the poses are readable.
+- Removes the large on-canvas JUMP label.
+- Makes dodge travel away from the Goth instead of toward it.
+- Replaces the Level 1 entrance artwork with the supplied updated image.
+- Does not change map rendering, inventory, Would You logic, or the combat background.
