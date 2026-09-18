@@ -1,25 +1,13 @@
-GOODBYE GOTH v6.5.8
-Combat Animation + Heavy Attack Lunge Cleanup
+GOODBYE GOTH v6.5.10
+Combat Readability + Olly Grounding
 
-Active paths in this package:
-- css/game.css
-- js/game.js
-- js/levels/level1.js
-- assets/environment/combat-background-level1.png
-- assets/story/level1-entrance.png
-- assets/characters/combat/*
+Active files included at their exact project paths.
 
 Changes:
-- Removes the translucent dodge circle effect entirely.
-- Slows dodge playback to 1.2s so each pose is readable.
-- Slows jump playback to 1.0s and heavy attack playback to 1.2s.
-- Slows punch playback to 0.9s.
-- Caps combat sprite draw dimensions so wide animation frames cannot balloon and make Olly look stretched.
-- Keeps each sprite's natural aspect ratio.
-- Prevents Olly from walking through the Goth and appearing behind her.
-- Reworks heavy/jump attack movement so Olly lunges forward toward the Goth during the attack rather than only jumping vertically.
-- Gives the heavy attack a slightly more forgiving 180px hit range to match the lunge.
-- Replaces the floating JUMP label with contextual status text.
-- Keeps existing punch/dodge/jump/heavy mechanics and cooldowns intact.
-- Does not change map rendering, inventory, Would You, or the combat background.
-- No new idle sprite is introduced in this patch because no replacement idle asset was supplied; idle sizing is tightened while preserving the current asset.
+- Olly idle enlarged and re-anchored to the combat floor.
+- Reduced dodge to four clear key poses, skipping the most visually noisy recover pose.
+- Reduced heavy attack to four clear key poses, with a readable wind-up, airborne strike and landing.
+- Kept jump readable with five deliberate poses and a lower vertical arc.
+- Preserved punch mechanics and made punch timing responsive.
+- Removed the feeling of Olly floating by separating the visual foot anchor from the combat shadow.
+- Preserved existing damage, cooldowns, map, inventory, Would You, combat background and Goth artwork.
