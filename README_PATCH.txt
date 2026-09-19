@@ -1,13 +1,19 @@
-GOODBYE GOTH v6.5.14
-Combat grounding + map size correction
+Goodbye Goth v6.5.15 – Combat Grounding, Fog of War & Golden Key
 
-Changes:
-1. Slightly enlarges Olly's combat idle (280px) so idle proportions better match his action sprites.
-2. Removes the visual dodge transparency while preserving dodge invulnerability.
-3. Does NOT change Goth size inside combat. Combat sizes remain Chain Goth 2.184 and Zombie Goth 2.08.
-4. Restores Zombie Goth's map size to the previous 0.84 scale.
-5. Makes Chain Goth 10% smaller on the map only (1.066 -> 0.9594). Her combat size is unchanged.
+Patch scope:
+- Slightly enlarges Olly's combat idle only for better proportion consistency.
+- Speeds dodge animation playback by 30%.
+- Speeds jump animation playback by 10%.
+- Keeps Goth combat sizes unchanged.
+- Adds a persistent fog-of-war to the Level 1 map. Olly and nearby surroundings are visible; areas he walks through remain revealed.
+- Applies the same discovery fog to the mini-map while keeping Olly's position visible.
+- Spawns the supplied GoldenKey artwork at the existing key location once all Level 1 objectives are complete: 2/2 Goths defeated + WOULD YOU? complete + Princess Question answered.
+- Adds a one-time dialogue prompt when the Golden Key becomes available.
 
-No map renderer architecture changes. No inventory, Would You, or combat background changes.
-
-Upload the files into their existing matching repository folders.
+Untouched intentionally:
+- Level 1 map renderer architecture and background.
+- Inventory system.
+- Punch/combat hit logic.
+- Goth combat sizes.
+- Would You structure/timing.
+- Combat background.

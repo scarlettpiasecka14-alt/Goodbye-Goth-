@@ -12,6 +12,8 @@ function safeParseSave() {
 
 const mapBackground = new Image();
 mapBackground.src = 'assets/environment/level1-map-bg.png?v=600';
+const goldenKeySprite = new Image();
+goldenKeySprite.src = 'assets/items/golden-key.png?v=6515';
 const ollySprite = new Image();
 ollySprite.src = 'assets/characters/olly.png?v=300';
 
@@ -37,12 +39,12 @@ const OLLY_ANIMATIONS = {
     // v6.5.13: use the new clean three-pose jump and dodge sequences.
     // Each move is built from a small number of readable key poses rather than
     // rapidly cycling through every dramatic drawing.
-    dodge: { indices:[0,1,2], frameMs:[150,360,190], height:260 },
-    jump:  { indices:[0,1,2], frameMs:[160,300,220], height:260 },
+    dodge: { indices:[0,1,2], frameMs:[105,252,133], height:260 }, // 30% faster playback
+    jump:  { indices:[0,1,2], frameMs:[144,270,198], height:260 }, // 10% faster playback
     heavy: { indices:[0,3,4], frameMs:[130,260,230], height:260 },
     punch: { indices:[0,1,2,3,4], frameMs:[52,62,72,78,70], height:224 }
 };
-const OLLY_IDLE_HEIGHT = 280; // v6.5.14: slightly larger combat idle for more consistent proportions.
+const OLLY_IDLE_HEIGHT = 300; // v6.5.15: slightly larger combat idle so head/body proportions stay closer to action poses.
 const OLLY_DRAW_FOOT_OFFSET = 62;
 // v4.7 activity architecture: the icon belongs to the ROLE, not to the level.
 // These shared icon references can be reused by every level. Only the activity
@@ -221,7 +223,43 @@ export function createLevel1(ui) {
         ROWS = 32;
     const revealed = Array.from({
         length: ROWS
-    }, () => Array(COLS).fill(true));
+    }, () => Array(COLS).fill(false));
+    // v6.5.15: persistent fog-of-war overlay. Cleared areas remain transparent.
+    const fogCanvas = document.createElement('canvas');
+    fogCanvas.width = WORLD_W;
+    fogCanvas.height = WORLD_H;
+    const fogCtx = fogCanvas.getContext('2d');
+    fogCtx.fillStyle = 'rgba(10, 7, 14, 0.88)';
+    fogCtx.fillRect(0, 0, WORLD_W, WORLD_H);
+    const FOG_REVEAL_RADIUS = 175;
+    let lastFogRevealX = null,
+        lastFogRevealY = null;
+
+    function revealAround(px, py, force=false) {
+        if (!force && lastFogRevealX !== null && Math.hypot(px - lastFogRevealX, py - lastFogRevealY) < 28)
+            return;
+        const minCol = Math.max(0, Math.floor((px - FOG_REVEAL_RADIUS - 32) / GRID));
+        const maxCol = Math.min(COLS - 1, Math.floor((px + FOG_REVEAL_RADIUS + 32) / GRID));
+        const minRow = Math.max(0, Math.floor((py - FOG_REVEAL_RADIUS - 32) / GRID));
+        const maxRow = Math.min(ROWS - 1, Math.floor((py + FOG_REVEAL_RADIUS + 32) / GRID));
+        for (let row = minRow; row <= maxRow; row++) {
+            for (let col = minCol; col <= maxCol; col++) {
+                const cx = col * GRID + GRID / 2,
+                    cy = row * GRID + GRID / 2;
+                if (Math.hypot(cx - px, cy - py) <= FOG_REVEAL_RADIUS + GRID * .35)
+                    revealed[row][col] = true;
+            }
+        }
+        fogCtx.save();
+        fogCtx.globalCompositeOperation = 'destination-out';
+        // Punch out a smooth circle instead of blocky square cells.
+        fogCtx.beginPath();
+        fogCtx.arc(px, py, FOG_REVEAL_RADIUS, 0, Math.PI * 2);
+        fogCtx.fill();
+        fogCtx.restore();
+        lastFogRevealX = px;
+        lastFogRevealY = py;
+    }
     const enemies = [
     {
         x: 485,
@@ -279,6 +317,7 @@ export function createLevel1(ui) {
         relationshipDone = false,
         puzzleSolved = false,
         keyCollected = false,
+        keySpawnAnnounced = false,
         inventory = {},
         checkpoint = 'cemetery-entrance',
         target = null,
@@ -376,6 +415,7 @@ export function createLevel1(ui) {
             moved = true;
         }
         if (moved) {
+            revealAround(x, y);
             walkPulse = 1;
             if (Math.abs(dx) > Math.abs(dy))
                 facingDir = dx < 0 ? 'left' : 'right';
@@ -387,7 +427,7 @@ export function createLevel1(ui) {
         x: gx,
         y: gy
     });
-    function reveal() {}
+    function reveal() { revealAround(x, y, true); }
     function objectivesComplete() {
         return kills >= 2 && relationshipDone && puzzleSolved
     }
@@ -406,6 +446,10 @@ export function createLevel1(ui) {
         ui.goalRel.innerHTML = relationshipDone ? `<span class="good">✓ ${ACTIVITY_DATA.relationshipChallenge.name} complete</span>` : `○ Complete the ${ACTIVITY_DATA.relationshipChallenge.name} Challenge`;
         ui.goalPuzzle.innerHTML = puzzleSolved ? '<span class="good">✓ Princess Question answered</span>' : '○ Answer the Princess Question';
         ui.goalBoss.innerHTML = unlockedBoss() ? '<span class="good">✓ Boss gate unlocked</span>' : '<span class="locked">🔒 Boss gate locked</span>';
+        if (objectivesComplete() && !keyCollected && !keySpawnAnnounced) {
+            keySpawnAnnounced = true;
+            ui.dialogue.textContent = '🔑 A golden key has appeared somewhere in the cemetery. Find it.';
+        }
     }
 
     function drawMini() {
@@ -420,7 +464,6 @@ export function createLevel1(ui) {
             mctx.arc(px / WORLD_W * 250, py / WORLD_H * 167, r, 0, Math.PI * 2);
             mctx.fill()
         };
-        marker(x, y, '#fff', 4);
         if (!relationshipDone)
             marker(relationshipChallenge.x, relationshipChallenge.y, '#ef91ac');
         if (!puzzleSolved)
@@ -430,8 +473,12 @@ export function createLevel1(ui) {
         if (!enemies[1].dead)
             marker(enemies[1].x, enemies[1].y, '#ef91ac', 4);
         if (!keyCollected && objectivesComplete())
-            marker(key.x, key.y, '#f0cf8b', 4);
+            marker(key.x, key.y, '#f0cf8b', 5);
         marker(boss.x, boss.y, unlockedBoss() ? '#f0cf8b' : '#8f7286', 4);
+        // Fog also covers the mini-map so undiscovered objectives do not leak through.
+        mctx.drawImage(fogCanvas, 0, 0, 250, 167);
+        // Olly remains visible as the exploration reference point.
+        marker(x, y, '#fff', 4);
     }
     function drawMarker(ctx, img, px, py, w=68, h=68, label='') {
         ctx.save();
@@ -488,25 +535,18 @@ export function createLevel1(ui) {
             drawMarker(ctx, princessQuestionIcon, princessQuestion.x, princessQuestion.y, 96, 96, '');
         if (!keyCollected && objectivesComplete()) {
             ctx.save();
-            ctx.translate(key.x, key.y);
+            ctx.translate(key.x, key.y + Math.sin(t / 280) * 4);
             ctx.shadowColor = '#ffe49b';
-            ctx.shadowBlur = 20;
-            ctx.fillStyle = '#f5d27e';
-            ctx.beginPath();
-            ctx.arc(0, 0, 10 + Math.sin(t / 180) * 2, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = '#fff2c7';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.moveTo(8, 0);
-            ctx.lineTo(30, 0);
-            ctx.lineTo(30, 8);
-            ctx.moveTo(20, 0);
-            ctx.lineTo(20, -7);
-            ctx.stroke();
+            ctx.shadowBlur = 22;
+            if (goldenKeySprite.complete && goldenKeySprite.naturalWidth) {
+                const ks = 88 / Math.max(goldenKeySprite.naturalWidth, goldenKeySprite.naturalHeight);
+                ctx.drawImage(goldenKeySprite, -goldenKeySprite.naturalWidth * ks / 2, -goldenKeySprite.naturalHeight * ks / 2, goldenKeySprite.naturalWidth * ks, goldenKeySprite.naturalHeight * ks);
+            }
             ctx.restore();
         }
         drawOlly(ctx, playerX, playerY, .78, t / 1000, true, facingDir, walkPulse > 0);
+        // v6.5.15: unexplored cemetery remains covered; revealed areas stay clear.
+        ctx.drawImage(fogCanvas, 0, 0, WORLD_W, WORLD_H);
         ctx.restore();
     }
     function canvasPointToWorld(e) {
@@ -525,6 +565,8 @@ export function createLevel1(ui) {
             y: (sy - vh / 2 + camY * zoom) / zoom
         };
     }
+    // Start with a small visible pocket around Olly.
+    revealAround(x, y, true);
     let pendingInteraction = null;
     function openInteractionEncounter(kind, enemy=null) {
         const data = ENCOUNTER_DATA[kind];
@@ -687,7 +729,7 @@ export function createLevel1(ui) {
         }
 
         if (jumping) {
-            const jumpDuration = .68;
+            const jumpDuration = .612;
             jumpT += dt / jumpDuration;
             if (jumpT >= 1) {
                 jumpT = 1;
@@ -710,7 +752,7 @@ export function createLevel1(ui) {
         jumpT = 0;
         combatAnimationState = 'jump';
         combatAnimationStart = performance.now();
-        combatAnimationUntil = combatAnimationStart + 710;
+        combatAnimationUntil = combatAnimationStart + 612;
         ui.combatStatus.textContent = '🦘 You jump.';
     }
     function drawCombatBackground(c) {
@@ -1019,7 +1061,7 @@ export function createLevel1(ui) {
         dodgeUntil = nowMs + 600;
         combatAnimationState = 'dodge';
         combatAnimationStart = nowMs;
-        combatAnimationUntil = nowMs + 560;
+        combatAnimationUntil = nowMs + 490;
         jumpOffset = 0;
         ui.combatStatus.textContent = '↪ DODGE!';
     }
@@ -1220,6 +1262,7 @@ export function createLevel1(ui) {
             relationshipDone = !!state.relationshipDone;
             puzzleSolved = !!state.puzzleSolved;
             keyCollected = !!state.keyCollected;
+            keySpawnAnnounced = keyCollected;
             inventory = state.inventory && typeof state.inventory === 'object' ? state.inventory : {};
             checkpoint = state.checkpoint || 'cemetery-entrance';
             if (Array.isArray(state.enemies)) {
@@ -1235,6 +1278,9 @@ export function createLevel1(ui) {
             target = null;
             bossRoomEntered = false;
             stats();
+            lastFogRevealX = null;
+            lastFogRevealY = null;
+            revealAround(x, y, true);
             drawMini();
             ui.dialogue.textContent = '📂 Game loaded. Welcome back to the cemetery.';
             return true;
