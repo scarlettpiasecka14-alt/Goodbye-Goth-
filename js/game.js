@@ -365,6 +365,11 @@ function mountLevel1(loadSaved=false){
       if(!e.repeat) level.combatDodge?.();
       return;
     }
+    if(k==='z' && !ui.combat.classList.contains('hidden')){
+      e.preventDefault();
+      if(!e.repeat) level.combatHeavyAttack?.();
+      return;
+    }
     if(['arrowup','arrowdown','arrowleft','arrowright',' ','w','a','s','d','x'].includes(k))e.preventDefault();
     if(['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d'].includes(k))level.setMoveKey?.(k,true);
     if(k===' ')level.primaryAction();
