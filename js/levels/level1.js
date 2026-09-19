@@ -120,7 +120,7 @@ const zombieSprites = {
     chain: new Image()
 };
 zombieSprites.shambler.src = 'assets/characters/zombie-goth.png?v=300';
-zombieSprites.chain.src = 'assets/characters/chain-goth-clean.png?v=620';
+zombieSprites.chain.src = 'assets/characters/chain-goth-clean.png?v=6512';
 
 /* v6.0: a complete Level 1 rebuild.
    The background is a clean, character-free cemetery illustration.
