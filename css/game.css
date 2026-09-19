@@ -703,8 +703,3 @@ html,body,#app{height:100%;overflow:hidden}
   #combat .combat-note{font-size:12px}
   #combat .combat-arena{margin:6px 0}
 }
-
-.inventory-slot.occupied{align-items:center;justify-items:center;position:relative;padding:8px 4px 22px!important;background:rgba(48,28,42,.92);border-style:solid;color:#f4dce7}
-.inventory-slot.occupied img{display:block;width:58%;height:58%;object-fit:contain;margin:auto;filter:drop-shadow(0 0 10px rgba(255,218,151,.35))}
-.inventory-item-name{position:absolute;left:4px;right:4px;bottom:6px;font:800 9px/1 system-ui,sans-serif;letter-spacing:.06em;color:#f1c5d6;text-align:center}
-.inventory-item-generic{font:800 11px/1.1 system-ui,sans-serif;color:#f1c5d6;text-align:center}
