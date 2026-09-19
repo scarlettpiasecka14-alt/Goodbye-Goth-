@@ -286,7 +286,7 @@ function mountLevel1(loadSaved=false){
 
       <div id="puzzle" class="overlay hidden"><div class="overlay-box center quiz-box">
         <img class="story-art quiz-image" src="assets/story/princess-quiz.png" alt="Scarlett, the kidnapped princess, with a warning about getting the answer right">
-        <div class="ironic-copy quiz-copy">A simple question, apparently. The fate of your princess rests on your ability to demonstrate absolutely normal communication skills.</div>
+        
         <p class="quiz-question">What is the correct way to ask a princess to undress?</p>
         <div class="answers quiz-answers">
           <button data-answer="wrong"><strong>A.</strong> “Your Highness, may I assist you with your attire?”</button>

@@ -40,7 +40,7 @@ const OLLY_ANIMATIONS = {
     // Each move is built from a small number of readable key poses rather than
     // rapidly cycling through every dramatic drawing.
     dodge: { indices:[0,1,2], frameMs:[105,252,133], height:260 }, // 30% faster playback
-    jump:  { indices:[0,1,2], frameMs:[144,270,198], height:260 }, // 10% faster playback
+    jump:  { indices:[0,1,2], frameMs:[144,270,198], height:208 }, // v6.5.16a: jump action sprites 20% smaller than combat idle
     heavy: { indices:[0,3,4], frameMs:[130,260,230], height:260 },
     punch: { indices:[0,1,2,3,4], frameMs:[52,62,72,78,70], height:224 }
 };

@@ -1,7 +1,9 @@
-GOODBYE GOTH v6.5.16b RECOVERY
+Goodbye Goth v6.5.16a
 
-Emergency rollback to the last known-good v6.5.15 code after the v6.5.16 exploration/gate/fog patch produced a black screen.
+This is a deliberately small patch.
 
-Restores only the known-good js/game.js and js/levels/level1.js plus the v6.5.15 asset set.
+Changed only:
+- js/levels/level1.js: jump animation draw height reduced 20% for non-idle jump frames only.
+- js/game.js: removed the long introductory sentence from the Princess Question screen.
 
-This is a recovery patch. Do not delete the current GitHub branch; upload these files into the same existing folders.
+Unchanged: dodge, punch, combat sizes, map renderer, inventory, Would You, gate, fog, Golden Key, and all other systems.
