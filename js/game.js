@@ -233,11 +233,11 @@ function mountLevel1(loadSaved=false){
           <div class="inventory-kicker">OLLY'S BAG</div>
           <div class="story-title">INVENTORY</div>
           <div class="inventory-capacity"><span id="inventory-count-large">0 / 10 ITEMS</span></div>
-          <div class="inventory-slots" aria-label="Inventory slots">
-            <div class="inventory-slot">01</div><div class="inventory-slot">02</div><div class="inventory-slot">03</div><div class="inventory-slot">04</div><div class="inventory-slot">05</div>
-            <div class="inventory-slot">06</div><div class="inventory-slot">07</div><div class="inventory-slot">08</div><div class="inventory-slot">09</div><div class="inventory-slot">10</div>
+          <div id="inventory-slots" class="inventory-slots" aria-label="Inventory slots">
+            <div class="inventory-slot" data-slot="1">01</div><div class="inventory-slot" data-slot="2">02</div><div class="inventory-slot" data-slot="3">03</div><div class="inventory-slot" data-slot="4">04</div><div class="inventory-slot" data-slot="5">05</div>
+            <div class="inventory-slot" data-slot="6">06</div><div class="inventory-slot" data-slot="7">07</div><div class="inventory-slot" data-slot="8">08</div><div class="inventory-slot" data-slot="9">09</div><div class="inventory-slot" data-slot="10">10</div>
           </div>
-          <p class="inventory-empty-copy">Nothing in here yet. A suspiciously empty bag.</p>
+          <p id="inventory-empty-copy" class="inventory-empty-copy">Nothing in here yet. A suspiciously empty bag.</p>
           <button id="inventory-close" type="button" class="primary inventory-close-button">CLOSE</button>
         </div>
       </div>
@@ -286,7 +286,6 @@ function mountLevel1(loadSaved=false){
 
       <div id="puzzle" class="overlay hidden"><div class="overlay-box center quiz-box">
         <img class="story-art quiz-image" src="assets/story/princess-quiz.png" alt="Scarlett, the kidnapped princess, with a warning about getting the answer right">
-        <div class="ironic-copy quiz-copy">A simple question, apparently. The fate of your princess rests on your ability to demonstrate absolutely normal communication skills.</div>
         <p class="quiz-question">What is the correct way to ask a princess to undress?</p>
         <div class="answers quiz-answers">
           <button data-answer="wrong"><strong>A.</strong> “Your Highness, may I assist you with your attire?”</button>
@@ -312,7 +311,7 @@ function mountLevel1(loadSaved=false){
     canvas:document.getElementById('world'), miniMap:document.getElementById('mini-map'), dialogue:document.getElementById('dialogue'),
     hpEl:document.getElementById('player-hp-text'), hpFill:document.getElementById('player-hp-fill'), gothEl:document.getElementById('goth-count'), relEl:document.getElementById('rel-state'), puzzleEl:document.getElementById('puzzle-state'),
     goalGoths:document.getElementById('goal-goths'), goalRel:document.getElementById('goal-rel'), goalPuzzle:document.getElementById('goal-puzzle'), goalBoss:document.getElementById('goal-boss'), checkpoint:document.getElementById('checkpoint'),
-    saveGame:document.getElementById('save-game'), loadGame:document.getElementById('load-game'), saveStatus:document.getElementById('save-status'), inventory:document.getElementById('inventory'), inventoryButton:document.getElementById('inventory-button'), inventoryClose:document.getElementById('inventory-close'),
+    saveGame:document.getElementById('save-game'), loadGame:document.getElementById('load-game'), saveStatus:document.getElementById('save-status'), inventory:document.getElementById('inventory'), inventoryButton:document.getElementById('inventory-button'), inventoryClose:document.getElementById('inventory-close'), inventoryCount:document.getElementById('inventory-count'), inventoryCountLarge:document.getElementById('inventory-count-large'), inventorySlots:document.getElementById('inventory-slots'), inventoryEmpty:document.getElementById('inventory-empty-copy'),
     encounter:document.getElementById('encounter'), encounterImage:document.getElementById('encounter-image'), encounterName:document.getElementById('encounter-name'), encounterText:document.getElementById('encounter-text'), encounterReady:document.getElementById('encounter-ready'), encounterExplore:document.getElementById('encounter-explore'),
     combat:document.getElementById('combat'), combatCanvas:document.getElementById('combat-canvas'), combatName:document.getElementById('combat-name'), enemyHp:document.getElementById('enemy-hp'), enemyHpText:document.getElementById('enemy-hp-text'), combatStatus:document.getElementById('combat-status'),
     death:document.getElementById('death'), deathText:document.getElementById('death-text'), retryCombat:document.getElementById('retry-combat'), backMap:document.getElementById('back-map'),
@@ -320,7 +319,32 @@ function mountLevel1(loadSaved=false){
     puzzle:document.getElementById('puzzle'), puzzleFeedback:document.getElementById('puzzle-feedback'), bossIntro:document.getElementById('boss-intro'), bossStart:document.getElementById('boss-start'), win:document.getElementById('win'), replay:document.getElementById('replay')
   };
 
+  const refreshInventory = () => {
+    const inv = level?.getInventory?.() || {};
+    const entries = Object.entries(inv).filter(([, qty]) => Number(qty) > 0);
+    const count = entries.reduce((sum, [, qty]) => sum + Math.max(0, Number(qty) || 0), 0);
+    if(ui.inventoryCount) ui.inventoryCount.textContent = `${count}/10`;
+    if(ui.inventoryCountLarge) ui.inventoryCountLarge.textContent = `${count} / 10 ITEMS`;
+    const slots = ui.inventorySlots?.querySelectorAll('.inventory-slot') || [];
+    slots.forEach((slot, idx) => {
+      slot.innerHTML = String(idx + 1).padStart(2, '0');
+      slot.classList.remove('occupied');
+    });
+    entries.slice(0, slots.length).forEach(([key, qty], idx) => {
+      const slot = slots[idx];
+      slot.classList.add('occupied');
+      if(key === 'key'){
+        slot.innerHTML = `<img src="assets/items/golden-key.png?v=6516" alt="Golden Key"><span class="inventory-item-name">GOLDEN KEY</span>`;
+      } else {
+        slot.innerHTML = `<span class="inventory-item-generic">${String(key).replace(/[-_]/g,' ').toUpperCase()}</span>`;
+      }
+    });
+    if(ui.inventoryEmpty) ui.inventoryEmpty.textContent = count ? 'A few things are finally in here.' : 'Nothing in here yet. A suspiciously empty bag.';
+  };
+
+  ui.refreshInventory = refreshInventory;
   const level = createLevel1(ui);
+  refreshInventory();
   ui.saveGame.addEventListener('click',()=>{ const ok=level.saveGame(); ui.saveStatus.textContent=ok?'Saved ✓':'Save failed'; });
   ui.loadGame.addEventListener('click',()=>{ const ok=level.loadGame(); ui.saveStatus.textContent=ok?'Loaded ✓':'No save found'; });
   ui.encounterReady.addEventListener('click',()=>level.confirmEncounter());

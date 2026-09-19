@@ -1,19 +1,14 @@
-Goodbye Goth v6.5.15 – Combat Grounding, Fog of War & Golden Key
+Goodbye Goth v6.5.16
 
-Patch scope:
-- Slightly enlarges Olly's combat idle only for better proportion consistency.
-- Speeds dodge animation playback by 30%.
-- Speeds jump animation playback by 10%.
-- Keeps Goth combat sizes unchanged.
-- Adds a persistent fog-of-war to the Level 1 map. Olly and nearby surroundings are visible; areas he walks through remain revealed.
-- Applies the same discovery fog to the mini-map while keeping Olly's position visible.
-- Spawns the supplied GoldenKey artwork at the existing key location once all Level 1 objectives are complete: 2/2 Goths defeated + WOULD YOU? complete + Princess Question answered.
-- Adds a one-time dialogue prompt when the Golden Key becomes available.
-
-Untouched intentionally:
-- Level 1 map renderer architecture and background.
-- Inventory system.
-- Punch/combat hit logic.
-- Goth combat sizes.
-- Would You structure/timing.
-- Combat background.
+Changes:
+- Jump animation remains isolated for future art work; this patch does not alter punch or dodge timing.
+- Start position moved to the path immediately below the top-right church so the church is part of the initial exploration area.
+- Level 1 map now uses a softer grey-mist fog. Olly reveals a smaller local area and a persistent soft corridor as he walks; explored areas stay revealed. The minimap uses the same explored state.
+- Walkability tightened around major buildings and several visible garden/land patches so Olly stays on cobblestone routes.
+- Zombie Goth moved slightly right on the map only.
+- Chain Goth combat size is unchanged; Chain Goth map sizing remains the current reduced map scale.
+- Relationship Challenge and Princess Question markers now bob like the Goths.
+- Princess Question intro copy shortened to keep the screen cleaner.
+- Golden Key appears at a more central map position once the four Level 1 conditions are complete, can be picked up, and now populates Olly's inventory.
+- Added Gate interaction: approaching the gate opens the rustling prompt with I'M READY / KEEP EXPLORING. If requirements are incomplete, I'M READY shows the locked-gate message. With the key, the gate becomes unlocked and ready for the future Level 1.5 cutscene.
+- Save data version bumped to 5 and persists the gate-unlocked state.

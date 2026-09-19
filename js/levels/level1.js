@@ -13,7 +13,7 @@ function safeParseSave() {
 const mapBackground = new Image();
 mapBackground.src = 'assets/environment/level1-map-bg.png?v=600';
 const goldenKeySprite = new Image();
-goldenKeySprite.src = 'assets/items/golden-key.png?v=6515';
+goldenKeySprite.src = 'assets/items/golden-key.png?v=6516';
 const ollySprite = new Image();
 ollySprite.src = 'assets/characters/olly.png?v=300';
 
@@ -113,6 +113,12 @@ const ENCOUNTER_DATA = {
         name: 'PRINCESS QUESTION',
         image: 'assets/encounters/level1/princess-question-encounter.png?v=501',
         text: "You've encountered a princess question. Answer correctly to prove your love for your princess. Are you ready?"
+    },
+    bossGate: {
+        role: 'bossGate',
+        name: 'THE GATE',
+        image: '',
+        text: "You hear a rustling from beyond the gate. You're not sure what it is, but you don't like the sound of it."
     }
 };
 const zombieSprites = {
@@ -127,36 +133,21 @@ zombieSprites.chain.src = 'assets/characters/chain-goth-clean.png?v=6513';
    All gameplay characters and interactive markers are drawn independently.
    Walkability is handled by explicit collision rectangles, not by a tile grid.
 */
-const OBSTACLES = [// Major structures only. Decorative gardens/trees are baked into the background
-// and are intentionally not giant invisible barriers.
-{
-    x: 15,
-    y: 0,
-    w: 410,
-    h: 385,
-    label: 'church'
-},
-{
-    x: 1210,
-    y: 20,
-    w: 315,
-    h: 330,
-    label: 'upper-mausoleum'
-},
-{
-    x: 560,
-    y: 735,
-    w: 410,
-    h: 289,
-    label: 'lower-mausoleum'
-},
-{
-    x: 1330,
-    y: 770,
-    w: 190,
-    h: 120,
-    label: 'boss-gate'
-}
+const OBSTACLES = [
+// Major buildings and visible garden islands are blocked so Olly stays on
+// the cobblestone routes. Bounds are deliberately conservative around the
+// marked walkable paths.
+{ x: 15, y: 0, w: 410, h: 385, label: 'church-left' },
+{ x: 590, y: 0, w: 330, h: 300, label: 'rose-garden-upper' },
+{ x: 1210, y: 20, w: 315, h: 330, label: 'church-right' },
+{ x: 225, y: 265, w: 330, h: 195, label: 'garden-left-middle' },
+{ x: 555, y: 345, w: 405, h: 235, label: 'angel-garden' },
+{ x: 930, y: 70, w: 300, h: 235, label: 'garden-upper-right' },
+{ x: 1045, y: 325, w: 255, h: 190, label: 'garden-right-middle' },
+{ x: 1035, y: 515, w: 235, h: 205, label: 'garden-right-lower' },
+{ x: 45, y: 760, w: 300, h: 195, label: 'pond-garden' },
+{ x: 545, y: 650, w: 465, h: 315, label: 'lower-mausoleum-garden' },
+{ x: 1330, y: 770, w: 190, h: 120, label: 'boss-gate' }
 ];
 function circleRectHit(px, py, r, o) {
     const cx = Math.max(o.x, Math.min(px, o.x + o.w)),
@@ -224,45 +215,59 @@ export function createLevel1(ui) {
     const revealed = Array.from({
         length: ROWS
     }, () => Array(COLS).fill(false));
-    // v6.5.15: persistent fog-of-war overlay. Cleared areas remain transparent.
+    // v6.5.16: persistent grey-mist exploration fog.
+    // Exploration clears a small local pocket plus a permanent soft corridor
+    // along Olly's travelled path. Previously explored areas stay clear.
     const fogCanvas = document.createElement('canvas');
     fogCanvas.width = WORLD_W;
     fogCanvas.height = WORLD_H;
     const fogCtx = fogCanvas.getContext('2d');
-    fogCtx.fillStyle = 'rgba(10, 7, 14, 0.88)';
+    fogCtx.fillStyle = 'rgba(118, 118, 128, 0.62)';
     fogCtx.fillRect(0, 0, WORLD_W, WORLD_H);
-    const FOG_REVEAL_RADIUS = 175;
+    const FOG_REVEAL_RADIUS = 118;
+    const FOG_INITIAL_RADIUS = 142;
+    const FOG_PATH_WIDTH = 138;
     let lastFogRevealX = null,
         lastFogRevealY = null;
 
+    function clearFogCircle(px, py, radius) {
+        const g = fogCtx.createRadialGradient(px, py, radius * .42, px, py, radius);
+        g.addColorStop(0, 'rgba(0,0,0,1)');
+        g.addColorStop(.72, 'rgba(0,0,0,.92)');
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        fogCtx.fillStyle = g;
+        fogCtx.beginPath();
+        fogCtx.arc(px, py, radius, 0, Math.PI * 2);
+        fogCtx.fill();
+    }
+
     function revealAround(px, py, force=false) {
-        if (!force && lastFogRevealX !== null && Math.hypot(px - lastFogRevealX, py - lastFogRevealY) < 28)
+        const threshold = force ? 0 : 24;
+        if (!force && lastFogRevealX !== null && Math.hypot(px - lastFogRevealX, py - lastFogRevealY) < threshold)
             return;
-        const minCol = Math.max(0, Math.floor((px - FOG_REVEAL_RADIUS - 32) / GRID));
-        const maxCol = Math.min(COLS - 1, Math.floor((px + FOG_REVEAL_RADIUS + 32) / GRID));
-        const minRow = Math.max(0, Math.floor((py - FOG_REVEAL_RADIUS - 32) / GRID));
-        const maxRow = Math.min(ROWS - 1, Math.floor((py + FOG_REVEAL_RADIUS + 32) / GRID));
-        for (let row = minRow; row <= maxRow; row++) {
-            for (let col = minCol; col <= maxCol; col++) {
-                const cx = col * GRID + GRID / 2,
-                    cy = row * GRID + GRID / 2;
-                if (Math.hypot(cx - px, cy - py) <= FOG_REVEAL_RADIUS + GRID * .35)
-                    revealed[row][col] = true;
-            }
-        }
+        const radius = force ? FOG_INITIAL_RADIUS : FOG_REVEAL_RADIUS;
         fogCtx.save();
         fogCtx.globalCompositeOperation = 'destination-out';
-        // Punch out a smooth circle instead of blocky square cells.
-        fogCtx.beginPath();
-        fogCtx.arc(px, py, FOG_REVEAL_RADIUS, 0, Math.PI * 2);
-        fogCtx.fill();
+        if (lastFogRevealX !== null && !force) {
+            fogCtx.lineCap = 'round';
+            fogCtx.lineJoin = 'round';
+            fogCtx.lineWidth = FOG_PATH_WIDTH;
+            fogCtx.strokeStyle = 'rgba(0,0,0,.88)';
+            fogCtx.beginPath();
+            fogCtx.moveTo(lastFogRevealX, lastFogRevealY);
+            fogCtx.lineTo(px, py);
+            fogCtx.stroke();
+        }
+        clearFogCircle(px, py, radius);
+        if (force)
+            clearFogCircle(px, py, FOG_INITIAL_RADIUS + 14);
         fogCtx.restore();
         lastFogRevealX = px;
         lastFogRevealY = py;
     }
     const enemies = [
     {
-        x: 485,
+        x: 515,
         y: 420,
         type: 'shambler',
         name: 'ZOMBIE GOTH',
@@ -295,9 +300,11 @@ export function createLevel1(ui) {
             y: 820
         },
         key = {
-            x: 1200,
-            y: 700
+            x: 760,
+            y: 620
         };
+    let gateUnlocked = false,
+        gatePromptActive = false;
     const MAX_HP = 100;
     const COMBAT_W = 1440,
         COMBAT_H = 810,
@@ -305,8 +312,8 @@ export function createLevel1(ui) {
     const combatBackgroundImage = new Image();
     combatBackgroundImage.src = 'assets/environment/combat-background-level1.png';
 
-    let x = 470,
-        y = 520,
+    let x = 1360,
+        y = 380,
         hp = 100,
         maxHp = 100,
         mode = 'map',
@@ -422,6 +429,13 @@ export function createLevel1(ui) {
             walkDir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : (dy < 0 ? 'up' : 'down');
             ui.dialogue.textContent = 'The cemetery is strangely peaceful. Somewhere nearby, a goth is probably plotting.';
         }
+        const gateDistance = Math.hypot(x - boss.x, y - boss.y);
+        if (gateDistance > 180)
+            gatePromptActive = false;
+        if (gateDistance <= 120 && !gatePromptActive && mode === 'map') {
+            gatePromptActive = true;
+            openInteractionEncounter('bossGate');
+        }
     }
     const W2C = (gx, gy) => ({
         x: gx,
@@ -445,7 +459,8 @@ export function createLevel1(ui) {
         ui.goalGoths.innerHTML = kills >= 2 ? '<span class="good">✓ Defeat the required Zombie Goths</span>' : `○ Defeat the required Zombie Goths (${kills}/2)`;
         ui.goalRel.innerHTML = relationshipDone ? `<span class="good">✓ ${ACTIVITY_DATA.relationshipChallenge.name} complete</span>` : `○ Complete the ${ACTIVITY_DATA.relationshipChallenge.name} Challenge`;
         ui.goalPuzzle.innerHTML = puzzleSolved ? '<span class="good">✓ Princess Question answered</span>' : '○ Answer the Princess Question';
-        ui.goalBoss.innerHTML = unlockedBoss() ? '<span class="good">✓ Boss gate unlocked</span>' : '<span class="locked">🔒 Boss gate locked</span>';
+        ui.goalBoss.innerHTML = gateUnlocked ? '<span class="good">✓ Gate unlocked</span>' : (unlockedBoss() ? '<span class="good">✓ Key found — gate ready</span>' : '<span class="locked">🔒 Gate locked</span>');
+        ui.refreshInventory?.();
         if (objectivesComplete() && !keyCollected && !keySpawnAnnounced) {
             keySpawnAnnounced = true;
             ui.dialogue.textContent = '🔑 A golden key has appeared somewhere in the cemetery. Find it.';
@@ -480,7 +495,9 @@ export function createLevel1(ui) {
         // Olly remains visible as the exploration reference point.
         marker(x, y, '#fff', 4);
     }
-    function drawMarker(ctx, img, px, py, w=68, h=68, label='') {
+    function drawMarker(ctx, img, px, py, w=68, h=68, label='', t=0) {
+        const bob = Math.sin(t / 300) * 5;
+        py += bob;
         ctx.save();
         ctx.globalAlpha = .98;
         ctx.shadowColor = 'rgba(255,146,195,.55)';
@@ -530,9 +547,9 @@ export function createLevel1(ui) {
         if (!enemies[1].dead)
             drawZombieSprite(ctx, enemies[1].x, enemies[1].y, 'chain', .9594, t / 1000, false);
         if (!relationshipDone)
-            drawMarker(ctx, relationshipChallengeIcon, relationshipChallenge.x, relationshipChallenge.y, 74, 74, '');
+            drawMarker(ctx, relationshipChallengeIcon, relationshipChallenge.x, relationshipChallenge.y, 74, 74, '', t);
         if (!puzzleSolved)
-            drawMarker(ctx, princessQuestionIcon, princessQuestion.x, princessQuestion.y, 96, 96, '');
+            drawMarker(ctx, princessQuestionIcon, princessQuestion.x, princessQuestion.y, 96, 96, '', t);
         if (!keyCollected && objectivesComplete()) {
             ctx.save();
             ctx.translate(key.x, key.y + Math.sin(t / 280) * 4);
@@ -581,9 +598,14 @@ export function createLevel1(ui) {
             y
         };
         mode = 'encounter';
-        ui.encounterImage.src = data.image;
+        ui.encounterImage.style.display = data.image ? 'block' : 'none';
+        if (data.image)
+            ui.encounterImage.src = data.image;
         ui.encounterName.textContent = data.name;
         ui.encounterText.textContent = data.text;
+        ui.encounterReady.textContent = "I'M READY";
+        ui.encounterReady.style.display = '';
+        ui.encounterExplore.textContent = 'KEEP EXPLORING';
         ui.encounter.classList.remove('hidden');
     }
     function closeEncounter() {
@@ -611,6 +633,24 @@ export function createLevel1(ui) {
         if (p.kind === 'princessQuestion') {
             mode = 'map';
             openPrincessQuestion();
+            return;
+        }
+        if (p.kind === 'bossGate') {
+            if (!unlockedBoss()) {
+                ui.encounterName.textContent = 'THE GATE IS LOCKED';
+                ui.encounterText.textContent = 'Not so fast, young padawan. The gate is locked. Come back once you've found the key.';
+                ui.encounterReady.style.display = 'none';
+                ui.encounterExplore.textContent = 'BACK TO EXPLORING';
+                pendingInteraction = p;
+                mode = 'encounter';
+                ui.encounter.classList.remove('hidden');
+                return;
+            }
+            gateUnlocked = true;
+            bossRoomEntered = true;
+            mode = 'map';
+            ui.dialogue.textContent = '🔑 The key fits. The gate unlocks. Something waits beyond it.';
+            stats();
             return;
         }
     }
@@ -643,18 +683,13 @@ export function createLevel1(ui) {
         if (objectivesComplete() && !keyCollected && near(key.x, key.y, 55)) {
             keyCollected = true;
             inventory.key = 1;
+            ui.refreshInventory?.();
             ui.dialogue.textContent = '🔑 A little brass key drops onto the cobblestones. Finally, a sensible piece of game design.';
             stats();
             return;
         }
-        if (near(boss.x, boss.y, 72)) {
-            if (unlockedBoss()) {
-                bossRoomEntered = true;
-                mode = 'bossready';
-                ui.bossReady.classList.remove('hidden')
-            } else {
-                ui.dialogue.textContent = '🔒 The gate is still locked. Complete every challenge, then collect the key.'
-            }
+        if (near(boss.x, boss.y, 105)) {
+            openInteractionEncounter('bossGate');
             return;
         }
     });
@@ -821,7 +856,7 @@ export function createLevel1(ui) {
             progress: elapsed / total,
             frameIndex: sourceIndex,
             drawDir: combatFacing,
-            height: cfg.height,
+            height: state === 'jump' ? cfg.height * .8 : cfg.height,
             duration: total
         };
     }
@@ -1217,7 +1252,7 @@ export function createLevel1(ui) {
     function saveGame() {
         try {
             const state = {
-                version: 4,
+                version: 5,
                 savedAt: new Date().toISOString(),
                 level: 1,
                 x,
@@ -1228,6 +1263,7 @@ export function createLevel1(ui) {
                 relationshipDone,
                 puzzleSolved,
                 keyCollected,
+                gateUnlocked,
                 inventory,
                 checkpoint,
                 enemies: enemies.map(e => ({
@@ -1243,9 +1279,13 @@ export function createLevel1(ui) {
             return false;
         }
     }
+    function getInventory() {
+        return { ...inventory };
+    }
+
     function loadGame() {
         const state = safeParseSave();
-        if (!state || ![2, 3, 4].includes(state.version))
+        if (!state || ![2, 3, 4, 5].includes(state.version))
             return false;
         try {
             x = Number.isFinite(state.x) ? Math.min(WORLD_W - 40, Math.max(40, state.x)) : x;
@@ -1262,6 +1302,7 @@ export function createLevel1(ui) {
             relationshipDone = !!state.relationshipDone;
             puzzleSolved = !!state.puzzleSolved;
             keyCollected = !!state.keyCollected;
+            gateUnlocked = !!state.gateUnlocked;
             keySpawnAnnounced = keyCollected;
             inventory = state.inventory && typeof state.inventory === 'object' ? state.inventory : {};
             checkpoint = state.checkpoint || 'cemetery-entrance';
@@ -1335,6 +1376,7 @@ export function createLevel1(ui) {
         answerPuzzle,
         startBoss,
         saveGame,
-        loadGame
+        loadGame,
+        getInventory
     };
 }
