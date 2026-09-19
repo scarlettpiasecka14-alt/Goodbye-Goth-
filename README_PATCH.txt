@@ -1,14 +1,11 @@
-GOODBYE GOTH v6.5.12 - CHAIN GOTH SPRITE REFRESH
+v6.5.13 - Combat Grounding, New Jump/Dodge Art, Bigger Goths
 
-Changes:
-- Replaces the Chain Goth artwork in BOTH the Level 1 map and combat using the supplied ChainGoth.png.
-- The supplied sprite is stored at the existing active path:
-  assets/characters/chain-goth-clean.png
-- Preserves the existing Chain Goth scale, combat facing logic, map renderer, combat background, and all Olly combat mechanics.
-- Added a cache-busting asset query (?v=6512).
-
-Upload into the matching existing folders:
-- js/levels/level1.js
-- assets/characters/chain-goth-clean.png
-
-Do not upload this ZIP itself into the repo root.
+Scoped changes:
+- Replaced combat jump with the new 3-pose jump artwork supplied by the user.
+- Replaced combat dodge with the new 3-pose dodge artwork supplied by the user.
+- Uses the supplied olly1(3).png as combat idle so idle scale/proportions match the new actions.
+- Grounds Olly lower so his feet sit on the same combat floor as the Goths.
+- Increased both Goth combat sprites by 30% relative to v6.5.12 combat scale.
+- Increased both Goth map sprites by 30% relative to v6.5.12 map scale.
+- Uses supplied ChainGoth.png as chain-goth-clean.png for both map and combat.
+- Left punch, heavy damage/cooldowns, inventory, save, map renderer, Would You, and combat background logic otherwise unchanged.

@@ -19,14 +19,14 @@ ollySprite.src = 'assets/characters/olly.png?v=300';
 // pose keeps its own aspect ratio and stray sprite-sheet labels never render.
 const ollyCombatSprites = {
     idle: new Image(),
-    dodge: [1,2,3,4,5].map(n => new Image()),
-    jump: [1,2,3,4,5,6].map(n => new Image()),
+    dodge: [1,2,3].map(n => new Image()),
+    jump: [1,2,3].map(n => new Image()),
     heavy: [1,2,3,4,5].map(n => new Image()),
     punch: [1,2,3,4,5].map(n => new Image())
 };
-ollyCombatSprites.idle.src = 'assets/characters/combat/olly-idle.png?v=6511';
-ollyCombatSprites.dodge.forEach((img, i) => img.src = `assets/characters/combat/olly-dodge-${i+1}.png?v=6511`);
-ollyCombatSprites.jump.forEach((img, i) => img.src = `assets/characters/combat/olly-jump-${i+1}.png?v=6511`);
+ollyCombatSprites.idle.src = 'assets/characters/combat/olly-idle.png?v=6513';
+ollyCombatSprites.dodge.forEach((img, i) => img.src = `assets/characters/combat/olly-dodge-${i+1}.png?v=6513`);
+ollyCombatSprites.jump.forEach((img, i) => img.src = `assets/characters/combat/olly-jump-${i+1}.png?v=6513`);
 ollyCombatSprites.heavy.forEach((img, i) => img.src = `assets/characters/combat/olly-heavy-${i+1}.png?v=6511`);
 ollyCombatSprites.punch.forEach((img, i) => img.src = `assets/characters/combat/olly-punch-${i+1}.png?v=6511`);
 
@@ -34,18 +34,16 @@ ollyCombatSprites.punch.forEach((img, i) => img.src = `assets/characters/combat/
 // playing every dramatic pose in the supplied sheets. This keeps combat readable
 // at game speed while preserving the supplied artwork.
 const OLLY_ANIMATIONS = {
-    // v6.5.11 readability pass: only the clearest key poses are shown.
-    // The game supplies the movement between them, rather than flip-booking
-    // every supplied pose. This keeps the silhouette readable on screen.
-    dodge: { indices:[0,2,4], frameMs:[120,300,140], height:242 },
-    jump:  { indices:[1,2,4], frameMs:[130,360,220], height:242 },
-    heavy: { indices:[0,3,4], frameMs:[130,260,230], height:242 },
+    // v6.5.13: use the new clean three-pose jump and dodge sequences.
+    // Each move is built from a small number of readable key poses rather than
+    // rapidly cycling through every dramatic drawing.
+    dodge: { indices:[0,1,2], frameMs:[150,360,190], height:260 },
+    jump:  { indices:[0,1,2], frameMs:[160,300,220], height:260 },
+    heavy: { indices:[0,3,4], frameMs:[130,260,230], height:260 },
     punch: { indices:[0,1,2,3,4], frameMs:[52,62,72,78,70], height:224 }
 };
-// Use the same ready pose family for combat idle so Olly does not visibly
-// shrink when he leaves idle and enters an animation.
-const OLLY_IDLE_HEIGHT = 242;
-const OLLY_DRAW_FOOT_OFFSET = 0;
+const OLLY_IDLE_HEIGHT = 260;
+const OLLY_DRAW_FOOT_OFFSET = 62;
 // v4.7 activity architecture: the icon belongs to the ROLE, not to the level.
 // These shared icon references can be reused by every level. Only the activity
 // behind the role changes from level to level.
@@ -120,7 +118,7 @@ const zombieSprites = {
     chain: new Image()
 };
 zombieSprites.shambler.src = 'assets/characters/zombie-goth.png?v=300';
-zombieSprites.chain.src = 'assets/characters/chain-goth-clean.png?v=6512';
+zombieSprites.chain.src = 'assets/characters/chain-goth-clean.png?v=6513';
 
 /* v6.0: a complete Level 1 rebuild.
    The background is a clean, character-free cemetery illustration.
@@ -481,9 +479,9 @@ export function createLevel1(ui) {
             ctx.fillRect(0, 0, WORLD_W, WORLD_H)
         }
         if (!enemies[0].dead)
-            drawZombieSprite(ctx, enemies[0].x, enemies[0].y, 'shambler', .84, t / 1000, false);
+            drawZombieSprite(ctx, enemies[0].x, enemies[0].y, 'shambler', 1.092, t / 1000, false);
         if (!enemies[1].dead)
-            drawZombieSprite(ctx, enemies[1].x, enemies[1].y, 'chain', .82, t / 1000, false);
+            drawZombieSprite(ctx, enemies[1].x, enemies[1].y, 'chain', 1.066, t / 1000, false);
         if (!relationshipDone)
             drawMarker(ctx, relationshipChallengeIcon, relationshipChallenge.x, relationshipChallenge.y, 74, 74, '');
         if (!puzzleSolved)
@@ -697,7 +695,7 @@ export function createLevel1(ui) {
             }
             // Smaller arc. The new sprite art does not need to do the visual
             // travelling itself, so the jump stays grounded and readable.
-            jumpOffset = -Math.sin(jumpT * Math.PI) * 52;
+            jumpOffset = -Math.sin(jumpT * Math.PI) * 42;
         }
         else {
             jumpOffset = 0;
@@ -754,7 +752,7 @@ export function createLevel1(ui) {
             frames = ollyCombatSprites.jump;
         } else {
             return {
-                img: ollyCombatSprites.dodge[0],
+                img: ollyCombatSprites.idle,
                 state: 'idle',
                 progress: 0,
                 drawDir: combatFacing,
@@ -799,7 +797,7 @@ export function createLevel1(ui) {
             enemyDrawFace = enemyType === 'chain'
                 ? (enemyFace === 'left' ? 'right' : 'left')
                 : enemyFace,
-            enemyScale = enemyType === 'chain' ? 1.68 : 1.60;
+            enemyScale = enemyType === 'chain' ? 2.184 : 2.08;
 
         if (combatAnimationUntil && nowMs >= combatAnimationUntil && combatAnimationState !== 'idle') {
             if (combatAnimationState !== 'jump' || !jumping) {
@@ -835,7 +833,7 @@ export function createLevel1(ui) {
         // Keep the shadow on the actual combat floor, separate from the animation pose.
         c.fillStyle = 'rgba(0,0,0,.28)';
         c.beginPath();
-        c.ellipse(0, 8 - offsetY, 42, 9, 0, 0, Math.PI * 2);
+        c.ellipse(0, 20 - offsetY, 46, 10, 0, 0, Math.PI * 2);
         c.fill();
         const img = anim?.img;
         if (img && img.complete && img.naturalWidth) {
