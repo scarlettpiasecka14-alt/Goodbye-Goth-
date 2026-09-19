@@ -42,7 +42,7 @@ const OLLY_ANIMATIONS = {
     heavy: { indices:[0,3,4], frameMs:[130,260,230], height:260 },
     punch: { indices:[0,1,2,3,4], frameMs:[52,62,72,78,70], height:224 }
 };
-const OLLY_IDLE_HEIGHT = 260;
+const OLLY_IDLE_HEIGHT = 280; // v6.5.14: slightly larger combat idle for more consistent proportions.
 const OLLY_DRAW_FOOT_OFFSET = 62;
 // v4.7 activity architecture: the icon belongs to the ROLE, not to the level.
 // These shared icon references can be reused by every level. Only the activity
@@ -479,9 +479,9 @@ export function createLevel1(ui) {
             ctx.fillRect(0, 0, WORLD_W, WORLD_H)
         }
         if (!enemies[0].dead)
-            drawZombieSprite(ctx, enemies[0].x, enemies[0].y, 'shambler', 1.092, t / 1000, false);
+            drawZombieSprite(ctx, enemies[0].x, enemies[0].y, 'shambler', .84, t / 1000, false);
         if (!enemies[1].dead)
-            drawZombieSprite(ctx, enemies[1].x, enemies[1].y, 'chain', 1.066, t / 1000, false);
+            drawZombieSprite(ctx, enemies[1].x, enemies[1].y, 'chain', .9594, t / 1000, false);
         if (!relationshipDone)
             drawMarker(ctx, relationshipChallengeIcon, relationshipChallenge.x, relationshipChallenge.y, 74, 74, '');
         if (!puzzleSolved)
@@ -807,7 +807,8 @@ export function createLevel1(ui) {
         }
 
         const anim = getCombatAnimationFrame(nowMs);
-        drawOllyWorldCombat(cctx, player.x, player.y, anim, nowMs / 1000, player.invuln > nowMs, jumpOffset);
+        const renderHurt = player.invuln > nowMs && nowMs >= dodgeUntil;
+        drawOllyWorldCombat(cctx, player.x, player.y, anim, nowMs / 1000, renderHurt, jumpOffset);
         drawZombieSprite(cctx, enemyX, enemyY, enemyType, enemyScale, nowMs / 1000, false, enemyDrawFace);
 
         if (nowMs < attackCooldownUntil) {

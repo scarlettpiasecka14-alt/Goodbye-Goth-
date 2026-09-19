@@ -1,11 +1,13 @@
-v6.5.13 - Combat Grounding, New Jump/Dodge Art, Bigger Goths
+GOODBYE GOTH v6.5.14
+Combat grounding + map size correction
 
-Scoped changes:
-- Replaced combat jump with the new 3-pose jump artwork supplied by the user.
-- Replaced combat dodge with the new 3-pose dodge artwork supplied by the user.
-- Uses the supplied olly1(3).png as combat idle so idle scale/proportions match the new actions.
-- Grounds Olly lower so his feet sit on the same combat floor as the Goths.
-- Increased both Goth combat sprites by 30% relative to v6.5.12 combat scale.
-- Increased both Goth map sprites by 30% relative to v6.5.12 map scale.
-- Uses supplied ChainGoth.png as chain-goth-clean.png for both map and combat.
-- Left punch, heavy damage/cooldowns, inventory, save, map renderer, Would You, and combat background logic otherwise unchanged.
+Changes:
+1. Slightly enlarges Olly's combat idle (280px) so idle proportions better match his action sprites.
+2. Removes the visual dodge transparency while preserving dodge invulnerability.
+3. Does NOT change Goth size inside combat. Combat sizes remain Chain Goth 2.184 and Zombie Goth 2.08.
+4. Restores Zombie Goth's map size to the previous 0.84 scale.
+5. Makes Chain Goth 10% smaller on the map only (1.066 -> 0.9594). Her combat size is unchanged.
+
+No map renderer architecture changes. No inventory, Would You, or combat background changes.
+
+Upload the files into their existing matching repository folders.
