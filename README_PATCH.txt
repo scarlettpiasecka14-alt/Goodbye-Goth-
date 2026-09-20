@@ -1,16 +1,10 @@
-Goodbye Goth v6.5.19 - Fog Frequency + Collision Fix
+Goodbye Goth v6.5.20
 
-Replace:
-js/levels/level1.js
+Changes: scenery-aware collision mask; wider reliable fog clearing; more varied fog density/patch sizes; lighter permanent edge haze; locked gate now triggers only when Olly is within 88 world pixels of the gate.
 
-Also keep/add:
-assets/encounters/level1/gate-interaction.png
+Active files:
+- js/levels/level1.js
+- assets/environment/level1-collision-mask.png
+- assets/encounters/level1/gate-interaction.png
 
-Changes:
-- Restores usable movement while retaining walkable-path collision.
-- Uses the walk-grid centre point rather than an oversized collision sampling ring, which was trapping Olly at the church start.
-- Keeps the 36px world boundary on every edge.
-- Significantly increases fog patch frequency.
-- Adds varied patch sizes and opacity, with thinner edge fog.
-- Keeps the existing gate interaction.
-- No changes to map rendering, character art, combat, inventory, or minigames.
+No changes to map rendering, combat, inventory or minigame mechanics.
