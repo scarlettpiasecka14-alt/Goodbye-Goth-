@@ -219,8 +219,8 @@ function walkCellWalkable(px, py) {
     // neighbourhood prevents Olly getting pinned on a single blocked grid
     // cell at the edge of a path. This is intentionally small enough that
     // trees/gardens remain substantially impassable.
-    const tolX = Math.min(10, cellW * .62);
-    const tolY = Math.min(10, cellH * .62);
+    const tolX = Math.min(15, cellW * .94);
+    const tolY = Math.min(15, cellH * .94);
     const samples = [
         [px - tolX, py], [px + tolX, py],
         [px, py - tolY], [px, py + tolY],
@@ -314,7 +314,7 @@ export function createLevel1(ui) {
 
     const FOG_REVEAL_RADIUS = 128;
     const FOG_START_RADIUS = 225;
-    const FOG_PATH_WIDTH = 128;
+    const FOG_PATH_WIDTH = 104;
     let lastFogRevealX = null,
         lastFogRevealY = null;
 
@@ -377,12 +377,14 @@ export function createLevel1(ui) {
     const fogPatchFade = FOG_PATCHES.map(() => 0);
     const fogPatchClearing = FOG_PATCHES.map(() => null);
     let fogRepaintNeeded = true;
-    const FOG_CLEAR_MS = 900;
+    const FOG_CLEAR_MS = 1250;
+    const FOG_PARTING_MS = 760;
+    const fogPartingBursts = [];
 
     function paintFogPatches() {
         fogCtx.clearRect(0, 0, WORLD_W, WORLD_H);
         fogCtx.save();
-        fogCtx.filter = 'blur(11px)';
+        fogCtx.filter = 'blur(15px)';
         for (let i = 0; i < FOG_PATCHES.length; i++) {
             const patch = FOG_PATCHES[i];
             const fade = fogPatchFade[i] || 0;
@@ -399,7 +401,7 @@ export function createLevel1(ui) {
                 patch.x, patch.y, 0,
                 patch.x, patch.y, Math.max(baseRx, baseRy)
             );
-            const baseA = Math.min(.58, patch.a * .62) * alphaScale;
+            const baseA = Math.min(.64, patch.a * (.48 + ((Math.sin(patch.seed * 2.7) + 1) * .10))) * alphaScale;
             base.addColorStop(0, `rgba(202,199,211,${baseA})`);
             base.addColorStop(.55, `rgba(187,184,198,${baseA * .72})`);
             base.addColorStop(1, 'rgba(160,157,174,0)');
@@ -421,7 +423,7 @@ export function createLevel1(ui) {
                 const rx = patch.rx * (.42 + (j % 3) * .035) * scale * spread;
                 const ry = patch.ry * (.30 + (j % 2) * .055) * scale * spread;
                 const g = fogCtx.createRadialGradient(px, py, 0, px, py, rx);
-                const alpha = Math.min(.86, patch.a * (0.60 + (Math.sin(a * 1.3) + 1) * .15)) * alphaScale;
+                const alpha = Math.min(.90, patch.a * (0.48 + (Math.sin(a * 1.3) + 1) * .23)) * alphaScale;
                 g.addColorStop(0, `rgba(207,204,215,${alpha})`);
                 g.addColorStop(.48, `rgba(190,187,201,${alpha * .72})`);
                 g.addColorStop(1, 'rgba(160,157,174,0)');
@@ -436,13 +438,26 @@ export function createLevel1(ui) {
     }
 
     function reapplyRevealedAreas() {
+        // Rebuild revealed space as overlapping soft circles rather than
+        // restoring whole 32px grid squares. This keeps the exploration fog
+        // organic when a patch is rebuilding during its fade.
         fogCtx.save();
         fogCtx.globalCompositeOperation = 'destination-out';
+        fogCtx.filter = 'blur(2px)';
         for (let row = 0; row < ROWS; row++) {
             for (let col = 0; col < COLS; col++) {
                 if (!revealed[row][col])
                     continue;
-                fogCtx.fillRect(col * GRID, row * GRID, GRID + 1, GRID + 1);
+                const cx = col * GRID + GRID / 2;
+                const cy = row * GRID + GRID / 2;
+                const g = fogCtx.createRadialGradient(cx, cy, GRID * .25, cx, cy, GRID * .92);
+                g.addColorStop(0, 'rgba(0,0,0,1)');
+                g.addColorStop(.78, 'rgba(0,0,0,.98)');
+                g.addColorStop(1, 'rgba(0,0,0,0)');
+                fogCtx.fillStyle = g;
+                fogCtx.beginPath();
+                fogCtx.arc(cx, cy, GRID * .92, 0, Math.PI * 2);
+                fogCtx.fill();
             }
         }
         fogCtx.restore();
@@ -457,6 +472,7 @@ export function createLevel1(ui) {
         if (fogPatchClearing[index] !== null || fogPatchFade[index] >= .999)
             return;
         fogPatchClearing[index] = t;
+        fogPartingBursts.push({ x, y, start: t });
         // The reveal is intentionally noticeable but not instantaneous.
         ui.dialogue.textContent = '🌫️ The fog parts around you...';
         fogRepaintNeeded = true;
@@ -555,6 +571,31 @@ export function createLevel1(ui) {
         lastFogRevealX = px;
         lastFogRevealY = py;
         fogRepaintNeeded = true;
+    }
+
+    function updateFogParting(t) {
+        if (!fogPartingBursts.length)
+            return;
+        fogCtx.save();
+        fogCtx.globalCompositeOperation = 'destination-out';
+        fogCtx.filter = 'blur(5px)';
+        for (let i = fogPartingBursts.length - 1; i >= 0; i--) {
+            const b = fogPartingBursts[i];
+            const p = Math.max(0, Math.min(1, (t - b.start) / FOG_PARTING_MS));
+            const eased = 1 - Math.pow(1 - p, 2.4);
+            const radius = 52 + eased * 145;
+            const g = fogCtx.createRadialGradient(b.x, b.y, radius * .45, b.x, b.y, radius);
+            g.addColorStop(0, 'rgba(0,0,0,1)');
+            g.addColorStop(.68, 'rgba(0,0,0,.96)');
+            g.addColorStop(1, 'rgba(0,0,0,0)');
+            fogCtx.fillStyle = g;
+            fogCtx.beginPath();
+            fogCtx.arc(b.x, b.y, radius, 0, Math.PI * 2);
+            fogCtx.fill();
+            if (p >= 1)
+                fogPartingBursts.splice(i, 1);
+        }
+        fogCtx.restore();
     }
 
     function drawAnimatedMist(t) {
@@ -915,6 +956,7 @@ export function createLevel1(ui) {
         drawOlly(ctx, playerX, playerY, .78, t / 1000, true, facingDir, walkPulse > 0);
         // v6.5.16e: unexplored cemetery remains covered; revealed areas stay clear.
         updateFogPatchClears(t);
+        updateFogParting(t);
         ctx.drawImage(fogCanvas, 0, 0, WORLD_W, WORLD_H);
         drawAnimatedMist(t);
         ctx.restore();
