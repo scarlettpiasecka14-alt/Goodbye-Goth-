@@ -280,8 +280,8 @@ export function createLevel1(ui) {
             eraseFogPath(lastFogRevealX, lastFogRevealY, px, py);
             markFogCells(px, py, FOG_REVEAL_RADIUS);
         } else {
-            // Smaller starting pocket, deliberately centred by the upper-right
-            // church so the opening area gives the player a reason to explore it.
+            // Small moving reveal; the larger opening reveal is handled once by
+            // revealInitialUpperLeft().
             eraseFogCircle(px, py, FOG_START_RADIUS);
             markFogCells(px, py, FOG_START_RADIUS);
         }
@@ -380,8 +380,9 @@ export function createLevel1(ui) {
     const combatBackgroundImage = new Image();
     combatBackgroundImage.src = 'assets/environment/combat-background-level1.png';
 
-    let x = 1230,
-        y = 330,
+    // v6.5.16e: start just below the upper-left church, close to Zombie Goth.
+    let x = 240,
+        y = 340,
         hp = 100,
         maxHp = 100,
         mode = 'map',
@@ -620,7 +621,7 @@ export function createLevel1(ui) {
             ctx.restore();
         }
         drawOlly(ctx, playerX, playerY, .78, t / 1000, true, facingDir, walkPulse > 0);
-        // v6.5.15: unexplored cemetery remains covered; revealed areas stay clear.
+        // v6.5.16e: unexplored cemetery remains covered; revealed areas stay clear.
         ctx.drawImage(fogCanvas, 0, 0, WORLD_W, WORLD_H);
         drawAnimatedMist(t);
         ctx.restore();
@@ -641,8 +642,45 @@ export function createLevel1(ui) {
             y: (sy - vh / 2 + camY * zoom) / zoom
         };
     }
-    // Start with a small visible pocket around Olly.
-    revealAround(x, y, true);
+    // v6.5.16e: the opening view is the upper-left church area the player
+    // should immediately be encouraged to explore. Reveal that region in a
+    // soft, irregular shape rather than using a circle centred on the player.
+    function revealInitialUpperLeft() {
+        fogCtx.save();
+        fogCtx.globalCompositeOperation = 'destination-out';
+        const grad = fogCtx.createRadialGradient(265, 300, 120, 265, 300, 470);
+        grad.addColorStop(0, 'rgba(0,0,0,1)');
+        grad.addColorStop(.72, 'rgba(0,0,0,.99)');
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        fogCtx.fillStyle = grad;
+        fogCtx.beginPath();
+        fogCtx.moveTo(0, 0);
+        fogCtx.lineTo(660, 0);
+        fogCtx.lineTo(660, 180);
+        fogCtx.quadraticCurveTo(650, 360, 560, 500);
+        fogCtx.quadraticCurveTo(470, 645, 240, 700);
+        fogCtx.lineTo(0, 700);
+        fogCtx.closePath();
+        fogCtx.fill();
+        fogCtx.restore();
+
+        // Keep the minimap's explored state consistent with the opening view.
+        const minCol = 0,
+            maxCol = Math.min(COLS - 1, Math.floor(660 / GRID)),
+            minRow = 0,
+            maxRow = Math.min(ROWS - 1, Math.floor(700 / GRID));
+        for (let row = minRow; row <= maxRow; row++) {
+            for (let col = minCol; col <= maxCol; col++) {
+                const cx = col * GRID + GRID / 2,
+                    cy = row * GRID + GRID / 2;
+                if (cx <= 660 && cy <= 700)
+                    revealed[row][col] = true;
+            }
+        }
+        lastFogRevealX = x;
+        lastFogRevealY = y;
+    }
+    revealInitialUpperLeft();
     let pendingInteraction = null;
     function openInteractionEncounter(kind, enemy=null) {
         const data = ENCOUNTER_DATA[kind];
