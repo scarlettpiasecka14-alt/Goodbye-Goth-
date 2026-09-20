@@ -208,7 +208,7 @@ export function createLevel1(ui) {
     fogCanvas.width = WORLD_W;
     fogCanvas.height = WORLD_H;
     const fogCtx = fogCanvas.getContext('2d');
-    fogCtx.fillStyle = 'rgba(115, 109, 124, 0.78)';
+    fogCtx.fillStyle = 'rgba(108, 102, 116, 0.64)';
     fogCtx.fillRect(0, 0, WORLD_W, WORLD_H);
 
     const mistCanvas = document.createElement('canvas');
@@ -216,9 +216,9 @@ export function createLevel1(ui) {
     mistCanvas.height = WORLD_H / 2;
     const mistCtx = mistCanvas.getContext('2d');
 
-    const FOG_REVEAL_RADIUS = 128;
-    const FOG_START_RADIUS = 190;
-    const FOG_PATH_WIDTH = 188;
+    const FOG_REVEAL_RADIUS = 118;
+    const FOG_START_RADIUS = 168;
+    const FOG_PATH_WIDTH = 156;
     let lastFogRevealX = null,
         lastFogRevealY = null;
 
@@ -296,41 +296,59 @@ export function createLevel1(ui) {
             sx = w / WORLD_W,
             sy = h / WORLD_H;
         mistCtx.clearRect(0, 0, w, h);
+
+        // v6.5.16f: use narrow, slow-moving curved wisps instead of broad
+        // oval clouds. This keeps the fog visually thinner and gives it a
+        // more dimensional, drifting-mist feel.
         mistCtx.save();
         mistCtx.scale(sx, sy);
+        mistCtx.lineCap = 'round';
+        mistCtx.lineJoin = 'round';
+        mistCtx.filter = 'blur(10px)';
 
+        const wave = (phase, speed, amp) => Math.sin((t / speed) + phase) * amp;
         const wisps = [
-            [260 + Math.sin(t / 3100) * 180, 190 + Math.sin(t / 2200) * 70, 310, 135, .14],
-            [820 + Math.cos(t / 3600) * 230, 350 + Math.sin(t / 2500) * 85, 360, 150, .12],
-            [1220 + Math.sin(t / 2900) * 190, 720 + Math.cos(t / 3300) * 85, 390, 165, .13],
-            [560 + Math.cos(t / 2700) * 160, 835 + Math.sin(t / 3000) * 90, 330, 145, .11],
-            [1380 + Math.cos(t / 4200) * 120, 250 + Math.sin(t / 2600) * 60, 270, 120, .10]
+            { y: 170, x: 70, len: 520, amp: 34, phase: 0.4, speed: 2100, a: .34 },
+            { y: 285, x: 420, len: 610, amp: 42, phase: 1.8, speed: 2600, a: .30 },
+            { y: 470, x: 180, len: 720, amp: 48, phase: 3.0, speed: 2900, a: .28 },
+            { y: 640, x: 470, len: 680, amp: 44, phase: 4.1, speed: 3200, a: .30 },
+            { y: 790, x: 80, len: 560, amp: 32, phase: 5.0, speed: 2400, a: .26 },
+            { y: 360, x: 890, len: 520, amp: 36, phase: 2.2, speed: 3000, a: .26 },
+            { y: 745, x: 980, len: 420, amp: 30, phase: 0.9, speed: 2300, a: .28 }
         ];
-        for (const [wx, wy, rw, rh, a] of wisps) {
-            const g = mistCtx.createRadialGradient(wx, wy, 0, wx, wy, Math.max(rw, rh));
-            g.addColorStop(0, `rgba(225,220,230,${a})`);
-            g.addColorStop(.52, `rgba(185,181,195,${a * .62})`);
-            g.addColorStop(1, 'rgba(150,145,165,0)');
-            mistCtx.save();
-            mistCtx.translate(wx, wy);
-            mistCtx.scale(1, rh / rw);
-            mistCtx.translate(-wx, -wy);
-            mistCtx.fillStyle = g;
+        for (const item of wisps) {
+            const shift = wave(item.phase, item.speed, 30);
+            const x0 = item.x + shift;
+            const y0 = item.y + wave(item.phase + .7, item.speed * .9, 18);
+            const x1 = x0 + item.len;
+            const y1 = y0 + wave(item.phase + 1.5, item.speed * 1.1, 14);
+            const mx = (x0 + x1) / 2;
+            const my = (y0 + y1) / 2 + wave(item.phase + 2.1, item.speed * .8, item.amp);
+
+            mistCtx.strokeStyle = `rgba(236,232,240,${item.a})`;
+            mistCtx.lineWidth = 22;
             mistCtx.beginPath();
-            mistCtx.arc(wx, wy, rw, 0, Math.PI * 2);
-            mistCtx.fill();
-            mistCtx.restore();
+            mistCtx.moveTo(x0, y0);
+            mistCtx.quadraticCurveTo(mx, my, x1, y1);
+            mistCtx.stroke();
+
+            mistCtx.strokeStyle = `rgba(180,176,192,${item.a * .65})`;
+            mistCtx.lineWidth = 42;
+            mistCtx.beginPath();
+            mistCtx.moveTo(x0 + 16, y0 + 7);
+            mistCtx.quadraticCurveTo(mx, my + 12, x1 - 20, y1 + 6);
+            mistCtx.stroke();
         }
         mistCtx.restore();
 
-        // Keep moving mist only where fog still exists, so explored paths remain clear.
+        // Keep the wisps only where the unrevealed fog exists.
         mistCtx.save();
         mistCtx.globalCompositeOperation = 'destination-in';
         mistCtx.drawImage(fogCanvas, 0, 0, mistCanvas.width, mistCanvas.height);
         mistCtx.restore();
 
         ctx.save();
-        ctx.globalAlpha = .9;
+        ctx.globalAlpha = .82;
         ctx.drawImage(mistCanvas, 0, 0, WORLD_W, WORLD_H);
         ctx.restore();
     }
