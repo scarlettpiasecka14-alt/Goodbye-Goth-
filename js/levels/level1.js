@@ -113,6 +113,12 @@ const ENCOUNTER_DATA = {
         name: 'PRINCESS QUESTION',
         image: 'assets/encounters/level1/princess-question-encounter.png?v=501',
         text: "You've encountered a princess question. Answer correctly to prove your love for your princess. Are you ready?"
+    },
+    lockedGate: {
+        role: 'lockedGate',
+        name: 'THE GATE',
+        image: 'assets/encounters/level1/gate-interaction.png?v=6518',
+        text: "You hear a rustling from beyond the gate. You peer through the bars, trying to get a better look, but the gate's locked! You'll have to find the key."
     }
 };
 const zombieSprites = {
@@ -127,24 +133,93 @@ zombieSprites.chain.src = 'assets/characters/chain-goth-clean.png?v=6513';
    All gameplay characters and interactive markers are drawn independently.
    Walkability is handled by explicit collision rectangles, not by a tile grid.
 */
-const OBSTACLES = [
-// v6.5.16d: keep collision intentionally conservative. Bushes, flowerbeds and
-// decorative paths remain walkable; only the major solid structures are blocked.
-{ x: 82, y: 92, w: 292, h: 230, label: 'upper-left-church' },
-{ x: 1288, y: 92, w: 220, h: 228, label: 'upper-right-church' },
-{ x: 86, y: 718, w: 330, h: 230, label: 'pond' },
-{ x: 590, y: 660, w: 320, h: 250, label: 'lower-mausoleum' },
-{ x: 1288, y: 700, w: 230, h: 205, label: 'boss-gate' }
+/* v6.5.18: walkability follows the actual cobblestone route of the Level 1 artwork.
+   This is a 96x64 baked walkability map. Green/clear path areas are walkable;
+   gardens, trees, buildings and the cemetery edge are not. */
+const WALK_GRID = [
+  '000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+  '000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+  '001111111100000000000011111111000000111111111111111111111111111111000000001111111111000000111100',
+  '001111111100000000000011111111000000111111111111111111111111111111000000001111111111000000111100',
+  '001111111111111100000011111111111111111111100000000000111111111111000000001111111111111111111100',
+  '001111110000000000000001111111111111111110000000000000011111111111000000001111111111111111111100',
+  '001111110000000000000001111111111111111000000000000000011100000000000111111111110000000000000000',
+  '001111110000000000000001111111111111111000000000000000001100000000000001111111110000000000000000',
+  '001111110000000000000001000000000001111000000000000000000100000000000000011111110000000000000000',
+  '001111110000000000000001000000000001111000000000000000000100000000000000000111110000000000000000',
+  '001111110000000000000001000000000001111000000000000000000100000000000000000001110000000000000000',
+  '001111110000000000000001000000000001110000000000000000000100000000000000000000010000000000000000',
+  '001111110000000000000001000000000000110000000000000000000100000000000000000000010000000000000000',
+  '001111110000000000000001000000000000110000000000000000000100000000000000000000010000000000000000',
+  '001111110000000000000001000000000000110000000000000000000100000000000000000000010000000000000000',
+  '001111110000000000000001000000000000110000000000000000000100000000000000000000110000000000000000',
+  '001111110000000000000001000000000000111000000000000000001100000000000000000000110000000000000000',
+  '001111110000000000000001000000000001111100000000000000001100000000000000000000110000000000000000',
+  '001111110000000000000001000000000001111110000000000000011111000000000000000000110000000000000000',
+  '001111111000000000000011000000000011111111111111110001111111111000000000000000110000000000000000',
+  '001111111100000000000111111111111011111111111111111111111111111111110000000011110000000000000000',
+  '001111111111111111111111111111111111111111111111111111111111111111111111111111110000000000000000',
+  '001100000011111100000000000000001111111100000000011111111111111111000000000011111110000000000000',
+  '001100000011111100000000000000001111100000000000000000011111111111000000000011111110000000000000',
+  '001100000011111100000000000000000111000000000000000000001111111111000000000011111110000000000000',
+  '001100000011111100000000000000000111000000000000000000000111111111000000000001111110000000000000',
+  '001100000011111100000000000000000111000000000000000000000011111111000000000001111110000000000000',
+  '001100000011111000000000000000000111000000000000000000000011111111000000000001111110000000000000',
+  '001111111111111000000000000000000111000000000000000000000011111111000000000001111110000000000000',
+  '001111111111111100000000000000000111000000000000000000000011111111000000000001111110000000000000',
+  '001111111111111100000000000000000111000000000000000000000011111111000000000001111110000000000000',
+  '001111111111111110000000000000001111000000000000000000000011111111000000000001111111000000000000',
+  '001111111111111111000000000000011111100000000000000000000011111111000000000001111111110000000000',
+  '001111111111111111111111111111111111111000000000000000000011111000000000000001111111111100000000',
+  '001111000011111111111111000000111111111100000000000000001111111000000000000011111111110000000100',
+  '001100000000000001111111000000111111111111111110000000111111111000000000000001111111110000001100',
+  '000000000000000000000011000000111111111111111111111111111111111100000000000000111111110000000000',
+  '000000000000000000000000000000111111111111111111111111111111111100000000000000111111110000000000',
+  '000000000000000000000000000000111111111111111111111111111111111100000000000000111111110000000000',
+  '000000000000000000000000000000111111110000000000000000000111111100000000000000111111110000000000',
+  '000000000000000000000000000001111110000000000000000000000011111100000000000000111111111100000000',
+  '000000000000000000000000000001111110000000000000000000000001111100000000000000111111111100000000',
+  '000000000000000000000000000000111110000000000000000000000000111100000000000000111111111111110000',
+  '000000000000000000000000000000011110000000000000000000000000011100000000000001111111111111110000',
+  '000000000000000000000000000000011110000000000000000000000000011110000000000001111110000000000000',
+  '000000000000000000000000000000011110000000000000000000000000011111111000000111111110000000000000',
+  '000000000000000000000000000000011110000000000000000000000000011111111111001111111110000000000000',
+  '000000000000000000000000000000011110000000000000000000000000011111111111111111111110000000000000',
+  '000000000000000000000000000000111100000000000000000000000000001111111111111111111110000000000000',
+  '000000000000000000000000000000111100000000000000000000000000001111111111111111111110000000000000',
+  '000000000000000000000000000000111100000000000000000000000000001111111111111111111110000000000000',
+  '000000000000000000000000000000111100000000000000000000000000001111111111111111111110000000000000',
+  '000000000000000000000000000000111100000000000000000000000000001111111111111111111110000000000000',
+  '000000000000000000000000000000111100000000000000000000000000001111111111111111111110000000000000',
+  '000000000000000000000000000001111110000000000000000000000000111111111111111111111110000000000000',
+  '000000000000000000000000000011111111000000000000000000000000111111111111111111111110000000000000',
+  '000000000000000000000000000111111111100000000000000000000001111111111111111111111110000000000000',
+  '000000000000000000000000001111111111110000000000000000000111111111111111111111111110000000000000',
+  '001111111111110000001111111111111111111111111111111111111111111111111111111111111111111111111100',
+  '001111111111110000001111111111111111111111111111111111111111111111111111111111111111111111111100',
+  '000011111111111111111111111111111111111111111111111111111111111111111111111111111111111111111100',
+  '000011111111111111111111111111111111111111111111111111111111111111111111111111111111111111111100',
+  '000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+  '000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
 ];
-function circleRectHit(px, py, r, o) {
-    const cx = Math.max(o.x, Math.min(px, o.x + o.w)),
-        cy = Math.max(o.y, Math.min(py, o.y + o.h));
-    return Math.hypot(px - cx, py - cy) < r
+const WALK_GRID_W = 96;
+const WALK_GRID_H = 64;
+function walkCellWalkable(px, py) {
+    const gx = Math.floor(px / (WORLD_W / WALK_GRID_W));
+    const gy = Math.floor(py / (WORLD_H / WALK_GRID_H));
+    if (gx < 0 || gy < 0 || gx >= WALK_GRID_W || gy >= WALK_GRID_H) return false;
+    return WALK_GRID[gy][gx] === '1';
 }
 function blockedWorld(px, py, r=16) {
-    if (px < 60 || py < 60 || px > WORLD_W - 18 || py > WORLD_H - 18)
+    // A small sampling ring gives Olly a proper collision footprint instead of
+    // allowing his centre point to squeeze through trees and building corners.
+    if (px < 36 + r || py < 36 + r || px > WORLD_W - 36 - r || py > WORLD_H - 36 - r)
         return true;
-    return OBSTACLES.some(o => circleRectHit(px, py, r, o))
+    const samples = [
+        [0,0],[r,0],[-r,0],[0,r],[0,-r],
+        [r*.72,r*.72],[-r*.72,r*.72],[r*.72,-r*.72],[-r*.72,-r*.72]
+    ];
+    return samples.some(([ox,oy]) => !walkCellWalkable(px + ox, py + oy));
 }
 
 function drawOlly(ctx, x, y, s=.78, t=0, front=true, dir='right', moving=false) {
@@ -224,45 +299,59 @@ export function createLevel1(ui) {
     // Deliberately mixed placement: some patches hide objectives/gate, while
     // others are just atmospheric so the player cannot infer what matters.
     const FOG_PATCHES = [
-        { x: 470, y: 420, rx: 150, ry: 118, a: .78, seed: .2 },
-        { x: 760, y: 300, rx: 165, ry: 125, a: .80, seed: 1.1 },
-        { x: 360, y: 800, rx: 150, ry: 112, a: .76, seed: 2.0 },
-        { x: 1115, y: 505, rx: 180, ry: 135, a: .80, seed: 2.8 },
-        { x: 1380, y: 820, rx: 185, ry: 140, a: .82, seed: 3.6 },
-        { x: 1030, y: 175, rx: 145, ry: 92, a: .68, seed: 4.4 },
-        { x: 1245, y: 300, rx: 145, ry: 105, a: .66, seed: 5.0 },
-        { x: 875, y: 690, rx: 175, ry: 115, a: .70, seed: 5.7 },
-        { x: 590, y: 610, rx: 135, ry: 100, a: .62, seed: 6.4 },
-        { x: 150, y: 880, rx: 145, ry: 110, a: .65, seed: 7.1 },
-        { x: 1370, y: 560, rx: 120, ry: 100, a: .58, seed: 7.8 }
+        // Objective-adjacent dense patches, deliberately mixed with decoys.
+        { x: 475, y: 420, rx: 145, ry: 105, a: .76, seed: .2 },
+        { x: 400, y: 555, rx: 105, ry: 85, a: .48, seed: .9 },
+        { x: 760, y: 300, rx: 155, ry: 115, a: .82, seed: 1.7 },
+        { x: 880, y: 250, rx: 95, ry: 70, a: .38, seed: 2.4 },
+        { x: 360, y: 800, rx: 145, ry: 105, a: .78, seed: 3.1 },
+        { x: 470, y: 735, rx: 95, ry: 75, a: .42, seed: 3.8 },
+        { x: 1115, y: 505, rx: 175, ry: 125, a: .84, seed: 4.5 },
+        { x: 1215, y: 420, rx: 100, ry: 78, a: .46, seed: 5.2 },
+        { x: 1380, y: 820, rx: 145, ry: 112, a: .88, seed: 5.9 },
+        { x: 1245, y: 705, rx: 105, ry: 80, a: .55, seed: 6.6 },
+        { x: 1010, y: 180, rx: 120, ry: 82, a: .44, seed: 7.3 },
+        { x: 1180, y: 225, rx: 150, ry: 95, a: .62, seed: 8.0 },
+        { x: 620, y: 680, rx: 115, ry: 90, a: .52, seed: 8.7 },
+        { x: 900, y: 700, rx: 145, ry: 105, a: .68, seed: 9.4 },
+        { x: 1030, y: 850, rx: 120, ry: 92, a: .50, seed: 10.1 },
+        { x: 600, y: 470, rx: 85, ry: 65, a: .36, seed: 10.8 },
+        { x: 190, y: 520, rx: 105, ry: 78, a: .42, seed: 11.5 },
+        { x: 1320, y: 560, rx: 120, ry: 90, a: .56, seed: 12.2 },
+        { x: 1450, y: 450, rx: 92, ry: 70, a: .30, seed: 12.9, edge: true },
+        { x: 75, y: 420, rx: 85, ry: 72, a: .28, seed: 13.6, edge: true },
+        { x: 75, y: 680, rx: 95, ry: 80, a: .26, seed: 14.3, edge: true },
+        { x: 1450, y: 690, rx: 90, ry: 78, a: .28, seed: 15.0, edge: true },
+        { x: 500, y: 120, rx: 100, ry: 70, a: .30, seed: 15.7, edge: true },
+        { x: 820, y: 900, rx: 110, ry: 72, a: .32, seed: 16.4, edge: true },
+        { x: 1180, y: 920, rx: 120, ry: 75, a: .30, seed: 17.1, edge: true },
+        { x: 260, y: 930, rx: 105, ry: 72, a: .27, seed: 17.8, edge: true }
     ];
 
     function paintFogPatches() {
         fogCtx.clearRect(0, 0, WORLD_W, WORLD_H);
         fogCtx.save();
-        fogCtx.filter = 'blur(7px)';
-        const puffs = [
-            [-.48, -.08, .62, .82],
-            [-.25, -.30, .78, .74],
-            [.05, -.18, .90, .86],
-            [.34, -.03, .70, .80],
-            [.48, .18, .58, .70],
-            [-.02, .22, .92, .76],
-            [.22, .30, .66, .64]
-        ];
-        for (const patch of FOG_PATCHES) {
-            for (const [ox, oy, scale, alpha] of puffs) {
+        fogCtx.filter = 'blur(8px)';
+        for (let i = 0; i < FOG_PATCHES.length; i++) {
+            const patch = FOG_PATCHES[i];
+            const puffCount = patch.edge ? 5 : 8;
+            for (let j = 0; j < puffCount; j++) {
+                const a = patch.seed + j * 1.73;
+                const ox = Math.sin(a * 1.91) * .34;
+                const oy = Math.cos(a * 1.37) * .28;
+                const scale = .58 + (Math.sin(a * 2.17) + 1) * .18;
                 const px = patch.x + patch.rx * ox;
                 const py = patch.y + patch.ry * oy;
-                const rx = patch.rx * .48 * scale;
-                const ry = patch.ry * .56 * scale;
+                const rx = patch.rx * .38 * scale;
+                const ry = patch.ry * .34 * (0.78 + (Math.cos(a) + 1) * .12);
                 const g = fogCtx.createRadialGradient(px, py, 0, px, py, rx);
-                g.addColorStop(0, `rgba(205,204,214,${patch.a * alpha})`);
-                g.addColorStop(.56, `rgba(181,180,193,${patch.a * alpha * .72})`);
+                const alpha = patch.a * (0.72 + (Math.sin(a * 1.3) + 1) * .12);
+                g.addColorStop(0, `rgba(208,207,217,${alpha})`);
+                g.addColorStop(.52, `rgba(184,183,197,${alpha * .70})`);
                 g.addColorStop(1, 'rgba(155,154,170,0)');
                 fogCtx.fillStyle = g;
                 fogCtx.beginPath();
-                fogCtx.ellipse(px, py, rx, ry, 0, 0, Math.PI * 2);
+                fogCtx.ellipse(px, py, rx, ry, Math.sin(a) * .25, 0, Math.PI * 2);
                 fogCtx.fill();
             }
         }
@@ -336,36 +425,32 @@ export function createLevel1(ui) {
         mistCtx.clearRect(0, 0, w, h);
         mistCtx.save();
         mistCtx.scale(sx, sy);
-        mistCtx.filter = 'blur(13px)';
-
-        // Tiny drifting puffs sit inside the static cloud patches. Because the
-        // layer is masked by fogCanvas below, revealed areas stay completely clear.
+        mistCtx.filter = 'blur(12px)';
         for (let i = 0; i < FOG_PATCHES.length; i++) {
             const p = FOG_PATCHES[i];
-            const driftX = Math.sin(t / (3200 + i * 170) + p.seed) * 18;
-            const driftY = Math.cos(t / (4100 + i * 130) + p.seed) * 9;
+            const driftX = Math.sin(t / (3600 + i * 145) + p.seed) * (p.edge ? 8 : 15);
+            const driftY = Math.cos(t / (4300 + i * 120) + p.seed) * (p.edge ? 4 : 8);
             const px = p.x + driftX;
             const py = p.y + driftY;
-            const rx = p.rx * .34;
-            const ry = p.ry * .30;
+            const rx = p.rx * .28;
+            const ry = p.ry * .20;
             const g = mistCtx.createRadialGradient(px, py, 0, px, py, rx);
-            g.addColorStop(0, `rgba(245,244,249,${.15 + p.a * .10})`);
-            g.addColorStop(.55, `rgba(224,222,232,${.10 + p.a * .06})`);
+            const alpha = p.edge ? .045 : .07 + p.a * .045;
+            g.addColorStop(0, `rgba(248,247,250,${alpha})`);
+            g.addColorStop(.60, `rgba(228,226,236,${alpha * .62})`);
             g.addColorStop(1, 'rgba(205,202,214,0)');
             mistCtx.fillStyle = g;
             mistCtx.beginPath();
-            mistCtx.ellipse(px, py, rx, ry, 0, 0, Math.PI * 2);
+            mistCtx.ellipse(px, py, rx, ry, Math.sin(p.seed) * .2, 0, Math.PI * 2);
             mistCtx.fill();
         }
         mistCtx.restore();
-
         mistCtx.save();
         mistCtx.globalCompositeOperation = 'destination-in';
         mistCtx.drawImage(fogCanvas, 0, 0, mistCanvas.width, mistCanvas.height);
         mistCtx.restore();
-
         ctx.save();
-        ctx.globalAlpha = .95;
+        ctx.globalAlpha = .52;
         ctx.drawImage(mistCanvas, 0, 0, WORLD_W, WORLD_H);
         ctx.restore();
     }
@@ -532,6 +617,12 @@ export function createLevel1(ui) {
                 facingDir = dx < 0 ? 'left' : 'right';
             walkDir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : (dy < 0 ? 'up' : 'down');
             ui.dialogue.textContent = 'The cemetery is strangely peaceful. Somewhere nearby, a goth is probably plotting.';
+        }
+        // v6.5.18: approaching the locked gate triggers its story interaction
+        // automatically, but only until all four Level 1 challenges are done.
+        if (mode === 'map' && !objectivesComplete() && !gateEncounterShown && Math.hypot(x - boss.x, y - boss.y) < 155) {
+            gateEncounterShown = true;
+            openInteractionEncounter('lockedGate');
         }
     }
     const W2C = (gx, gy) => ({
@@ -713,6 +804,7 @@ export function createLevel1(ui) {
     }
     revealInitialUpperLeft();
     let pendingInteraction = null;
+    let gateEncounterShown = false;
     function openInteractionEncounter(kind, enemy=null) {
         const data = ENCOUNTER_DATA[kind];
         if (!data)
@@ -729,11 +821,22 @@ export function createLevel1(ui) {
         ui.encounterImage.src = data.image;
         ui.encounterName.textContent = data.name;
         ui.encounterText.textContent = data.text;
+        if (ui.encounterReady) {
+            ui.encounterReady.textContent = 'I\'M READY';
+            ui.encounterReady.classList.remove('hidden');
+        }
+        if (kind === 'lockedGate' && ui.encounterReady) {
+            ui.encounterReady.classList.add('hidden');
+        }
         ui.encounter.classList.remove('hidden');
     }
     function closeEncounter() {
         ui.encounter.classList.add('hidden');
         pendingInteraction = null;
+        if (ui.encounterReady) {
+            ui.encounterReady.classList.remove('hidden');
+            ui.encounterReady.textContent = 'I\'M READY';
+        }
         mode = 'map';
     }
     function confirmEncounter() {
@@ -1436,6 +1539,7 @@ export function createLevel1(ui) {
         }
     }
     function start() {
+        gateEncounterShown = false;
         stats();
         drawMini();
         cancelAnimationFrame(relationshipRAF);
