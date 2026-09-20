@@ -1,14 +1,13 @@
-GOODBYE GOTH v6.5.16g - FOG REFINEMENT
+GOODBYE GOTH v6.5.16h
+Fog Cloud Patches
 
-Active file changed:
-- js/levels/level1.js
+ONLY change in this patch: js/levels/level1.js
 
 Changes:
-- Removed the obvious long line-shaped fog wisps.
-- Replaced them with slow, overlapping blurred vapour pockets and a few very soft curls.
-- Increased the base fog opacity slightly so unexplored areas feel more hidden.
-- Tightened the initial upper-left reveal so the church/start area remains readable while more of the cemetery stays undiscovered.
-- Preserved the existing starting position, movement/collision, combat, jump, dodge, inventory, key and challenge logic.
+- Keeps the compact upper-left starting reveal.
+- Makes unexplored fog denser so the cemetery is not visibly readable through it.
+- Replaces visible line/wisp shapes with overlapping soft cloud banks and drifting puffs.
+- Fog remains clearable as Olly explores.
+- No combat, collision, starting position, inventory, challenge, key, or gate logic changes.
 
-Do not upload this ZIP itself into the repository root. Upload the included file into the existing active path:
-js/levels/level1.js
+Upload js/levels/level1.js into the existing js/levels/ folder.

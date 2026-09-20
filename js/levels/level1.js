@@ -208,7 +208,7 @@ export function createLevel1(ui) {
     fogCanvas.width = WORLD_W;
     fogCanvas.height = WORLD_H;
     const fogCtx = fogCanvas.getContext('2d');
-    fogCtx.fillStyle = 'rgba(112, 108, 122, 0.72)';
+    fogCtx.fillStyle = 'rgba(105, 101, 116, 0.90)';
     fogCtx.fillRect(0, 0, WORLD_W, WORLD_H);
 
     const mistCanvas = document.createElement('canvas');
@@ -297,71 +297,85 @@ export function createLevel1(ui) {
             sy = h / WORLD_H;
         mistCtx.clearRect(0, 0, w, h);
 
-        // v6.5.16g: replace the obvious line-shaped wisps with slow,
-        // overlapping pockets of drifting vapour. The movement is deliberately
-        // subtle so it reads as fog rather than painted stripes.
+        // v6.5.16h: fog is now made from overlapping cloud banks rather than
+        // visible strokes. The dense base keeps unexplored areas hidden while
+        // these soft moving pockets give the fog depth and variation.
         mistCtx.save();
         mistCtx.scale(sx, sy);
-        mistCtx.filter = 'blur(24px)';
+        mistCtx.filter = 'blur(30px)';
 
         const drift = (speed, phase, amount) =>
             Math.sin((t / speed) + phase) * amount;
 
-        const clouds = [
-            { x: 115, y: 120, rx: 300, ry: 105, a: .34, speed: 4300, phase: .4 },
-            { x: 450, y: 235, rx: 360, ry: 92,  a: .28, speed: 5100, phase: 1.7 },
-            { x: 850, y: 360, rx: 390, ry: 115, a: .30, speed: 5600, phase: 2.4 },
-            { x: 1180, y: 520, rx: 360, ry: 125, a: .34, speed: 4700, phase: 3.1 },
-            { x: 760, y: 650, rx: 430, ry: 120, a: .28, speed: 6000, phase: 4.0 },
-            { x: 1160, y: 760, rx: 330, ry: 100, a: .30, speed: 5200, phase: 5.0 }
+        const banks = [
+            { x: 760, y: 130, rx: 250, ry: 115, a: .34, speed: 4700, phase: .2 },
+            { x: 1050, y: 155, rx: 300, ry: 135, a: .27, speed: 5400, phase: 1.1 },
+            { x: 1270, y: 315, rx: 300, ry: 150, a: .31, speed: 5100, phase: 2.0 },
+            { x: 900, y: 420, rx: 340, ry: 135, a: .24, speed: 5800, phase: 2.8 },
+            { x: 1180, y: 555, rx: 300, ry: 155, a: .33, speed: 4900, phase: 3.7 },
+            { x: 720, y: 680, rx: 270, ry: 120, a: .28, speed: 6100, phase: 4.5 },
+            { x: 1030, y: 760, rx: 340, ry: 130, a: .30, speed: 5300, phase: 5.2 },
+            { x: 1320, y: 760, rx: 260, ry: 145, a: .25, speed: 5700, phase: 6.0 }
         ];
 
-        for (const cloud of clouds) {
-            const cx = cloud.x + drift(cloud.speed, cloud.phase, 75);
-            const cy = cloud.y + drift(cloud.speed * .83, cloud.phase + 1.2, 18);
-            const g = mistCtx.createRadialGradient(cx, cy, 0, cx, cy, cloud.rx);
-            g.addColorStop(0, `rgba(245,242,248,${cloud.a})`);
-            g.addColorStop(.45, `rgba(220,217,226,${cloud.a * .72})`);
-            g.addColorStop(1, 'rgba(190,188,200,0)');
-            mistCtx.fillStyle = g;
-            mistCtx.beginPath();
-            mistCtx.ellipse(cx, cy, cloud.rx, cloud.ry, 0, 0, Math.PI * 2);
-            mistCtx.fill();
+        for (const bank of banks) {
+            const cx = bank.x + drift(bank.speed, bank.phase, 48);
+            const cy = bank.y + drift(bank.speed * .87, bank.phase + 1.3, 22);
+
+            // Several overlapping puffs make each bank feel irregular and
+            // cloud-like instead of looking like a single painted oval.
+            const puffs = [
+                [-.42, -.08, .72, .82],
+                [-.12, -.28, .86, .70],
+                [.18, -.12, .78, .84],
+                [.42, .08, .66, .72],
+                [.02, .20, .92, .68]
+            ];
+            for (const [ox, oy, scale, alpha] of puffs) {
+                const px = cx + bank.rx * ox;
+                const py = cy + bank.ry * oy;
+                const rx = bank.rx * .52 * scale;
+                const ry = bank.ry * .62 * scale;
+                const g = mistCtx.createRadialGradient(px, py, 0, px, py, rx);
+                g.addColorStop(0, `rgba(242,240,247,${bank.a * alpha})`);
+                g.addColorStop(.52, `rgba(215,212,223,${bank.a * alpha * .72})`);
+                g.addColorStop(1, 'rgba(190,188,201,0)');
+                mistCtx.fillStyle = g;
+                mistCtx.beginPath();
+                mistCtx.ellipse(px, py, rx, ry, 0, 0, Math.PI * 2);
+                mistCtx.fill();
+            }
         }
 
-        // A few very soft vertical curls add depth without becoming visible
-        // cartoon lines.
-        mistCtx.filter = 'blur(16px)';
-        const curls = [
-            { x: 1010, y: 300, h: 260, a: .14, phase: .5 },
-            { x: 1260, y: 560, h: 240, a: .13, phase: 2.0 },
-            { x: 670, y: 570, h: 220, a: .10, phase: 3.5 }
+        // A handful of very faint drifting puffs at the edges create the
+        // impression that the fog has volume without drawing literal wisps.
+        mistCtx.filter = 'blur(18px)';
+        const edgePuffs = [
+            { x: 690, y: 300, r: 95, a: .18, phase: .4 },
+            { x: 1280, y: 470, r: 115, a: .16, phase: 2.1 },
+            { x: 790, y: 760, r: 105, a: .15, phase: 4.0 }
         ];
-        for (const c of curls) {
-            const dx = drift(3900, c.phase, 34);
-            const dy = drift(4300, c.phase + .8, 12);
-            const g = mistCtx.createLinearGradient(c.x + dx, c.y + dy, c.x + dx, c.y + c.h + dy);
-            g.addColorStop(0, 'rgba(235,232,240,0)');
-            g.addColorStop(.45, `rgba(225,222,232,${c.a})`);
-            g.addColorStop(1, 'rgba(210,208,218,0)');
-            mistCtx.strokeStyle = g;
-            mistCtx.lineWidth = 70;
-            mistCtx.lineCap = 'round';
+        for (const p of edgePuffs) {
+            const px = p.x + drift(3600, p.phase, 30);
+            const py = p.y + drift(4100, p.phase + .8, 16);
+            const g = mistCtx.createRadialGradient(px, py, 0, px, py, p.r);
+            g.addColorStop(0, `rgba(248,246,250,${p.a})`);
+            g.addColorStop(1, 'rgba(205,202,214,0)');
+            mistCtx.fillStyle = g;
             mistCtx.beginPath();
-            mistCtx.moveTo(c.x + dx, c.y + dy);
-            mistCtx.quadraticCurveTo(c.x + dx + 45, c.y + c.h * .5 + dy, c.x + dx - 20, c.y + c.h + dy);
-            mistCtx.stroke();
+            mistCtx.arc(px, py, p.r, 0, Math.PI * 2);
+            mistCtx.fill();
         }
         mistCtx.restore();
 
-        // Keep the animated vapour only inside unexplored fog.
+        // Only render the cloud layer where the underlying fog still exists.
         mistCtx.save();
         mistCtx.globalCompositeOperation = 'destination-in';
         mistCtx.drawImage(fogCanvas, 0, 0, mistCanvas.width, mistCanvas.height);
         mistCtx.restore();
 
         ctx.save();
-        ctx.globalAlpha = .92;
+        ctx.globalAlpha = .96;
         ctx.drawImage(mistCanvas, 0, 0, WORLD_W, WORLD_H);
         ctx.restore();
     }
@@ -679,35 +693,32 @@ export function createLevel1(ui) {
     function revealInitialUpperLeft() {
         fogCtx.save();
         fogCtx.globalCompositeOperation = 'destination-out';
+        fogCtx.filter = 'blur(10px)';
 
-        // v6.5.16g: tighter opening reveal. The church, starting path and
-        // immediate Zombie Goth area are visible, but the cemetery still feels
-        // genuinely unexplored beyond that pocket.
-        const grad = fogCtx.createRadialGradient(285, 340, 90, 285, 340, 390);
-        grad.addColorStop(0, 'rgba(0,0,0,1)');
-        grad.addColorStop(.68, 'rgba(0,0,0,.99)');
-        grad.addColorStop(1, 'rgba(0,0,0,0)');
-        fogCtx.fillStyle = grad;
+        // v6.5.16h: the opening discovery pocket is deliberately compact.
+        // Nothing beyond this irregular boundary should be readable at start.
+        fogCtx.fillStyle = 'rgba(0,0,0,1)';
         fogCtx.beginPath();
         fogCtx.moveTo(0, 0);
-        fogCtx.lineTo(560, 0);
-        fogCtx.lineTo(560, 145);
-        fogCtx.quadraticCurveTo(555, 300, 505, 430);
-        fogCtx.quadraticCurveTo(455, 565, 330, 625);
-        fogCtx.quadraticCurveTo(180, 650, 0, 625);
+        fogCtx.lineTo(565, 0);
+        fogCtx.lineTo(565, 115);
+        fogCtx.quadraticCurveTo(555, 205, 525, 300);
+        fogCtx.quadraticCurveTo(505, 405, 445, 485);
+        fogCtx.quadraticCurveTo(390, 550, 300, 565);
+        fogCtx.quadraticCurveTo(170, 575, 0, 565);
         fogCtx.closePath();
         fogCtx.fill();
         fogCtx.restore();
 
         const minCol = 0,
-            maxCol = Math.min(COLS - 1, Math.floor(560 / GRID)),
+            maxCol = Math.min(COLS - 1, Math.floor(565 / GRID)),
             minRow = 0,
-            maxRow = Math.min(ROWS - 1, Math.floor(625 / GRID));
+            maxRow = Math.min(ROWS - 1, Math.floor(575 / GRID));
         for (let row = minRow; row <= maxRow; row++) {
             for (let col = minCol; col <= maxCol; col++) {
                 const cx = col * GRID + GRID / 2,
                     cy = row * GRID + GRID / 2;
-                if (cx <= 560 && cy <= 625)
+                if (cx <= 565 && cy <= 575)
                     revealed[row][col] = true;
             }
         }
