@@ -142,7 +142,7 @@ function circleRectHit(px, py, r, o) {
     return Math.hypot(px - cx, py - cy) < r
 }
 function blockedWorld(px, py, r=16) {
-    if (px < 18 || py < 18 || px > WORLD_W - 18 || py > WORLD_H - 18)
+    if (px < 60 || py < 60 || px > WORLD_W - 18 || py > WORLD_H - 18)
         return true;
     return OBSTACLES.some(o => circleRectHit(px, py, r, o))
 }
@@ -202,25 +202,73 @@ export function createLevel1(ui) {
     const revealed = Array.from({
         length: ROWS
     }, () => Array(COLS).fill(false));
-    // v6.5.16d: persistent grey fog with a smaller initial reveal, soft
-    // path-based clearing, and subtle animated wisps for depth.
+    // v6.5.17: exploration fog is made from separate soft cloud patches.
+    // The map itself is never covered by one giant sheet. Each patch can be
+    // cleared independently as Olly explores it.
     const fogCanvas = document.createElement('canvas');
     fogCanvas.width = WORLD_W;
     fogCanvas.height = WORLD_H;
     const fogCtx = fogCanvas.getContext('2d');
-    fogCtx.fillStyle = 'rgba(105, 101, 116, 0.90)';
-    fogCtx.fillRect(0, 0, WORLD_W, WORLD_H);
 
     const mistCanvas = document.createElement('canvas');
     mistCanvas.width = WORLD_W / 2;
     mistCanvas.height = WORLD_H / 2;
     const mistCtx = mistCanvas.getContext('2d');
 
-    const FOG_REVEAL_RADIUS = 118;
-    const FOG_START_RADIUS = 168;
-    const FOG_PATH_WIDTH = 156;
+    const FOG_REVEAL_RADIUS = 128;
+    const FOG_START_RADIUS = 225;
+    const FOG_PATH_WIDTH = 128;
     let lastFogRevealX = null,
         lastFogRevealY = null;
+
+    // Deliberately mixed placement: some patches hide objectives/gate, while
+    // others are just atmospheric so the player cannot infer what matters.
+    const FOG_PATCHES = [
+        { x: 470, y: 420, rx: 150, ry: 118, a: .78, seed: .2 },
+        { x: 760, y: 300, rx: 165, ry: 125, a: .80, seed: 1.1 },
+        { x: 360, y: 800, rx: 150, ry: 112, a: .76, seed: 2.0 },
+        { x: 1115, y: 505, rx: 180, ry: 135, a: .80, seed: 2.8 },
+        { x: 1380, y: 820, rx: 185, ry: 140, a: .82, seed: 3.6 },
+        { x: 1030, y: 175, rx: 145, ry: 92, a: .68, seed: 4.4 },
+        { x: 1245, y: 300, rx: 145, ry: 105, a: .66, seed: 5.0 },
+        { x: 875, y: 690, rx: 175, ry: 115, a: .70, seed: 5.7 },
+        { x: 590, y: 610, rx: 135, ry: 100, a: .62, seed: 6.4 },
+        { x: 150, y: 880, rx: 145, ry: 110, a: .65, seed: 7.1 },
+        { x: 1370, y: 560, rx: 120, ry: 100, a: .58, seed: 7.8 }
+    ];
+
+    function paintFogPatches() {
+        fogCtx.clearRect(0, 0, WORLD_W, WORLD_H);
+        fogCtx.save();
+        fogCtx.filter = 'blur(7px)';
+        const puffs = [
+            [-.48, -.08, .62, .82],
+            [-.25, -.30, .78, .74],
+            [.05, -.18, .90, .86],
+            [.34, -.03, .70, .80],
+            [.48, .18, .58, .70],
+            [-.02, .22, .92, .76],
+            [.22, .30, .66, .64]
+        ];
+        for (const patch of FOG_PATCHES) {
+            for (const [ox, oy, scale, alpha] of puffs) {
+                const px = patch.x + patch.rx * ox;
+                const py = patch.y + patch.ry * oy;
+                const rx = patch.rx * .48 * scale;
+                const ry = patch.ry * .56 * scale;
+                const g = fogCtx.createRadialGradient(px, py, 0, px, py, rx);
+                g.addColorStop(0, `rgba(205,204,214,${patch.a * alpha})`);
+                g.addColorStop(.56, `rgba(181,180,193,${patch.a * alpha * .72})`);
+                g.addColorStop(1, 'rgba(155,154,170,0)');
+                fogCtx.fillStyle = g;
+                fogCtx.beginPath();
+                fogCtx.ellipse(px, py, rx, ry, 0, 0, Math.PI * 2);
+                fogCtx.fill();
+            }
+        }
+        fogCtx.restore();
+    }
+    paintFogPatches();
 
     function markFogCells(px, py, radius) {
         const minCol = Math.max(0, Math.floor((px - radius - 32) / GRID));
@@ -240,9 +288,9 @@ export function createLevel1(ui) {
     function eraseFogCircle(px, py, radius) {
         fogCtx.save();
         fogCtx.globalCompositeOperation = 'destination-out';
-        const grad = fogCtx.createRadialGradient(px, py, radius * .18, px, py, radius);
+        const grad = fogCtx.createRadialGradient(px, py, radius * .12, px, py, radius);
         grad.addColorStop(0, 'rgba(0,0,0,1)');
-        grad.addColorStop(.72, 'rgba(0,0,0,.98)');
+        grad.addColorStop(.70, 'rgba(0,0,0,.98)');
         grad.addColorStop(1, 'rgba(0,0,0,0)');
         fogCtx.fillStyle = grad;
         fogCtx.beginPath();
@@ -255,20 +303,12 @@ export function createLevel1(ui) {
         fogCtx.save();
         fogCtx.globalCompositeOperation = 'destination-out';
         fogCtx.lineCap = 'round';
-        fogCtx.lineJoin = 'round';
-        const gradAlpha = [
-            [FOG_PATH_WIDTH, .98],
-            [FOG_PATH_WIDTH * .76, .96],
-            [FOG_PATH_WIDTH * .48, 1]
-        ];
-        for (const [width, alpha] of gradAlpha) {
-            fogCtx.globalAlpha = alpha;
-            fogCtx.lineWidth = width;
-            fogCtx.beginPath();
-            fogCtx.moveTo(x1, y1);
-            fogCtx.lineTo(x2, y2);
-            fogCtx.stroke();
-        }
+        fogCtx.lineWidth = FOG_PATH_WIDTH;
+        fogCtx.globalAlpha = .98;
+        fogCtx.beginPath();
+        fogCtx.moveTo(x1, y1);
+        fogCtx.lineTo(x2, y2);
+        fogCtx.stroke();
         fogCtx.restore();
     }
 
@@ -280,8 +320,6 @@ export function createLevel1(ui) {
             eraseFogPath(lastFogRevealX, lastFogRevealY, px, py);
             markFogCells(px, py, FOG_REVEAL_RADIUS);
         } else {
-            // Small moving reveal; the larger opening reveal is handled once by
-            // revealInitialUpperLeft().
             eraseFogCircle(px, py, FOG_START_RADIUS);
             markFogCells(px, py, FOG_START_RADIUS);
         }
@@ -296,86 +334,38 @@ export function createLevel1(ui) {
             sx = w / WORLD_W,
             sy = h / WORLD_H;
         mistCtx.clearRect(0, 0, w, h);
-
-        // v6.5.16h: fog is now made from overlapping cloud banks rather than
-        // visible strokes. The dense base keeps unexplored areas hidden while
-        // these soft moving pockets give the fog depth and variation.
         mistCtx.save();
         mistCtx.scale(sx, sy);
-        mistCtx.filter = 'blur(30px)';
+        mistCtx.filter = 'blur(13px)';
 
-        const drift = (speed, phase, amount) =>
-            Math.sin((t / speed) + phase) * amount;
-
-        const banks = [
-            { x: 760, y: 130, rx: 250, ry: 115, a: .34, speed: 4700, phase: .2 },
-            { x: 1050, y: 155, rx: 300, ry: 135, a: .27, speed: 5400, phase: 1.1 },
-            { x: 1270, y: 315, rx: 300, ry: 150, a: .31, speed: 5100, phase: 2.0 },
-            { x: 900, y: 420, rx: 340, ry: 135, a: .24, speed: 5800, phase: 2.8 },
-            { x: 1180, y: 555, rx: 300, ry: 155, a: .33, speed: 4900, phase: 3.7 },
-            { x: 720, y: 680, rx: 270, ry: 120, a: .28, speed: 6100, phase: 4.5 },
-            { x: 1030, y: 760, rx: 340, ry: 130, a: .30, speed: 5300, phase: 5.2 },
-            { x: 1320, y: 760, rx: 260, ry: 145, a: .25, speed: 5700, phase: 6.0 }
-        ];
-
-        for (const bank of banks) {
-            const cx = bank.x + drift(bank.speed, bank.phase, 48);
-            const cy = bank.y + drift(bank.speed * .87, bank.phase + 1.3, 22);
-
-            // Several overlapping puffs make each bank feel irregular and
-            // cloud-like instead of looking like a single painted oval.
-            const puffs = [
-                [-.42, -.08, .72, .82],
-                [-.12, -.28, .86, .70],
-                [.18, -.12, .78, .84],
-                [.42, .08, .66, .72],
-                [.02, .20, .92, .68]
-            ];
-            for (const [ox, oy, scale, alpha] of puffs) {
-                const px = cx + bank.rx * ox;
-                const py = cy + bank.ry * oy;
-                const rx = bank.rx * .52 * scale;
-                const ry = bank.ry * .62 * scale;
-                const g = mistCtx.createRadialGradient(px, py, 0, px, py, rx);
-                g.addColorStop(0, `rgba(242,240,247,${bank.a * alpha})`);
-                g.addColorStop(.52, `rgba(215,212,223,${bank.a * alpha * .72})`);
-                g.addColorStop(1, 'rgba(190,188,201,0)');
-                mistCtx.fillStyle = g;
-                mistCtx.beginPath();
-                mistCtx.ellipse(px, py, rx, ry, 0, 0, Math.PI * 2);
-                mistCtx.fill();
-            }
-        }
-
-        // A handful of very faint drifting puffs at the edges create the
-        // impression that the fog has volume without drawing literal wisps.
-        mistCtx.filter = 'blur(18px)';
-        const edgePuffs = [
-            { x: 690, y: 300, r: 95, a: .18, phase: .4 },
-            { x: 1280, y: 470, r: 115, a: .16, phase: 2.1 },
-            { x: 790, y: 760, r: 105, a: .15, phase: 4.0 }
-        ];
-        for (const p of edgePuffs) {
-            const px = p.x + drift(3600, p.phase, 30);
-            const py = p.y + drift(4100, p.phase + .8, 16);
-            const g = mistCtx.createRadialGradient(px, py, 0, px, py, p.r);
-            g.addColorStop(0, `rgba(248,246,250,${p.a})`);
+        // Tiny drifting puffs sit inside the static cloud patches. Because the
+        // layer is masked by fogCanvas below, revealed areas stay completely clear.
+        for (let i = 0; i < FOG_PATCHES.length; i++) {
+            const p = FOG_PATCHES[i];
+            const driftX = Math.sin(t / (3200 + i * 170) + p.seed) * 18;
+            const driftY = Math.cos(t / (4100 + i * 130) + p.seed) * 9;
+            const px = p.x + driftX;
+            const py = p.y + driftY;
+            const rx = p.rx * .34;
+            const ry = p.ry * .30;
+            const g = mistCtx.createRadialGradient(px, py, 0, px, py, rx);
+            g.addColorStop(0, `rgba(245,244,249,${.15 + p.a * .10})`);
+            g.addColorStop(.55, `rgba(224,222,232,${.10 + p.a * .06})`);
             g.addColorStop(1, 'rgba(205,202,214,0)');
             mistCtx.fillStyle = g;
             mistCtx.beginPath();
-            mistCtx.arc(px, py, p.r, 0, Math.PI * 2);
+            mistCtx.ellipse(px, py, rx, ry, 0, 0, Math.PI * 2);
             mistCtx.fill();
         }
         mistCtx.restore();
 
-        // Only render the cloud layer where the underlying fog still exists.
         mistCtx.save();
         mistCtx.globalCompositeOperation = 'destination-in';
         mistCtx.drawImage(fogCanvas, 0, 0, mistCanvas.width, mistCanvas.height);
         mistCtx.restore();
 
         ctx.save();
-        ctx.globalAlpha = .96;
+        ctx.globalAlpha = .95;
         ctx.drawImage(mistCanvas, 0, 0, WORLD_W, WORLD_H);
         ctx.restore();
     }
@@ -555,6 +545,29 @@ export function createLevel1(ui) {
     function unlockedBoss() {
         return objectivesComplete() && keyCollected
     }
+    function refreshInventoryUI() {
+        const count = inventory && inventory.key ? 1 : 0;
+        const countText = `${count}/10`;
+        const countEl = document.getElementById('inventory-count');
+        const largeCountEl = document.getElementById('inventory-count-large');
+        if (countEl) countEl.textContent = countText;
+        if (largeCountEl) largeCountEl.textContent = `${count} / 10 ITEMS`;
+        const slots = document.querySelectorAll('#inventory .inventory-slot');
+        if (slots.length) {
+            slots.forEach((slot, i) => {
+                if (i === 0 && count) {
+                    slot.innerHTML = '🔑<span style="display:block;font-size:10px;margin-top:6px;">GOLDEN KEY</span>';
+                    slot.classList.add('inventory-filled');
+                } else {
+                    slot.textContent = String(i + 1).padStart(2, '0');
+                    slot.classList.remove('inventory-filled');
+                }
+            });
+        }
+        const emptyCopy = document.querySelector('#inventory .inventory-empty-copy');
+        if (emptyCopy) emptyCopy.textContent = count ? 'One suspiciously important key. Probably useful.' : 'Nothing in here yet. A suspiciously empty bag.';
+    }
+
     function stats() {
         hp = Math.max(0, Math.min(maxHp, hp));
         ui.hpEl.textContent = `${hp} / ${maxHp} HP`;
@@ -567,6 +580,7 @@ export function createLevel1(ui) {
         ui.goalRel.innerHTML = relationshipDone ? `<span class="good">✓ ${ACTIVITY_DATA.relationshipChallenge.name} complete</span>` : `○ Complete the ${ACTIVITY_DATA.relationshipChallenge.name} Challenge`;
         ui.goalPuzzle.innerHTML = puzzleSolved ? '<span class="good">✓ Princess Question answered</span>' : '○ Answer the Princess Question';
         ui.goalBoss.innerHTML = unlockedBoss() ? '<span class="good">✓ Boss gate unlocked</span>' : '<span class="locked">🔒 Boss gate locked</span>';
+        refreshInventoryUI();
         if (objectivesComplete() && !keyCollected && !keySpawnAnnounced) {
             keySpawnAnnounced = true;
             ui.dialogue.textContent = '🔑 A golden key has appeared somewhere in the cemetery. Find it.';
@@ -601,8 +615,10 @@ export function createLevel1(ui) {
         // Olly remains visible as the exploration reference point.
         marker(x, y, '#fff', 4);
     }
-    function drawMarker(ctx, img, px, py, w=68, h=68, label='') {
+    function drawMarker(ctx, img, px, py, w=68, h=68, label='', t=0) {
         ctx.save();
+        const bob = Math.sin(t * 4.8) * 4.5;
+        ctx.translate(0, -bob);
         ctx.globalAlpha = .98;
         ctx.shadowColor = 'rgba(255,146,195,.55)';
         ctx.shadowBlur = 14;
@@ -651,9 +667,9 @@ export function createLevel1(ui) {
         if (!enemies[1].dead)
             drawZombieSprite(ctx, enemies[1].x, enemies[1].y, 'chain', .9594, t / 1000, false);
         if (!relationshipDone)
-            drawMarker(ctx, relationshipChallengeIcon, relationshipChallenge.x, relationshipChallenge.y, 74, 74, '');
+            drawMarker(ctx, relationshipChallengeIcon, relationshipChallenge.x, relationshipChallenge.y, 74, 74, '', t / 1000);
         if (!puzzleSolved)
-            drawMarker(ctx, princessQuestionIcon, princessQuestion.x, princessQuestion.y, 96, 96, '');
+            drawMarker(ctx, princessQuestionIcon, princessQuestion.x, princessQuestion.y, 96, 96, '', t / 1000);
         if (!keyCollected && objectivesComplete()) {
             ctx.save();
             ctx.translate(key.x, key.y + Math.sin(t / 280) * 4);
@@ -687,41 +703,11 @@ export function createLevel1(ui) {
             y: (sy - vh / 2 + camY * zoom) / zoom
         };
     }
-    // v6.5.16e: the opening view is the upper-left church area the player
-    // should immediately be encouraged to explore. Reveal that region in a
-    // soft, irregular shape rather than using a circle centred on the player.
+    // v6.5.17: only the immediate church area starts revealed. Fog patches
+    // elsewhere remain intact until Olly actually explores them.
     function revealInitialUpperLeft() {
-        fogCtx.save();
-        fogCtx.globalCompositeOperation = 'destination-out';
-        fogCtx.filter = 'blur(10px)';
-
-        // v6.5.16h: the opening discovery pocket is deliberately compact.
-        // Nothing beyond this irregular boundary should be readable at start.
-        fogCtx.fillStyle = 'rgba(0,0,0,1)';
-        fogCtx.beginPath();
-        fogCtx.moveTo(0, 0);
-        fogCtx.lineTo(565, 0);
-        fogCtx.lineTo(565, 115);
-        fogCtx.quadraticCurveTo(555, 205, 525, 300);
-        fogCtx.quadraticCurveTo(505, 405, 445, 485);
-        fogCtx.quadraticCurveTo(390, 550, 300, 565);
-        fogCtx.quadraticCurveTo(170, 575, 0, 565);
-        fogCtx.closePath();
-        fogCtx.fill();
-        fogCtx.restore();
-
-        const minCol = 0,
-            maxCol = Math.min(COLS - 1, Math.floor(565 / GRID)),
-            minRow = 0,
-            maxRow = Math.min(ROWS - 1, Math.floor(575 / GRID));
-        for (let row = minRow; row <= maxRow; row++) {
-            for (let col = minCol; col <= maxCol; col++) {
-                const cx = col * GRID + GRID / 2,
-                    cy = row * GRID + GRID / 2;
-                if (cx <= 565 && cy <= 575)
-                    revealed[row][col] = true;
-            }
-        }
+        eraseFogCircle(x, y, FOG_START_RADIUS);
+        markFogCells(x, y, FOG_START_RADIUS);
         lastFogRevealX = x;
         lastFogRevealY = y;
     }
