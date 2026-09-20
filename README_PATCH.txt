@@ -1,12 +1,12 @@
-Goodbye Goth v6.5.16c - Jump + Fog + Collision
-
-Active file changed:
-js/levels/level1.js
+Goodbye Goth v6.5.16d - Exploration + Movement Refinement
 
 Changes:
-- Jump keeps only the requested non-idle size reduction, with a slightly higher mid-air pose and a clearer vertical arc.
-- Dodge is untouched.
-- Fog is now a soft grey mist with a smaller starting reveal and a persistent path-shaped reveal as Olly walks.
-- Starting position is just below the top-right church so that area is naturally revealed first.
-- Added conservative collision around the obvious buildings and planted islands while keeping main cobblestone routes open.
-- Princess Question text change from v6.5.16a is preserved.
+- Jump animation and jump duration are ~20% faster.
+- Dodge animation is ~20% faster; dodge logic/invulnerability behaviour is unchanged.
+- Olly starts on the path just left/below the upper-right church.
+- Fog is now a more opaque grey mist with subtle animated wisps.
+- Initial reveal is a smaller pocket around the starting church.
+- Movement clears a persistent, readable path and nearby surroundings.
+- Map collision is conservative: only major structures/pond/gate are blocked; decorative bushes and most open paths remain walkable.
+- No combat art size changes.
+- No changes to the gate interaction or cutscene.

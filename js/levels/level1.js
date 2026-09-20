@@ -39,8 +39,8 @@ const OLLY_ANIMATIONS = {
     // v6.5.13: use the new clean three-pose jump and dodge sequences.
     // Each move is built from a small number of readable key poses rather than
     // rapidly cycling through every dramatic drawing.
-    dodge: { indices:[0,1,2], frameMs:[105,252,133], height:260 }, // 30% faster playback
-    jump:  { indices:[0,1,2], frameMs:[144,270,198], height:208, frameYOffset:[0,-22,0] }, // v6.5.16c: non-idle jump sprites remain 20% smaller; mid-air pose is lifted slightly
+    dodge: { indices:[0,1,2], frameMs:[88,210,111], height:260 }, // v6.5.16d: ~20% faster than v6.5.16c
+    jump:  { indices:[0,1,2], frameMs:[120,225,165], height:208, frameYOffset:[0,-22,0] }, // v6.5.16d: ~20% faster; non-idle jump sprites remain 20% smaller
     heavy: { indices:[0,3,4], frameMs:[130,260,230], height:260 },
     punch: { indices:[0,1,2,3,4], frameMs:[52,62,72,78,70], height:224 }
 };
@@ -128,18 +128,13 @@ zombieSprites.chain.src = 'assets/characters/chain-goth-clean.png?v=6513';
    Walkability is handled by explicit collision rectangles, not by a tile grid.
 */
 const OBSTACLES = [
-// v6.5.16c: conservative map collision. Keep cobblestone routes open while
-// preventing Olly from walking over the obvious buildings and planted islands.
-{ x: 15, y: 45, w: 365, h: 330, label: 'church' },
-{ x: 1265, y: 35, w: 255, h: 320, label: 'upper-right-church' },
-{ x: 620, y: 35, w: 320, h: 285, label: 'upper-garden' },
-{ x: 235, y: 335, w: 245, h: 165, label: 'left-middle-garden' },
-{ x: 575, y: 355, w: 375, h: 215, label: 'central-statue-garden' },
-{ x: 1060, y: 360, w: 190, h: 190, label: 'right-middle-garden' },
-{ x: 15, y: 615, w: 390, h: 315, label: 'lower-left-garden' },
-{ x: 575, y: 635, w: 365, h: 315, label: 'lower-mausoleum' },
-{ x: 1070, y: 585, w: 300, h: 220, label: 'lower-right-garden' },
-{ x: 1300, y: 760, w: 220, h: 150, label: 'boss-gate' }
+// v6.5.16d: keep collision intentionally conservative. Bushes, flowerbeds and
+// decorative paths remain walkable; only the major solid structures are blocked.
+{ x: 82, y: 92, w: 292, h: 230, label: 'upper-left-church' },
+{ x: 1288, y: 92, w: 220, h: 228, label: 'upper-right-church' },
+{ x: 86, y: 718, w: 330, h: 230, label: 'pond' },
+{ x: 590, y: 660, w: 320, h: 250, label: 'lower-mausoleum' },
+{ x: 1288, y: 700, w: 230, h: 205, label: 'boss-gate' }
 ];
 function circleRectHit(px, py, r, o) {
     const cx = Math.max(o.x, Math.min(px, o.x + o.w)),
@@ -207,16 +202,23 @@ export function createLevel1(ui) {
     const revealed = Array.from({
         length: ROWS
     }, () => Array(COLS).fill(false));
-    // v6.5.16c: persistent grey mist. Exploration clears a soft corridor along
-    // the route Olly actually walks, rather than a giant black circular spotlight.
+    // v6.5.16d: persistent grey fog with a smaller initial reveal, soft
+    // path-based clearing, and subtle animated wisps for depth.
     const fogCanvas = document.createElement('canvas');
     fogCanvas.width = WORLD_W;
     fogCanvas.height = WORLD_H;
     const fogCtx = fogCanvas.getContext('2d');
-    fogCtx.fillStyle = 'rgba(128, 121, 136, 0.60)';
+    fogCtx.fillStyle = 'rgba(115, 109, 124, 0.78)';
     fogCtx.fillRect(0, 0, WORLD_W, WORLD_H);
-    const FOG_REVEAL_RADIUS = 94;
-    const FOG_PATH_WIDTH = 150;
+
+    const mistCanvas = document.createElement('canvas');
+    mistCanvas.width = WORLD_W / 2;
+    mistCanvas.height = WORLD_H / 2;
+    const mistCtx = mistCanvas.getContext('2d');
+
+    const FOG_REVEAL_RADIUS = 128;
+    const FOG_START_RADIUS = 190;
+    const FOG_PATH_WIDTH = 188;
     let lastFogRevealX = null,
         lastFogRevealY = null;
 
@@ -238,13 +240,14 @@ export function createLevel1(ui) {
     function eraseFogCircle(px, py, radius) {
         fogCtx.save();
         fogCtx.globalCompositeOperation = 'destination-out';
-        // Several soft passes make a misty edge rather than a hard cut-out.
-        for (const [scale, alpha] of [[1, .56], [.80, .28], [.62, .16]]) {
-            fogCtx.globalAlpha = alpha;
-            fogCtx.beginPath();
-            fogCtx.arc(px, py, radius * scale, 0, Math.PI * 2);
-            fogCtx.fill();
-        }
+        const grad = fogCtx.createRadialGradient(px, py, radius * .18, px, py, radius);
+        grad.addColorStop(0, 'rgba(0,0,0,1)');
+        grad.addColorStop(.72, 'rgba(0,0,0,.98)');
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        fogCtx.fillStyle = grad;
+        fogCtx.beginPath();
+        fogCtx.arc(px, py, radius, 0, Math.PI * 2);
+        fogCtx.fill();
         fogCtx.restore();
     }
 
@@ -253,7 +256,12 @@ export function createLevel1(ui) {
         fogCtx.globalCompositeOperation = 'destination-out';
         fogCtx.lineCap = 'round';
         fogCtx.lineJoin = 'round';
-        for (const [width, alpha] of [[FOG_PATH_WIDTH, .58], [FOG_PATH_WIDTH * .72, .30], [FOG_PATH_WIDTH * .46, .20]]) {
+        const gradAlpha = [
+            [FOG_PATH_WIDTH, .98],
+            [FOG_PATH_WIDTH * .76, .96],
+            [FOG_PATH_WIDTH * .48, 1]
+        ];
+        for (const [width, alpha] of gradAlpha) {
             fogCtx.globalAlpha = alpha;
             fogCtx.lineWidth = width;
             fogCtx.beginPath();
@@ -267,19 +275,66 @@ export function createLevel1(ui) {
     function revealAround(px, py, force=false) {
         if (!force && lastFogRevealX !== null) {
             const dist = Math.hypot(px - lastFogRevealX, py - lastFogRevealY);
-            if (dist < 18)
+            if (dist < 14)
                 return;
             eraseFogPath(lastFogRevealX, lastFogRevealY, px, py);
             markFogCells(px, py, FOG_REVEAL_RADIUS);
         } else {
-            // Small starting pocket around Olly. The rest is discovered by walking.
-            eraseFogCircle(px, py, FOG_REVEAL_RADIUS * .82);
-            markFogCells(px, py, FOG_REVEAL_RADIUS * .82);
+            // Smaller starting pocket, deliberately centred by the upper-right
+            // church so the opening area gives the player a reason to explore it.
+            eraseFogCircle(px, py, FOG_START_RADIUS);
+            markFogCells(px, py, FOG_START_RADIUS);
         }
         eraseFogCircle(px, py, FOG_REVEAL_RADIUS);
         lastFogRevealX = px;
         lastFogRevealY = py;
     }
+
+    function drawAnimatedMist(t) {
+        const w = mistCanvas.width,
+            h = mistCanvas.height,
+            sx = w / WORLD_W,
+            sy = h / WORLD_H;
+        mistCtx.clearRect(0, 0, w, h);
+        mistCtx.save();
+        mistCtx.scale(sx, sy);
+
+        const wisps = [
+            [260 + Math.sin(t / 3100) * 180, 190 + Math.sin(t / 2200) * 70, 310, 135, .14],
+            [820 + Math.cos(t / 3600) * 230, 350 + Math.sin(t / 2500) * 85, 360, 150, .12],
+            [1220 + Math.sin(t / 2900) * 190, 720 + Math.cos(t / 3300) * 85, 390, 165, .13],
+            [560 + Math.cos(t / 2700) * 160, 835 + Math.sin(t / 3000) * 90, 330, 145, .11],
+            [1380 + Math.cos(t / 4200) * 120, 250 + Math.sin(t / 2600) * 60, 270, 120, .10]
+        ];
+        for (const [wx, wy, rw, rh, a] of wisps) {
+            const g = mistCtx.createRadialGradient(wx, wy, 0, wx, wy, Math.max(rw, rh));
+            g.addColorStop(0, `rgba(225,220,230,${a})`);
+            g.addColorStop(.52, `rgba(185,181,195,${a * .62})`);
+            g.addColorStop(1, 'rgba(150,145,165,0)');
+            mistCtx.save();
+            mistCtx.translate(wx, wy);
+            mistCtx.scale(1, rh / rw);
+            mistCtx.translate(-wx, -wy);
+            mistCtx.fillStyle = g;
+            mistCtx.beginPath();
+            mistCtx.arc(wx, wy, rw, 0, Math.PI * 2);
+            mistCtx.fill();
+            mistCtx.restore();
+        }
+        mistCtx.restore();
+
+        // Keep moving mist only where fog still exists, so explored paths remain clear.
+        mistCtx.save();
+        mistCtx.globalCompositeOperation = 'destination-in';
+        mistCtx.drawImage(fogCanvas, 0, 0, mistCanvas.width, mistCanvas.height);
+        mistCtx.restore();
+
+        ctx.save();
+        ctx.globalAlpha = .9;
+        ctx.drawImage(mistCanvas, 0, 0, WORLD_W, WORLD_H);
+        ctx.restore();
+    }
+
     const enemies = [
     {
         x: 485,
@@ -325,8 +380,8 @@ export function createLevel1(ui) {
     const combatBackgroundImage = new Image();
     combatBackgroundImage.src = 'assets/environment/combat-background-level1.png';
 
-    let x = 1305,
-        y = 380,
+    let x = 1230,
+        y = 330,
         hp = 100,
         maxHp = 100,
         mode = 'map',
@@ -567,6 +622,7 @@ export function createLevel1(ui) {
         drawOlly(ctx, playerX, playerY, .78, t / 1000, true, facingDir, walkPulse > 0);
         // v6.5.15: unexplored cemetery remains covered; revealed areas stay clear.
         ctx.drawImage(fogCanvas, 0, 0, WORLD_W, WORLD_H);
+        drawAnimatedMist(t);
         ctx.restore();
     }
     function canvasPointToWorld(e) {
@@ -749,7 +805,7 @@ export function createLevel1(ui) {
         }
 
         if (jumping) {
-            const jumpDuration = .612;
+            const jumpDuration = .51; // v6.5.16d: 20% faster, matched to the jump animation
             jumpT += dt / jumpDuration;
             if (jumpT >= 1) {
                 jumpT = 1;
@@ -772,7 +828,7 @@ export function createLevel1(ui) {
         jumpT = 0;
         combatAnimationState = 'jump';
         combatAnimationStart = performance.now();
-        combatAnimationUntil = combatAnimationStart + 612;
+        combatAnimationUntil = combatAnimationStart + 510; // v6.5.16d
         ui.combatStatus.textContent = '🦘 You jump.';
     }
     function drawCombatBackground(c) {
@@ -1082,7 +1138,7 @@ export function createLevel1(ui) {
         dodgeUntil = nowMs + 600;
         combatAnimationState = 'dodge';
         combatAnimationStart = nowMs;
-        combatAnimationUntil = nowMs + 490;
+        combatAnimationUntil = nowMs + 409; // v6.5.16d: 20% faster dodge animation
         jumpOffset = 0;
         ui.combatStatus.textContent = '↪ DODGE!';
     }
