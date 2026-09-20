@@ -133,7 +133,7 @@ zombieSprites.chain.src = 'assets/characters/chain-goth-clean.png?v=6513';
    All gameplay characters and interactive markers are drawn independently.
    Walkability is handled by explicit collision rectangles, not by a tile grid.
 */
-/* v6.5.18: walkability follows the actual cobblestone route of the Level 1 artwork.
+/* v6.5.19: walkability follows the actual cobblestone route of the Level 1 artwork.
    This is a 96x64 baked walkability map. Green/clear path areas are walkable;
    gardens, trees, buildings and the cemetery edge are not. */
 const WALK_GRID = [
@@ -210,16 +210,15 @@ function walkCellWalkable(px, py) {
     if (gx < 0 || gy < 0 || gx >= WALK_GRID_W || gy >= WALK_GRID_H) return false;
     return WALK_GRID[gy][gx] === '1';
 }
-function blockedWorld(px, py, r=16) {
-    // A small sampling ring gives Olly a proper collision footprint instead of
-    // allowing his centre point to squeeze through trees and building corners.
-    if (px < 36 + r || py < 36 + r || px > WORLD_W - 36 - r || py > WORLD_H - 36 - r)
+function blockedWorld(px, py, r=0) {
+    // v6.5.19: use the centre of Olly's position against the painted walkable
+    // path. The previous collision footprint was too strict for the narrow
+    // hand-drawn paths and could trap Olly at the starting church area.
+    // The walk grid itself blocks gardens, trees and buildings, while these
+    // boundaries keep him safely inside the map.
+    if (px < 36 || py < 36 || px > WORLD_W - 36 || py > WORLD_H - 36)
         return true;
-    const samples = [
-        [0,0],[r,0],[-r,0],[0,r],[0,-r],
-        [r*.72,r*.72],[-r*.72,r*.72],[r*.72,-r*.72],[-r*.72,-r*.72]
-    ];
-    return samples.some(([ox,oy]) => !walkCellWalkable(px + ox, py + oy));
+    return !walkCellWalkable(px, py);
 }
 
 function drawOlly(ctx, x, y, s=.78, t=0, front=true, dir='right', moving=false) {
@@ -299,33 +298,53 @@ export function createLevel1(ui) {
     // Deliberately mixed placement: some patches hide objectives/gate, while
     // others are just atmospheric so the player cannot infer what matters.
     const FOG_PATCHES = [
-        // Objective-adjacent dense patches, deliberately mixed with decoys.
-        { x: 475, y: 420, rx: 145, ry: 105, a: .76, seed: .2 },
-        { x: 400, y: 555, rx: 105, ry: 85, a: .48, seed: .9 },
-        { x: 760, y: 300, rx: 155, ry: 115, a: .82, seed: 1.7 },
-        { x: 880, y: 250, rx: 95, ry: 70, a: .38, seed: 2.4 },
-        { x: 360, y: 800, rx: 145, ry: 105, a: .78, seed: 3.1 },
-        { x: 470, y: 735, rx: 95, ry: 75, a: .42, seed: 3.8 },
-        { x: 1115, y: 505, rx: 175, ry: 125, a: .84, seed: 4.5 },
-        { x: 1215, y: 420, rx: 100, ry: 78, a: .46, seed: 5.2 },
-        { x: 1380, y: 820, rx: 145, ry: 112, a: .88, seed: 5.9 },
-        { x: 1245, y: 705, rx: 105, ry: 80, a: .55, seed: 6.6 },
-        { x: 1010, y: 180, rx: 120, ry: 82, a: .44, seed: 7.3 },
-        { x: 1180, y: 225, rx: 150, ry: 95, a: .62, seed: 8.0 },
-        { x: 620, y: 680, rx: 115, ry: 90, a: .52, seed: 8.7 },
-        { x: 900, y: 700, rx: 145, ry: 105, a: .68, seed: 9.4 },
-        { x: 1030, y: 850, rx: 120, ry: 92, a: .50, seed: 10.1 },
-        { x: 600, y: 470, rx: 85, ry: 65, a: .36, seed: 10.8 },
-        { x: 190, y: 520, rx: 105, ry: 78, a: .42, seed: 11.5 },
-        { x: 1320, y: 560, rx: 120, ry: 90, a: .56, seed: 12.2 },
-        { x: 1450, y: 450, rx: 92, ry: 70, a: .30, seed: 12.9, edge: true },
-        { x: 75, y: 420, rx: 85, ry: 72, a: .28, seed: 13.6, edge: true },
-        { x: 75, y: 680, rx: 95, ry: 80, a: .26, seed: 14.3, edge: true },
-        { x: 1450, y: 690, rx: 90, ry: 78, a: .28, seed: 15.0, edge: true },
-        { x: 500, y: 120, rx: 100, ry: 70, a: .30, seed: 15.7, edge: true },
-        { x: 820, y: 900, rx: 110, ry: 72, a: .32, seed: 16.4, edge: true },
-        { x: 1180, y: 920, rx: 120, ry: 75, a: .30, seed: 17.1, edge: true },
-        { x: 260, y: 930, rx: 105, ry: 72, a: .27, seed: 17.8, edge: true }
+        // Dense objective-adjacent patches, deliberately mixed with decoys.
+        { x: 475, y: 420, rx: 175, ry: 125, a: .88, seed: .2 },
+        { x: 390, y: 555, rx: 125, ry: 95, a: .58, seed: .9 },
+        { x: 760, y: 300, rx: 180, ry: 130, a: .90, seed: 1.7 },
+        { x: 875, y: 250, rx: 120, ry: 88, a: .48, seed: 2.4 },
+        { x: 360, y: 800, rx: 175, ry: 125, a: .90, seed: 3.1 },
+        { x: 470, y: 735, rx: 120, ry: 90, a: .52, seed: 3.8 },
+        { x: 1115, y: 505, rx: 200, ry: 145, a: .94, seed: 4.5 },
+        { x: 1215, y: 420, rx: 125, ry: 92, a: .55, seed: 5.2 },
+        { x: 1380, y: 820, rx: 175, ry: 130, a: .96, seed: 5.9 },
+        { x: 1245, y: 705, rx: 135, ry: 98, a: .62, seed: 6.6 },
+        // Decoy patches throughout the middle so fog does not reveal the objectives.
+        { x: 180, y: 230, rx: 115, ry: 82, a: .44, seed: 18.4 },
+        { x: 330, y: 180, rx: 150, ry: 95, a: .62, seed: 19.1 },
+        { x: 570, y: 155, rx: 105, ry: 78, a: .48, seed: 19.8 },
+        { x: 690, y: 515, rx: 135, ry: 100, a: .64, seed: 20.5 },
+        { x: 820, y: 610, rx: 165, ry: 110, a: .72, seed: 21.2 },
+        { x: 1010, y: 650, rx: 120, ry: 90, a: .48, seed: 21.9 },
+        { x: 1170, y: 580, rx: 155, ry: 110, a: .70, seed: 22.6 },
+        { x: 1320, y: 300, rx: 135, ry: 100, a: .55, seed: 23.3 },
+        { x: 1460, y: 250, rx: 95, ry: 75, a: .40, seed: 24.0 },
+        { x: 140, y: 650, rx: 125, ry: 95, a: .52, seed: 24.7 },
+        { x: 520, y: 900, rx: 145, ry: 100, a: .66, seed: 25.4 },
+        { x: 700, y: 820, rx: 110, ry: 85, a: .46, seed: 26.1 },
+        { x: 900, y: 900, rx: 150, ry: 100, a: .62, seed: 26.8 },
+        { x: 1080, y: 820, rx: 125, ry: 92, a: .50, seed: 27.5 },
+        { x: 1260, y: 930, rx: 145, ry: 90, a: .58, seed: 28.2 },
+        { x: 1020, y: 180, rx: 145, ry: 100, a: .56, seed: 7.3 },
+        { x: 1180, y: 225, rx: 175, ry: 110, a: .72, seed: 8.0 },
+        { x: 620, y: 680, rx: 135, ry: 100, a: .60, seed: 8.7 },
+        { x: 900, y: 700, rx: 165, ry: 120, a: .78, seed: 9.4 },
+        { x: 1030, y: 850, rx: 140, ry: 100, a: .56, seed: 10.1 },
+        { x: 600, y: 470, rx: 100, ry: 75, a: .42, seed: 10.8 },
+        { x: 190, y: 520, rx: 125, ry: 92, a: .50, seed: 11.5 },
+        { x: 1320, y: 560, rx: 145, ry: 105, a: .64, seed: 12.2 },
+        // Edge patches stay thin because these areas can never be cleared.
+        { x: 45, y: 220, rx: 90, ry: 72, a: .22, seed: 29.0, edge: true },
+        { x: 60, y: 430, rx: 100, ry: 78, a: .20, seed: 29.7, edge: true },
+        { x: 55, y: 690, rx: 105, ry: 82, a: .22, seed: 30.4, edge: true },
+        { x: 1490, y: 430, rx: 100, ry: 78, a: .20, seed: 31.1, edge: true },
+        { x: 1485, y: 700, rx: 95, ry: 75, a: .22, seed: 31.8, edge: true },
+        { x: 500, y: 45, rx: 105, ry: 70, a: .22, seed: 32.5, edge: true },
+        { x: 850, y: 45, rx: 115, ry: 72, a: .20, seed: 33.2, edge: true },
+        { x: 1180, y: 45, rx: 120, ry: 75, a: .22, seed: 33.9, edge: true },
+        { x: 500, y: 980, rx: 110, ry: 72, a: .20, seed: 34.6, edge: true },
+        { x: 850, y: 980, rx: 120, ry: 75, a: .22, seed: 35.3, edge: true },
+        { x: 1180, y: 980, rx: 125, ry: 78, a: .20, seed: 36.0, edge: true }
     ];
 
     function paintFogPatches() {
@@ -618,7 +637,7 @@ export function createLevel1(ui) {
             walkDir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : (dy < 0 ? 'up' : 'down');
             ui.dialogue.textContent = 'The cemetery is strangely peaceful. Somewhere nearby, a goth is probably plotting.';
         }
-        // v6.5.18: approaching the locked gate triggers its story interaction
+        // v6.5.19: approaching the locked gate triggers its story interaction
         // automatically, but only until all four Level 1 challenges are done.
         if (mode === 'map' && !objectivesComplete() && !gateEncounterShown && Math.hypot(x - boss.x, y - boss.y) < 155) {
             gateEncounterShown = true;
