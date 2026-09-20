@@ -40,7 +40,7 @@ const OLLY_ANIMATIONS = {
     // Each move is built from a small number of readable key poses rather than
     // rapidly cycling through every dramatic drawing.
     dodge: { indices:[0,1,2], frameMs:[105,252,133], height:260 }, // 30% faster playback
-    jump:  { indices:[0,1,2], frameMs:[144,270,198], height:208 }, // v6.5.16a: jump action sprites 20% smaller than combat idle
+    jump:  { indices:[0,1,2], frameMs:[144,270,198], height:208, frameYOffset:[0,-22,0] }, // v6.5.16c: non-idle jump sprites remain 20% smaller; mid-air pose is lifted slightly
     heavy: { indices:[0,3,4], frameMs:[130,260,230], height:260 },
     punch: { indices:[0,1,2,3,4], frameMs:[52,62,72,78,70], height:224 }
 };
@@ -127,36 +127,19 @@ zombieSprites.chain.src = 'assets/characters/chain-goth-clean.png?v=6513';
    All gameplay characters and interactive markers are drawn independently.
    Walkability is handled by explicit collision rectangles, not by a tile grid.
 */
-const OBSTACLES = [// Major structures only. Decorative gardens/trees are baked into the background
-// and are intentionally not giant invisible barriers.
-{
-    x: 15,
-    y: 0,
-    w: 410,
-    h: 385,
-    label: 'church'
-},
-{
-    x: 1210,
-    y: 20,
-    w: 315,
-    h: 330,
-    label: 'upper-mausoleum'
-},
-{
-    x: 560,
-    y: 735,
-    w: 410,
-    h: 289,
-    label: 'lower-mausoleum'
-},
-{
-    x: 1330,
-    y: 770,
-    w: 190,
-    h: 120,
-    label: 'boss-gate'
-}
+const OBSTACLES = [
+// v6.5.16c: conservative map collision. Keep cobblestone routes open while
+// preventing Olly from walking over the obvious buildings and planted islands.
+{ x: 15, y: 45, w: 365, h: 330, label: 'church' },
+{ x: 1265, y: 35, w: 255, h: 320, label: 'upper-right-church' },
+{ x: 620, y: 35, w: 320, h: 285, label: 'upper-garden' },
+{ x: 235, y: 335, w: 245, h: 165, label: 'left-middle-garden' },
+{ x: 575, y: 355, w: 375, h: 215, label: 'central-statue-garden' },
+{ x: 1060, y: 360, w: 190, h: 190, label: 'right-middle-garden' },
+{ x: 15, y: 615, w: 390, h: 315, label: 'lower-left-garden' },
+{ x: 575, y: 635, w: 365, h: 315, label: 'lower-mausoleum' },
+{ x: 1070, y: 585, w: 300, h: 220, label: 'lower-right-garden' },
+{ x: 1300, y: 760, w: 220, h: 150, label: 'boss-gate' }
 ];
 function circleRectHit(px, py, r, o) {
     const cx = Math.max(o.x, Math.min(px, o.x + o.w)),
@@ -224,39 +207,76 @@ export function createLevel1(ui) {
     const revealed = Array.from({
         length: ROWS
     }, () => Array(COLS).fill(false));
-    // v6.5.15: persistent fog-of-war overlay. Cleared areas remain transparent.
+    // v6.5.16c: persistent grey mist. Exploration clears a soft corridor along
+    // the route Olly actually walks, rather than a giant black circular spotlight.
     const fogCanvas = document.createElement('canvas');
     fogCanvas.width = WORLD_W;
     fogCanvas.height = WORLD_H;
     const fogCtx = fogCanvas.getContext('2d');
-    fogCtx.fillStyle = 'rgba(10, 7, 14, 0.88)';
+    fogCtx.fillStyle = 'rgba(128, 121, 136, 0.60)';
     fogCtx.fillRect(0, 0, WORLD_W, WORLD_H);
-    const FOG_REVEAL_RADIUS = 175;
+    const FOG_REVEAL_RADIUS = 94;
+    const FOG_PATH_WIDTH = 150;
     let lastFogRevealX = null,
         lastFogRevealY = null;
 
-    function revealAround(px, py, force=false) {
-        if (!force && lastFogRevealX !== null && Math.hypot(px - lastFogRevealX, py - lastFogRevealY) < 28)
-            return;
-        const minCol = Math.max(0, Math.floor((px - FOG_REVEAL_RADIUS - 32) / GRID));
-        const maxCol = Math.min(COLS - 1, Math.floor((px + FOG_REVEAL_RADIUS + 32) / GRID));
-        const minRow = Math.max(0, Math.floor((py - FOG_REVEAL_RADIUS - 32) / GRID));
-        const maxRow = Math.min(ROWS - 1, Math.floor((py + FOG_REVEAL_RADIUS + 32) / GRID));
+    function markFogCells(px, py, radius) {
+        const minCol = Math.max(0, Math.floor((px - radius - 32) / GRID));
+        const maxCol = Math.min(COLS - 1, Math.floor((px + radius + 32) / GRID));
+        const minRow = Math.max(0, Math.floor((py - radius - 32) / GRID));
+        const maxRow = Math.min(ROWS - 1, Math.floor((py + radius + 32) / GRID));
         for (let row = minRow; row <= maxRow; row++) {
             for (let col = minCol; col <= maxCol; col++) {
                 const cx = col * GRID + GRID / 2,
                     cy = row * GRID + GRID / 2;
-                if (Math.hypot(cx - px, cy - py) <= FOG_REVEAL_RADIUS + GRID * .35)
+                if (Math.hypot(cx - px, cy - py) <= radius + GRID * .35)
                     revealed[row][col] = true;
             }
         }
+    }
+
+    function eraseFogCircle(px, py, radius) {
         fogCtx.save();
         fogCtx.globalCompositeOperation = 'destination-out';
-        // Punch out a smooth circle instead of blocky square cells.
-        fogCtx.beginPath();
-        fogCtx.arc(px, py, FOG_REVEAL_RADIUS, 0, Math.PI * 2);
-        fogCtx.fill();
+        // Several soft passes make a misty edge rather than a hard cut-out.
+        for (const [scale, alpha] of [[1, .56], [.80, .28], [.62, .16]]) {
+            fogCtx.globalAlpha = alpha;
+            fogCtx.beginPath();
+            fogCtx.arc(px, py, radius * scale, 0, Math.PI * 2);
+            fogCtx.fill();
+        }
         fogCtx.restore();
+    }
+
+    function eraseFogPath(x1, y1, x2, y2) {
+        fogCtx.save();
+        fogCtx.globalCompositeOperation = 'destination-out';
+        fogCtx.lineCap = 'round';
+        fogCtx.lineJoin = 'round';
+        for (const [width, alpha] of [[FOG_PATH_WIDTH, .58], [FOG_PATH_WIDTH * .72, .30], [FOG_PATH_WIDTH * .46, .20]]) {
+            fogCtx.globalAlpha = alpha;
+            fogCtx.lineWidth = width;
+            fogCtx.beginPath();
+            fogCtx.moveTo(x1, y1);
+            fogCtx.lineTo(x2, y2);
+            fogCtx.stroke();
+        }
+        fogCtx.restore();
+    }
+
+    function revealAround(px, py, force=false) {
+        if (!force && lastFogRevealX !== null) {
+            const dist = Math.hypot(px - lastFogRevealX, py - lastFogRevealY);
+            if (dist < 18)
+                return;
+            eraseFogPath(lastFogRevealX, lastFogRevealY, px, py);
+            markFogCells(px, py, FOG_REVEAL_RADIUS);
+        } else {
+            // Small starting pocket around Olly. The rest is discovered by walking.
+            eraseFogCircle(px, py, FOG_REVEAL_RADIUS * .82);
+            markFogCells(px, py, FOG_REVEAL_RADIUS * .82);
+        }
+        eraseFogCircle(px, py, FOG_REVEAL_RADIUS);
         lastFogRevealX = px;
         lastFogRevealY = py;
     }
@@ -305,8 +325,8 @@ export function createLevel1(ui) {
     const combatBackgroundImage = new Image();
     combatBackgroundImage.src = 'assets/environment/combat-background-level1.png';
 
-    let x = 470,
-        y = 520,
+    let x = 1305,
+        y = 380,
         hp = 100,
         maxHp = 100,
         mode = 'map',
@@ -737,7 +757,7 @@ export function createLevel1(ui) {
             }
             // Smaller arc. The new sprite art does not need to do the visual
             // travelling itself, so the jump stays grounded and readable.
-            jumpOffset = -Math.sin(jumpT * Math.PI) * 42;
+            jumpOffset = -Math.sin(jumpT * Math.PI) * 68;
         }
         else {
             jumpOffset = 0;
@@ -822,6 +842,7 @@ export function createLevel1(ui) {
             frameIndex: sourceIndex,
             drawDir: combatFacing,
             height: cfg.height,
+            visualOffsetY: cfg.frameYOffset ? (cfg.frameYOffset[Math.min(localIndex, cfg.frameYOffset.length - 1)] || 0) : 0,
             duration: total
         };
     }
@@ -869,7 +890,7 @@ export function createLevel1(ui) {
 
     function drawOllyWorldCombat(c, px, py, anim, t, hurt, offsetY=0) {
         c.save();
-        const visualY = py + offsetY + OLLY_DRAW_FOOT_OFFSET;
+        const visualY = py + offsetY + (anim?.visualOffsetY || 0) + OLLY_DRAW_FOOT_OFFSET;
         c.translate(px, visualY);
         if (hurt)
             c.globalAlpha = .5;
