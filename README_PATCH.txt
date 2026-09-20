@@ -1,10 +1,13 @@
-Goodbye Goth v6.5.20
+Goodbye Goth v6.5.21 - Fog Cloud Reveal + Collision Tolerance
 
-Changes: scenery-aware collision mask; wider reliable fog clearing; more varied fog density/patch sizes; lighter permanent edge haze; locked gate now triggers only when Olly is within 88 world pixels of the gate.
+Changes:
+- Reworked exploration fog into broad overlapping cloud banks with varied density and size.
+- Objective/decoy fog can overlap, so covered locations are not visually obvious.
+- Touching a fog bank triggers a 900ms whole-patch fade/dispersal. Overlapping neighbouring patches remain.
+- Fog now clears from buildings/objects when the patch itself is touched, rather than requiring Olly to stand directly on the hidden object.
+- Permanent edge fog remains lighter.
+- Added a small walkability tolerance around the painted path mask so narrow cobblestone routes do not trap Olly on a single conservative grid cell.
+- Gate interaction asset preserved unchanged.
+- No combat, inventory, map-renderer, relationship, puzzle, or game.js changes.
 
-Active files:
-- js/levels/level1.js
-- assets/environment/level1-collision-mask.png
-- assets/encounters/level1/gate-interaction.png
-
-No changes to map rendering, combat, inventory or minigame mechanics.
+Upload into existing project paths, not as a new root folder.

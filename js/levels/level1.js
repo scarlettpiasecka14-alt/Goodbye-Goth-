@@ -205,10 +205,33 @@ const WALK_GRID = [
 const WALK_GRID_W = 96;
 const WALK_GRID_H = 64;
 function walkCellWalkable(px, py) {
-    const gx = Math.floor(px / (WORLD_W / WALK_GRID_W));
-    const gy = Math.floor(py / (WORLD_H / WALK_GRID_H));
-    if (gx < 0 || gy < 0 || gx >= WALK_GRID_W || gy >= WALK_GRID_H) return false;
-    return WALK_GRID[gy][gx] === '1';
+    const cellW = WORLD_W / WALK_GRID_W;
+    const cellH = WORLD_H / WALK_GRID_H;
+    const gx = Math.floor(px / cellW);
+    const gy = Math.floor(py / cellH);
+    if (gx < 0 || gy < 0 || gx >= WALK_GRID_W || gy >= WALK_GRID_H)
+        return false;
+    if (WALK_GRID[gy][gx] === '1')
+        return true;
+
+    // v6.5.21: give narrow cobblestone routes a small tolerance. The painted
+    // mask is deliberately conservative, so sampling the immediate
+    // neighbourhood prevents Olly getting pinned on a single blocked grid
+    // cell at the edge of a path. This is intentionally small enough that
+    // trees/gardens remain substantially impassable.
+    const tolX = Math.min(10, cellW * .62);
+    const tolY = Math.min(10, cellH * .62);
+    const samples = [
+        [px - tolX, py], [px + tolX, py],
+        [px, py - tolY], [px, py + tolY],
+        [px - tolX, py - tolY], [px + tolX, py - tolY],
+        [px - tolX, py + tolY], [px + tolX, py + tolY]
+    ];
+    return samples.some(([sx, sy]) => {
+        const cx = Math.floor(sx / cellW);
+        const cy = Math.floor(sy / cellH);
+        return cx >= 0 && cy >= 0 && cx < WALK_GRID_W && cy < WALK_GRID_H && WALK_GRID[cy][cx] === '1';
+    });
 }
 function blockedWorld(px, py, r=0) {
     // v6.5.19: use the centre of Olly's position against the painted walkable
@@ -347,36 +370,120 @@ export function createLevel1(ui) {
         { x: 1180, y: 980, rx: 125, ry: 78, a: .20, seed: 36.0, edge: true }
     ];
 
+    // v6.5.21: each fog patch is a broad, overlapping cloud bank rather than
+    // a collection of isolated white blobs.  A patch fades away as soon as
+    // Olly touches it, revealing the whole patch rather than only the pixels
+    // directly underneath him.
+    const fogPatchFade = FOG_PATCHES.map(() => 0);
+    const fogPatchClearing = FOG_PATCHES.map(() => null);
+    let fogRepaintNeeded = true;
+    const FOG_CLEAR_MS = 900;
+
     function paintFogPatches() {
         fogCtx.clearRect(0, 0, WORLD_W, WORLD_H);
         fogCtx.save();
-        fogCtx.filter = 'blur(8px)';
+        fogCtx.filter = 'blur(11px)';
         for (let i = 0; i < FOG_PATCHES.length; i++) {
             const patch = FOG_PATCHES[i];
-            const puffCount = patch.edge ? 5 : 8;
+            const fade = fogPatchFade[i] || 0;
+            if (fade >= .999)
+                continue;
+
+            const alphaScale = 1 - fade;
+            const spread = 1 + fade * .10;
+
+            // A soft base cloud makes each patch feel continuous.
+            const baseRx = patch.rx * .72 * spread;
+            const baseRy = patch.ry * .58 * spread;
+            const base = fogCtx.createRadialGradient(
+                patch.x, patch.y, 0,
+                patch.x, patch.y, Math.max(baseRx, baseRy)
+            );
+            const baseA = Math.min(.58, patch.a * .62) * alphaScale;
+            base.addColorStop(0, `rgba(202,199,211,${baseA})`);
+            base.addColorStop(.55, `rgba(187,184,198,${baseA * .72})`);
+            base.addColorStop(1, 'rgba(160,157,174,0)');
+            fogCtx.fillStyle = base;
+            fogCtx.beginPath();
+            fogCtx.ellipse(patch.x, patch.y, baseRx, baseRy, Math.sin(patch.seed) * .18, 0, Math.PI * 2);
+            fogCtx.fill();
+
+            // Larger overlapping wisps create one cloud bank with an uneven
+            // edge, rather than a neat oval.
+            const puffCount = patch.edge ? 6 : 11;
             for (let j = 0; j < puffCount; j++) {
-                const a = patch.seed + j * 1.73;
-                const ox = Math.sin(a * 1.91) * .34;
-                const oy = Math.cos(a * 1.37) * .28;
-                const scale = .58 + (Math.sin(a * 2.17) + 1) * .18;
+                const a = patch.seed + j * 1.37;
+                const ox = Math.sin(a * 1.91) * .43;
+                const oy = Math.cos(a * 1.37) * .32;
+                const scale = .78 + (Math.sin(a * 2.17) + 1) * .16;
                 const px = patch.x + patch.rx * ox;
                 const py = patch.y + patch.ry * oy;
-                const rx = patch.rx * .38 * scale;
-                const ry = patch.ry * .34 * (0.78 + (Math.cos(a) + 1) * .12);
+                const rx = patch.rx * (.42 + (j % 3) * .035) * scale * spread;
+                const ry = patch.ry * (.30 + (j % 2) * .055) * scale * spread;
                 const g = fogCtx.createRadialGradient(px, py, 0, px, py, rx);
-                const alpha = patch.a * (0.72 + (Math.sin(a * 1.3) + 1) * .12);
-                g.addColorStop(0, `rgba(208,207,217,${alpha})`);
-                g.addColorStop(.52, `rgba(184,183,197,${alpha * .70})`);
-                g.addColorStop(1, 'rgba(155,154,170,0)');
+                const alpha = Math.min(.86, patch.a * (0.60 + (Math.sin(a * 1.3) + 1) * .15)) * alphaScale;
+                g.addColorStop(0, `rgba(207,204,215,${alpha})`);
+                g.addColorStop(.48, `rgba(190,187,201,${alpha * .72})`);
+                g.addColorStop(1, 'rgba(160,157,174,0)');
                 fogCtx.fillStyle = g;
                 fogCtx.beginPath();
-                fogCtx.ellipse(px, py, rx, ry, Math.sin(a) * .25, 0, Math.PI * 2);
+                fogCtx.ellipse(px, py, rx, ry, Math.sin(a) * .22, 0, Math.PI * 2);
                 fogCtx.fill();
             }
         }
         fogCtx.restore();
+        fogRepaintNeeded = false;
     }
-    paintFogPatches();
+
+    function reapplyRevealedAreas() {
+        fogCtx.save();
+        fogCtx.globalCompositeOperation = 'destination-out';
+        for (let row = 0; row < ROWS; row++) {
+            for (let col = 0; col < COLS; col++) {
+                if (!revealed[row][col])
+                    continue;
+                fogCtx.fillRect(col * GRID, row * GRID, GRID + 1, GRID + 1);
+            }
+        }
+        fogCtx.restore();
+    }
+
+    function rebuildFog() {
+        paintFogPatches();
+        reapplyRevealedAreas();
+    }
+
+    function beginFogPatchClear(index, t) {
+        if (fogPatchClearing[index] !== null || fogPatchFade[index] >= .999)
+            return;
+        fogPatchClearing[index] = t;
+        // The reveal is intentionally noticeable but not instantaneous.
+        ui.dialogue.textContent = '🌫️ The fog parts around you...';
+        fogRepaintNeeded = true;
+    }
+
+    function updateFogPatchClears(t) {
+        let changed = false;
+        for (let i = 0; i < FOG_PATCHES.length; i++) {
+            if (fogPatchClearing[i] === null)
+                continue;
+            const progress = Math.max(0, Math.min(1, (t - fogPatchClearing[i]) / FOG_CLEAR_MS));
+            const eased = 1 - Math.pow(1 - progress, 2.2);
+            if (Math.abs(eased - fogPatchFade[i]) > .012) {
+                fogPatchFade[i] = eased;
+                changed = true;
+            }
+            if (progress >= 1) {
+                fogPatchFade[i] = 1;
+                fogPatchClearing[i] = null;
+            }
+        }
+        if (changed || fogRepaintNeeded) {
+            rebuildFog();
+        }
+    }
+
+    rebuildFog();
 
     function markFogCells(px, py, radius) {
         const minCol = Math.max(0, Math.floor((px - radius - 32) / GRID));
@@ -420,6 +527,18 @@ export function createLevel1(ui) {
         fogCtx.restore();
     }
 
+    function revealTouchedFogPatches(px, py) {
+        for (let i = 0; i < FOG_PATCHES.length; i++) {
+            const p = FOG_PATCHES[i];
+            if (fogPatchFade[i] >= .999)
+                continue;
+            const dx = (px - p.x) / (p.rx * .92);
+            const dy = (py - p.y) / (p.ry * .92);
+            if (dx * dx + dy * dy <= 1)
+                beginFogPatchClear(i, performance.now());
+        }
+    }
+
     function revealAround(px, py, force=false) {
         if (!force && lastFogRevealX !== null) {
             const dist = Math.hypot(px - lastFogRevealX, py - lastFogRevealY);
@@ -432,8 +551,10 @@ export function createLevel1(ui) {
             markFogCells(px, py, FOG_START_RADIUS);
         }
         eraseFogCircle(px, py, FOG_REVEAL_RADIUS);
+        revealTouchedFogPatches(px, py);
         lastFogRevealX = px;
         lastFogRevealY = py;
+        fogRepaintNeeded = true;
     }
 
     function drawAnimatedMist(t) {
@@ -444,17 +565,17 @@ export function createLevel1(ui) {
         mistCtx.clearRect(0, 0, w, h);
         mistCtx.save();
         mistCtx.scale(sx, sy);
-        mistCtx.filter = 'blur(12px)';
+        mistCtx.filter = 'blur(16px)';
         for (let i = 0; i < FOG_PATCHES.length; i++) {
             const p = FOG_PATCHES[i];
             const driftX = Math.sin(t / (3600 + i * 145) + p.seed) * (p.edge ? 8 : 15);
             const driftY = Math.cos(t / (4300 + i * 120) + p.seed) * (p.edge ? 4 : 8);
             const px = p.x + driftX;
             const py = p.y + driftY;
-            const rx = p.rx * .28;
-            const ry = p.ry * .20;
+            const rx = p.rx * .42;
+            const ry = p.ry * .27;
             const g = mistCtx.createRadialGradient(px, py, 0, px, py, rx);
-            const alpha = p.edge ? .045 : .07 + p.a * .045;
+            const alpha = p.edge ? .035 : .035 + p.a * .055;
             g.addColorStop(0, `rgba(248,247,250,${alpha})`);
             g.addColorStop(.60, `rgba(228,226,236,${alpha * .62})`);
             g.addColorStop(1, 'rgba(205,202,214,0)');
@@ -469,7 +590,7 @@ export function createLevel1(ui) {
         mistCtx.drawImage(fogCanvas, 0, 0, mistCanvas.width, mistCanvas.height);
         mistCtx.restore();
         ctx.save();
-        ctx.globalAlpha = .52;
+        ctx.globalAlpha = .34;
         ctx.drawImage(mistCanvas, 0, 0, WORLD_W, WORLD_H);
         ctx.restore();
     }
@@ -793,6 +914,7 @@ export function createLevel1(ui) {
         }
         drawOlly(ctx, playerX, playerY, .78, t / 1000, true, facingDir, walkPulse > 0);
         // v6.5.16e: unexplored cemetery remains covered; revealed areas stay clear.
+        updateFogPatchClears(t);
         ctx.drawImage(fogCanvas, 0, 0, WORLD_W, WORLD_H);
         drawAnimatedMist(t);
         ctx.restore();
