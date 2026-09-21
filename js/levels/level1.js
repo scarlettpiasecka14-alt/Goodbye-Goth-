@@ -14,6 +14,8 @@ const mapBackground = new Image();
 mapBackground.src = 'assets/environment/level1-map-bg.png?v=600';
 const goldenKeySprite = new Image();
 goldenKeySprite.src = 'assets/items/golden-key.png?v=6515';
+const gateLockSprite = new Image();
+gateLockSprite.src = 'assets/encounters/level1/gate-lock.png?v=6524';
 const ollySprite = new Image();
 ollySprite.src = 'assets/characters/olly.png?v=300';
 
@@ -214,13 +216,11 @@ function walkCellWalkable(px, py) {
     if (WALK_GRID[gy][gx] === '1')
         return true;
 
-    // v6.5.21: give narrow cobblestone routes a small tolerance. The painted
-    // mask is deliberately conservative, so sampling the immediate
-    // neighbourhood prevents Olly getting pinned on a single blocked grid
-    // cell at the edge of a path. This is intentionally small enough that
-    // trees/gardens remain substantially impassable.
-    const tolX = Math.min(15, cellW * .94);
-    const tolY = Math.min(15, cellH * .94);
+    // Keep the hand-drawn path authoritative, but allow a small edge tolerance
+    // so a single conservative grid cell cannot pin Olly to a path corner.
+    // The tolerance is intentionally modest so gardens/trees remain blocked.
+    const tolX = Math.min(12, cellW * .75);
+    const tolY = Math.min(12, cellH * .75);
     const samples = [
         [px - tolX, py], [px + tolX, py],
         [px, py - tolY], [px, py + tolY],
@@ -233,6 +233,7 @@ function walkCellWalkable(px, py) {
         return cx >= 0 && cy >= 0 && cx < WALK_GRID_W && cy < WALK_GRID_H && WALK_GRID[cy][cx] === '1';
     });
 }
+
 function blockedWorld(px, py, r=0) {
     // v6.5.19: use the centre of Olly's position against the painted walkable
     // path. The previous collision footprint was too strict for the narrow
@@ -459,29 +460,55 @@ export function createLevel1(ui) {
     }
 
     function reapplyRevealedAreas() {
-        // Rebuild revealed space as overlapping soft circles rather than
-        // restoring whole 32px grid squares. This keeps the exploration fog
-        // organic when a patch is rebuilding during its fade.
+        // Every cleared patch gets its own persistent soft reveal mask. This
+        // is important: rebuilding the fog must never repaint a patch that
+        // Olly has already discovered.
         fogCtx.save();
         fogCtx.globalCompositeOperation = 'destination-out';
-        fogCtx.filter = 'blur(2px)';
+        fogCtx.filter = 'blur(3px)';
         for (let row = 0; row < ROWS; row++) {
             for (let col = 0; col < COLS; col++) {
                 if (!revealed[row][col])
                     continue;
                 const cx = col * GRID + GRID / 2;
                 const cy = row * GRID + GRID / 2;
-                const g = fogCtx.createRadialGradient(cx, cy, GRID * .25, cx, cy, GRID * .92);
+                const g = fogCtx.createRadialGradient(cx, cy, GRID * .22, cx, cy, GRID * 1.02);
                 g.addColorStop(0, 'rgba(0,0,0,1)');
-                g.addColorStop(.78, 'rgba(0,0,0,.98)');
+                g.addColorStop(.80, 'rgba(0,0,0,.98)');
                 g.addColorStop(1, 'rgba(0,0,0,0)');
                 fogCtx.fillStyle = g;
                 fogCtx.beginPath();
-                fogCtx.arc(cx, cy, GRID * .92, 0, Math.PI * 2);
+                fogCtx.arc(cx, cy, GRID * 1.02, 0, Math.PI * 2);
                 fogCtx.fill();
             }
         }
         fogCtx.restore();
+
+        // A patch that has begun clearing remains spatially cleared while its
+        // opacity animates down. The reveal radius expands with the fade, so
+        // no portion can mysteriously return when Olly walks away.
+        for (let i = 0; i < FOG_PATCHES.length; i++) {
+            const fade = fogPatchFade[i] || 0;
+            if (fade <= 0 && fogPatchClearing[i] === null)
+                continue;
+            const p = FOG_PATCHES[i];
+            const expansion = .58 + fade * .62;
+            fogCtx.save();
+            fogCtx.globalCompositeOperation = 'destination-out';
+            fogCtx.filter = 'blur(8px)';
+            const rx = p.rx * expansion;
+            const ry = p.ry * expansion;
+            const g = fogCtx.createRadialGradient(p.x, p.y, Math.min(rx, ry) * .18, p.x, p.y, Math.max(rx, ry));
+            const strength = Math.min(1, .42 + fade * .90);
+            g.addColorStop(0, `rgba(0,0,0,${strength})`);
+            g.addColorStop(.72, `rgba(0,0,0,${strength * .88})`);
+            g.addColorStop(1, 'rgba(0,0,0,0)');
+            fogCtx.fillStyle = g;
+            fogCtx.beginPath();
+            fogCtx.ellipse(p.x, p.y, rx, ry, Math.sin(p.seed) * .18, 0, Math.PI * 2);
+            fogCtx.fill();
+            fogCtx.restore();
+        }
     }
 
     function rebuildFog() {
@@ -634,60 +661,66 @@ export function createLevel1(ui) {
         mistCtx.clearRect(0, 0, w, h);
         mistCtx.save();
         mistCtx.scale(sx, sy);
-        mistCtx.filter = 'blur(16px)';
+        mistCtx.filter = 'blur(7px)';
+
         for (let i = 0; i < FOG_PATCHES.length; i++) {
             const p = FOG_PATCHES[i];
-            const driftX = Math.sin(t / (3600 + i * 145) + p.seed) * (p.edge ? 8 : 15);
-            const driftY = Math.cos(t / (4300 + i * 120) + p.seed) * (p.edge ? 4 : 8);
+            if ((fogPatchFade[i] || 0) >= .999)
+                continue;
+            const driftX = Math.sin(t / (3600 + i * 145) + p.seed) * (p.edge ? 7 : 14);
+            const driftY = Math.cos(t / (4300 + i * 120) + p.seed) * (p.edge ? 4 : 7);
             const px = p.x + driftX;
             const py = p.y + driftY;
-            const rx = p.rx * .42;
-            const ry = p.ry * .27;
+
+            // A faint moving veil underneath the visible wisps.
+            const rx = p.rx * .46;
+            const ry = p.ry * .30;
             const g = mistCtx.createRadialGradient(px, py, 0, px, py, rx);
-            const alpha = p.edge ? .035 : .035 + p.a * .055;
+            const alpha = p.edge ? .025 : .035 + p.a * .055;
             g.addColorStop(0, `rgba(248,247,250,${alpha})`);
-            g.addColorStop(.60, `rgba(228,226,236,${alpha * .62})`);
+            g.addColorStop(.62, `rgba(228,226,236,${alpha * .55})`);
             g.addColorStop(1, 'rgba(205,202,214,0)');
             mistCtx.fillStyle = g;
             mistCtx.beginPath();
             mistCtx.ellipse(px, py, rx, ry, Math.sin(p.seed) * .2, 0, Math.PI * 2);
             mistCtx.fill();
 
-            // v6.5.23: long, low-contrast animated wisps. These follow the
-            // same rounded movement as the artwork's atmospheric curls, so
-            // they read as drifting fog rather than random drawn lines.
-            const wispCount = p.edge ? 1 : 2 + (i % 2);
+            // Long, slow S-shaped wisps. They deliberately overlap so they
+            // read as one drifting bank of cemetery mist, not random strokes.
+            const wispCount = p.edge ? 1 : 2 + (i % 3 === 0 ? 1 : 0);
             for (let j = 0; j < wispCount; j++) {
-                const phase = t / (2300 + j * 420 + i * 37) + p.seed * .7 + j * 1.8;
-                const span = p.rx * (.72 + (j % 2) * .12);
-                const yBase = py + (j - (wispCount - 1) / 2) * p.ry * .16;
-                const wave = Math.sin(phase) * p.ry * .08;
-                const drift = Math.cos(phase * .72) * p.rx * .10;
+                const phase = t / (2500 + j * 500 + i * 43) + p.seed * .8 + j * 1.9;
+                const span = p.rx * (.62 + (j % 2) * .16);
+                const yBase = py + (j - (wispCount - 1) / 2) * p.ry * .17;
+                const wave = Math.sin(phase) * p.ry * .09;
+                const drift = Math.cos(phase * .71) * p.rx * .11;
                 mistCtx.beginPath();
                 mistCtx.moveTo(px - span, yBase + wave);
                 mistCtx.bezierCurveTo(
-                    px - span * .45, yBase - p.ry * .12 + wave,
-                    px - span * .10, yBase + p.ry * .14 - wave,
-                    px + span * .34, yBase + p.ry * .02 + drift
+                    px - span * .72, yBase - p.ry * .15 + wave,
+                    px - span * .35, yBase + p.ry * .13 - wave,
+                    px - span * .04, yBase + drift
                 );
                 mistCtx.bezierCurveTo(
-                    px + span * .62, yBase - p.ry * .10 + drift,
-                    px + span * .82, yBase + p.ry * .08 - wave,
-                    px + span, yBase + wave * .45
+                    px + span * .30, yBase - p.ry * .13 + drift,
+                    px + span * .63, yBase + p.ry * .12 - wave,
+                    px + span, yBase + wave * .35
                 );
-                mistCtx.strokeStyle = `rgba(239,238,245,${p.edge ? .025 : .045 + p.a * .035})`;
-                mistCtx.lineWidth = p.edge ? 5 : 8 + (j % 2) * 3;
+                mistCtx.strokeStyle = `rgba(241,239,247,${p.edge ? .035 : .085 + p.a * .035})`;
+                mistCtx.lineWidth = p.edge ? 4 : 6 + (j % 2) * 2;
                 mistCtx.lineCap = 'round';
                 mistCtx.stroke();
             }
         }
         mistCtx.restore();
+
+        // Only show animated mist where the actual fog still exists.
         mistCtx.save();
         mistCtx.globalCompositeOperation = 'destination-in';
         mistCtx.drawImage(fogCanvas, 0, 0, mistCanvas.width, mistCanvas.height);
         mistCtx.restore();
         ctx.save();
-        ctx.globalAlpha = .34;
+        ctx.globalAlpha = .55;
         ctx.drawImage(mistCanvas, 0, 0, WORLD_W, WORLD_H);
         ctx.restore();
     }
@@ -740,6 +773,8 @@ export function createLevel1(ui) {
     // v6.5.16e: start just below the upper-left church, close to Zombie Goth.
     let x = 240,
         y = 340,
+        cameraX = 240,
+        cameraY = 340,
         hp = 100,
         maxHp = 100,
         mode = 'map',
@@ -829,22 +864,42 @@ export function createLevel1(ui) {
         const len = Math.hypot(dx, dy) || 1;
         dx = dx / len * speed * dt;
         dy = dy / len * speed * dt;
-        const tryMove = (nx, ny) => {
+
+        const canStand = (nx, ny) => {
             if (blockedWorld(nx, ny, 16))
                 return false;
-            if (Math.hypot(nx - boss.x, ny - boss.y) < 68 && !unlockedBoss())
+            // The gate should not create a large invisible wall beside the
+            // path. Keep only a small physical exclusion around its centre.
+            if (Math.hypot(nx - boss.x, ny - boss.y) < 42 && !unlockedBoss())
                 return false;
             return true;
         };
-        const nx = x + dx,
-            ny = y + dy;
+        const slideMove = (nx, ny, axis) => {
+            if (canStand(nx, ny))
+                return [nx, ny];
+            // If the baked grid catches a single edge cell, slide a few pixels
+            // along the perpendicular axis instead of pinning Olly in place.
+            const offsets = [6, -6, 10, -10, 14, -14];
+            for (const off of offsets) {
+                const tx = axis === 'x' ? nx : nx + off;
+                const ty = axis === 'x' ? ny + off : ny;
+                if (canStand(tx, ty))
+                    return [tx, ty];
+            }
+            return null;
+        };
+
         let moved = false;
-        if (tryMove(nx, y)) {
-            x = nx;
+        const xTry = slideMove(x + dx, y, 'x');
+        if (xTry) {
+            x = xTry[0];
+            y = xTry[1];
             moved = true;
         }
-        if (tryMove(x, ny)) {
-            y = ny;
+        const yTry = slideMove(x, y + dy, 'y');
+        if (yTry) {
+            x = yTry[0];
+            y = yTry[1];
             moved = true;
         }
         if (moved) {
@@ -855,13 +910,8 @@ export function createLevel1(ui) {
             walkDir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : (dy < 0 ? 'up' : 'down');
             ui.dialogue.textContent = 'The cemetery is strangely peaceful. Somewhere nearby, a goth is probably plotting.';
         }
-        // v6.5.19: approaching the locked gate triggers its story interaction
-        // automatically, but only until all four Level 1 challenges are done.
-        if (mode === 'map' && !objectivesComplete() && !gateEncounterShown && Math.hypot(x - boss.x, y - boss.y) < 155) {
-            gateEncounterShown = true;
-            openInteractionEncounter('lockedGate');
-        }
     }
+
     const W2C = (gx, gy) => ({
         x: gx,
         y: gy
@@ -980,8 +1030,14 @@ export function createLevel1(ui) {
             playerY = y,
             viewW = vw / zoom,
             viewH = vh / zoom;
-        const camX = Math.max(viewW / 2, Math.min(WORLD_W - viewW / 2, playerX)),
-            camY = Math.max(viewH / 2, Math.min(WORLD_H - viewH / 2, playerY));
+        const targetCamX = Math.max(viewW / 2, Math.min(WORLD_W - viewW / 2, playerX)),
+            targetCamY = Math.max(viewH / 2, Math.min(WORLD_H - viewH / 2, playerY));
+        // Smooth camera follow. This restores the soft pan while keeping the
+        // slower walking speed introduced in the previous patch.
+        cameraX += (targetCamX - cameraX) * .18;
+        cameraY += (targetCamY - cameraY) * .18;
+        const camX = Math.max(viewW / 2, Math.min(WORLD_W - viewW / 2, cameraX)),
+            camY = Math.max(viewH / 2, Math.min(WORLD_H - viewH / 2, cameraY));
         ctx.translate(vw / 2 - camX * zoom, vh / 2 - camY * zoom);
         ctx.scale(zoom, zoom);
         if (mapBackground.complete && mapBackground.naturalWidth)
@@ -1007,6 +1063,15 @@ export function createLevel1(ui) {
                 const ks = 88 / Math.max(goldenKeySprite.naturalWidth, goldenKeySprite.naturalHeight);
                 ctx.drawImage(goldenKeySprite, -goldenKeySprite.naturalWidth * ks / 2, -goldenKeySprite.naturalHeight * ks / 2, goldenKeySprite.naturalWidth * ks, goldenKeySprite.naturalHeight * ks);
             }
+            ctx.restore();
+        }
+        if (!unlockedBoss() && gateLockSprite.complete && gateLockSprite.naturalWidth) {
+            ctx.save();
+            ctx.translate(boss.x, boss.y - 58 + Math.sin(t / 360) * 3);
+            ctx.shadowColor = 'rgba(0,0,0,.75)';
+            ctx.shadowBlur = 12;
+            const gs = 58 / Math.max(gateLockSprite.naturalWidth, gateLockSprite.naturalHeight);
+            ctx.drawImage(gateLockSprite, -gateLockSprite.naturalWidth * gs / 2, -gateLockSprite.naturalHeight * gs / 2, gateLockSprite.naturalWidth * gs, gateLockSprite.naturalHeight * gs);
             ctx.restore();
         }
         drawOlly(ctx, playerX, playerY, .78, t / 1000, true, facingDir, walkPulse > 0);
@@ -1134,13 +1199,19 @@ export function createLevel1(ui) {
             stats();
             return;
         }
-        if (near(boss.x, boss.y, 72)) {
+        if (near(boss.x, boss.y, 92)) {
+            // The gate is deliberately click-to-interact. Merely walking up
+            // beside it should never open the story encounter.
+            if (!objectivesComplete()) {
+                openInteractionEncounter('lockedGate');
+                return;
+            }
             if (unlockedBoss()) {
                 bossRoomEntered = true;
                 mode = 'bossready';
                 ui.bossReady.classList.remove('hidden')
             } else {
-                ui.dialogue.textContent = '🔒 The gate is still locked. Complete every challenge, then collect the key.'
+                ui.dialogue.textContent = '🔒 The gate is still locked. Find the key.'
             }
             return;
         }
@@ -1765,6 +1836,8 @@ export function createLevel1(ui) {
             mode = 'map';
             target = null;
             bossRoomEntered = false;
+            cameraX = x;
+            cameraY = y;
             stats();
             lastFogRevealX = null;
             lastFogRevealY = null;
@@ -1779,6 +1852,8 @@ export function createLevel1(ui) {
     }
     function start() {
         gateEncounterShown = false;
+        cameraX = x;
+        cameraY = y;
         stats();
         drawMini();
         cancelAnimationFrame(relationshipRAF);
