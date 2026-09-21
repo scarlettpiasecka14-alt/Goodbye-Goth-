@@ -1,27 +1,14 @@
-GOODBYE GOTH v6.5.22
-Fog Parting + Collision Tolerance Fix
+Goodbye Goth v6.5.23
 
-Patch scope: LEVEL 1 fog and map collision only.
+Fog coverage + persistent reveal + animated wisps.
+
+Replace only: js/levels/level1.js
 
 Changes:
-- Removed the hard square/grid look from fog reveals by rebuilding revealed space with soft overlapping feathered circles.
-- Fog banks now fade more gradually when touched (1.25s).
-- Added a short expanding "parting" reveal around Olly when he enters a fog bank.
-- Preserved whole-patch reveal behaviour so buildings and hidden markers clear with the fog rather than leaving fog stuck over them.
-- Increased fog density variation so patches do not all read as identical opacity.
-- Slightly softened the continuous reveal trail so it does not create harsh lines.
-- Increased the existing walkability tolerance modestly around the hand-drawn walkable path, targeting narrow path seams without changing the map architecture.
+- Increased broad overlapping fog banks so the cemetery feels substantially fog-covered.
+- Added varied density and soft animated wispy lines.
+- Expanded fog-touch detection so visually cleared patches cannot repaint when the fog canvas rebuilds.
+- Fog patches remain permanently cleared once Olly enters their reveal envelope.
+- Edge fog remains deliberately thin.
 
-Intentionally NOT changed:
-- Olly movement speed
-- Gate interaction
-- Gate lock sprite
-- Cutscenes
-- Combat / Goth AI
-- Map artwork or renderer
-- Inventory / HUD / minigames
-
-Upload into the existing repository path:
-js/levels/level1.js
-
-The gate interaction image is included unchanged because this package is based on the previous active Level 1 patch.
+No map renderer, movement speed, gate interaction, cutscenes, combat AI, inventory, or other systems were changed.

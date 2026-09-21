@@ -348,7 +348,28 @@ export function createLevel1(ui) {
         { x: 900, y: 900, rx: 150, ry: 100, a: .62, seed: 26.8 },
         { x: 1080, y: 820, rx: 125, ry: 92, a: .50, seed: 27.5 },
         { x: 1260, y: 930, rx: 145, ry: 90, a: .58, seed: 28.2 },
-        { x: 1020, y: 180, rx: 145, ry: 100, a: .56, seed: 7.3 },
+        // v6.5.23: additional broad banks increase the feeling of a fog-filled
+        // cemetery without turning the map into one continuous white sheet.
+        // These deliberately overlap existing patches so the fog reads as
+        // connected drifting banks rather than isolated clouds.
+        { x: 250, y: 350, rx: 185, ry: 120, a: .56, seed: 40.1 },
+        { x: 525, y: 330, rx: 170, ry: 125, a: .66, seed: 40.8 },
+        { x: 735, y: 410, rx: 190, ry: 135, a: .58, seed: 41.5 },
+        { x: 970, y: 365, rx: 185, ry: 125, a: .62, seed: 42.2 },
+        { x: 1260, y: 360, rx: 175, ry: 120, a: .52, seed: 42.9 },
+        { x: 250, y: 610, rx: 180, ry: 125, a: .60, seed: 43.6 },
+        { x: 525, y: 610, rx: 190, ry: 130, a: .48, seed: 44.3 },
+        { x: 760, y: 575, rx: 175, ry: 125, a: .68, seed: 45.0 },
+        { x: 985, y: 590, rx: 195, ry: 135, a: .54, seed: 45.7 },
+        { x: 1260, y: 620, rx: 185, ry: 125, a: .64, seed: 46.4 },
+        { x: 330, y: 875, rx: 175, ry: 110, a: .50, seed: 47.1 },
+        { x: 650, y: 875, rx: 185, ry: 115, a: .62, seed: 47.8 },
+        { x: 930, y: 850, rx: 190, ry: 120, a: .50, seed: 48.5 },
+        { x: 1180, y: 875, rx: 180, ry: 115, a: .60, seed: 49.2 },
+        { x: 1430, y: 600, rx: 125, ry: 105, a: .42, seed: 49.9 },
+        { x: 90, y: 520, rx: 120, ry: 105, a: .42, seed: 50.6 },
+        { x: 1020, y: 90, rx: 165, ry: 90, a: .40, seed: 51.3, edge: true },
+        { x: 680, y: 980, rx: 145, ry: 72, a: .20, seed: 52.0, edge: true },
         { x: 1180, y: 225, rx: 175, ry: 110, a: .72, seed: 8.0 },
         { x: 620, y: 680, rx: 135, ry: 100, a: .60, seed: 8.7 },
         { x: 900, y: 700, rx: 165, ry: 120, a: .78, seed: 9.4 },
@@ -548,8 +569,15 @@ export function createLevel1(ui) {
             const p = FOG_PATCHES[i];
             if (fogPatchFade[i] >= .999)
                 continue;
-            const dx = (px - p.x) / (p.rx * .92);
-            const dy = (py - p.y) / (p.ry * .92);
+            // Use a generous touch envelope matching the full cloud bank,
+            // not just its mathematical centre. This prevents a patch that
+            // was visually cleared by Olly's reveal radius from being painted
+            // back when the fog canvas rebuilds. Once a patch starts clearing,
+            // it remains in that state until it has fully faded away.
+            const touchRx = p.rx * (p.edge ? 1.05 : 1.28);
+            const touchRy = p.ry * (p.edge ? 1.05 : 1.28);
+            const dx = (px - p.x) / touchRx;
+            const dy = (py - p.y) / touchRy;
             if (dx * dx + dy * dy <= 1)
                 beginFogPatchClear(i, performance.now());
         }
@@ -624,6 +652,34 @@ export function createLevel1(ui) {
             mistCtx.beginPath();
             mistCtx.ellipse(px, py, rx, ry, Math.sin(p.seed) * .2, 0, Math.PI * 2);
             mistCtx.fill();
+
+            // v6.5.23: long, low-contrast animated wisps. These follow the
+            // same rounded movement as the artwork's atmospheric curls, so
+            // they read as drifting fog rather than random drawn lines.
+            const wispCount = p.edge ? 1 : 2 + (i % 2);
+            for (let j = 0; j < wispCount; j++) {
+                const phase = t / (2300 + j * 420 + i * 37) + p.seed * .7 + j * 1.8;
+                const span = p.rx * (.72 + (j % 2) * .12);
+                const yBase = py + (j - (wispCount - 1) / 2) * p.ry * .16;
+                const wave = Math.sin(phase) * p.ry * .08;
+                const drift = Math.cos(phase * .72) * p.rx * .10;
+                mistCtx.beginPath();
+                mistCtx.moveTo(px - span, yBase + wave);
+                mistCtx.bezierCurveTo(
+                    px - span * .45, yBase - p.ry * .12 + wave,
+                    px - span * .10, yBase + p.ry * .14 - wave,
+                    px + span * .34, yBase + p.ry * .02 + drift
+                );
+                mistCtx.bezierCurveTo(
+                    px + span * .62, yBase - p.ry * .10 + drift,
+                    px + span * .82, yBase + p.ry * .08 - wave,
+                    px + span, yBase + wave * .45
+                );
+                mistCtx.strokeStyle = `rgba(239,238,245,${p.edge ? .025 : .045 + p.a * .035})`;
+                mistCtx.lineWidth = p.edge ? 5 : 8 + (j % 2) * 3;
+                mistCtx.lineCap = 'round';
+                mistCtx.stroke();
+            }
         }
         mistCtx.restore();
         mistCtx.save();
