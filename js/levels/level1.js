@@ -555,9 +555,9 @@ export function createLevel1(ui) {
         }
     }
 
-    paintFogPatches();
-    reapplyRevealedAreas();
-        }
+    function rebuildFog() {
+        paintFogPatches();
+        reapplyRevealedAreas();
     }
 
     rebuildFog();
