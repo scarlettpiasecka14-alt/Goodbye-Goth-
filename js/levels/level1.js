@@ -309,8 +309,8 @@ export function createLevel1(ui) {
     const fogCtx = fogCanvas.getContext('2d');
 
     const mistCanvas = document.createElement('canvas');
-    mistCanvas.width = WORLD_W / 2;
-    mistCanvas.height = WORLD_H / 2;
+    mistCanvas.width = Math.floor(WORLD_W / 3);
+    mistCanvas.height = Math.floor(WORLD_H / 3);
     const mistCtx = mistCanvas.getContext('2d');
 
     const FOG_REVEAL_RADIUS = 128;
@@ -398,7 +398,7 @@ export function createLevel1(ui) {
     // directly underneath him.
     const fogPatchFade = FOG_PATCHES.map(() => 0);
     const fogPatchClearing = FOG_PATCHES.map(() => null);
-    let fogRepaintNeeded = true;
+    const fogPatchApplied = FOG_PATCHES.map(() => 0);
     const FOG_CLEAR_MS = 1250;
     const FOG_PARTING_MS = 760;
     const fogPartingBursts = [];
@@ -456,7 +456,6 @@ export function createLevel1(ui) {
             }
         }
         fogCtx.restore();
-        fogRepaintNeeded = false;
     }
 
     function reapplyRevealedAreas() {
@@ -511,39 +510,53 @@ export function createLevel1(ui) {
         }
     }
 
-    function rebuildFog() {
-        paintFogPatches();
-        reapplyRevealedAreas();
+    function eraseFogPatchProgress(p, delta) {
+        if (delta <= 0) return;
+        fogCtx.save();
+        fogCtx.globalCompositeOperation = 'destination-out';
+        fogCtx.filter = 'blur(8px)';
+        const rx = p.rx * 1.16;
+        const ry = p.ry * 1.16;
+        const g = fogCtx.createRadialGradient(p.x, p.y, Math.min(rx, ry) * .16, p.x, p.y, Math.max(rx, ry));
+        const strength = Math.min(1, delta * 1.35);
+        g.addColorStop(0, `rgba(0,0,0,${strength})`);
+        g.addColorStop(.66, `rgba(0,0,0,${strength * .92})`);
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        fogCtx.fillStyle = g;
+        fogCtx.beginPath();
+        fogCtx.ellipse(p.x, p.y, rx, ry, Math.sin(p.seed) * .18, 0, Math.PI * 2);
+        fogCtx.fill();
+        fogCtx.restore();
     }
 
     function beginFogPatchClear(index, t) {
-        if (fogPatchClearing[index] !== null || fogPatchFade[index] >= .999)
-            return;
+        if (fogPatchClearing[index] !== null || fogPatchFade[index] >= .999) return;
         fogPatchClearing[index] = t;
         fogPartingBursts.push({ x, y, start: t });
-        // The reveal is intentionally noticeable but not instantaneous.
         ui.dialogue.textContent = '🌫️ The fog parts around you...';
-        fogRepaintNeeded = true;
     }
 
     function updateFogPatchClears(t) {
-        let changed = false;
         for (let i = 0; i < FOG_PATCHES.length; i++) {
-            if (fogPatchClearing[i] === null)
-                continue;
+            if (fogPatchClearing[i] === null) continue;
             const progress = Math.max(0, Math.min(1, (t - fogPatchClearing[i]) / FOG_CLEAR_MS));
             const eased = 1 - Math.pow(1 - progress, 2.2);
-            if (Math.abs(eased - fogPatchFade[i]) > .012) {
+            const delta = eased - fogPatchApplied[i];
+            if (delta > 0) {
+                eraseFogPatchProgress(FOG_PATCHES[i], delta);
+                fogPatchApplied[i] = eased;
                 fogPatchFade[i] = eased;
-                changed = true;
             }
             if (progress >= 1) {
                 fogPatchFade[i] = 1;
+                fogPatchApplied[i] = 1;
                 fogPatchClearing[i] = null;
             }
         }
-        if (changed || fogRepaintNeeded) {
-            rebuildFog();
+    }
+
+    paintFogPatches();
+    reapplyRevealedAreas();
         }
     }
 
@@ -592,22 +605,32 @@ export function createLevel1(ui) {
     }
 
     function revealTouchedFogPatches(px, py) {
+        const touched = new Set();
         for (let i = 0; i < FOG_PATCHES.length; i++) {
             const p = FOG_PATCHES[i];
-            if (fogPatchFade[i] >= .999)
-                continue;
-            // Use a generous touch envelope matching the full cloud bank,
-            // not just its mathematical centre. This prevents a patch that
-            // was visually cleared by Olly's reveal radius from being painted
-            // back when the fog canvas rebuilds. Once a patch starts clearing,
-            // it remains in that state until it has fully faded away.
-            const touchRx = p.rx * (p.edge ? 1.05 : 1.28);
-            const touchRy = p.ry * (p.edge ? 1.05 : 1.28);
+            if (fogPatchFade[i] >= .999) continue;
+            const touchRx = p.rx * (p.edge ? 1.08 : 1.30);
+            const touchRy = p.ry * (p.edge ? 1.08 : 1.30);
             const dx = (px - p.x) / touchRx;
             const dy = (py - p.y) / touchRy;
-            if (dx * dx + dy * dy <= 1)
-                beginFogPatchClear(i, performance.now());
+            if (dx * dx + dy * dy <= 1) touched.add(i);
         }
+        let expanded = true;
+        while (expanded) {
+            expanded = false;
+            for (let i = 0; i < FOG_PATCHES.length; i++) {
+                if (touched.has(i)) continue;
+                const a = FOG_PATCHES[i];
+                for (const j of touched) {
+                    const b = FOG_PATCHES[j];
+                    const dx = (a.x - b.x) / (a.rx + b.rx);
+                    const dy = (a.y - b.y) / (a.ry + b.ry);
+                    if (dx * dx + dy * dy <= 1.05) { touched.add(i); expanded = true; break; }
+                }
+            }
+        }
+        const nowT = performance.now();
+        touched.forEach(i => beginFogPatchClear(i, nowT));
     }
 
     function revealAround(px, py, force=false) {
@@ -625,7 +648,6 @@ export function createLevel1(ui) {
         revealTouchedFogPatches(px, py);
         lastFogRevealX = px;
         lastFogRevealY = py;
-        fogRepaintNeeded = true;
     }
 
     function updateFogParting(t) {
@@ -661,7 +683,7 @@ export function createLevel1(ui) {
         mistCtx.clearRect(0, 0, w, h);
         mistCtx.save();
         mistCtx.scale(sx, sy);
-        mistCtx.filter = 'blur(7px)';
+        mistCtx.filter = 'blur(3.5px)';
 
         for (let i = 0; i < FOG_PATCHES.length; i++) {
             const p = FOG_PATCHES[i];
@@ -676,7 +698,7 @@ export function createLevel1(ui) {
             const rx = p.rx * .46;
             const ry = p.ry * .30;
             const g = mistCtx.createRadialGradient(px, py, 0, px, py, rx);
-            const alpha = p.edge ? .025 : .035 + p.a * .055;
+            const alpha = p.edge ? .035 : .055 + p.a * .085;
             g.addColorStop(0, `rgba(248,247,250,${alpha})`);
             g.addColorStop(.62, `rgba(228,226,236,${alpha * .55})`);
             g.addColorStop(1, 'rgba(205,202,214,0)');
@@ -687,7 +709,7 @@ export function createLevel1(ui) {
 
             // Long, slow S-shaped wisps. They deliberately overlap so they
             // read as one drifting bank of cemetery mist, not random strokes.
-            const wispCount = p.edge ? 1 : 2 + (i % 3 === 0 ? 1 : 0);
+            const wispCount = p.edge ? 1 : (i % 3 === 0 ? 2 : 1);
             for (let j = 0; j < wispCount; j++) {
                 const phase = t / (2500 + j * 500 + i * 43) + p.seed * .8 + j * 1.9;
                 const span = p.rx * (.62 + (j % 2) * .16);
@@ -706,8 +728,8 @@ export function createLevel1(ui) {
                     px + span * .63, yBase + p.ry * .12 - wave,
                     px + span, yBase + wave * .35
                 );
-                mistCtx.strokeStyle = `rgba(241,239,247,${p.edge ? .035 : .085 + p.a * .035})`;
-                mistCtx.lineWidth = p.edge ? 4 : 6 + (j % 2) * 2;
+                mistCtx.strokeStyle = `rgba(246,243,250,${p.edge ? .07 : .14 + p.a * .055})`;
+                mistCtx.lineWidth = p.edge ? 3.5 : 4.5 + (j % 2) * 1.5;
                 mistCtx.lineCap = 'round';
                 mistCtx.stroke();
             }
@@ -775,6 +797,7 @@ export function createLevel1(ui) {
         y = 340,
         cameraX = 240,
         cameraY = 340,
+        miniFrameCounter = 0,
         hp = 100,
         maxHp = 100,
         mode = 'map',
@@ -852,62 +875,36 @@ export function createLevel1(ui) {
             held.right = down;
     }
     function updateMovement(dt) {
-        if (mode !== 'map')
-            return;
+        if (mode !== 'map') return;
         const speed = 240;
         let dx = (held.right ? 1 : 0) - (held.left ? 1 : 0);
         let dy = (held.down ? 1 : 0) - (held.up ? 1 : 0);
-        if (!dx && !dy) {
-            walkPulse = 0;
-            return;
-        }
+        if (!dx && !dy) { walkPulse = 0; return; }
         const len = Math.hypot(dx, dy) || 1;
-        dx = dx / len * speed * dt;
-        dy = dy / len * speed * dt;
-
+        const moveX = dx / len * speed * dt;
+        const moveY = dy / len * speed * dt;
+        const distance = Math.hypot(moveX, moveY);
+        const steps = Math.max(1, Math.ceil(distance / 6));
+        const stepX = moveX / steps, stepY = moveY / steps;
         const canStand = (nx, ny) => {
-            if (blockedWorld(nx, ny, 16))
-                return false;
-            // The gate should not create a large invisible wall beside the
-            // path. Keep only a small physical exclusion around its centre.
-            if (Math.hypot(nx - boss.x, ny - boss.y) < 42 && !unlockedBoss())
-                return false;
+            if (blockedWorld(nx, ny, 0)) return false;
+            if (Math.hypot(nx - boss.x, ny - boss.y) < 24 && !unlockedBoss()) return false;
             return true;
         };
-        const slideMove = (nx, ny, axis) => {
-            if (canStand(nx, ny))
-                return [nx, ny];
-            // If the baked grid catches a single edge cell, slide a few pixels
-            // along the perpendicular axis instead of pinning Olly in place.
-            const offsets = [6, -6, 10, -10, 14, -14];
-            for (const off of offsets) {
-                const tx = axis === 'x' ? nx : nx + off;
-                const ty = axis === 'x' ? ny + off : ny;
-                if (canStand(tx, ty))
-                    return [tx, ty];
-            }
-            return null;
-        };
-
         let moved = false;
-        const xTry = slideMove(x + dx, y, 'x');
-        if (xTry) {
-            x = xTry[0];
-            y = xTry[1];
-            moved = true;
-        }
-        const yTry = slideMove(x, y + dy, 'y');
-        if (yTry) {
-            x = yTry[0];
-            y = yTry[1];
-            moved = true;
+        for (let i = 0; i < steps; i++) {
+            const nx = x + stepX, ny = y + stepY;
+            if (canStand(nx, ny)) { x = nx; y = ny; moved = true; }
+            else {
+                if (canStand(nx, y)) { x = nx; moved = true; }
+                if (canStand(x, ny)) { y = ny; moved = true; }
+            }
         }
         if (moved) {
             revealAround(x, y);
             walkPulse = 1;
-            if (Math.abs(dx) > Math.abs(dy))
-                facingDir = dx < 0 ? 'left' : 'right';
-            walkDir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : (dy < 0 ? 'up' : 'down');
+            if (Math.abs(moveX) > Math.abs(moveY)) facingDir = moveX < 0 ? 'left' : 'right';
+            walkDir = Math.abs(moveX) > Math.abs(moveY) ? (moveX < 0 ? 'left' : 'right') : (moveY < 0 ? 'up' : 'down');
             ui.dialogue.textContent = 'The cemetery is strangely peaceful. Somewhere nearby, a goth is probably plotting.';
         }
     }
@@ -1017,7 +1014,7 @@ export function createLevel1(ui) {
         }
         ctx.restore();
     }
-    function drawWorld(t) {
+    function drawWorld(t, dt = 1 / 60) {
         const vw = ui.canvas.clientWidth || 1000,
             vh = ui.canvas.clientHeight || 600;
         const sx = ui.canvas.width / vw,
@@ -1032,10 +1029,11 @@ export function createLevel1(ui) {
             viewH = vh / zoom;
         const targetCamX = Math.max(viewW / 2, Math.min(WORLD_W - viewW / 2, playerX)),
             targetCamY = Math.max(viewH / 2, Math.min(WORLD_H - viewH / 2, playerY));
-        // Smooth camera follow. This restores the soft pan while keeping the
-        // slower walking speed introduced in the previous patch.
-        cameraX += (targetCamX - cameraX) * .18;
-        cameraY += (targetCamY - cameraY) * .18;
+        // Frame-rate independent camera smoothing keeps the pan consistent
+        // even when Safari drops a frame.
+        const camBlend = 1 - Math.exp(-10 * Math.min(dt, .05));
+        cameraX += (targetCamX - cameraX) * camBlend;
+        cameraY += (targetCamY - cameraY) * camBlend;
         const camX = Math.max(viewW / 2, Math.min(WORLD_W - viewW / 2, cameraX)),
             camY = Math.max(viewH / 2, Math.min(WORLD_H - viewH / 2, cameraY));
         ctx.translate(vw / 2 - camX * zoom, vh / 2 - camY * zoom);
@@ -1860,14 +1858,15 @@ export function createLevel1(ui) {
         clearInterval(enemyTimer);
         cancelAnimationFrame(raf);
         const loop = t => {
-            const dt = Math.min(0.04, (t - (now || t)) / 1000);
+            const dt = Math.min(0.05, (t - (now || t)) / 1000);
             now = t;
             if (mode === 'map')
                 updateMovement(dt);
             if (walkPulse > 0)
                 walkPulse = 0;
-            drawWorld(t);
-            drawMini();
+            drawWorld(t, dt);
+            miniFrameCounter++;
+            if (miniFrameCounter % 3 === 0) drawMini();
             raf = requestAnimationFrame(loop)
         };
         raf = requestAnimationFrame(loop)
