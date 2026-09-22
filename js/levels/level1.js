@@ -378,6 +378,24 @@ export function createLevel1(ui) {
         { x: 600, y: 470, rx: 100, ry: 75, a: .42, seed: 10.8 },
         { x: 190, y: 520, rx: 125, ry: 92, a: .50, seed: 11.5 },
         { x: 1320, y: 560, rx: 145, ry: 105, a: .64, seed: 12.2 },
+        // v6.5.28: additional layered banks for denser, more atmospheric coverage.
+        { x: 160, y: 360, rx: 150, ry: 92, a: .46, seed: 60.1 },
+        { x: 430, y: 280, rx: 135, ry: 88, a: .58, seed: 60.8 },
+        { x: 585, y: 430, rx: 155, ry: 105, a: .74, seed: 61.5 },
+        { x: 820, y: 250, rx: 150, ry: 95, a: .50, seed: 62.2 },
+        { x: 1060, y: 255, rx: 145, ry: 92, a: .70, seed: 62.9 },
+        { x: 1380, y: 355, rx: 150, ry: 96, a: .56, seed: 63.6 },
+        { x: 1450, y: 540, rx: 120, ry: 100, a: .62, seed: 64.3 },
+        { x: 250, y: 705, rx: 155, ry: 108, a: .64, seed: 65.0 },
+        { x: 505, y: 760, rx: 145, ry: 112, a: .52, seed: 65.7 },
+        { x: 780, y: 740, rx: 175, ry: 118, a: .72, seed: 66.4 },
+        { x: 1040, y: 735, rx: 155, ry: 108, a: .56, seed: 67.1 },
+        { x: 1260, y: 760, rx: 175, ry: 115, a: .68, seed: 67.8 },
+        { x: 150, y: 900, rx: 125, ry: 88, a: .42, seed: 68.5 },
+        { x: 420, y: 940, rx: 155, ry: 90, a: .48, seed: 69.2 },
+        { x: 760, y: 920, rx: 150, ry: 92, a: .54, seed: 69.9 },
+        { x: 1085, y: 955, rx: 175, ry: 94, a: .50, seed: 70.6 },
+        { x: 1370, y: 890, rx: 155, ry: 100, a: .58, seed: 71.3 },
         // Edge patches stay thin because these areas can never be cleared.
         { x: 45, y: 220, rx: 90, ry: 72, a: .22, seed: 29.0, edge: true },
         { x: 60, y: 430, rx: 100, ry: 78, a: .20, seed: 29.7, edge: true },
@@ -409,6 +427,7 @@ export function createLevel1(ui) {
         fogCtx.filter = 'blur(15px)';
         for (let i = 0; i < FOG_PATCHES.length; i++) {
             const patch = FOG_PATCHES[i];
+            fogCtx.filter = `blur(${10 + (i % 4) * 3}px)`;
             const fade = fogPatchFade[i] || 0;
             if (fade >= .999)
                 continue;
@@ -699,7 +718,7 @@ export function createLevel1(ui) {
 
             // Long, slow S-shaped wisps. They deliberately overlap so they
             // read as one drifting bank of cemetery mist, not random strokes.
-            const wispCount = p.edge ? 1 : (i % 3 === 0 ? 2 : 1);
+            const wispCount = p.edge ? 1 : (i % 3 === 0 ? 3 : 2);
             for (let j = 0; j < wispCount; j++) {
                 const phase = t / (2500 + j * 500 + i * 43) + p.seed * .8 + j * 1.9;
                 const span = p.rx * (.62 + (j % 2) * .16);
@@ -718,7 +737,7 @@ export function createLevel1(ui) {
                     px + span * .63, yBase + p.ry * .12 - wave,
                     px + span, yBase + wave * .35
                 );
-                mistCtx.strokeStyle = `rgba(246,243,250,${p.edge ? .07 : .14 + p.a * .055})`;
+                mistCtx.strokeStyle = `rgba(246,243,250,${p.edge ? .08 : .17 + p.a * .065})`;
                 mistCtx.lineWidth = p.edge ? 3.5 : 4.5 + (j % 2) * 1.5;
                 mistCtx.lineCap = 'round';
                 mistCtx.stroke();
@@ -798,6 +817,7 @@ export function createLevel1(ui) {
         relationshipDone = false,
         puzzleSolved = false,
         keyCollected = false,
+        gateOpened = false,
         keySpawnAnnounced = false,
         inventory = {},
         checkpoint = 'cemetery-entrance',
@@ -908,7 +928,7 @@ export function createLevel1(ui) {
         return kills >= 2 && relationshipDone && puzzleSolved
     }
     function unlockedBoss() {
-        return objectivesComplete() && keyCollected
+        return objectivesComplete() && keyCollected && gateOpened
     }
     function refreshInventoryUI() {
         const count = inventory && inventory.key ? 1 : 0;
@@ -1053,7 +1073,7 @@ export function createLevel1(ui) {
             }
             ctx.restore();
         }
-        if (!unlockedBoss() && gateLockSprite.complete && gateLockSprite.naturalWidth) {
+        if (!gateOpened && gateLockSprite.complete && gateLockSprite.naturalWidth) {
             ctx.save();
             ctx.translate(boss.x, boss.y - 58 + Math.sin(t / 360) * 3);
             ctx.shadowColor = 'rgba(0,0,0,.75)';
@@ -1162,6 +1182,55 @@ export function createLevel1(ui) {
         ui.puzzle.classList.remove('hidden');
         ui.puzzleFeedback.textContent = 'Choose wisely. The Goths have inexplicably made this a formal assessment.';
     }
+    function playCutscene2() {
+        if (mode !== 'map' || !keyCollected || gateOpened) return;
+        mode = 'cutscene2';
+        const overlay = document.createElement('div');
+        overlay.id = 'level1-cutscene2-overlay';
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:#09070d;display:flex;align-items:center;justify-content:center;overflow:hidden;';
+
+        const video = document.createElement('video');
+        video.id = 'level1-cutscene2';
+        video.src = 'assets/video/cutscene2/cutscene2.mov?v=6528';
+        video.playsInline = true;
+        video.preload = 'auto';
+        video.style.cssText = 'width:100%;height:100%;object-fit:contain;background:#09070d;';
+        video.controls = false;
+        overlay.appendChild(video);
+
+        const playButton = document.createElement('button');
+        playButton.textContent = '▶ PLAY CUTSCENE';
+        playButton.style.cssText = 'position:absolute;bottom:28px;left:50%;transform:translateX(-50%);padding:12px 22px;border:1px solid #d98ba8;border-radius:12px;background:#382132;color:#f8eaf0;font:700 16px Georgia,serif;cursor:pointer;display:none;';
+        overlay.appendChild(playButton);
+        document.body.appendChild(overlay);
+
+        let finished = false;
+        const finish = () => {
+            if (finished) return;
+            finished = true;
+            video.pause();
+            overlay.remove();
+            gateOpened = true;
+            mode = 'map';
+            stats();
+            ui.dialogue.textContent = '🔓 The gate opens. Whatever is beyond it is no longer your problem for the moment...';
+        };
+        const fail = () => {
+            if (finished) return;
+            finished = true;
+            overlay.remove();
+            mode = 'map';
+            ui.dialogue.textContent = '⚠️ Cutscene 2 could not be loaded. Place it at assets/video/cutscene2/cutscene2.mov';
+        };
+        video.addEventListener('ended', finish, { once:true });
+        video.addEventListener('error', fail, { once:true });
+        playButton.addEventListener('click', () => {
+            playButton.style.display = 'none';
+            video.play().catch(() => { playButton.style.display = 'block'; });
+        }, { once:false });
+        video.play().catch(() => { playButton.style.display = 'block'; });
+    }
+
     ui.canvas.addEventListener('pointerdown', e => {
         if (mode !== 'map')
             return;
@@ -1183,25 +1252,22 @@ export function createLevel1(ui) {
         if (objectivesComplete() && !keyCollected && near(key.x, key.y, 55)) {
             keyCollected = true;
             inventory.key = 1;
+            refreshInventoryUI();
             ui.dialogue.textContent = '🔑 A little brass key drops onto the cobblestones. Finally, a sensible piece of game design.';
             stats();
             return;
         }
-        if (near(boss.x, boss.y, 92)) {
-            // The gate is deliberately click-to-interact. Merely walking up
-            // beside it should never open the story encounter.
-            if (!objectivesComplete()) {
+        // Gate is click-to-interact only. Walking nearby never changes mode.
+        // The clickable target is the lock icon itself.
+        if (near(boss.x, boss.y - 58, 66)) {
+            if (!keyCollected) {
                 openInteractionEncounter('lockedGate');
                 return;
             }
-            if (unlockedBoss()) {
-                bossRoomEntered = true;
-                mode = 'bossready';
-                ui.bossReady.classList.remove('hidden')
-            } else {
-                ui.dialogue.textContent = '🔒 The gate is still locked. Find the key.'
+            if (!gateOpened) {
+                playCutscene2();
+                return;
             }
-            return;
         }
     });
 
@@ -1775,6 +1841,7 @@ export function createLevel1(ui) {
                 relationshipDone,
                 puzzleSolved,
                 keyCollected,
+                gateOpened,
                 inventory,
                 checkpoint,
                 enemies: enemies.map(e => ({
@@ -1809,8 +1876,10 @@ export function createLevel1(ui) {
             relationshipDone = !!state.relationshipDone;
             puzzleSolved = !!state.puzzleSolved;
             keyCollected = !!state.keyCollected;
+            gateOpened = !!state.gateOpened;
             keySpawnAnnounced = keyCollected;
             inventory = state.inventory && typeof state.inventory === 'object' ? state.inventory : {};
+            if (keyCollected) inventory.key = 1;
             checkpoint = state.checkpoint || 'cemetery-entrance';
             if (Array.isArray(state.enemies)) {
                 state.enemies.forEach((saved, i) => {

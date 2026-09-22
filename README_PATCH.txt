@@ -1,10 +1,15 @@
-Goodbye Goth v6.5.27 - Fog Persistence Fix
+Goodbye Goth v6.5.28
 
 Changes:
-- A touched fog bank clears on its own; overlapping banks no longer cascade-clear across the map.
-- Fog touch detection is tightened so Olly must actually reach the bank instead of triggering it from a large area.
-- Fade time increased slightly to 1.5 seconds for a more visible reveal.
-- No camera, movement, combat, inventory, gate, map-renderer or minigame changes.
+- Adds more varied fog banks and stronger layered moving wisps.
+- Keeps fog patches independent and persistent once cleared.
+- Keeps the current smooth camera and movement/collision behaviour from v6.5.27.
+- Fixes Golden Key progression so the gate lock remains visible after key pickup.
+- Golden Key pickup refreshes inventory immediately.
+- Clicking the gate lock without the key opens the existing locked-gate interaction.
+- Clicking the gate lock with the key plays cutscene2.mov.
+- Creates the cutscene folder/path at assets/video/cutscene2/
+- After cutscene2 ends, the gate is marked open for later Level 1.5 progression.
 
-Upload only:
-js/levels/level1.js
+Cutscene path:
+assets/video/cutscene2/cutscene2.mov
