@@ -399,7 +399,7 @@ export function createLevel1(ui) {
     const fogPatchFade = FOG_PATCHES.map(() => 0);
     const fogPatchClearing = FOG_PATCHES.map(() => null);
     const fogPatchApplied = FOG_PATCHES.map(() => 0);
-    const FOG_CLEAR_MS = 1250;
+    const FOG_CLEAR_MS = 1500;
     const FOG_PARTING_MS = 760;
     const fogPartingBursts = [];
 
@@ -605,29 +605,19 @@ export function createLevel1(ui) {
     }
 
     function revealTouchedFogPatches(px, py) {
+        // Only clear the fog bank Olly actually touches. Overlapping banks
+        // are visual neighbours, not one giant reveal group. Cascading the
+        // reveal through overlapping patches made a single step clear most
+        // of the map at once.
         const touched = new Set();
         for (let i = 0; i < FOG_PATCHES.length; i++) {
             const p = FOG_PATCHES[i];
             if (fogPatchFade[i] >= .999) continue;
-            const touchRx = p.rx * (p.edge ? 1.08 : 1.30);
-            const touchRy = p.ry * (p.edge ? 1.08 : 1.30);
+            const touchRx = p.rx * (p.edge ? 1.04 : 1.08);
+            const touchRy = p.ry * (p.edge ? 1.04 : 1.08);
             const dx = (px - p.x) / touchRx;
             const dy = (py - p.y) / touchRy;
             if (dx * dx + dy * dy <= 1) touched.add(i);
-        }
-        let expanded = true;
-        while (expanded) {
-            expanded = false;
-            for (let i = 0; i < FOG_PATCHES.length; i++) {
-                if (touched.has(i)) continue;
-                const a = FOG_PATCHES[i];
-                for (const j of touched) {
-                    const b = FOG_PATCHES[j];
-                    const dx = (a.x - b.x) / (a.rx + b.rx);
-                    const dy = (a.y - b.y) / (a.ry + b.ry);
-                    if (dx * dx + dy * dy <= 1.05) { touched.add(i); expanded = true; break; }
-                }
-            }
         }
         const nowT = performance.now();
         touched.forEach(i => beginFogPatchClear(i, nowT));

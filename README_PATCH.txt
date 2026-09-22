@@ -1,7 +1,10 @@
-Goodbye Goth v6.5.26 – Fog/Camera Crash Fix
+Goodbye Goth v6.5.27 - Fog Persistence Fix
 
-IMPORTANT: v6.5.25 contained a runtime bug: rebuildFog() was referenced after the fog renderer refactor but its function definition was accidentally removed. This patch restores that helper and removes the stray braces.
+Changes:
+- A touched fog bank clears on its own; overlapping banks no longer cascade-clear across the map.
+- Fog touch detection is tightened so Olly must actually reach the bank instead of triggering it from a large area.
+- Fade time increased slightly to 1.5 seconds for a more visible reveal.
+- No camera, movement, combat, inventory, gate, map-renderer or minigame changes.
 
-No other gameplay or visual changes are intended in this patch.
-
-Replace only: js/levels/level1.js
+Upload only:
+js/levels/level1.js
