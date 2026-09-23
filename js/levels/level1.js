@@ -137,13 +137,13 @@ const zombieAIFrames = {
     idle: [1,2,3,4].map(i => new Image()),
     walk: [1,2,3,4].map(i => new Image()),
     claw: [1,2,3,4,5].map(i => new Image()),
-    lunge: [1,2,3,4,5,6].map(i => new Image())
+    lunge: [1,2,3].map(i => new Image())
 };
 
-zombieAIFrames.idle.forEach((img, i) => img.src = `assets/characters/combat/zombie-idle-${i+1}.png?v=7000`);
-zombieAIFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i+1}.png?v=7000`);
-zombieAIFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i+1}.png?v=7000`);
-zombieAIFrames.lunge.forEach((img, i) => img.src = `assets/characters/combat/zombie-lunge-${i+1}.png?v=7000`);
+zombieAIFrames.idle.forEach((img, i) => img.src = `assets/characters/combat/zombie-idle-${i+1}.png?v=7020`);
+zombieAIFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i+1}.png?v=7020`);
+zombieAIFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i+1}.png?v=7020`);
+zombieAIFrames.lunge.forEach((img, i) => img.src = `assets/characters/combat/zombie-lunge-${i+1}.png?v=7020`);
 
 /* v7.0: simple, readable Zombie Goth AI.
    Chase -> wind-up -> attack -> recovery -> chase.
@@ -151,22 +151,22 @@ zombieAIFrames.lunge.forEach((img, i) => img.src = `assets/characters/combat/zom
 const ZOMBIE_AI_CONFIG = {
     chaseSpeed: 125,
     preferredDistance: 185,
-    clawWindup: 420,
-    clawDuration: 720,
-    clawHitStart: 360,
-    clawHitEnd: 505,
+    clawWindup: 700,
+    clawDuration: 760,
+    clawHitStart: 430,
+    clawHitEnd: 560,
     clawDamage: 12,
     clawRange: 205,
-    lungeWindup: 560,
-    lungeDuration: 1180,
-    lungeHitStart: 560,
-    lungeHitEnd: 760,
+    lungeWindup: 850,
+    lungeDuration: 1280,
+    lungeHitStart: 690,
+    lungeHitEnd: 900,
     lungeDamage: 18,
     lungeRange: 245,
     lungeDistance: 145,
-    recovery: 720,
-    decisionDelayMin: 350,
-    decisionDelayMax: 700
+    recovery: 680,
+    decisionDelayMin: 450,
+    decisionDelayMax: 850
 };
 
 // v6.6.0 AI state is kept separately from the map enemy object.
@@ -1568,40 +1568,40 @@ export function createLevel1(ui) {
         let frames = zombieAIFrames.idle;
         let frameMs = 170;
         let index = 0;
-        let height = 360;
+        let height = 280;
 
         if (enemyCombatState === 'chase') {
             frames = zombieAIFrames.walk;
             frameMs = 115;
             index = Math.floor(elapsed / frameMs) % frames.length;
-            height = 350;
+            height = 275;
         } else if (enemyCombatState === 'claw') {
             frames = zombieAIFrames.claw;
             const total = ZOMBIE_AI_CONFIG.clawDuration;
             const progress = Math.min(.999, elapsed / total);
             index = Math.min(frames.length - 1, Math.floor(progress * frames.length));
-            height = 350;
+            height = 275;
         } else if (enemyCombatState === 'lunge') {
             frames = zombieAIFrames.lunge;
             const total = ZOMBIE_AI_CONFIG.lungeDuration;
             const progress = Math.min(.999, elapsed / total);
             index = Math.min(frames.length - 1, Math.floor(progress * frames.length));
-            height = 420;
+            height = 315;
         } else if (enemyCombatState === 'windup') {
             if (enemyCombatAttackType === 'lunge') {
                 frames = zombieAIFrames.lunge;
                 index = 0;
-                height = 420;
+                height = 315;
             } else {
                 frames = zombieAIFrames.claw;
                 index = 0;
-                height = 350;
+                height = 275;
             }
         } else {
             frames = zombieAIFrames.idle;
             frameMs = 170;
             index = Math.floor(elapsed / frameMs) % frames.length;
-            height = 360;
+            height = 280;
         }
 
         const img = frames[Math.max(0, Math.min(frames.length - 1, index))];
@@ -1642,7 +1642,7 @@ export function createLevel1(ui) {
             const drawW = naturalW * scale;
             const drawH = frame.height;
             c.save();
-            c.scale(face === 'right' ? -1 : 1, 1);
+            c.scale(face === 'left' ? -1 : 1, 1);
             c.drawImage(img, -drawW / 2, -drawH, drawW, drawH);
             c.restore();
         } else {
@@ -1650,9 +1650,9 @@ export function createLevel1(ui) {
             // animation image finishes loading. This fallback is included in this patch.
             const fallback = zombieAIFrames.idle[0];
             c.save();
-            c.scale(face === 'right' ? -1 : 1, 1);
+            c.scale(face === 'left' ? -1 : 1, 1);
             if (fallback && fallback.complete && fallback.naturalWidth) {
-                const fallbackH = 360;
+                const fallbackH = 280;
                 const fallbackW = fallback.naturalWidth * (fallbackH / fallback.naturalHeight);
                 c.drawImage(fallback, -fallbackW / 2, -fallbackH, fallbackW, fallbackH);
             } else if (zombieSprites.shambler.complete && zombieSprites.shambler.naturalWidth) {
@@ -1703,6 +1703,14 @@ export function createLevel1(ui) {
             const windup = enemyCombatAttackType === 'lunge'
                 ? ZOMBIE_AI_CONFIG.lungeWindup
                 : ZOMBIE_AI_CONFIG.clawWindup;
+
+            // Small readable prep movement. The Goth stops attacking for a beat
+            // instead of snapping directly from chase to damage.
+            if (enemyCombatAttackType === 'lunge') {
+                const prepDir = player.x < enemyCombatX ? 1 : -1;
+                enemyCombatX += prepDir * dt * 18;
+                enemyCombatX = Math.max(560, Math.min(COMBAT_W - 120, enemyCombatX));
+            }
             if (nowMs - enemyCombatStateStart >= windup) {
                 enemyCombatState = enemyCombatAttackType;
                 enemyCombatStateStart = nowMs;
@@ -1710,7 +1718,9 @@ export function createLevel1(ui) {
                 enemyAttackPhase = 'active';
                 if (enemyCombatAttackType === 'lunge') {
                     enemyCombatAttackStartX = enemyCombatX;
-                    enemyCombatAttackTargetX = Math.max(350, Math.min(COMBAT_W - 95, player.x + (player.x <= enemyCombatX ? 125 : -125)));
+                    const safeSide = player.x <= enemyCombatX ? 1 : -1;
+                    enemyCombatAttackTargetX = player.x + safeSide * 135;
+                    enemyCombatAttackTargetX = Math.max(360, Math.min(COMBAT_W - 140, enemyCombatAttackTargetX));
                 }
             }
             return;
@@ -1811,7 +1821,11 @@ export function createLevel1(ui) {
             cctx.fillStyle = 'rgba(255,220,234,.9)';
             cctx.font = '900 24px Georgia';
             cctx.textAlign = 'center';
-            cctx.fillText(enemyCombatAttackType === 'lunge' ? '⚠ LUNGE!' : '⚠ CLAW!', enemyX, enemyY - 285);
+            const warningY = enemyY - (enemyCombatAttackType === 'lunge' ? 325 : 285);
+            const pulse = .82 + Math.sin(nowMs / 90) * .18;
+            cctx.globalAlpha = pulse;
+            cctx.font = '900 26px Georgia';
+            cctx.fillText(enemyCombatAttackType === 'lunge' ? '⚠ LUNGE INCOMING!' : '⚠ CLAW INCOMING!', enemyX, warningY);
             cctx.restore();
         }
 
