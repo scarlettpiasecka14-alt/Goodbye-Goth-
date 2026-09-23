@@ -1,5 +1,8 @@
 const WORLD_W = 1536,
     WORLD_H = 1024;
+
+// v7.0.4: behaviour-only Zombie AI fix, built from the known-working v7.0.2 base.
+
 const SAVE_KEY = 'goodbyeGothSave_v6';
 function safeParseSave() {
     try {
@@ -12,8 +15,42 @@ function safeParseSave() {
 
 const mapBackground = new Image();
 mapBackground.src = 'assets/environment/level1-map-bg.png?v=600';
+const goldenKeySprite = new Image();
+goldenKeySprite.src = 'assets/items/golden-key.png?v=6515';
+const gateLockSprite = new Image();
+gateLockSprite.src = 'assets/encounters/level1/gate-lock.png?v=6524';
 const ollySprite = new Image();
 ollySprite.src = 'assets/characters/olly.png?v=300';
+
+// Combat animation frames are cropped from the supplied sprite sheet so each
+// pose keeps its own aspect ratio and stray sprite-sheet labels never render.
+const ollyCombatSprites = {
+    idle: new Image(),
+    dodge: [1,2,3].map(n => new Image()),
+    jump: [1,2,3].map(n => new Image()),
+    heavy: [1,2,3,4,5].map(n => new Image()),
+    punch: [1,2,3,4,5].map(n => new Image())
+};
+ollyCombatSprites.idle.src = 'assets/characters/combat/olly-idle.png?v=6513';
+ollyCombatSprites.dodge.forEach((img, i) => img.src = `assets/characters/combat/olly-dodge-${i+1}.png?v=6513`);
+ollyCombatSprites.jump.forEach((img, i) => img.src = `assets/characters/combat/olly-jump-${i+1}.png?v=6513`);
+ollyCombatSprites.heavy.forEach((img, i) => img.src = `assets/characters/combat/olly-heavy-${i+1}.png?v=6511`);
+ollyCombatSprites.punch.forEach((img, i) => img.src = `assets/characters/combat/olly-punch-${i+1}.png?v=6511`);
+
+// v6.5.10 readability pass: use a smaller set of deliberate keyframes rather than
+// playing every dramatic pose in the supplied sheets. This keeps combat readable
+// at game speed while preserving the supplied artwork.
+const OLLY_ANIMATIONS = {
+    // v6.5.13: use the new clean three-pose jump and dodge sequences.
+    // Each move is built from a small number of readable key poses rather than
+    // rapidly cycling through every dramatic drawing.
+    dodge: { indices:[0,1,2], frameMs:[88,210,111], height:260 }, // v6.5.16d: ~20% faster than v6.5.16c
+    jump:  { indices:[0,1,2], frameMs:[120,225,165], height:208, frameYOffset:[0,-22,0] }, // v6.5.16d: ~20% faster; non-idle jump sprites remain 20% smaller
+    heavy: { indices:[0,3,4], frameMs:[130,260,230], height:260 },
+    punch: { indices:[0,1,2,3,4], frameMs:[52,62,72,78,70], height:224 }
+};
+const OLLY_IDLE_HEIGHT = 300; // v6.5.15: slightly larger combat idle so head/body proportions stay closer to action poses.
+const OLLY_DRAW_FOOT_OFFSET = 62;
 // v4.7 activity architecture: the icon belongs to the ROLE, not to the level.
 // These shared icon references can be reused by every level. Only the activity
 // behind the role changes from level to level.
@@ -81,6 +118,12 @@ const ENCOUNTER_DATA = {
         name: 'PRINCESS QUESTION',
         image: 'assets/encounters/level1/princess-question-encounter.png?v=501',
         text: "You've encountered a princess question. Answer correctly to prove your love for your princess. Are you ready?"
+    },
+    lockedGate: {
+        role: 'lockedGate',
+        name: 'THE GATE',
+        image: 'assets/encounters/level1/gate-interaction.png?v=6518',
+        text: "You hear a rustling from beyond the gate. You peer through the bars, trying to get a better look, but the gate's locked! You'll have to find the key."
     }
 };
 const zombieSprites = {
@@ -88,53 +131,161 @@ const zombieSprites = {
     chain: new Image()
 };
 zombieSprites.shambler.src = 'assets/characters/zombie-goth.png?v=300';
-zombieSprites.chain.src = 'assets/characters/chain-goth-clean.png?v=620';
+zombieSprites.chain.src = 'assets/characters/chain-goth-clean.png?v=6513';
+
+// v7.0: Zombie Goth combat animation assets are individual cropped frames.
+// This avoids asking GitHub/Safari to process the large source sprite sheets and
+// guarantees that sprite-sheet labels/divider lines never appear in combat.
+const zombieAIFrames = {
+    idle: [1,2,3,4].map(i => new Image()),
+    walk: [1,2,3,4].map(i => new Image()),
+    claw: [1,2,3,4,5].map(i => new Image()),
+    lunge: [1,2,3].map(i => new Image())
+};
+
+zombieAIFrames.idle.forEach((img, i) => img.src = `assets/characters/combat/zombie-idle-${i+1}.png?v=7020`);
+zombieAIFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i+1}.png?v=7020`);
+zombieAIFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i+1}.png?v=7020`);
+zombieAIFrames.lunge.forEach((img, i) => img.src = `assets/characters/combat/zombie-lunge-${i+1}.png?v=7020`);
+
+/* v7.0: simple, readable Zombie Goth AI.
+   Chase -> wind-up -> attack -> recovery -> chase.
+   The lunge/bite attack is deliberately less frequent than claw swipe. */
+const ZOMBIE_AI_CONFIG = {
+    chaseSpeed: 125,
+    preferredDistance: 185,
+    clawWindup: 700,
+    clawDuration: 760,
+    clawHitStart: 430,
+    clawHitEnd: 560,
+    clawDamage: 12,
+    clawRange: 205,
+    lungeWindup: 850,
+    lungeDuration: 1280,
+    lungeHitStart: 690,
+    lungeHitEnd: 900,
+    lungeDamage: 18,
+    lungeRange: 245,
+    lungeDistance: 145,
+    recovery: 680,
+    decisionDelayMin: 450,
+    decisionDelayMax: 850
+};
+
+// v6.6.0 AI state is kept separately from the map enemy object.
 
 /* v6.0: a complete Level 1 rebuild.
    The background is a clean, character-free cemetery illustration.
    All gameplay characters and interactive markers are drawn independently.
-   Walkability is handled by explicit collision rectangles, not by a tile grid.
-*/
-const OBSTACLES = [// Major structures only. Decorative gardens/trees are baked into the background
-// and are intentionally not giant invisible barriers.
-{
-    x: 15,
-    y: 0,
-    w: 410,
-    h: 385,
-    label: 'church'
-},
-{
-    x: 1210,
-    y: 20,
-    w: 315,
-    h: 330,
-    label: 'upper-mausoleum'
-},
-{
-    x: 560,
-    y: 735,
-    w: 410,
-    h: 289,
-    label: 'lower-mausoleum'
-},
-{
-    x: 1330,
-    y: 770,
-    w: 190,
-    h: 120,
-    label: 'boss-gate'
-}
+   Walkability is handled by explicit collision rectangles, not by a tile grid. */
+/* v6.5.19: walkability follows the actual cobblestone route of the Level 1 artwork.
+   This is a 96x64 baked walkability map. Green/clear path areas are walkable;
+   gardens, trees, buildings and the cemetery edge are not. */
+const WALK_GRID = [
+  '000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+  '000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+  '001111111100000000000011111111000000111111111111111111111111111111000000001111111111000000111100',
+  '001111111100000000000011111111000000111111111111111111111111111111000000001111111111000000111100',
+  '001111111111111100000011111111111111111111100000000000111111111111000000001111111111111111111100',
+  '001111110000000000000001111111111111111110000000000000011111111111000000001111111111111111111100',
+  '001111110000000000000001111111111111111000000000000000011100000000000111111111110000000000000000',
+  '001111110000000000000001111111111111111000000000000000001100000000000001111111110000000000000000',
+  '001111110000000000000001000000000001111000000000000000000100000000000000011111110000000000000000',
+  '001111110000000000000001000000000001111000000000000000000100000000000000000111110000000000000000',
+  '001111110000000000000001000000000001111000000000000000000100000000000000000001110000000000000000',
+  '001111110000000000000001000000000001110000000000000000000100000000000000000000010000000000000000',
+  '001111110000000000000001000000000000110000000000000000000100000000000000000000010000000000000000',
+  '001111110000000000000001000000000000110000000000000000000100000000000000000000010000000000000000',
+  '001111110000000000000001000000000000110000000000000000000100000000000000000000010000000000000000',
+  '001111110000000000000001000000000000110000000000000000000100000000000000000000110000000000000000',
+  '001111110000000000000001000000000000111000000000000000001100000000000000000000110000000000000000',
+  '001111110000000000000001000000000001111100000000000000001100000000000000000000110000000000000000',
+  '001111110000000000000001000000000001111110000000000000011111000000000000000000110000000000000000',
+  '001111111000000000000011000000000011111111111111110001111111111000000000000000110000000000000000',
+  '001111111100000000000111111111111011111111111111111111111111111111110000000011110000000000000000',
+  '001111111111111111111111111111111111111111111111111111111111111111111111111111110000000000000000',
+  '001100000011111100000000000000001111111100000000011111111111111111000000000011111110000000000000',
+  '001100000011111100000000000000001111100000000000000000011111111111000000000011111110000000000000',
+  '001100000011111100000000000000000111000000000000000000001111111111000000000011111110000000000000',
+  '001100000011111100000000000000000111000000000000000000000111111111000000000001111110000000000000',
+  '001100000011111100000000000000000111000000000000000000000011111111000000000001111110000000000000',
+  '001100000011111000000000000000000111000000000000000000000011111111000000000001111110000000000000',
+  '001111111111111000000000000000000111000000000000000000000011111111000000000001111110000000000000',
+  '001111111111111100000000000000000111000000000000000000000011111111000000000001111110000000000000',
+  '001111111111111100000000000000000111000000000000000000000011111111000000000001111110000000000000',
+  '001111111111111110000000000000001111000000000000000000000011111111000000000001111111000000000000',
+  '001111111111111111000000000000011111100000000000000000000011111111000000000001111111110000000000',
+  '001111111111111111111111111111111111111000000000000000000011111000000000000001111111111100000000',
+  '001111000011111111111111000000111111111100000000000000001111111000000000000011111111110000000100',
+  '001100000000000001111111000000111111111111111110000000111111111000000000000001111111110000001100',
+  '000000000000000000000011000000111111111111111111111111111111111100000000000000111111110000000000',
+  '000000000000000000000000000000111111111111111111111111111111111100000000000000111111110000000000',
+  '000000000000000000000000000000111111111111111111111111111111111100000000000000111111110000000000',
+  '000000000000000000000000000000111111110000000000000000000111111100000000000000111111110000000000',
+  '000000000000000000000000000001111110000000000000000000000011111100000000000000111111111100000000',
+  '000000000000000000000000000001111110000000000000000000000001111100000000000000111111111100000000',
+  '000000000000000000000000000000111110000000000000000000000000111100000000000000111111111111110000',
+  '000000000000000000000000000000011110000000000000000000000000011100000000000001111111111111110000',
+  '000000000000000000000000000000011110000000000000000000000000011110000000000001111110000000000000',
+  '000000000000000000000000000000011110000000000000000000000000011111111000000111111110000000000000',
+  '000000000000000000000000000000011110000000000000000000000000011111111111001111111110000000000000',
+  '000000000000000000000000000000011110000000000000000000000000011111111111111111111110000000000000',
+  '000000000000000000000000000000111100000000000000000000000000001111111111111111111110000000000000',
+  '000000000000000000000000000000111100000000000000000000000000001111111111111111111110000000000000',
+  '000000000000000000000000000000111100000000000000000000000000001111111111111111111110000000000000',
+  '000000000000000000000000000000111100000000000000000000000000001111111111111111111110000000000000',
+  '000000000000000000000000000000111100000000000000000000000000001111111111111111111110000000000000',
+  '000000000000000000000000000000111100000000000000000000000000001111111111111111111110000000000000',
+  '000000000000000000000000000001111110000000000000000000000000111111111111111111111110000000000000',
+  '000000000000000000000000000011111111000000000000000000000000111111111111111111111110000000000000',
+  '000000000000000000000000000111111111100000000000000000000001111111111111111111111110000000000000',
+  '000000000000000000000000001111111111110000000000000000000111111111111111111111111110000000000000',
+  '001111111111110000001111111111111111111111111111111111111111111111111111111111111111111111111100',
+  '001111111111110000001111111111111111111111111111111111111111111111111111111111111111111111111100',
+  '000011111111111111111111111111111111111111111111111111111111111111111111111111111111111111111100',
+  '000011111111111111111111111111111111111111111111111111111111111111111111111111111111111111111100',
+  '000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+  '000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
 ];
-function circleRectHit(px, py, r, o) {
-    const cx = Math.max(o.x, Math.min(px, o.x + o.w)),
-        cy = Math.max(o.y, Math.min(py, o.y + o.h));
-    return Math.hypot(px - cx, py - cy) < r
-}
-function blockedWorld(px, py, r=16) {
-    if (px < 18 || py < 18 || px > WORLD_W - 18 || py > WORLD_H - 18)
+const WALK_GRID_W = 96;
+const WALK_GRID_H = 64;
+function walkCellWalkable(px, py) {
+    const cellW = WORLD_W / WALK_GRID_W;
+    const cellH = WORLD_H / WALK_GRID_H;
+    const gx = Math.floor(px / cellW);
+    const gy = Math.floor(py / cellH);
+    if (gx < 0 || gy < 0 || gx >= WALK_GRID_W || gy >= WALK_GRID_H)
+        return false;
+    if (WALK_GRID[gy][gx] === '1')
         return true;
-    return OBSTACLES.some(o => circleRectHit(px, py, r, o))
+
+    // Keep the hand-drawn path authoritative, but allow a small edge tolerance
+    // so a single conservative grid cell cannot pin Olly to a path corner.
+    // The tolerance is intentionally modest so gardens/trees remain blocked.
+    const tolX = Math.min(12, cellW * .75);
+    const tolY = Math.min(12, cellH * .75);
+    const samples = [
+        [px - tolX, py], [px + tolX, py],
+        [px, py - tolY], [px, py + tolY],
+        [px - tolX, py - tolY], [px + tolX, py - tolY],
+        [px - tolX, py + tolY], [px + tolX, py + tolY]
+    ];
+    return samples.some(([sx, sy]) => {
+        const cx = Math.floor(sx / cellW);
+        const cy = Math.floor(sy / cellH);
+        return cx >= 0 && cy >= 0 && cx < WALK_GRID_W && cy < WALK_GRID_H && WALK_GRID[cy][cx] === '1';
+    });
+}
+
+function blockedWorld(px, py, r=0) {
+    // v6.5.19: use the centre of Olly's position against the painted walkable
+    // path. The previous collision footprint was too strict for the narrow
+    // hand-drawn paths and could trap Olly at the starting church area.
+    // The walk grid itself blocks gardens, trees and buildings, while these
+    // boundaries keep him safely inside the map.
+    if (px < 36 || py < 36 || px > WORLD_W - 36 || py > WORLD_H - 36)
+        return true;
+    return !walkCellWalkable(px, py);
 }
 
 function drawOlly(ctx, x, y, s=.78, t=0, front=true, dir='right', moving=false) {
@@ -155,7 +306,7 @@ function drawOlly(ctx, x, y, s=.78, t=0, front=true, dir='right', moving=false) 
     }
     ctx.restore();
 }
-function drawZombieSprite(ctx, x, y, type, s=.68, t=0, attack=false) {
+function drawZombieSprite(ctx, x, y, type, s=.68, t=0, attack=false, face='left') {
     const img = zombieSprites[type] || zombieSprites.shambler;
     ctx.save();
     ctx.translate(x, y + Math.sin(t * 7) * 1.5);
@@ -166,14 +317,17 @@ function drawZombieSprite(ctx, x, y, type, s=.68, t=0, attack=false) {
     if (img.complete && img.naturalWidth) {
         const w = 108 * s,
             h = 162 * s;
-        ctx.drawImage(img, -w / 2, -132 * s, w, h)
+        ctx.save();
+        ctx.scale(face === 'right' ? -1 : 1, 1);
+        ctx.drawImage(img, -w / 2, -132 * s, w, h);
+        ctx.restore();
     }
     if (attack) {
         ctx.strokeStyle = type === 'chain' ? '#cfb7a5' : '#ef91ac';
         ctx.lineWidth = 3 * s;
         ctx.beginPath();
         ctx.arc(0, -6 * s, 40 * s, 0, Math.PI * 2);
-        ctx.stroke()
+        ctx.stroke();
     }
     ctx.restore();
 }
@@ -188,7 +342,463 @@ export function createLevel1(ui) {
         ROWS = 32;
     const revealed = Array.from({
         length: ROWS
-    }, () => Array(COLS).fill(true));
+    }, () => Array(COLS).fill(false));
+    // v6.5.17: exploration fog is made from separate soft cloud patches.
+    // The map itself is never covered by one giant sheet. Each patch can be
+    // cleared independently as Olly explores it.
+    const fogCanvas = document.createElement('canvas');
+    fogCanvas.width = WORLD_W;
+    fogCanvas.height = WORLD_H;
+    const fogCtx = fogCanvas.getContext('2d');
+
+    const mistCanvas = document.createElement('canvas');
+    mistCanvas.width = Math.floor(WORLD_W / 3);
+    mistCanvas.height = Math.floor(WORLD_H / 3);
+    const mistCtx = mistCanvas.getContext('2d');
+
+    const FOG_REVEAL_RADIUS = 128;
+    const FOG_START_RADIUS = 225;
+    const FOG_PATH_WIDTH = 104;
+    let lastFogRevealX = null,
+        lastFogRevealY = null;
+
+    // Deliberately mixed placement: some patches hide objectives/gate, while
+    // others are just atmospheric so the player cannot infer what matters.
+    const FOG_PATCHES = [
+        // Dense objective-adjacent patches, deliberately mixed with decoys.
+        { x: 475, y: 420, rx: 175, ry: 125, a: .88, seed: .2 },
+        { x: 390, y: 555, rx: 125, ry: 95, a: .58, seed: .9 },
+        { x: 760, y: 300, rx: 180, ry: 130, a: .90, seed: 1.7 },
+        { x: 875, y: 250, rx: 120, ry: 88, a: .48, seed: 2.4 },
+        { x: 360, y: 800, rx: 175, ry: 125, a: .90, seed: 3.1 },
+        { x: 470, y: 735, rx: 120, ry: 90, a: .52, seed: 3.8 },
+        { x: 1115, y: 505, rx: 200, ry: 145, a: .94, seed: 4.5 },
+        { x: 1215, y: 420, rx: 125, ry: 92, a: .55, seed: 5.2 },
+        { x: 1380, y: 820, rx: 175, ry: 130, a: .96, seed: 5.9 },
+        { x: 1245, y: 705, rx: 135, ry: 98, a: .62, seed: 6.6 },
+        // Decoy patches throughout the middle so fog does not reveal the objectives.
+        { x: 180, y: 230, rx: 115, ry: 82, a: .44, seed: 18.4 },
+        { x: 330, y: 180, rx: 150, ry: 95, a: .62, seed: 19.1 },
+        { x: 570, y: 155, rx: 105, ry: 78, a: .48, seed: 19.8 },
+        { x: 690, y: 515, rx: 135, ry: 100, a: .64, seed: 20.5 },
+        { x: 820, y: 610, rx: 165, ry: 110, a: .72, seed: 21.2 },
+        { x: 1010, y: 650, rx: 120, ry: 90, a: .48, seed: 21.9 },
+        { x: 1170, y: 580, rx: 155, ry: 110, a: .70, seed: 22.6 },
+        { x: 1320, y: 300, rx: 135, ry: 100, a: .55, seed: 23.3 },
+        { x: 1460, y: 250, rx: 95, ry: 75, a: .40, seed: 24.0 },
+        { x: 140, y: 650, rx: 125, ry: 95, a: .52, seed: 24.7 },
+        { x: 520, y: 900, rx: 145, ry: 100, a: .66, seed: 25.4 },
+        { x: 700, y: 820, rx: 110, ry: 85, a: .46, seed: 26.1 },
+        { x: 900, y: 900, rx: 150, ry: 100, a: .62, seed: 26.8 },
+        { x: 1080, y: 820, rx: 125, ry: 92, a: .50, seed: 27.5 },
+        { x: 1260, y: 930, rx: 145, ry: 90, a: .58, seed: 28.2 },
+        // v6.5.23: additional broad banks increase the feeling of a fog-filled
+        // cemetery without turning the map into one continuous white sheet.
+        // These deliberately overlap existing patches so the fog reads as
+        // connected drifting banks rather than isolated clouds.
+        { x: 250, y: 350, rx: 185, ry: 120, a: .56, seed: 40.1 },
+        { x: 525, y: 330, rx: 170, ry: 125, a: .66, seed: 40.8 },
+        { x: 735, y: 410, rx: 190, ry: 135, a: .58, seed: 41.5 },
+        { x: 970, y: 365, rx: 185, ry: 125, a: .62, seed: 42.2 },
+        { x: 1260, y: 360, rx: 175, ry: 120, a: .52, seed: 42.9 },
+        { x: 250, y: 610, rx: 180, ry: 125, a: .60, seed: 43.6 },
+        { x: 525, y: 610, rx: 190, ry: 130, a: .48, seed: 44.3 },
+        { x: 760, y: 575, rx: 175, ry: 125, a: .68, seed: 45.0 },
+        { x: 985, y: 590, rx: 195, ry: 135, a: .54, seed: 45.7 },
+        { x: 1260, y: 620, rx: 185, ry: 125, a: .64, seed: 46.4 },
+        { x: 330, y: 875, rx: 175, ry: 110, a: .50, seed: 47.1 },
+        { x: 650, y: 875, rx: 185, ry: 115, a: .62, seed: 47.8 },
+        { x: 930, y: 850, rx: 190, ry: 120, a: .50, seed: 48.5 },
+        { x: 1180, y: 875, rx: 180, ry: 115, a: .60, seed: 49.2 },
+        { x: 1430, y: 600, rx: 125, ry: 105, a: .42, seed: 49.9 },
+        { x: 90, y: 520, rx: 120, ry: 105, a: .42, seed: 50.6 },
+        { x: 1020, y: 90, rx: 165, ry: 90, a: .40, seed: 51.3, edge: true },
+        { x: 680, y: 980, rx: 145, ry: 72, a: .20, seed: 52.0, edge: true },
+        { x: 1180, y: 225, rx: 175, ry: 110, a: .72, seed: 8.0 },
+        { x: 620, y: 680, rx: 135, ry: 100, a: .60, seed: 8.7 },
+        { x: 900, y: 700, rx: 165, ry: 120, a: .78, seed: 9.4 },
+        { x: 1030, y: 850, rx: 140, ry: 100, a: .56, seed: 10.1 },
+        { x: 600, y: 470, rx: 100, ry: 75, a: .42, seed: 10.8 },
+        { x: 190, y: 520, rx: 125, ry: 92, a: .50, seed: 11.5 },
+        { x: 1320, y: 560, rx: 145, ry: 105, a: .64, seed: 12.2 },
+        // v6.5.28: additional layered banks for denser, more atmospheric coverage.
+        { x: 160, y: 360, rx: 150, ry: 92, a: .46, seed: 60.1 },
+        { x: 430, y: 280, rx: 135, ry: 88, a: .58, seed: 60.8 },
+        { x: 585, y: 430, rx: 155, ry: 105, a: .74, seed: 61.5 },
+        { x: 820, y: 250, rx: 150, ry: 95, a: .50, seed: 62.2 },
+        { x: 1060, y: 255, rx: 145, ry: 92, a: .70, seed: 62.9 },
+        { x: 1380, y: 355, rx: 150, ry: 96, a: .56, seed: 63.6 },
+        { x: 1450, y: 540, rx: 120, ry: 100, a: .62, seed: 64.3 },
+        { x: 250, y: 705, rx: 155, ry: 108, a: .64, seed: 65.0 },
+        { x: 505, y: 760, rx: 145, ry: 112, a: .52, seed: 65.7 },
+        { x: 780, y: 740, rx: 175, ry: 118, a: .72, seed: 66.4 },
+        { x: 1040, y: 735, rx: 155, ry: 108, a: .56, seed: 67.1 },
+        { x: 1260, y: 760, rx: 175, ry: 115, a: .68, seed: 67.8 },
+        { x: 150, y: 900, rx: 125, ry: 88, a: .42, seed: 68.5 },
+        { x: 420, y: 940, rx: 155, ry: 90, a: .48, seed: 69.2 },
+        { x: 760, y: 920, rx: 150, ry: 92, a: .54, seed: 69.9 },
+        { x: 1085, y: 955, rx: 175, ry: 94, a: .50, seed: 70.6 },
+        { x: 1370, y: 890, rx: 155, ry: 100, a: .58, seed: 71.3 },
+        // Edge patches stay thin because these areas can never be cleared.
+        { x: 45, y: 220, rx: 90, ry: 72, a: .22, seed: 29.0, edge: true },
+        { x: 60, y: 430, rx: 100, ry: 78, a: .20, seed: 29.7, edge: true },
+        { x: 55, y: 690, rx: 105, ry: 82, a: .22, seed: 30.4, edge: true },
+        { x: 1490, y: 430, rx: 100, ry: 78, a: .20, seed: 31.1, edge: true },
+        { x: 1485, y: 700, rx: 95, ry: 75, a: .22, seed: 31.8, edge: true },
+        { x: 500, y: 45, rx: 105, ry: 70, a: .22, seed: 32.5, edge: true },
+        { x: 850, y: 45, rx: 115, ry: 72, a: .20, seed: 33.2, edge: true },
+        { x: 1180, y: 45, rx: 120, ry: 75, a: .22, seed: 33.9, edge: true },
+        { x: 500, y: 980, rx: 110, ry: 72, a: .20, seed: 34.6, edge: true },
+        { x: 850, y: 980, rx: 120, ry: 75, a: .22, seed: 35.3, edge: true },
+        { x: 1180, y: 980, rx: 125, ry: 78, a: .20, seed: 36.0, edge: true }
+    ];
+
+    // v6.5.21: each fog patch is a broad, overlapping cloud bank rather than
+    // a collection of isolated white blobs.  A patch fades away as soon as
+    // Olly touches it, revealing the whole patch rather than only the pixels
+    // directly underneath him.
+    const fogPatchFade = FOG_PATCHES.map(() => 0);
+    const fogPatchClearing = FOG_PATCHES.map(() => null);
+    const fogPatchApplied = FOG_PATCHES.map(() => 0);
+    const FOG_CLEAR_MS = 1500;
+    const FOG_PARTING_MS = 760;
+    const fogPartingBursts = [];
+
+    function paintFogPatches() {
+        fogCtx.clearRect(0, 0, WORLD_W, WORLD_H);
+        fogCtx.save();
+        fogCtx.filter = 'blur(15px)';
+        for (let i = 0; i < FOG_PATCHES.length; i++) {
+            const patch = FOG_PATCHES[i];
+            fogCtx.filter = `blur(${10 + (i % 4) * 3}px)`;
+            const fade = fogPatchFade[i] || 0;
+            if (fade >= .999)
+                continue;
+
+            const alphaScale = 1 - fade;
+            const spread = 1 + fade * .10;
+
+            // A soft base cloud makes each patch feel continuous.
+            const baseRx = patch.rx * .72 * spread;
+            const baseRy = patch.ry * .58 * spread;
+            const base = fogCtx.createRadialGradient(
+                patch.x, patch.y, 0,
+                patch.x, patch.y, Math.max(baseRx, baseRy)
+            );
+            const baseA = Math.min(.64, patch.a * (.48 + ((Math.sin(patch.seed * 2.7) + 1) * .10))) * alphaScale;
+            base.addColorStop(0, `rgba(202,199,211,${baseA})`);
+            base.addColorStop(.55, `rgba(187,184,198,${baseA * .72})`);
+            base.addColorStop(1, 'rgba(160,157,174,0)');
+            fogCtx.fillStyle = base;
+            fogCtx.beginPath();
+            fogCtx.ellipse(patch.x, patch.y, baseRx, baseRy, Math.sin(patch.seed) * .18, 0, Math.PI * 2);
+            fogCtx.fill();
+
+            // Larger overlapping wisps create one cloud bank with an uneven
+            // edge, rather than a neat oval.
+            const puffCount = patch.edge ? 6 : 11;
+            for (let j = 0; j < puffCount; j++) {
+                const a = patch.seed + j * 1.37;
+                const ox = Math.sin(a * 1.91) * .43;
+                const oy = Math.cos(a * 1.37) * .32;
+                const scale = .78 + (Math.sin(a * 2.17) + 1) * .16;
+                const px = patch.x + patch.rx * ox;
+                const py = patch.y + patch.ry * oy;
+                const rx = patch.rx * (.42 + (j % 3) * .035) * scale * spread;
+                const ry = patch.ry * (.30 + (j % 2) * .055) * scale * spread;
+                const g = fogCtx.createRadialGradient(px, py, 0, px, py, rx);
+                const alpha = Math.min(.90, patch.a * (0.48 + (Math.sin(a * 1.3) + 1) * .23)) * alphaScale;
+                g.addColorStop(0, `rgba(207,204,215,${alpha})`);
+                g.addColorStop(.48, `rgba(190,187,201,${alpha * .72})`);
+                g.addColorStop(1, 'rgba(160,157,174,0)');
+                fogCtx.fillStyle = g;
+                fogCtx.beginPath();
+                fogCtx.ellipse(px, py, rx, ry, Math.sin(a) * .22, 0, Math.PI * 2);
+                fogCtx.fill();
+            }
+        }
+        fogCtx.restore();
+    }
+
+    function reapplyRevealedAreas() {
+        // Every cleared patch gets its own persistent soft reveal mask. This
+        // is important: rebuilding the fog must never repaint a patch that
+        // Olly has already discovered.
+        fogCtx.save();
+        fogCtx.globalCompositeOperation = 'destination-out';
+        fogCtx.filter = 'blur(3px)';
+        for (let row = 0; row < ROWS; row++) {
+            for (let col = 0; col < COLS; col++) {
+                if (!revealed[row][col])
+                    continue;
+                const cx = col * GRID + GRID / 2;
+                const cy = row * GRID + GRID / 2;
+                const g = fogCtx.createRadialGradient(cx, cy, GRID * .22, cx, cy, GRID * 1.02);
+                g.addColorStop(0, 'rgba(0,0,0,1)');
+                g.addColorStop(.80, 'rgba(0,0,0,.98)');
+                g.addColorStop(1, 'rgba(0,0,0,0)');
+                fogCtx.fillStyle = g;
+                fogCtx.beginPath();
+                fogCtx.arc(cx, cy, GRID * 1.02, 0, Math.PI * 2);
+                fogCtx.fill();
+            }
+        }
+        fogCtx.restore();
+
+        // A patch that has begun clearing remains spatially cleared while its
+        // opacity animates down. The reveal radius expands with the fade, so
+        // no portion can mysteriously return when Olly walks away.
+        for (let i = 0; i < FOG_PATCHES.length; i++) {
+            const fade = fogPatchFade[i] || 0;
+            if (fade <= 0 && fogPatchClearing[i] === null)
+                continue;
+            const p = FOG_PATCHES[i];
+            const expansion = .58 + fade * .62;
+            fogCtx.save();
+            fogCtx.globalCompositeOperation = 'destination-out';
+            fogCtx.filter = 'blur(8px)';
+            const rx = p.rx * expansion;
+            const ry = p.ry * expansion;
+            const g = fogCtx.createRadialGradient(p.x, p.y, Math.min(rx, ry) * .18, p.x, p.y, Math.max(rx, ry));
+            const strength = Math.min(1, .42 + fade * .90);
+            g.addColorStop(0, `rgba(0,0,0,${strength})`);
+            g.addColorStop(.72, `rgba(0,0,0,${strength * .88})`);
+            g.addColorStop(1, 'rgba(0,0,0,0)');
+            fogCtx.fillStyle = g;
+            fogCtx.beginPath();
+            fogCtx.ellipse(p.x, p.y, rx, ry, Math.sin(p.seed) * .18, 0, Math.PI * 2);
+            fogCtx.fill();
+            fogCtx.restore();
+        }
+    }
+
+    function eraseFogPatchProgress(p, delta) {
+        if (delta <= 0) return;
+        fogCtx.save();
+        fogCtx.globalCompositeOperation = 'destination-out';
+        fogCtx.filter = 'blur(8px)';
+        const rx = p.rx * 1.16;
+        const ry = p.ry * 1.16;
+        const g = fogCtx.createRadialGradient(p.x, p.y, Math.min(rx, ry) * .16, p.x, p.y, Math.max(rx, ry));
+        const strength = Math.min(1, delta * 1.35);
+        g.addColorStop(0, `rgba(0,0,0,${strength})`);
+        g.addColorStop(.66, `rgba(0,0,0,${strength * .92})`);
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        fogCtx.fillStyle = g;
+        fogCtx.beginPath();
+        fogCtx.ellipse(p.x, p.y, rx, ry, Math.sin(p.seed) * .18, 0, Math.PI * 2);
+        fogCtx.fill();
+        fogCtx.restore();
+    }
+
+    function beginFogPatchClear(index, t) {
+        if (fogPatchClearing[index] !== null || fogPatchFade[index] >= .999) return;
+        fogPatchClearing[index] = t;
+        fogPartingBursts.push({ x, y, start: t });
+        ui.dialogue.textContent = '🌫️ The fog parts around you...';
+    }
+
+    function updateFogPatchClears(t) {
+        for (let i = 0; i < FOG_PATCHES.length; i++) {
+            if (fogPatchClearing[i] === null) continue;
+            const progress = Math.max(0, Math.min(1, (t - fogPatchClearing[i]) / FOG_CLEAR_MS));
+            const eased = 1 - Math.pow(1 - progress, 2.2);
+            const delta = eased - fogPatchApplied[i];
+            if (delta > 0) {
+                eraseFogPatchProgress(FOG_PATCHES[i], delta);
+                fogPatchApplied[i] = eased;
+                fogPatchFade[i] = eased;
+            }
+            if (progress >= 1) {
+                fogPatchFade[i] = 1;
+                fogPatchApplied[i] = 1;
+                fogPatchClearing[i] = null;
+            }
+        }
+    }
+
+    function rebuildFog() {
+        paintFogPatches();
+        reapplyRevealedAreas();
+    }
+
+    rebuildFog();
+
+    function markFogCells(px, py, radius) {
+        const minCol = Math.max(0, Math.floor((px - radius - 32) / GRID));
+        const maxCol = Math.min(COLS - 1, Math.floor((px + radius + 32) / GRID));
+        const minRow = Math.max(0, Math.floor((py - radius - 32) / GRID));
+        const maxRow = Math.min(ROWS - 1, Math.floor((py + radius + 32) / GRID));
+        for (let row = minRow; row <= maxRow; row++) {
+            for (let col = minCol; col <= maxCol; col++) {
+                const cx = col * GRID + GRID / 2,
+                    cy = row * GRID + GRID / 2;
+                if (Math.hypot(cx - px, cy - py) <= radius + GRID * .35)
+                    revealed[row][col] = true;
+            }
+        }
+    }
+
+    function eraseFogCircle(px, py, radius) {
+        fogCtx.save();
+        fogCtx.globalCompositeOperation = 'destination-out';
+        const grad = fogCtx.createRadialGradient(px, py, radius * .12, px, py, radius);
+        grad.addColorStop(0, 'rgba(0,0,0,1)');
+        grad.addColorStop(.70, 'rgba(0,0,0,.98)');
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        fogCtx.fillStyle = grad;
+        fogCtx.beginPath();
+        fogCtx.arc(px, py, radius, 0, Math.PI * 2);
+        fogCtx.fill();
+        fogCtx.restore();
+    }
+
+    function eraseFogPath(x1, y1, x2, y2) {
+        fogCtx.save();
+        fogCtx.globalCompositeOperation = 'destination-out';
+        fogCtx.lineCap = 'round';
+        fogCtx.lineWidth = FOG_PATH_WIDTH;
+        fogCtx.globalAlpha = .98;
+        fogCtx.beginPath();
+        fogCtx.moveTo(x1, y1);
+        fogCtx.lineTo(x2, y2);
+        fogCtx.stroke();
+        fogCtx.restore();
+    }
+
+    function revealTouchedFogPatches(px, py) {
+        // Only clear the fog bank Olly actually touches. Overlapping banks
+        // are visual neighbours, not one giant reveal group. Cascading the
+        // reveal through overlapping patches made a single step clear most
+        // of the map at once.
+        const touched = new Set();
+        for (let i = 0; i < FOG_PATCHES.length; i++) {
+            const p = FOG_PATCHES[i];
+            if (fogPatchFade[i] >= .999) continue;
+            const touchRx = p.rx * (p.edge ? 1.04 : 1.08);
+            const touchRy = p.ry * (p.edge ? 1.04 : 1.08);
+            const dx = (px - p.x) / touchRx;
+            const dy = (py - p.y) / touchRy;
+            if (dx * dx + dy * dy <= 1) touched.add(i);
+        }
+        const nowT = performance.now();
+        touched.forEach(i => beginFogPatchClear(i, nowT));
+    }
+
+    function revealAround(px, py, force=false) {
+        if (!force && lastFogRevealX !== null) {
+            const dist = Math.hypot(px - lastFogRevealX, py - lastFogRevealY);
+            if (dist < 14)
+                return;
+            eraseFogPath(lastFogRevealX, lastFogRevealY, px, py);
+            markFogCells(px, py, FOG_REVEAL_RADIUS);
+        } else {
+            eraseFogCircle(px, py, FOG_START_RADIUS);
+            markFogCells(px, py, FOG_START_RADIUS);
+        }
+        eraseFogCircle(px, py, FOG_REVEAL_RADIUS);
+        revealTouchedFogPatches(px, py);
+        lastFogRevealX = px;
+        lastFogRevealY = py;
+    }
+
+    function updateFogParting(t) {
+        if (!fogPartingBursts.length)
+            return;
+        fogCtx.save();
+        fogCtx.globalCompositeOperation = 'destination-out';
+        fogCtx.filter = 'blur(5px)';
+        for (let i = fogPartingBursts.length - 1; i >= 0; i--) {
+            const b = fogPartingBursts[i];
+            const p = Math.max(0, Math.min(1, (t - b.start) / FOG_PARTING_MS));
+            const eased = 1 - Math.pow(1 - p, 2.4);
+            const radius = 52 + eased * 145;
+            const g = fogCtx.createRadialGradient(b.x, b.y, radius * .45, b.x, b.y, radius);
+            g.addColorStop(0, 'rgba(0,0,0,1)');
+            g.addColorStop(.68, 'rgba(0,0,0,.96)');
+            g.addColorStop(1, 'rgba(0,0,0,0)');
+            fogCtx.fillStyle = g;
+            fogCtx.beginPath();
+            fogCtx.arc(b.x, b.y, radius, 0, Math.PI * 2);
+            fogCtx.fill();
+            if (p >= 1)
+                fogPartingBursts.splice(i, 1);
+        }
+        fogCtx.restore();
+    }
+
+    function drawAnimatedMist(t) {
+        const w = mistCanvas.width,
+            h = mistCanvas.height,
+            sx = w / WORLD_W,
+            sy = h / WORLD_H;
+        mistCtx.clearRect(0, 0, w, h);
+        mistCtx.save();
+        mistCtx.scale(sx, sy);
+        mistCtx.filter = 'blur(3.5px)';
+
+        for (let i = 0; i < FOG_PATCHES.length; i++) {
+            const p = FOG_PATCHES[i];
+            if ((fogPatchFade[i] || 0) >= .999)
+                continue;
+            const driftX = Math.sin(t / (3600 + i * 145) + p.seed) * (p.edge ? 7 : 14);
+            const driftY = Math.cos(t / (4300 + i * 120) + p.seed) * (p.edge ? 4 : 7);
+            const px = p.x + driftX;
+            const py = p.y + driftY;
+
+            // A faint moving veil underneath the visible wisps.
+            const rx = p.rx * .46;
+            const ry = p.ry * .30;
+            const g = mistCtx.createRadialGradient(px, py, 0, px, py, rx);
+            const alpha = p.edge ? .035 : .055 + p.a * .085;
+            g.addColorStop(0, `rgba(248,247,250,${alpha})`);
+            g.addColorStop(.62, `rgba(228,226,236,${alpha * .55})`);
+            g.addColorStop(1, 'rgba(205,202,214,0)');
+            mistCtx.fillStyle = g;
+            mistCtx.beginPath();
+            mistCtx.ellipse(px, py, rx, ry, Math.sin(p.seed) * .2, 0, Math.PI * 2);
+            mistCtx.fill();
+
+            // Long, slow S-shaped wisps. They deliberately overlap so they
+            // read as one drifting bank of cemetery mist, not random strokes.
+            const wispCount = p.edge ? 1 : (i % 3 === 0 ? 3 : 2);
+            for (let j = 0; j < wispCount; j++) {
+                const phase = t / (2500 + j * 500 + i * 43) + p.seed * .8 + j * 1.9;
+                const span = p.rx * (.62 + (j % 2) * .16);
+                const yBase = py + (j - (wispCount - 1) / 2) * p.ry * .17;
+                const wave = Math.sin(phase) * p.ry * .09;
+                const drift = Math.cos(phase * .71) * p.rx * .11;
+                mistCtx.beginPath();
+                mistCtx.moveTo(px - span, yBase + wave);
+                mistCtx.bezierCurveTo(
+                    px - span * .72, yBase - p.ry * .15 + wave,
+                    px - span * .35, yBase + p.ry * .13 - wave,
+                    px - span * .04, yBase + drift
+                );
+                mistCtx.bezierCurveTo(
+                    px + span * .30, yBase - p.ry * .13 + drift,
+                    px + span * .63, yBase + p.ry * .12 - wave,
+                    px + span, yBase + wave * .35
+                );
+                mistCtx.strokeStyle = `rgba(246,243,250,${p.edge ? .08 : .17 + p.a * .065})`;
+                mistCtx.lineWidth = p.edge ? 3.5 : 4.5 + (j % 2) * 1.5;
+                mistCtx.lineCap = 'round';
+                mistCtx.stroke();
+            }
+        }
+        mistCtx.restore();
+
+        // Only show animated mist where the actual fog still exists.
+        mistCtx.save();
+        mistCtx.globalCompositeOperation = 'destination-in';
+        mistCtx.drawImage(fogCanvas, 0, 0, mistCanvas.width, mistCanvas.height);
+        mistCtx.restore();
+        ctx.save();
+        ctx.globalAlpha = .55;
+        ctx.drawImage(mistCanvas, 0, 0, WORLD_W, WORLD_H);
+        ctx.restore();
+    }
+
     const enemies = [
     {
         x: 485,
@@ -234,8 +844,12 @@ export function createLevel1(ui) {
     const combatBackgroundImage = new Image();
     combatBackgroundImage.src = 'assets/environment/combat-background-level1.png';
 
-    let x = 470,
-        y = 520,
+    // v6.5.16e: start just below the upper-left church, close to Zombie Goth.
+    let x = 240,
+        y = 340,
+        cameraX = 240,
+        cameraY = 340,
+        miniFrameCounter = 0,
         hp = 100,
         maxHp = 100,
         mode = 'map',
@@ -246,6 +860,9 @@ export function createLevel1(ui) {
         relationshipDone = false,
         puzzleSolved = false,
         keyCollected = false,
+        gateOpened = false,
+        heavyUnlocked = false,
+        keySpawnAnnounced = false,
         inventory = {},
         checkpoint = 'cemetery-entrance',
         target = null,
@@ -265,14 +882,36 @@ export function createLevel1(ui) {
         relationshipRAF = 0,
         comboCount = 0,
         attackCooldownUntil = 0,
+        heavyAttackCooldownUntil = 0,
         lastAttackAt = 0,
         attackAnimUntil = 0,
+        heavyAttackAnimUntil = 0,
+        heavyLungeStartX = 0,
+        heavyLungeTargetX = 0,
+        heavyStrikeApplied = false,
+        // Zombie Goth combat AI state
+        enemyCombatX = COMBAT_W - 320,
+        enemyCombatState = 'idle',
+        enemyCombatStateStart = 0,
+        enemyCombatAttackType = null,
+        enemyCombatAttackHit = false,
+        enemyCombatNextDecision = 0,
+        enemyCombatWalkCycle = 0,
+        enemyCombatAttackStartX = 0,
+        enemyCombatAttackTargetX = 0,
+        enemyCombatAttackCount = 0,
+        playerHurtUntil = 0,
+        playerDeathTriggered = false,
         jumpT = 0,
         jumping = false,
         jumpOffset = 0,
         dodgeUntil = 0,
         combatLastFrame = 0,
         combatFacing = 'right',
+        combatAnimationState = 'idle',
+        combatAnimationStart = 0,
+        combatAnimationUntil = 0,
+        combatDodgeDirection = -1,
         player = {
             x: 270,
             y: COMBAT_H / 2,
@@ -303,55 +942,74 @@ export function createLevel1(ui) {
             held.right = down;
     }
     function updateMovement(dt) {
-        if (mode !== 'map')
-            return;
+        if (mode !== 'map') return;
         const speed = 240;
         let dx = (held.right ? 1 : 0) - (held.left ? 1 : 0);
         let dy = (held.down ? 1 : 0) - (held.up ? 1 : 0);
-        if (!dx && !dy) {
-            walkPulse = 0;
-            return;
-        }
+        if (!dx && !dy) { walkPulse = 0; return; }
         const len = Math.hypot(dx, dy) || 1;
-        dx = dx / len * speed * dt;
-        dy = dy / len * speed * dt;
-        const tryMove = (nx, ny) => {
-            if (blockedWorld(nx, ny, 16))
-                return false;
-            if (Math.hypot(nx - boss.x, ny - boss.y) < 68 && !unlockedBoss())
-                return false;
+        const moveX = dx / len * speed * dt;
+        const moveY = dy / len * speed * dt;
+        const distance = Math.hypot(moveX, moveY);
+        const steps = Math.max(1, Math.ceil(distance / 6));
+        const stepX = moveX / steps, stepY = moveY / steps;
+        const canStand = (nx, ny) => {
+            if (blockedWorld(nx, ny, 0)) return false;
+            if (Math.hypot(nx - boss.x, ny - boss.y) < 24 && !unlockedBoss()) return false;
             return true;
         };
-        const nx = x + dx,
-            ny = y + dy;
         let moved = false;
-        if (tryMove(nx, y)) {
-            x = nx;
-            moved = true;
-        }
-        if (tryMove(x, ny)) {
-            y = ny;
-            moved = true;
+        for (let i = 0; i < steps; i++) {
+            const nx = x + stepX, ny = y + stepY;
+            if (canStand(nx, ny)) { x = nx; y = ny; moved = true; }
+            else {
+                if (canStand(nx, y)) { x = nx; moved = true; }
+                if (canStand(x, ny)) { y = ny; moved = true; }
+            }
         }
         if (moved) {
+            revealAround(x, y);
             walkPulse = 1;
-            if (Math.abs(dx) > Math.abs(dy))
-                facingDir = dx < 0 ? 'left' : 'right';
-            walkDir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : (dy < 0 ? 'up' : 'down');
+            if (Math.abs(moveX) > Math.abs(moveY)) facingDir = moveX < 0 ? 'left' : 'right';
+            walkDir = Math.abs(moveX) > Math.abs(moveY) ? (moveX < 0 ? 'left' : 'right') : (moveY < 0 ? 'up' : 'down');
             ui.dialogue.textContent = 'The cemetery is strangely peaceful. Somewhere nearby, a goth is probably plotting.';
         }
     }
+
     const W2C = (gx, gy) => ({
         x: gx,
         y: gy
     });
-    function reveal() {}
+    function reveal() { revealAround(x, y, true); }
     function objectivesComplete() {
         return kills >= 2 && relationshipDone && puzzleSolved
     }
     function unlockedBoss() {
-        return objectivesComplete() && keyCollected
+        return objectivesComplete() && keyCollected && gateOpened
     }
+    function refreshInventoryUI() {
+        const count = inventory && inventory.key ? 1 : 0;
+        const countText = `${count}/10`;
+        const countEl = document.getElementById('inventory-count');
+        const largeCountEl = document.getElementById('inventory-count-large');
+        if (countEl) countEl.textContent = countText;
+        if (largeCountEl) largeCountEl.textContent = `${count} / 10 ITEMS`;
+        const slots = document.querySelectorAll('#inventory .inventory-slot');
+        if (slots.length) {
+            slots.forEach((slot, i) => {
+                if (i === 0 && count) {
+                    slot.innerHTML = '🔑<span style="display:block;font-size:10px;margin-top:6px;">GOLDEN KEY</span>';
+                    slot.classList.add('inventory-filled');
+                } else {
+                    slot.textContent = String(i + 1).padStart(2, '0');
+                    slot.classList.remove('inventory-filled');
+                }
+            });
+        }
+        const emptyCopy = document.querySelector('#inventory .inventory-empty-copy');
+        if (emptyCopy) emptyCopy.textContent = count ? 'One suspiciously important key. Probably useful.' : 'Nothing in here yet. A suspiciously empty bag.';
+    }
+
     function stats() {
         hp = Math.max(0, Math.min(maxHp, hp));
         ui.hpEl.textContent = `${hp} / ${maxHp} HP`;
@@ -364,6 +1022,11 @@ export function createLevel1(ui) {
         ui.goalRel.innerHTML = relationshipDone ? `<span class="good">✓ ${ACTIVITY_DATA.relationshipChallenge.name} complete</span>` : `○ Complete the ${ACTIVITY_DATA.relationshipChallenge.name} Challenge`;
         ui.goalPuzzle.innerHTML = puzzleSolved ? '<span class="good">✓ Princess Question answered</span>' : '○ Answer the Princess Question';
         ui.goalBoss.innerHTML = unlockedBoss() ? '<span class="good">✓ Boss gate unlocked</span>' : '<span class="locked">🔒 Boss gate locked</span>';
+        refreshInventoryUI();
+        if (objectivesComplete() && !keyCollected && !keySpawnAnnounced) {
+            keySpawnAnnounced = true;
+            ui.dialogue.textContent = '🔑 A golden key has appeared somewhere in the cemetery. Find it.';
+        }
     }
 
     function drawMini() {
@@ -378,7 +1041,6 @@ export function createLevel1(ui) {
             mctx.arc(px / WORLD_W * 250, py / WORLD_H * 167, r, 0, Math.PI * 2);
             mctx.fill()
         };
-        marker(x, y, '#fff', 4);
         if (!relationshipDone)
             marker(relationshipChallenge.x, relationshipChallenge.y, '#ef91ac');
         if (!puzzleSolved)
@@ -388,11 +1050,17 @@ export function createLevel1(ui) {
         if (!enemies[1].dead)
             marker(enemies[1].x, enemies[1].y, '#ef91ac', 4);
         if (!keyCollected && objectivesComplete())
-            marker(key.x, key.y, '#f0cf8b', 4);
+            marker(key.x, key.y, '#f0cf8b', 5);
         marker(boss.x, boss.y, unlockedBoss() ? '#f0cf8b' : '#8f7286', 4);
+        // Fog also covers the mini-map so undiscovered objectives do not leak through.
+        mctx.drawImage(fogCanvas, 0, 0, 250, 167);
+        // Olly remains visible as the exploration reference point.
+        marker(x, y, '#fff', 4);
     }
-    function drawMarker(ctx, img, px, py, w=68, h=68, label='') {
+    function drawMarker(ctx, img, px, py, w=68, h=68, label='', t=0) {
         ctx.save();
+        const bob = Math.sin(t * 4.8) * 4.5;
+        ctx.translate(0, -bob);
         ctx.globalAlpha = .98;
         ctx.shadowColor = 'rgba(255,146,195,.55)';
         ctx.shadowBlur = 14;
@@ -413,7 +1081,7 @@ export function createLevel1(ui) {
         }
         ctx.restore();
     }
-    function drawWorld(t) {
+    function drawWorld(t, dt = 1 / 60) {
         const vw = ui.canvas.clientWidth || 1000,
             vh = ui.canvas.clientHeight || 600;
         const sx = ui.canvas.width / vw,
@@ -426,8 +1094,15 @@ export function createLevel1(ui) {
             playerY = y,
             viewW = vw / zoom,
             viewH = vh / zoom;
-        const camX = Math.max(viewW / 2, Math.min(WORLD_W - viewW / 2, playerX)),
-            camY = Math.max(viewH / 2, Math.min(WORLD_H - viewH / 2, playerY));
+        const targetCamX = Math.max(viewW / 2, Math.min(WORLD_W - viewW / 2, playerX)),
+            targetCamY = Math.max(viewH / 2, Math.min(WORLD_H - viewH / 2, playerY));
+        // Frame-rate independent camera smoothing keeps the pan consistent
+        // even when Safari drops a frame.
+        const camBlend = 1 - Math.exp(-10 * Math.min(dt, .05));
+        cameraX += (targetCamX - cameraX) * camBlend;
+        cameraY += (targetCamY - cameraY) * camBlend;
+        const camX = Math.max(viewW / 2, Math.min(WORLD_W - viewW / 2, cameraX)),
+            camY = Math.max(viewH / 2, Math.min(WORLD_H - viewH / 2, cameraY));
         ctx.translate(vw / 2 - camX * zoom, vh / 2 - camY * zoom);
         ctx.scale(zoom, zoom);
         if (mapBackground.complete && mapBackground.naturalWidth)
@@ -439,32 +1114,37 @@ export function createLevel1(ui) {
         if (!enemies[0].dead)
             drawZombieSprite(ctx, enemies[0].x, enemies[0].y, 'shambler', .84, t / 1000, false);
         if (!enemies[1].dead)
-            drawZombieSprite(ctx, enemies[1].x, enemies[1].y, 'chain', .82, t / 1000, false);
+            drawZombieSprite(ctx, enemies[1].x, enemies[1].y, 'chain', .9594, t / 1000, false);
         if (!relationshipDone)
-            drawMarker(ctx, relationshipChallengeIcon, relationshipChallenge.x, relationshipChallenge.y, 74, 74, '');
+            drawMarker(ctx, relationshipChallengeIcon, relationshipChallenge.x, relationshipChallenge.y, 74, 74, '', t / 1000);
         if (!puzzleSolved)
-            drawMarker(ctx, princessQuestionIcon, princessQuestion.x, princessQuestion.y, 96, 96, '');
+            drawMarker(ctx, princessQuestionIcon, princessQuestion.x, princessQuestion.y, 96, 96, '', t / 1000);
         if (!keyCollected && objectivesComplete()) {
             ctx.save();
-            ctx.translate(key.x, key.y);
+            ctx.translate(key.x, key.y + Math.sin(t / 280) * 4);
             ctx.shadowColor = '#ffe49b';
-            ctx.shadowBlur = 20;
-            ctx.fillStyle = '#f5d27e';
-            ctx.beginPath();
-            ctx.arc(0, 0, 10 + Math.sin(t / 180) * 2, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = '#fff2c7';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.moveTo(8, 0);
-            ctx.lineTo(30, 0);
-            ctx.lineTo(30, 8);
-            ctx.moveTo(20, 0);
-            ctx.lineTo(20, -7);
-            ctx.stroke();
+            ctx.shadowBlur = 22;
+            if (goldenKeySprite.complete && goldenKeySprite.naturalWidth) {
+                const ks = 88 / Math.max(goldenKeySprite.naturalWidth, goldenKeySprite.naturalHeight);
+                ctx.drawImage(goldenKeySprite, -goldenKeySprite.naturalWidth * ks / 2, -goldenKeySprite.naturalHeight * ks / 2, goldenKeySprite.naturalWidth * ks, goldenKeySprite.naturalHeight * ks);
+            }
+            ctx.restore();
+        }
+        if (!gateOpened && gateLockSprite.complete && gateLockSprite.naturalWidth) {
+            ctx.save();
+            ctx.translate(boss.x, boss.y - 58 + Math.sin(t / 360) * 3);
+            ctx.shadowColor = 'rgba(0,0,0,.75)';
+            ctx.shadowBlur = 12;
+            const gs = 58 / Math.max(gateLockSprite.naturalWidth, gateLockSprite.naturalHeight);
+            ctx.drawImage(gateLockSprite, -gateLockSprite.naturalWidth * gs / 2, -gateLockSprite.naturalHeight * gs / 2, gateLockSprite.naturalWidth * gs, gateLockSprite.naturalHeight * gs);
             ctx.restore();
         }
         drawOlly(ctx, playerX, playerY, .78, t / 1000, true, facingDir, walkPulse > 0);
+        // v6.5.16e: unexplored cemetery remains covered; revealed areas stay clear.
+        updateFogPatchClears(t);
+        updateFogParting(t);
+        ctx.drawImage(fogCanvas, 0, 0, WORLD_W, WORLD_H);
+        drawAnimatedMist(t);
         ctx.restore();
     }
     function canvasPointToWorld(e) {
@@ -483,7 +1163,17 @@ export function createLevel1(ui) {
             y: (sy - vh / 2 + camY * zoom) / zoom
         };
     }
+    // v6.5.17: only the immediate church area starts revealed. Fog patches
+    // elsewhere remain intact until Olly actually explores them.
+    function revealInitialUpperLeft() {
+        eraseFogCircle(x, y, FOG_START_RADIUS);
+        markFogCells(x, y, FOG_START_RADIUS);
+        lastFogRevealX = x;
+        lastFogRevealY = y;
+    }
+    revealInitialUpperLeft();
     let pendingInteraction = null;
+    let gateEncounterShown = false;
     function openInteractionEncounter(kind, enemy=null) {
         const data = ENCOUNTER_DATA[kind];
         if (!data)
@@ -500,11 +1190,22 @@ export function createLevel1(ui) {
         ui.encounterImage.src = data.image;
         ui.encounterName.textContent = data.name;
         ui.encounterText.textContent = data.text;
+        if (ui.encounterReady) {
+            ui.encounterReady.textContent = 'I\'M READY';
+            ui.encounterReady.classList.remove('hidden');
+        }
+        if (kind === 'lockedGate' && ui.encounterReady) {
+            ui.encounterReady.classList.add('hidden');
+        }
         ui.encounter.classList.remove('hidden');
     }
     function closeEncounter() {
         ui.encounter.classList.add('hidden');
         pendingInteraction = null;
+        if (ui.encounterReady) {
+            ui.encounterReady.classList.remove('hidden');
+            ui.encounterReady.textContent = 'I\'M READY';
+        }
         mode = 'map';
     }
     function confirmEncounter() {
@@ -538,6 +1239,115 @@ export function createLevel1(ui) {
         ui.puzzle.classList.remove('hidden');
         ui.puzzleFeedback.textContent = 'Choose wisely. The Goths have inexplicably made this a formal assessment.';
     }
+    function playCutscene2() {
+        if (mode !== 'map' || !keyCollected || gateOpened) return;
+
+        mode = 'cutscene2';
+        const overlay = document.createElement('div');
+        overlay.id = 'level1-cutscene2-overlay';
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:#09070d;display:flex;align-items:center;justify-content:center;overflow:auto;padding:24px;box-sizing:border-box;';
+
+        const frame = document.createElement('div');
+        frame.style.cssText = 'position:relative;width:min(1280px,96vw);height:min(760px,92vh);display:flex;align-items:center;justify-content:center;background:#120d16;border:1px solid #6f4a61;border-radius:18px;box-shadow:0 18px 70px rgba(0,0,0,.55);overflow:hidden;';
+        overlay.appendChild(frame);
+
+        const video = document.createElement('video');
+        video.id = 'level1-cutscene2';
+        video.playsInline = true;
+        video.preload = 'auto';
+        video.controls = false;
+        video.autoplay = true;
+        video.style.cssText = 'max-width:100%;max-height:100%;width:100%;height:100%;object-fit:contain;background:#09070d;';
+        frame.appendChild(video);
+
+        const status = document.createElement('div');
+        status.textContent = 'LOADING CUTSCENE...';
+        status.style.cssText = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:14px 20px;border:1px solid #8d5f78;border-radius:12px;background:rgba(22,14,25,.9);color:#f5dce7;font:700 18px Georgia,serif;letter-spacing:.4px;z-index:2;';
+        frame.appendChild(status);
+
+        const playButton = document.createElement('button');
+        playButton.textContent = '▶ PLAY CUTSCENE';
+        playButton.style.cssText = 'position:absolute;left:50%;bottom:24px;transform:translateX(-50%);padding:12px 22px;border:1px solid #d98ba8;border-radius:12px;background:#382132;color:#f8eaf0;font:700 16px Georgia,serif;cursor:pointer;display:none;z-index:3;';
+        frame.appendChild(playButton);
+
+        const closeButton = document.createElement('button');
+        closeButton.textContent = 'BACK TO MAP';
+        closeButton.style.cssText = 'position:absolute;left:50%;bottom:24px;transform:translateX(-50%);padding:12px 22px;border:1px solid #9b6f86;border-radius:12px;background:#241726;color:#f8eaf0;font:700 16px Georgia,serif;cursor:pointer;display:none;z-index:3;';
+        frame.appendChild(closeButton);
+
+        document.body.appendChild(overlay);
+
+        let finished = false;
+        let attemptedFallback = false;
+        const sources = [
+            'assets/video/cutscene2/cutscene2.mp4?v=6529',
+            'assets/video/cutscene2/cutscene2.mov?v=6529'
+        ];
+
+        const finish = () => {
+            if (finished) return;
+            finished = true;
+            video.pause();
+            video.removeAttribute('src');
+            video.load();
+            overlay.remove();
+            gateOpened = true;
+            mode = 'map';
+            stats();
+            ui.dialogue.textContent = '🔓 The gate opens. Whatever is beyond it is no longer your problem for the moment...';
+        };
+
+        const showFailure = () => {
+            if (finished) return;
+            status.textContent = 'Cutscene could not be played. Make sure cutscene2.mp4 is in assets/video/cutscene2/.';
+            playButton.style.display = 'none';
+            closeButton.style.display = 'block';
+        };
+
+        const tryPlay = () => {
+            status.style.display = 'none';
+            video.play().then(() => {
+                playButton.style.display = 'none';
+            }).catch(() => {
+                playButton.style.display = 'block';
+            });
+        };
+
+        video.addEventListener('loadeddata', tryPlay, { once:false });
+        video.addEventListener('canplay', tryPlay, { once:false });
+        video.addEventListener('ended', finish, { once:true });
+        video.addEventListener('error', () => {
+            if (!attemptedFallback) {
+                attemptedFallback = true;
+                status.textContent = 'Trying alternate video format...';
+                video.src = sources[1];
+                video.load();
+                return;
+            }
+            showFailure();
+        }, { once:false });
+
+        playButton.addEventListener('click', () => {
+            video.play().then(() => {
+                playButton.style.display = 'none';
+            }).catch(() => {
+                playButton.style.display = 'block';
+            });
+        });
+        closeButton.addEventListener('click', () => {
+            if (finished) return;
+            finished = true;
+            video.pause();
+            overlay.remove();
+            mode = 'map';
+            ui.dialogue.textContent = 'The cutscene could not be played yet. The gate remains locked.';
+        }, { once:true });
+
+        video.src = sources[0];
+        video.load();
+    }
+
+
     ui.canvas.addEventListener('pointerdown', e => {
         if (mode !== 'map')
             return;
@@ -559,19 +1369,22 @@ export function createLevel1(ui) {
         if (objectivesComplete() && !keyCollected && near(key.x, key.y, 55)) {
             keyCollected = true;
             inventory.key = 1;
+            refreshInventoryUI();
             ui.dialogue.textContent = '🔑 A little brass key drops onto the cobblestones. Finally, a sensible piece of game design.';
             stats();
             return;
         }
-        if (near(boss.x, boss.y, 72)) {
-            if (unlockedBoss()) {
-                bossRoomEntered = true;
-                mode = 'bossready';
-                ui.bossReady.classList.remove('hidden')
-            } else {
-                ui.dialogue.textContent = '🔒 The gate is still locked. Complete every challenge, then collect the key.'
+        // Gate is click-to-interact only. Walking nearby never changes mode.
+        // The clickable target is the lock icon itself.
+        if (near(boss.x, boss.y - 58, 66)) {
+            if (!keyCollected) {
+                openInteractionEncounter('lockedGate');
+                return;
             }
-            return;
+            if (!gateOpened) {
+                playCutscene2();
+                return;
+            }
         }
     });
 
@@ -588,15 +1401,33 @@ export function createLevel1(ui) {
 
     function resetCombatVisual() {
         enemyAttackPhase = null;
+        enemyCombatX = COMBAT_W - 320;
+        enemyCombatState = 'idle';
+        enemyCombatStateStart = performance.now();
+        enemyCombatAttackType = null;
+        enemyCombatAttackHit = false;
+        enemyCombatNextDecision = performance.now() + 500;
+        enemyCombatWalkCycle = 0;
+        enemyCombatAttackStartX = enemyCombatX;
+        enemyCombatAttackTargetX = enemyCombatX;
+        enemyCombatAttackCount = 0;
+        playerHurtUntil = 0;
+        playerDeathTriggered = false;
         comboCount = 0;
         attackCooldownUntil = 0;
+        heavyAttackCooldownUntil = 0;
         lastAttackAt = 0;
         attackAnimUntil = 0;
+        heavyAttackAnimUntil = 0;
         jumping = false;
         jumpT = 0;
         jumpOffset = 0;
         dodgeUntil = 0;
         combatLastFrame = 0;
+        combatAnimationState = 'idle';
+        combatAnimationStart = 0;
+        combatAnimationUntil = 0;
+        combatDodgeDirection = -1;
         const enemyX = COMBAT_W - 320;
         player = {
             x: 270,
@@ -611,34 +1442,58 @@ export function createLevel1(ui) {
         if (mode !== 'combat')
             return;
         const speed = 430;
-        let dx = (held.right ? 1 : 0) - (held.left ? 1 : 0),
-            dy = (held.down ? 1 : 0) - (held.up ? 1 : 0);
-        if (dx || dy) {
-            const len = Math.hypot(dx, dy) || 1;
-            dx = dx / len * speed * dt;
-            dy = dy / len * speed * dt;
-            player.x = Math.max(80, Math.min(COMBAT_W - 80, player.x + dx));
-            player.y = Math.max(135, Math.min(COMBAT_H - 110, player.y + dy));
-            if (Math.abs(dx) >= Math.abs(dy))
-                combatFacing = dx < 0 ? 'left' : 'right';
+        const playerMinX = 100;
+        const playerMaxX = COMBAT_W - 100;
+
+        // Combat is side-on: horizontal movement only. Jumping supplies all
+        // vertical movement so Olly cannot be walked off the top/bottom of the arena.
+        let dx = (held.right ? 1 : 0) - (held.left ? 1 : 0);
+        if (dx) {
+            player.x = Math.max(playerMinX, Math.min(playerMaxX, player.x + dx * speed * dt));
+            combatFacing = dx < 0 ? 'left' : 'right';
         }
+        player.y = COMBAT_GROUND_Y;
+
+        const nowMs = performance.now();
+        if (heavyAttackAnimUntil > nowMs) {
+            const total = 620;
+            const startMs = heavyAttackAnimUntil - total;
+            const p = Math.max(0, Math.min(1, (nowMs - startMs) / total));
+            // Smooth forward lunge, then settle into the strike/landing.
+            const eased = p < .62
+                ? (p / .62) * (1 - Math.pow(1 - (p / .62), 3))
+                : .90 + ((p - .62) / .38) * .10;
+            player.x = heavyLungeStartX + (heavyLungeTargetX - heavyLungeStartX) * eased;
+            player.x = Math.max(playerMinX, Math.min(playerMaxX, player.x));
+            jumpOffset = 0;
+        }
+
         if (jumping) {
-            jumpT += dt / .68;
+            const jumpDuration = .51; // v6.5.16d: 20% faster, matched to the jump animation
+            jumpT += dt / jumpDuration;
             if (jumpT >= 1) {
                 jumpT = 1;
                 jumping = false;
             }
-            jumpOffset = -Math.sin(jumpT * Math.PI) * 120;
+            // Smaller arc. The new sprite art does not need to do the visual
+            // travelling itself, so the jump stays grounded and readable.
+            jumpOffset = -Math.sin(jumpT * Math.PI) * 68;
         }
-        else
+        else {
             jumpOffset = 0;
+            if (combatAnimationState === 'jump')
+                combatAnimationState = 'idle';
+        }
     }
     function jump() {
-        if (mode !== 'combat' || jumping)
+        if (mode !== 'combat' || jumping || heavyAttackAnimUntil > performance.now())
             return;
         jumping = true;
         jumpT = 0;
-        ui.combatStatus.innerHTML = '<strong>JUMP!</strong> Jumping gives you space to react.';
+        combatAnimationState = 'jump';
+        combatAnimationStart = performance.now();
+        combatAnimationUntil = combatAnimationStart + 510; // v6.5.16d
+        ui.combatStatus.textContent = '🦘 You jump.';
     }
     function drawCombatBackground(c) {
         c.clearRect(0, 0, COMBAT_W, COMBAT_H);
@@ -661,89 +1516,391 @@ export function createLevel1(ui) {
             }
         }
     }
+    function getCombatAnimationFrame(nowMs) {
+        const state = combatAnimationState;
+        let cfg = null,
+            frames = null;
+        if (state === 'dodge') {
+            cfg = OLLY_ANIMATIONS.dodge;
+            frames = ollyCombatSprites.dodge;
+        } else if (state === 'heavy') {
+            cfg = OLLY_ANIMATIONS.heavy;
+            frames = ollyCombatSprites.heavy;
+        } else if (state === 'punch') {
+            cfg = OLLY_ANIMATIONS.punch;
+            frames = ollyCombatSprites.punch;
+        } else if (jumping || state === 'jump') {
+            cfg = OLLY_ANIMATIONS.jump;
+            frames = ollyCombatSprites.jump;
+        } else {
+            return {
+                img: ollyCombatSprites.idle,
+                state: 'idle',
+                progress: 0,
+                drawDir: combatFacing,
+                height: OLLY_IDLE_HEIGHT
+            };
+        }
+
+        const total = cfg.frameMs.reduce((a,b) => a + b, 0);
+        let elapsed = Math.max(0, Math.min(total - 1, nowMs - combatAnimationStart));
+        let acc = 0;
+        let localIndex = 0;
+        for (let i = 0; i < cfg.frameMs.length; i++) {
+            acc += cfg.frameMs[i];
+            if (elapsed < acc) {
+                localIndex = i;
+                break;
+            }
+        }
+        const sourceIndex = cfg.indices[Math.min(localIndex, cfg.indices.length - 1)];
+        const img = frames[sourceIndex];
+        return {
+            img,
+            state,
+            progress: elapsed / total,
+            frameIndex: sourceIndex,
+            drawDir: combatFacing,
+            height: cfg.height,
+            visualOffsetY: cfg.frameYOffset ? (cfg.frameYOffset[Math.min(localIndex, cfg.frameYOffset.length - 1)] || 0) : 0,
+            duration: total
+        };
+    }
+
+    function getZombieCombatFrame(nowMs) {
+        const elapsed = Math.max(0, nowMs - enemyCombatStateStart);
+        let frames = zombieAIFrames.idle;
+        let frameMs = 170;
+        let index = 0;
+        let height = 280;
+
+        if (enemyCombatState === 'chase') {
+            frames = zombieAIFrames.walk;
+            frameMs = 115;
+            index = Math.floor(elapsed / frameMs) % frames.length;
+            height = 275;
+        } else if (enemyCombatState === 'claw') {
+            frames = zombieAIFrames.claw;
+            const total = ZOMBIE_AI_CONFIG.clawDuration;
+            const progress = Math.min(.999, elapsed / total);
+            index = Math.min(frames.length - 1, Math.floor(progress * frames.length));
+            height = 275;
+        } else if (enemyCombatState === 'lunge') {
+            frames = zombieAIFrames.lunge;
+            const total = ZOMBIE_AI_CONFIG.lungeDuration;
+            const progress = Math.min(.999, elapsed / total);
+            index = Math.min(frames.length - 1, Math.floor(progress * frames.length));
+            height = 315;
+        } else if (enemyCombatState === 'windup') {
+            if (enemyCombatAttackType === 'lunge') {
+                frames = zombieAIFrames.lunge;
+                index = 0;
+                height = 315;
+            } else {
+                frames = zombieAIFrames.claw;
+                index = 0;
+                height = 275;
+            }
+        } else {
+            frames = zombieAIFrames.idle;
+            frameMs = 170;
+            index = Math.floor(elapsed / frameMs) % frames.length;
+            height = 280;
+        }
+
+        const img = frames[Math.max(0, Math.min(frames.length - 1, index))];
+        return { img, height };
+    }
+
+    function drawZombieCombat(c, enemyX, enemyY, nowMs) {
+        const type = target?.type || 'shambler';
+        const useAI = !isBoss && type === 'shambler';
+
+        if (!useAI) {
+            drawZombieSprite(c, enemyX, enemyY, type,
+                type === 'chain' ? 2.184 : 2.08,
+                nowMs / 1000,
+                false,
+                player.x < enemyX ? (type === 'chain' ? 'right' : 'left') : (type === 'chain' ? 'left' : 'right'));
+            return;
+        }
+
+        const frame = getZombieCombatFrame(nowMs);
+        const face = player.x < enemyX ? 'left' : 'right';
+        c.save();
+        c.translate(enemyX, enemyY + 40);
+
+        c.fillStyle = 'rgba(0,0,0,.30)';
+        c.beginPath();
+        c.ellipse(0, 12, 68, 13, 0, 0, Math.PI * 2);
+        c.fill();
+
+        // v7.0.1 FIX: the new AI uses individual cropped PNG frames, not a sprite sheet.
+        // The previous draft still tried to read frame.sheet/frame.rect, which threw
+        // during drawing and made the Zombie Goth disappear entirely.
+        const img = frame.img;
+        if (img && img.complete && img.naturalWidth) {
+            const naturalW = img.naturalWidth;
+            const naturalH = img.naturalHeight;
+            const scale = frame.height / naturalH;
+            const drawW = naturalW * scale;
+            const drawH = frame.height;
+            c.save();
+            c.scale(face === 'left' ? -1 : 1, 1);
+            c.drawImage(img, -drawW / 2, -drawH, drawW, drawH);
+            c.restore();
+        } else {
+            // Robust fallback: use the first bundled idle frame while the requested
+            // animation image finishes loading. This fallback is included in this patch.
+            const fallback = zombieAIFrames.idle[0];
+            c.save();
+            c.scale(face === 'left' ? -1 : 1, 1);
+            if (fallback && fallback.complete && fallback.naturalWidth) {
+                const fallbackH = 280;
+                const fallbackW = fallback.naturalWidth * (fallbackH / fallback.naturalHeight);
+                c.drawImage(fallback, -fallbackW / 2, -fallbackH, fallbackW, fallbackH);
+            } else if (zombieSprites.shambler.complete && zombieSprites.shambler.naturalWidth) {
+                c.drawImage(zombieSprites.shambler, -145, -305, 290, 360);
+            }
+            c.restore();
+        }
+        c.restore();
+    }
+
+    function clampCombatX(value) {
+        return Math.max(95, Math.min(COMBAT_W - 95, value));
+    }
+
+    function chooseZombieAttack(nowMs) {
+        // Alternate attacks for reliable testing: claw, lunge, claw, lunge...
+        enemyCombatAttackType = (enemyCombatAttackCount % 2 === 0) ? 'claw' : 'lunge';
+        enemyCombatAttackCount++;
+        enemyCombatAttackHit = false;
+        enemyCombatState = 'windup';
+        enemyCombatStateStart = nowMs;
+        enemyAttackPhase = 'windup';
+    }
+
+    function updateZombieAI(dt, nowMs) {
+        if (mode !== 'combat' || isBoss || target?.type !== 'shambler')
+            return;
+        if (playerDeathTriggered)
+            return;
+
+        const dx = player.x - enemyCombatX;
+        const distance = Math.abs(dx);
+        const direction = dx < 0 ? -1 : 1;
+
+        if (enemyCombatState === 'idle') {
+            if (nowMs >= enemyCombatNextDecision) {
+                enemyCombatState = 'chase';
+                enemyCombatStateStart = nowMs;
+            }
+            return;
+        }
+
+        if (enemyCombatState === 'chase') {
+            // Keep following Olly anywhere in the arena. Jumping and dodging only
+            // change whether the eventual hit connects, not whether the Zombie pursues.
+            if (distance > ZOMBIE_AI_CONFIG.preferredDistance) {
+                enemyCombatX = clampCombatX(enemyCombatX + direction * ZOMBIE_AI_CONFIG.chaseSpeed * dt);
+                enemyCombatWalkCycle += dt;
+                return;
+            }
+
+            chooseZombieAttack(nowMs);
+            return;
+        }
+
+        if (enemyCombatState === 'windup') {
+            const windup = enemyCombatAttackType === 'lunge'
+                ? ZOMBIE_AI_CONFIG.lungeWindup
+                : ZOMBIE_AI_CONFIG.clawWindup;
+
+            // Re-check Olly's position during the warning phase. The Zombie can turn
+            // to face him, but it does not snap on top of him.
+            const liveDx = player.x - enemyCombatX;
+            if (Math.abs(liveDx) > ZOMBIE_AI_CONFIG.preferredDistance + 90) {
+                enemyCombatX = clampCombatX(
+                    enemyCombatX + Math.sign(liveDx) * ZOMBIE_AI_CONFIG.chaseSpeed * 0.30 * dt
+                );
+            }
+
+            if (nowMs - enemyCombatStateStart >= windup) {
+                enemyCombatState = enemyCombatAttackType;
+                enemyCombatStateStart = nowMs;
+                enemyCombatAttackHit = false;
+                enemyAttackPhase = 'active';
+
+                if (enemyCombatAttackType === 'lunge') {
+                    enemyCombatAttackStartX = enemyCombatX;
+                    const toPlayer = Math.sign(player.x - enemyCombatX) || 1;
+                    // Stop on the other side of Olly rather than placing the player
+                    // inside the enemy's animation. This keeps an escape route open.
+                    enemyCombatAttackTargetX = clampCombatX(player.x - toPlayer * 110);
+                }
+            }
+            return;
+        }
+
+        if (enemyCombatState === 'claw') {
+            const elapsed = nowMs - enemyCombatStateStart;
+            if (!enemyCombatAttackHit && elapsed >= ZOMBIE_AI_CONFIG.clawHitStart && elapsed <= ZOMBIE_AI_CONFIG.clawHitEnd) {
+                enemyCombatAttackHit = true;
+                applyZombieDamage(
+                    ZOMBIE_AI_CONFIG.clawDamage,
+                    ZOMBIE_AI_CONFIG.clawRange,
+                    32,
+                    nowMs,
+                    'CLAW SWIPE'
+                );
+            }
+            if (elapsed >= ZOMBIE_AI_CONFIG.clawDuration) {
+                enemyCombatState = 'recover';
+                enemyCombatStateStart = nowMs;
+                enemyAttackPhase = 'recover';
+            }
+            return;
+        }
+
+        if (enemyCombatState === 'lunge') {
+            const elapsed = nowMs - enemyCombatStateStart;
+            const travelStart = 90;
+            const travelDuration = 520;
+            const p = Math.min(1, Math.max(0, (elapsed - travelStart) / travelDuration));
+            if (elapsed <= travelStart + travelDuration) {
+                const eased = p * p * (3 - 2 * p);
+                enemyCombatX = clampCombatX(
+                    enemyCombatAttackStartX +
+                    (enemyCombatAttackTargetX - enemyCombatAttackStartX) * eased
+                );
+            }
+
+            if (!enemyCombatAttackHit && elapsed >= ZOMBIE_AI_CONFIG.lungeHitStart && elapsed <= ZOMBIE_AI_CONFIG.lungeHitEnd) {
+                enemyCombatAttackHit = true;
+                applyZombieDamage(
+                    ZOMBIE_AI_CONFIG.lungeDamage,
+                    ZOMBIE_AI_CONFIG.lungeRange,
+                    72,
+                    nowMs,
+                    'LUNGE + BITE'
+                );
+            }
+
+            if (elapsed >= ZOMBIE_AI_CONFIG.lungeDuration) {
+                enemyCombatState = 'recover';
+                enemyCombatStateStart = nowMs;
+                enemyAttackPhase = 'recover';
+            }
+            return;
+        }
+
+        if (enemyCombatState === 'recover') {
+            // Recovery returns straight to pursuit. A missed attack is not the end
+            // of the chase.
+            if (nowMs - enemyCombatStateStart >= ZOMBIE_AI_CONFIG.recovery) {
+                enemyCombatState = 'chase';
+                enemyCombatStateStart = nowMs;
+                enemyCombatNextDecision = nowMs;
+                enemyAttackPhase = null;
+            }
+        }
+    }
+
+    function applyZombieDamage(damage, range, pushDistance, nowMs, attackName) {
+        const horizontalDistance = Math.abs(enemyCombatX - player.x);
+        const airborne = jumping || jumpOffset < -20;
+        const dodging = player.invuln > nowMs;
+        if (horizontalDistance > range || airborne || dodging) {
+            ui.combatStatus.textContent = `↪ ${attackName} missed!`;
+            return;
+        }
+
+        hp = Math.max(0, hp - damage);
+        stats();
+        playerHurtUntil = nowMs + 280;
+        ui.combatStatus.textContent = `💥 ${attackName}! -${damage} HP.`;
+
+        const pushDir = player.x <= enemyCombatX ? -1 : 1;
+        player.x = Math.max(150, Math.min(COMBAT_W - 150, player.x + pushDir * pushDistance));
+        if (hp <= 0 && !playerDeathTriggered) {
+            playerDeathTriggered = true;
+            setTimeout(() => endCombat(false), 220);
+        }
+    }
+
     function drawCombat() {
         cctx.imageSmoothingEnabled = true;
         cctx.imageSmoothingQuality = 'high';
         drawCombatBackground(cctx);
-        const enemyX = COMBAT_W - 320,
+        const enemyX = isBoss ? COMBAT_W - 320 : enemyCombatX,
             enemyY = COMBAT_GROUND_Y,
-            nowMs = performance.now();
-        if (dodgeUntil > nowMs) {
+            nowMs = performance.now(),
+            enemyType = target?.type || (isBoss ? 'chain' : 'shambler');
+
+        if (combatAnimationUntil && nowMs >= combatAnimationUntil && combatAnimationState !== 'idle') {
+            if (combatAnimationState !== 'jump' || !jumping) {
+                combatAnimationState = 'idle';
+                combatAnimationUntil = 0;
+            }
+        }
+
+        const anim = getCombatAnimationFrame(nowMs);
+        const renderHurt = player.invuln > nowMs || playerHurtUntil > nowMs;
+        drawOllyWorldCombat(cctx, player.x, player.y, anim, nowMs / 1000, renderHurt, jumpOffset);
+        drawZombieCombat(cctx, enemyX, enemyY, nowMs);
+
+        if (!isBoss && enemyType === 'shambler' && (enemyCombatState === 'windup' || enemyCombatState === 'claw' || enemyCombatState === 'lunge')) {
             cctx.save();
-            cctx.globalAlpha = .28;
-            cctx.fillStyle = '#f5dce8';
-            cctx.beginPath();
-            cctx.arc(player.x, player.y + jumpOffset, 62, 0, Math.PI * 2);
-            cctx.fill();
+            cctx.fillStyle = 'rgba(255,220,234,.9)';
+            cctx.font = '900 24px Georgia';
+            cctx.textAlign = 'center';
+            const warningY = enemyY - (enemyCombatAttackType === 'lunge' ? 325 : 285);
+            const pulse = .82 + Math.sin(nowMs / 90) * .18;
+            cctx.globalAlpha = pulse;
+            cctx.font = '900 26px Georgia';
+            cctx.fillText(enemyCombatAttackType === 'lunge' ? '⚠ LUNGE INCOMING! DODGE OR JUMP!' : '⚠ CLAW INCOMING! DODGE OR JUMP!', enemyX, warningY);
             cctx.restore();
         }
-        if (attackAnimUntil > nowMs) {
-            const progress = 1 - (attackAnimUntil - nowMs) / 220,
-                punchX = player.x + (combatFacing === 'right' ? 42 : -42) * (0.35 + progress * .65),
-                punchY = player.y + jumpOffset - 28;
-            cctx.save();
-            cctx.strokeStyle = '#f7d7e4';
-            cctx.lineWidth = 9;
-            cctx.lineCap = 'round';
-            cctx.beginPath();
-            cctx.moveTo(player.x + (combatFacing === 'right' ? 25 : -25), player.y + jumpOffset - 35);
-            cctx.lineTo(punchX, punchY);
-            cctx.stroke();
-            cctx.fillStyle = '#fff1f7';
-            cctx.beginPath();
-            cctx.arc(punchX, punchY, 13 + progress * 5, 0, Math.PI * 2);
-            cctx.fill();
-            cctx.restore();
-        }
-        drawOllyWorldCombat(cctx, player.x, player.y, 1.1, combatFacing, nowMs / 1000, player.invuln > nowMs, jumpOffset);
-        drawZombieSprite(cctx, enemyX, enemyY, target?.type || 'shambler', 1.18, nowMs / 1000, false);
-        cctx.fillStyle = '#f3e7ed';
-        cctx.font = '900 24px Georgia';
-        cctx.textAlign = 'center';
-        cctx.fillText(isBoss ? 'CLASSIC GOTH' : (target?.name || 'ZOMBIE GOTH'), enemyX, enemyY + 120);
-        cctx.fillStyle = '#352737';
-        cctx.fillRect(enemyX - 120, enemyY + 140, 240, 16);
-        cctx.fillStyle = '#ef91ac';
-        cctx.fillRect(enemyX - 120, enemyY + 140, 240 * (combatHp / combatMax), 16);
-        cctx.fillStyle = '#f0dfe8';
-        cctx.font = '700 16px system-ui';
-        cctx.fillText('ENEMY', enemyX, enemyY + 132);
-        if (jumping) {
-            cctx.fillStyle = '#f6dfe8';
-            cctx.font = '900 18px system-ui';
-            cctx.fillText('JUMP', player.x, player.y + jumpOffset - 110);
-        }
+
         if (nowMs < attackCooldownUntil) {
             const seconds = Math.max(0, (attackCooldownUntil - nowMs) / 1000);
             cctx.fillStyle = '#efb7c9';
             cctx.font = '900 20px system-ui';
             cctx.fillText(`RECOVERING ${seconds.toFixed(1)}s`, COMBAT_W / 2, COMBAT_H - 36);
-        }
-        else {
+        } else {
             cctx.fillStyle = '#c9b6c2';
             cctx.font = '700 15px system-ui';
             const remaining = Math.max(0, 3 - comboCount);
             cctx.fillText(`${remaining} punch${remaining === 1 ? '' : 'es'} before cooldown`, COMBAT_W / 2, COMBAT_H - 36);
         }
     }
-    function drawOllyWorldCombat(c, px, py, s, dir, t, hurt, offsetY=0) {
+
+    function drawOllyWorldCombat(c, px, py, anim, t, hurt, offsetY=0) {
         c.save();
-        c.translate(px, py + offsetY);
+        const visualY = py + offsetY + (anim?.visualOffsetY || 0) + OLLY_DRAW_FOOT_OFFSET;
+        c.translate(px, visualY);
         if (hurt)
             c.globalAlpha = .5;
-        c.fillStyle = 'rgba(0,0,0,.25)';
+        // Keep the shadow on the actual combat floor, separate from the animation pose.
+        c.fillStyle = 'rgba(0,0,0,.28)';
         c.beginPath();
-        c.ellipse(0, 54 * s - offsetY * .08, 36 * s, 9 * s, 0, 0, Math.PI * 2);
+        c.ellipse(0, 20 - offsetY, 46, 10, 0, 0, Math.PI * 2);
         c.fill();
-        if (ollySprite.complete && ollySprite.naturalWidth) {
-            const bob = Math.sin(t * 8) * 1.3,
-                attackShift = attackAnimUntil > performance.now() ? (dir === 'right' ? 12 : -12) : 0,
-                w = 128 * s,
-                h = 192 * s;
+        const img = anim?.img;
+        if (img && img.complete && img.naturalWidth) {
+            const targetH = anim.height || OLLY_IDLE_HEIGHT;
+            const naturalScale = targetH / img.naturalHeight;
+            const w = img.naturalWidth * naturalScale;
+            const h = targetH;
+            const maxW = 275;
+            const scale = w > maxW ? maxW / img.naturalWidth : naturalScale;
+            const finalW = img.naturalWidth * scale,
+                finalH = img.naturalHeight * scale,
+                dir = anim.drawDir || combatFacing;
             c.save();
-            c.translate(attackShift, bob);
-            c.scale(dir === 'right' ? -1 : 1, 1);
-            c.drawImage(ollySprite, -w / 2, -154 * s, w, h);
+            c.scale(dir === 'left' ? -1 : 1, 1);
+            c.drawImage(img, -finalW / 2, -finalH, finalW, finalH);
             c.restore();
         }
         c.restore();
@@ -754,11 +1911,20 @@ export function createLevel1(ui) {
         combatMax = bossFight ? 100 : (target?.maxHp || 50);
         combatHp = combatMax;
         resetCombatVisual();
+        if (!bossFight && target?.type === 'shambler') {
+            enemyCombatX = COMBAT_W - 320;
+            enemyCombatState = 'chase';
+            enemyCombatStateStart = performance.now();
+            enemyCombatNextDecision = performance.now() + 250;
+            enemyCombatAttackCount = 0;
+        }
         ui.combatName.textContent = bossFight ? 'THE CLASSIC GOTH • QUEEN' : target?.name || 'ZOMBIE GOTH';
-        ui.combatPattern.textContent = 'WASD / arrows move • LEFT CLICK punch • RIGHT CLICK dodge • SPACE jump';
         ui.enemyHp.style.width = '100%';
         ui.enemyHpText.textContent = `${combatHp} / ${combatMax}`;
-        ui.combatStatus.textContent = 'The Goth is staring you down. Get close.';
+        ui.combatStatus.textContent =
+            (target?.type === 'chain')
+                ? 'The Chain Goth is quick. Heavy Attack unlocked. Make it count.'
+                : (bossFight ? 'The Queen is waiting. Your Heavy Attack is ready.' : 'The Goth is staring you down. Get close.');
         ui.combat.classList.remove('hidden');
         clearInterval(enemyTimer);
         enemyTimer = null;
@@ -770,6 +1936,8 @@ export function createLevel1(ui) {
             const dt = Math.min(.033, (t - combatLastFrame) / 1000 || 0);
             combatLastFrame = t;
             updateCombatMovement(dt);
+            updateZombieAI(dt, t);
+            resolveHeavyStrike(t);
             drawCombat();
             combatRaf = requestAnimationFrame(loop);
         };
@@ -778,40 +1946,116 @@ export function createLevel1(ui) {
     function combatAttack() {
         if (mode !== 'combat')
             return;
+
         const nowMs = performance.now();
         if (nowMs < attackCooldownUntil) {
-            ui.combatStatus.textContent = '⏳ Your three-hit combo is cooling down. Back away, then go again.';
+            const seconds = Math.ceil((attackCooldownUntil - nowMs) / 1000);
+            ui.combatStatus.textContent = `⏳ Combo recovering. ${seconds}s.`;
             return;
         }
+
         if (nowMs - lastAttackAt > 900)
             comboCount = 0;
-        const enemyX = COMBAT_W - 320,
-            enemyY = COMBAT_H / 2,
+
+        const enemyX = (isBoss ? COMBAT_W - 320 : enemyCombatX),
+            enemyY = COMBAT_GROUND_Y,
             dx = enemyX - player.x,
-            dy = enemyY - (player.y + jumpOffset),
-            distance = Math.hypot(dx, dy);
+            dy = enemyY - (player.y + jumpOffset);
+
         combatFacing = dx < 0 ? 'left' : 'right';
-        comboCount++;
         lastAttackAt = nowMs;
-        attackAnimUntil = nowMs + 220;
-        const jumpAttack = jumping || jumpOffset < -35;
-        if (distance <= 155) {
-            const damage = jumpAttack ? 15 : 10;
+        attackAnimUntil = nowMs + 334;
+        combatAnimationState = 'punch';
+        combatAnimationStart = nowMs;
+        combatAnimationUntil = nowMs + 334;
+
+        const distance = Math.hypot(dx, dy);
+        if (distance <= 180) {
+            const damage = 10;
             combatHp = Math.max(0, combatHp - damage);
             ui.enemyHp.style.width = (combatHp / combatMax * 100) + '%';
             ui.enemyHpText.textContent = `${combatHp} / ${combatMax}`;
-            ui.combatStatus.textContent = jumpAttack ? `💥 JUMP ATTACK! ${damage} damage.` : `👊 HIT! ${damage} damage.`;
+            comboCount++;
+            ui.combatStatus.textContent = `👊 HIT! ${damage} damage.`;
             if (combatHp <= 0) {
                 setTimeout(() => endCombat(true), 180);
                 return;
             }
-        }
-        else
+        } else {
             ui.combatStatus.textContent = '👊 Too far. Get closer.';
+            comboCount = Math.min(comboCount + 1, 2);
+        }
+
         if (comboCount >= 3) {
             comboCount = 3;
-            attackCooldownUntil = nowMs + 850;
-            ui.combatStatus.textContent += ' ⚠️ Combo complete. Cooldown!';
+            attackCooldownUntil = nowMs + 5000;
+            ui.combatStatus.textContent += ' ⚠️ Combo complete. 5s cooldown!';
+        }
+    }
+
+    function combatHeavyAttack() {
+        if (mode !== 'combat')
+            return;
+
+        // Heavy is introduced with the Chain Goth and remains available for bosses.
+        const heavyAvailable = heavyUnlocked || !!isBoss || target?.type === 'chain';
+        if (!heavyAvailable) {
+            ui.combatStatus.textContent = '🔒 Heavy Attack unlocks with the Chain Goth.';
+            return;
+        }
+
+        const nowMs = performance.now();
+        if (nowMs < heavyAttackCooldownUntil) {
+            const seconds = Math.ceil((heavyAttackCooldownUntil - nowMs) / 1000);
+            ui.combatStatus.textContent = `💥 Heavy attack recovering. ${seconds}s.`;
+            return;
+        }
+        if (jumping || nowMs < attackAnimUntil || nowMs < dodgeUntil)
+            return;
+
+        const enemyX = (isBoss ? COMBAT_W - 320 : enemyCombatX),
+            playerMinX = 150,
+            playerMaxX = Math.min(COMBAT_W - 150, enemyX - 145),
+            dx = enemyX - player.x;
+        combatFacing = dx < 0 ? 'left' : 'right';
+
+        heavyAttackCooldownUntil = nowMs + 15000;
+        heavyAttackAnimUntil = nowMs + 620;
+        combatAnimationState = 'heavy';
+        combatAnimationStart = nowMs;
+        combatAnimationUntil = nowMs + 620;
+        heavyStrikeApplied = false;
+        jumpOffset = 0;
+        jumping = false;
+
+        heavyLungeStartX = player.x;
+        // Bring the player to a reliable attack position. This makes the 15s
+        // heavy attack useful without requiring the player to stand on the Goth.
+        heavyLungeTargetX = dx >= 0
+            ? Math.min(enemyX - 145, playerMaxX)
+            : Math.max(enemyX + 145, playerMinX);
+        ui.combatStatus.textContent = '💥 HEAVY ATTACK!';
+    }
+
+    function resolveHeavyStrike(nowMs) {
+        if (heavyStrikeApplied || heavyAttackAnimUntil <= 0 || nowMs < heavyAttackAnimUntil - 300)
+            return;
+
+        heavyStrikeApplied = true;
+        const enemyX = (isBoss ? COMBAT_W - 320 : enemyCombatX),
+            enemyY = COMBAT_GROUND_Y,
+            distance = Math.hypot(enemyX - player.x, enemyY - player.y);
+
+        if (distance <= 230) {
+            const damage = 20;
+            combatHp = Math.max(0, combatHp - damage);
+            ui.enemyHp.style.width = (combatHp / combatMax * 100) + '%';
+            ui.enemyHpText.textContent = `${combatHp} / ${combatMax}`;
+            ui.combatStatus.textContent = `💥 HEAVY HIT! ${damage} damage. Heavy attack on cooldown for 15s.`;
+            if (combatHp <= 0)
+                setTimeout(() => endCombat(true), 180);
+        } else {
+            ui.combatStatus.textContent = '💥 Heavy attack missed.';
         }
     }
     function combatDodge() {
@@ -822,12 +2066,64 @@ export function createLevel1(ui) {
             ui.combatStatus.textContent = '↪ Dodge is still recovering.';
             return;
         }
-        const direction = combatFacing === 'left' ? -1 : 1;
-        player.x = Math.max(80, Math.min(COMBAT_W - 80, player.x + direction * 180));
-        player.invuln = nowMs + 500;
-        dodgeUntil = nowMs + 500;
-        ui.combatStatus.textContent = '↪ DODGE! You are briefly invulnerable.';
+
+        const enemyX = (isBoss ? COMBAT_W - 320 : enemyCombatX),
+            playerMinX = 150,
+            playerMaxX = Math.min(COMBAT_W - 150, enemyX - 145),
+            direction = combatFacing === 'right' ? -1 : 1;
+        combatDodgeDirection = direction;
+        player.x = Math.max(playerMinX, Math.min(playerMaxX, player.x + direction * 180));
+        player.y = COMBAT_GROUND_Y;
+        player.invuln = nowMs + 600;
+        dodgeUntil = nowMs + 600;
+        combatAnimationState = 'dodge';
+        combatAnimationStart = nowMs;
+        combatAnimationUntil = nowMs + 409; // v6.5.16d: 20% faster dodge animation
+        jumpOffset = 0;
+        ui.combatStatus.textContent = '↪ DODGE!';
     }
+    function showHeavyAttackReward() {
+        heavyUnlocked = true;
+        mode = 'reward';
+
+        const overlay = document.createElement('div');
+        overlay.id = 'level1-heavy-reward-overlay';
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(9,7,13,.97);display:flex;align-items:center;justify-content:center;overflow:auto;padding:24px;box-sizing:border-box;';
+
+        const box = document.createElement('div');
+        box.style.cssText = 'width:min(1120px,94vw);max-height:94vh;display:flex;flex-direction:column;align-items:center;gap:16px;background:#18101d;border:1px solid #6f4a61;border-radius:18px;padding:22px;box-sizing:border-box;box-shadow:0 18px 70px rgba(0,0,0,.55);overflow:auto;';
+        overlay.appendChild(box);
+
+        const img = document.createElement('img');
+        img.src = 'assets/encounters/level1/heavy-attack-reward.png?v=6529';
+        img.alt = 'Heavy Attack reward artwork';
+        img.style.cssText = 'display:block;max-width:100%;max-height:62vh;object-fit:contain;border-radius:12px;';
+        box.appendChild(img);
+
+        const title = document.createElement('div');
+        title.textContent = 'YOU\'VE DEFEATED THE CHAIN GOTH!';
+        title.style.cssText = 'color:#f3c6d6;font:900 clamp(22px,3vw,34px) Georgia,serif;text-align:center;';
+        box.appendChild(title);
+
+        const copy = document.createElement('div');
+        copy.innerHTML = '💥 <strong>HEAVY ATTACK UNLOCKED.</strong><br>Press <strong>Z</strong> to unleash it. It deals 20 damage and has a 15 second cooldown.';
+        copy.style.cssText = 'color:#f5eaf0;font:700 clamp(16px,2vw,20px) Georgia,serif;text-align:center;line-height:1.45;';
+        box.appendChild(copy);
+
+        const button = document.createElement('button');
+        button.textContent = 'KEEP EXPLORING';
+        button.style.cssText = 'padding:13px 28px;border:1px solid #d98ba8;border-radius:12px;background:#382132;color:#f8eaf0;font:700 17px Georgia,serif;cursor:pointer;';
+        box.appendChild(button);
+
+        document.body.appendChild(overlay);
+        button.addEventListener('click', () => {
+            overlay.remove();
+            mode = 'map';
+            ui.dialogue.textContent = '💥 Heavy Attack unlocked. The cemetery is going to regret that chain goth.';
+            stats();
+        }, { once:true });
+    }
+
     function endCombat(won) {
         clearInterval(enemyTimer);
         enemyTimer = null;
@@ -842,10 +2138,19 @@ export function createLevel1(ui) {
                 return;
             }
             if (target) {
+                const defeatedType = target.type;
                 target.dead = true;
                 target.hp = 0;
                 kills++;
                 target = null;
+
+                if (defeatedType === 'chain') {
+                    heavyUnlocked = true;
+                    stats();
+                    showHeavyAttackReward();
+                    return;
+                }
+
                 ui.dialogue.textContent = kills === 1 ? '✅ Zombie Goth defeated. Your health carries into the next fight.' : '✅ Both Zombie Goths defeated. Now complete the special events, because apparently fighting was only the easy bit.';
             }
         }
@@ -895,7 +2200,6 @@ export function createLevel1(ui) {
         ui.relationship.classList.remove('hidden');
         ui.wouldFeedback.textContent = 'The princess is rambling. Your job is to weaponise your timing. Round 1 of 5.';
         ui.wouldDisplay.textContent = '“Can I ask you a question...”';
-        drawRelationshipArt();
         animateRelationship();
     }
     function animateRelationship() {
@@ -981,7 +2285,7 @@ export function createLevel1(ui) {
     function saveGame() {
         try {
             const state = {
-                version: 4,
+                version: 5,
                 savedAt: new Date().toISOString(),
                 level: 1,
                 x,
@@ -992,6 +2296,8 @@ export function createLevel1(ui) {
                 relationshipDone,
                 puzzleSolved,
                 keyCollected,
+                gateOpened,
+                heavyUnlocked,
                 inventory,
                 checkpoint,
                 enemies: enemies.map(e => ({
@@ -1009,7 +2315,7 @@ export function createLevel1(ui) {
     }
     function loadGame() {
         const state = safeParseSave();
-        if (!state || ![2, 3, 4].includes(state.version))
+        if (!state || ![2, 3, 4, 5].includes(state.version))
             return false;
         try {
             x = Number.isFinite(state.x) ? Math.min(WORLD_W - 40, Math.max(40, state.x)) : x;
@@ -1026,7 +2332,10 @@ export function createLevel1(ui) {
             relationshipDone = !!state.relationshipDone;
             puzzleSolved = !!state.puzzleSolved;
             keyCollected = !!state.keyCollected;
+            gateOpened = !!state.gateOpened;
+            keySpawnAnnounced = keyCollected;
             inventory = state.inventory && typeof state.inventory === 'object' ? state.inventory : {};
+            if (keyCollected) inventory.key = 1;
             checkpoint = state.checkpoint || 'cemetery-entrance';
             if (Array.isArray(state.enemies)) {
                 state.enemies.forEach((saved, i) => {
@@ -1037,10 +2346,18 @@ export function createLevel1(ui) {
                     }
                 })
             }
+            heavyUnlocked = state.version >= 5 ? !!state.heavyUnlocked : false;
+            if (enemies[1]?.dead)
+                heavyUnlocked = true;
             mode = 'map';
             target = null;
             bossRoomEntered = false;
+            cameraX = x;
+            cameraY = y;
             stats();
+            lastFogRevealX = null;
+            lastFogRevealY = null;
+            revealAround(x, y, true);
             drawMini();
             ui.dialogue.textContent = '📂 Game loaded. Welcome back to the cemetery.';
             return true;
@@ -1050,20 +2367,24 @@ export function createLevel1(ui) {
         }
     }
     function start() {
+        gateEncounterShown = false;
+        cameraX = x;
+        cameraY = y;
         stats();
         drawMini();
         cancelAnimationFrame(relationshipRAF);
         clearInterval(enemyTimer);
         cancelAnimationFrame(raf);
         const loop = t => {
-            const dt = Math.min(0.04, (t - (now || t)) / 1000);
+            const dt = Math.min(0.05, (t - (now || t)) / 1000);
             now = t;
             if (mode === 'map')
                 updateMovement(dt);
             if (walkPulse > 0)
                 walkPulse = 0;
-            drawWorld(t);
-            drawMini();
+            drawWorld(t, dt);
+            miniFrameCounter++;
+            if (miniFrameCounter % 3 === 0) drawMini();
             raf = requestAnimationFrame(loop)
         };
         raf = requestAnimationFrame(loop)
@@ -1086,6 +2407,7 @@ export function createLevel1(ui) {
         confirmEncounter,
         closeEncounter,
         combatAttack,
+        combatHeavyAttack,
         combatDodge,
         shootAtPointer,
         retryCombat,
