@@ -1,5 +1,8 @@
 const WORLD_W = 1536,
     WORLD_H = 1024;
+
+// v7.0.5: Zombie AI stability + visible player HP + half-HP respawn + robust Olly rendering.
+
 const SAVE_KEY = 'goodbyeGothSave_v6';
 function safeParseSave() {
     try {
@@ -1438,14 +1441,13 @@ export function createLevel1(ui) {
     function updateCombatMovement(dt) {
         if (mode !== 'combat')
             return;
-
         const speed = 430;
         const playerMinX = 100;
         const playerMaxX = COMBAT_W - 100;
 
-        // Olly is free to move across the entire arena. He can pass the Goth,
-        // which prevents the enemy from pinning him permanently against a wall.
-        const dx = (held.right ? 1 : 0) - (held.left ? 1 : 0);
+        // Combat is side-on: horizontal movement only. Jumping supplies all
+        // vertical movement so Olly cannot be walked off the top/bottom of the arena.
+        let dx = (held.right ? 1 : 0) - (held.left ? 1 : 0);
         if (dx) {
             player.x = Math.max(playerMinX, Math.min(playerMaxX, player.x + dx * speed * dt));
             combatFacing = dx < 0 ? 'left' : 'right';
@@ -1457,6 +1459,7 @@ export function createLevel1(ui) {
             const total = 620;
             const startMs = heavyAttackAnimUntil - total;
             const p = Math.max(0, Math.min(1, (nowMs - startMs) / total));
+            // Smooth forward lunge, then settle into the strike/landing.
             const eased = p < .62
                 ? (p / .62) * (1 - Math.pow(1 - (p / .62), 3))
                 : .90 + ((p - .62) / .38) * .10;
@@ -1466,20 +1469,23 @@ export function createLevel1(ui) {
         }
 
         if (jumping) {
-            const jumpDuration = .51;
+            const jumpDuration = .51; // v6.5.16d: 20% faster, matched to the jump animation
             jumpT += dt / jumpDuration;
             if (jumpT >= 1) {
                 jumpT = 1;
                 jumping = false;
             }
+            // Smaller arc. The new sprite art does not need to do the visual
+            // travelling itself, so the jump stays grounded and readable.
             jumpOffset = -Math.sin(jumpT * Math.PI) * 68;
-        } else {
+        }
+        else {
             jumpOffset = 0;
             if (combatAnimationState === 'jump')
                 combatAnimationState = 'idle';
         }
     }
-    function jump()    function jump() {
+    function jump() {
         if (mode !== 'combat' || jumping || heavyAttackAnimUntil > performance.now())
             return;
         jumping = true;
@@ -1666,8 +1672,7 @@ export function createLevel1(ui) {
     }
 
     function chooseZombieAttack(nowMs) {
-        // Alternate attacks so both moves are guaranteed to appear during testing.
-        // Claw first, then lunge, then claw, etc.
+        // Alternate attacks for reliable testing: claw, lunge, claw, lunge...
         enemyCombatAttackType = (enemyCombatAttackCount % 2 === 0) ? 'claw' : 'lunge';
         enemyCombatAttackCount++;
         enemyCombatAttackHit = false;
@@ -1687,8 +1692,6 @@ export function createLevel1(ui) {
         const direction = dx < 0 ? -1 : 1;
 
         if (enemyCombatState === 'idle') {
-            // Idle is only a tiny pause between decisions. The Zombie never stays
-            // asleep just because Olly jumped or dodged.
             if (nowMs >= enemyCombatNextDecision) {
                 enemyCombatState = 'chase';
                 enemyCombatStateStart = nowMs;
@@ -1697,11 +1700,10 @@ export function createLevel1(ui) {
         }
 
         if (enemyCombatState === 'chase') {
-            // Follow Olly anywhere in the arena. There is no wall-side lock and no
-            // requirement that Olly walk right into the Goth before she attacks.
+            // Keep following Olly anywhere in the arena. Jumping and dodging only
+            // change whether the eventual hit connects, not whether the Zombie pursues.
             if (distance > ZOMBIE_AI_CONFIG.preferredDistance) {
-                const step = ZOMBIE_AI_CONFIG.chaseSpeed * dt;
-                enemyCombatX = clampCombatX(enemyCombatX + direction * step);
+                enemyCombatX = clampCombatX(enemyCombatX + direction * ZOMBIE_AI_CONFIG.chaseSpeed * dt);
                 enemyCombatWalkCycle += dt;
                 return;
             }
@@ -1715,12 +1717,13 @@ export function createLevel1(ui) {
                 ? ZOMBIE_AI_CONFIG.lungeWindup
                 : ZOMBIE_AI_CONFIG.clawWindup;
 
-            // Keep facing/following the player during the telegraph, but do not
-            // lock the player in place. The player can jump or dodge out of it.
-            const faceDx = player.x - enemyCombatX;
-            if (Math.abs(faceDx) > 245) {
-                const tinyStep = Math.min(ZOMBIE_AI_CONFIG.chaseSpeed * .22 * dt, Math.abs(faceDx));
-                enemyCombatX = clampCombatX(enemyCombatX + Math.sign(faceDx) * tinyStep);
+            // Re-check Olly's position during the warning phase. The Zombie can turn
+            // to face him, but it does not snap on top of him.
+            const liveDx = player.x - enemyCombatX;
+            if (Math.abs(liveDx) > ZOMBIE_AI_CONFIG.preferredDistance + 90) {
+                enemyCombatX = clampCombatX(
+                    enemyCombatX + Math.sign(liveDx) * ZOMBIE_AI_CONFIG.chaseSpeed * 0.30 * dt
+                );
             }
 
             if (nowMs - enemyCombatStateStart >= windup) {
@@ -1731,10 +1734,10 @@ export function createLevel1(ui) {
 
                 if (enemyCombatAttackType === 'lunge') {
                     enemyCombatAttackStartX = enemyCombatX;
-                    // Snapshot the player's current side, then lunge toward that
-                    // position without carrying a second character in the sprite.
-                    const safeSide = player.x <= enemyCombatX ? -1 : 1;
-                    enemyCombatAttackTargetX = clampCombatX(player.x - safeSide * 105);
+                    const toPlayer = Math.sign(player.x - enemyCombatX) || 1;
+                    // Stop on the other side of Olly rather than placing the player
+                    // inside the enemy's animation. This keeps an escape route open.
+                    enemyCombatAttackTargetX = clampCombatX(player.x - toPlayer * 110);
                 }
             }
             return;
@@ -1744,7 +1747,13 @@ export function createLevel1(ui) {
             const elapsed = nowMs - enemyCombatStateStart;
             if (!enemyCombatAttackHit && elapsed >= ZOMBIE_AI_CONFIG.clawHitStart && elapsed <= ZOMBIE_AI_CONFIG.clawHitEnd) {
                 enemyCombatAttackHit = true;
-                applyZombieDamage(ZOMBIE_AI_CONFIG.clawDamage, ZOMBIE_AI_CONFIG.clawRange, 42, nowMs, 'CLAW SWIPE');
+                applyZombieDamage(
+                    ZOMBIE_AI_CONFIG.clawDamage,
+                    ZOMBIE_AI_CONFIG.clawRange,
+                    32,
+                    nowMs,
+                    'CLAW SWIPE'
+                );
             }
             if (elapsed >= ZOMBIE_AI_CONFIG.clawDuration) {
                 enemyCombatState = 'recover';
@@ -1756,19 +1765,26 @@ export function createLevel1(ui) {
 
         if (enemyCombatState === 'lunge') {
             const elapsed = nowMs - enemyCombatStateStart;
+            const travelStart = 90;
             const travelDuration = 520;
-            const lungeP = Math.min(1, Math.max(0, (elapsed - 90) / travelDuration));
-
-            if (elapsed <= travelDuration + 90) {
-                const eased = lungeP * lungeP * (3 - 2 * lungeP);
+            const p = Math.min(1, Math.max(0, (elapsed - travelStart) / travelDuration));
+            if (elapsed <= travelStart + travelDuration) {
+                const eased = p * p * (3 - 2 * p);
                 enemyCombatX = clampCombatX(
-                    enemyCombatAttackStartX + (enemyCombatAttackTargetX - enemyCombatAttackStartX) * eased
+                    enemyCombatAttackStartX +
+                    (enemyCombatAttackTargetX - enemyCombatAttackStartX) * eased
                 );
             }
 
             if (!enemyCombatAttackHit && elapsed >= ZOMBIE_AI_CONFIG.lungeHitStart && elapsed <= ZOMBIE_AI_CONFIG.lungeHitEnd) {
                 enemyCombatAttackHit = true;
-                applyZombieDamage(ZOMBIE_AI_CONFIG.lungeDamage, ZOMBIE_AI_CONFIG.lungeRange, 105, nowMs, 'LUNGE + BITE');
+                applyZombieDamage(
+                    ZOMBIE_AI_CONFIG.lungeDamage,
+                    ZOMBIE_AI_CONFIG.lungeRange,
+                    72,
+                    nowMs,
+                    'LUNGE + BITE'
+                );
             }
 
             if (elapsed >= ZOMBIE_AI_CONFIG.lungeDuration) {
@@ -1780,8 +1796,8 @@ export function createLevel1(ui) {
         }
 
         if (enemyCombatState === 'recover') {
-            // Recovery never ends the pursuit. Once the animation finishes she
-            // immediately goes back into chase mode and can cross the whole arena.
+            // Recovery returns straight to pursuit. A missed attack is not the end
+            // of the chase.
             if (nowMs - enemyCombatStateStart >= ZOMBIE_AI_CONFIG.recovery) {
                 enemyCombatState = 'chase';
                 enemyCombatStateStart = nowMs;
@@ -1795,7 +1811,6 @@ export function createLevel1(ui) {
         const horizontalDistance = Math.abs(enemyCombatX - player.x);
         const airborne = jumping || jumpOffset < -20;
         const dodging = player.invuln > nowMs;
-
         if (horizontalDistance > range || airborne || dodging) {
             ui.combatStatus.textContent = `↪ ${attackName} missed!`;
             return;
@@ -1806,10 +1821,8 @@ export function createLevel1(ui) {
         playerHurtUntil = nowMs + 280;
         ui.combatStatus.textContent = `💥 ${attackName}! -${damage} HP.`;
 
-        // Push Olly away, but never pin him against the Zombie or a wall.
         const pushDir = player.x <= enemyCombatX ? -1 : 1;
-        player.x = Math.max(100, Math.min(COMBAT_W - 100, player.x + pushDir * pushDistance));
-
+        player.x = Math.max(150, Math.min(COMBAT_W - 150, player.x + pushDir * pushDistance));
         if (hp <= 0 && !playerDeathTriggered) {
             playerDeathTriggered = true;
             setTimeout(() => endCombat(false), 220);
@@ -1820,6 +1833,28 @@ export function createLevel1(ui) {
         cctx.imageSmoothingEnabled = true;
         cctx.imageSmoothingQuality = 'high';
         drawCombatBackground(cctx);
+        // v7.0.5: visible Olly HP HUD during combat.
+        cctx.save();
+        const hudX = 22, hudY = 20, hudW = 280, hudH = 72;
+        cctx.fillStyle = 'rgba(10,7,14,.80)';
+        cctx.strokeStyle = 'rgba(239,183,201,.75)';
+        cctx.lineWidth = 2;
+        cctx.fillRect(hudX, hudY, hudW, hudH);
+        cctx.strokeRect(hudX, hudY, hudW, hudH);
+        cctx.fillStyle = '#f7eaf0';
+        cctx.font = '900 18px Georgia';
+        cctx.fillText('OLLY HP', hudX + 14, hudY + 22);
+        cctx.fillStyle = '#2a1c26';
+        cctx.fillRect(hudX + 14, hudY + 31, hudW - 28, 16);
+        cctx.fillStyle = '#ef8fb2';
+        cctx.fillRect(hudX + 14, hudY + 31, (hudW - 28) * Math.max(0, Math.min(1, hp / maxHp)), 16);
+        cctx.strokeStyle = 'rgba(255,255,255,.55)';
+        cctx.strokeRect(hudX + 14, hudY + 31, hudW - 28, 16);
+        cctx.fillStyle = '#f7eaf0';
+        cctx.font = '700 14px system-ui';
+        cctx.fillText(`${Math.max(0, hp)} / ${maxHp} HP`, hudX + 14, hudY + 65);
+        cctx.restore();
+
         const enemyX = isBoss ? COMBAT_W - 320 : enemyCombatX,
             enemyY = COMBAT_GROUND_Y,
             nowMs = performance.now(),
@@ -1834,8 +1869,8 @@ export function createLevel1(ui) {
 
         const anim = getCombatAnimationFrame(nowMs);
         const renderHurt = player.invuln > nowMs || playerHurtUntil > nowMs;
-        drawOllyWorldCombat(cctx, player.x, player.y, anim, nowMs / 1000, renderHurt, jumpOffset);
         drawZombieCombat(cctx, enemyX, enemyY, nowMs);
+        drawOllyWorldCombat(cctx, player.x, player.y, anim, nowMs / 1000, renderHurt, jumpOffset);
 
         if (!isBoss && enemyType === 'shambler' && (enemyCombatState === 'windup' || enemyCombatState === 'claw' || enemyCombatState === 'lunge')) {
             cctx.save();
@@ -1874,17 +1909,22 @@ export function createLevel1(ui) {
         c.beginPath();
         c.ellipse(0, 20 - offsetY, 46, 10, 0, 0, Math.PI * 2);
         c.fill();
-        const img = anim?.img;
+        // v7.0.5: never let Olly disappear just because a combat frame failed to load.
+        // The canonical Olly sprite is always the final fallback.
+        const img = (anim?.img && anim.img.complete && anim.img.naturalWidth)
+            ? anim.img
+            : (ollyCombatSprites.idle.complete && ollyCombatSprites.idle.naturalWidth
+                ? ollyCombatSprites.idle
+                : ollySprite);
         if (img && img.complete && img.naturalWidth) {
-            const targetH = anim.height || OLLY_IDLE_HEIGHT;
+            const usingCanonicalFallback = img === ollySprite;
+            const targetH = usingCanonicalFallback ? 300 : (anim.height || OLLY_IDLE_HEIGHT);
             const naturalScale = targetH / img.naturalHeight;
-            const w = img.naturalWidth * naturalScale;
-            const h = targetH;
-            const maxW = 275;
-            const scale = w > maxW ? maxW / img.naturalWidth : naturalScale;
-            const finalW = img.naturalWidth * scale,
-                finalH = img.naturalHeight * scale,
-                dir = anim.drawDir || combatFacing;
+            const maxW = usingCanonicalFallback ? 250 : 275;
+            const scale = Math.min(naturalScale, maxW / img.naturalWidth);
+            const finalW = img.naturalWidth * scale;
+            const finalH = img.naturalHeight * scale;
+            const dir = anim?.drawDir || combatFacing;
             c.save();
             c.scale(dir === 'left' ? -1 : 1, 1);
             c.drawImage(img, -finalW / 2, -finalH, finalW, finalH);
@@ -2001,8 +2041,8 @@ export function createLevel1(ui) {
             return;
 
         const enemyX = (isBoss ? COMBAT_W - 320 : enemyCombatX),
-            playerMinX = 100,
-            playerMaxX = COMBAT_W - 100,
+            playerMinX = 110,
+            playerMaxX = COMBAT_W - 110,
             dx = enemyX - player.x;
         combatFacing = dx < 0 ? 'left' : 'right';
 
@@ -2019,8 +2059,8 @@ export function createLevel1(ui) {
         // Bring the player to a reliable attack position. This makes the 15s
         // heavy attack useful without requiring the player to stand on the Goth.
         heavyLungeTargetX = dx >= 0
-            ? Math.max(playerMinX, Math.min(enemyX - 120, playerMaxX))
-            : Math.min(playerMaxX, Math.max(enemyX + 120, playerMinX));
+            ? Math.min(enemyX - 145, playerMaxX)
+            : Math.max(enemyX + 145, playerMinX);
         ui.combatStatus.textContent = '💥 HEAVY ATTACK!';
     }
 
@@ -2054,8 +2094,9 @@ export function createLevel1(ui) {
             return;
         }
 
-        const playerMinX = 100,
-            playerMaxX = COMBAT_W - 100,
+        const enemyX = (isBoss ? COMBAT_W - 320 : enemyCombatX),
+            playerMinX = 110,
+            playerMaxX = COMBAT_W - 110,
             direction = combatFacing === 'right' ? -1 : 1;
         combatDodgeDirection = direction;
         player.x = Math.max(playerMinX, Math.min(playerMaxX, player.x + direction * 180));
@@ -2141,7 +2182,10 @@ export function createLevel1(ui) {
             }
         }
         else {
-            ui.deathText.textContent = 'The Goth got you. Olly wakes at the last checkpoint, bruised but ready for another shot.';
+            // v7.0.5: death respawns Olly with at least half of his max HP.
+            hp = Math.max(50, Math.ceil(maxHp * 0.5));
+            stats();
+            ui.deathText.textContent = `The Goth got you. Olly wakes at the last checkpoint with ${hp} HP, bruised but ready for another shot.`;
             ui.death.classList.remove('hidden');
             mode = 'dead';
         }
@@ -2149,7 +2193,7 @@ export function createLevel1(ui) {
     }
     function retryCombat() {
         ui.death.classList.add('hidden');
-        hp = maxHp;
+        hp = Math.max(50, Math.ceil(maxHp * 0.5));
         stats();
         if (combatCheckpoint) {
             x = combatCheckpoint.x;

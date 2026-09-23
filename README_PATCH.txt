@@ -1,33 +1,30 @@
-GOODBYE GOTH v7.0.3
-ZOMBIE GOTH AI BEHAVIOUR PATCH
+GOODBYE GOTH v7.0.5 – ZOMBIE AI FIX
 
-This patch is based on the tested v7.0.2 Zombie AI build.
+This patch builds on v7.0.4 and fixes the combat stability/player feedback issues seen during testing.
 
-WHAT THIS FIXES
-- Olly can move across the entire combat arena instead of being clamped to one side of the Zombie.
-- Olly can pass around the Zombie, so she cannot permanently trap him at the wall.
-- The Zombie continuously follows Olly even if he runs to the opposite side.
-- Jumping and dodging no longer make the Zombie abandon the chase.
-- The Zombie no longer requires Olly to walk directly into her before choosing an attack.
-- Attacks alternate between CLAW SWIPE and LUNGE + BITE so both are reliably seen during testing.
-- Lunge has a readable wind-up and targets Olly's position without embedding a duplicate Olly inside the enemy artwork.
-- After an attack finishes, the Zombie immediately returns to CHASE.
-- Player pushback is bounded so Olly cannot be pinned against the arena edge.
+CHANGES
+1. Olly now has a robust rendering fallback. If a cropped combat frame is missing or still loading, the canonical assets/characters/olly.png sprite is used instead, so Olly cannot simply disappear.
+2. Olly can move across the full combat arena. The Zombie no longer creates an invisible wall that traps him to one side.
+3. The enemy is rendered before Olly so Olly remains visible when they overlap.
+4. Olly HP is now shown as a visible HUD inside the combat arena.
+5. When Olly dies, he immediately respawns at 50% HP (or higher if his maximum HP is below 100).
+6. RETRY COMBAT keeps the half-HP respawn rather than restoring full HP.
+7. Zombie AI behaviour from v7.0.4 is otherwise preserved.
 
-IMPORTANT
-The Zombie art is intentionally unchanged in this patch. The current sprite sheets/crops still need a separate visual cleanup pass. This patch is for behaviour and movement only.
+GITHUB
+Merge the contents of this patch into the existing repository, keeping the folder structure.
+Replace:
+  js/levels/level1.js
+Add/replace:
+  assets/characters/olly.png
+Keep the Zombie cropped animation PNGs in:
+  assets/characters/combat/
 
-INSTALL
-1. Unzip this folder.
-2. Merge the assets/ folder into the project assets/ folder.
-3. Replace js/levels/level1.js with the supplied file.
-4. Commit the changes to GitHub and allow Vercel to redeploy.
-
-TEST CHECKLIST
-1. Start a Zombie Goth fight.
-2. Do not move: she should approach you.
-3. Run left and right across the arena: she should follow.
-4. Jump while she attacks: the attack should miss and she should resume chasing.
-5. Dodge through/away from her: she should resume chasing.
-6. Walk past her: Olly should be able to get to the other side, and she should turn and follow.
-7. Wait through two attack cycles: you should see both CLAW SWIPE and LUNGE + BITE.
+TEST
+- Enter Zombie Goth combat.
+- Confirm Olly is visible immediately.
+- Run Olly all the way across the arena and confirm he can cross the Zombie rather than being trapped.
+- Confirm the OLLY HP bar and number are visible.
+- Let the Zombie hit Olly until he dies.
+- Confirm the death screen appears and the next attempt starts with 50/100 HP.
+- Confirm Zombie continues pursuing after Olly jumps or dodges.
