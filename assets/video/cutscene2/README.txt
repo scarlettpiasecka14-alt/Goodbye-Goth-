@@ -1,10 +1,10 @@
-CUTSCENE 2 PLACEMENT
+CUTSCENE 2
 
-Put the Level 1 gate-opening cutscene here with this exact filename:
+Place the exported cutscene video here and name it exactly:
+cutscene2.mp4
 
-cutscene2.mov
+Final path:
+assets/video/cutscene2/cutscene2.mp4
 
-Full GitHub path:
+The game tries MP4 first, then falls back to:
 assets/video/cutscene2/cutscene2.mov
-
-The game is coded to play this file when the player has the Golden Key and clicks the gate lock icon.

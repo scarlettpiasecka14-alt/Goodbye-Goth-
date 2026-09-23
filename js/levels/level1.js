@@ -818,6 +818,7 @@ export function createLevel1(ui) {
         puzzleSolved = false,
         keyCollected = false,
         gateOpened = false,
+        heavyUnlocked = false,
         keySpawnAnnounced = false,
         inventory = {},
         checkpoint = 'cemetery-entrance',
@@ -1184,52 +1185,112 @@ export function createLevel1(ui) {
     }
     function playCutscene2() {
         if (mode !== 'map' || !keyCollected || gateOpened) return;
+
         mode = 'cutscene2';
         const overlay = document.createElement('div');
         overlay.id = 'level1-cutscene2-overlay';
-        overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:#09070d;display:flex;align-items:center;justify-content:center;overflow:hidden;';
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:#09070d;display:flex;align-items:center;justify-content:center;overflow:auto;padding:24px;box-sizing:border-box;';
+
+        const frame = document.createElement('div');
+        frame.style.cssText = 'position:relative;width:min(1280px,96vw);height:min(760px,92vh);display:flex;align-items:center;justify-content:center;background:#120d16;border:1px solid #6f4a61;border-radius:18px;box-shadow:0 18px 70px rgba(0,0,0,.55);overflow:hidden;';
+        overlay.appendChild(frame);
 
         const video = document.createElement('video');
         video.id = 'level1-cutscene2';
-        video.src = 'assets/video/cutscene2/cutscene2.mov?v=6528';
         video.playsInline = true;
         video.preload = 'auto';
-        video.style.cssText = 'width:100%;height:100%;object-fit:contain;background:#09070d;';
         video.controls = false;
-        overlay.appendChild(video);
+        video.autoplay = true;
+        video.style.cssText = 'max-width:100%;max-height:100%;width:100%;height:100%;object-fit:contain;background:#09070d;';
+        frame.appendChild(video);
+
+        const status = document.createElement('div');
+        status.textContent = 'LOADING CUTSCENE...';
+        status.style.cssText = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:14px 20px;border:1px solid #8d5f78;border-radius:12px;background:rgba(22,14,25,.9);color:#f5dce7;font:700 18px Georgia,serif;letter-spacing:.4px;z-index:2;';
+        frame.appendChild(status);
 
         const playButton = document.createElement('button');
         playButton.textContent = '▶ PLAY CUTSCENE';
-        playButton.style.cssText = 'position:absolute;bottom:28px;left:50%;transform:translateX(-50%);padding:12px 22px;border:1px solid #d98ba8;border-radius:12px;background:#382132;color:#f8eaf0;font:700 16px Georgia,serif;cursor:pointer;display:none;';
-        overlay.appendChild(playButton);
+        playButton.style.cssText = 'position:absolute;left:50%;bottom:24px;transform:translateX(-50%);padding:12px 22px;border:1px solid #d98ba8;border-radius:12px;background:#382132;color:#f8eaf0;font:700 16px Georgia,serif;cursor:pointer;display:none;z-index:3;';
+        frame.appendChild(playButton);
+
+        const closeButton = document.createElement('button');
+        closeButton.textContent = 'BACK TO MAP';
+        closeButton.style.cssText = 'position:absolute;left:50%;bottom:24px;transform:translateX(-50%);padding:12px 22px;border:1px solid #9b6f86;border-radius:12px;background:#241726;color:#f8eaf0;font:700 16px Georgia,serif;cursor:pointer;display:none;z-index:3;';
+        frame.appendChild(closeButton);
+
         document.body.appendChild(overlay);
 
         let finished = false;
+        let attemptedFallback = false;
+        const sources = [
+            'assets/video/cutscene2/cutscene2.mp4?v=6529',
+            'assets/video/cutscene2/cutscene2.mov?v=6529'
+        ];
+
         const finish = () => {
             if (finished) return;
             finished = true;
             video.pause();
+            video.removeAttribute('src');
+            video.load();
             overlay.remove();
             gateOpened = true;
             mode = 'map';
             stats();
             ui.dialogue.textContent = '🔓 The gate opens. Whatever is beyond it is no longer your problem for the moment...';
         };
-        const fail = () => {
+
+        const showFailure = () => {
+            if (finished) return;
+            status.textContent = 'Cutscene could not be played. Make sure cutscene2.mp4 is in assets/video/cutscene2/.';
+            playButton.style.display = 'none';
+            closeButton.style.display = 'block';
+        };
+
+        const tryPlay = () => {
+            status.style.display = 'none';
+            video.play().then(() => {
+                playButton.style.display = 'none';
+            }).catch(() => {
+                playButton.style.display = 'block';
+            });
+        };
+
+        video.addEventListener('loadeddata', tryPlay, { once:false });
+        video.addEventListener('canplay', tryPlay, { once:false });
+        video.addEventListener('ended', finish, { once:true });
+        video.addEventListener('error', () => {
+            if (!attemptedFallback) {
+                attemptedFallback = true;
+                status.textContent = 'Trying alternate video format...';
+                video.src = sources[1];
+                video.load();
+                return;
+            }
+            showFailure();
+        }, { once:false });
+
+        playButton.addEventListener('click', () => {
+            video.play().then(() => {
+                playButton.style.display = 'none';
+            }).catch(() => {
+                playButton.style.display = 'block';
+            });
+        });
+        closeButton.addEventListener('click', () => {
             if (finished) return;
             finished = true;
+            video.pause();
             overlay.remove();
             mode = 'map';
-            ui.dialogue.textContent = '⚠️ Cutscene 2 could not be loaded. Place it at assets/video/cutscene2/cutscene2.mov';
-        };
-        video.addEventListener('ended', finish, { once:true });
-        video.addEventListener('error', fail, { once:true });
-        playButton.addEventListener('click', () => {
-            playButton.style.display = 'none';
-            video.play().catch(() => { playButton.style.display = 'block'; });
-        }, { once:false });
-        video.play().catch(() => { playButton.style.display = 'block'; });
+            ui.dialogue.textContent = 'The cutscene could not be played yet. The gate remains locked.';
+        }, { once:true });
+
+        video.src = sources[0];
+        video.load();
     }
+
 
     ui.canvas.addEventListener('pointerdown', e => {
         if (mode !== 'map')
@@ -1594,8 +1655,8 @@ export function createLevel1(ui) {
             return;
 
         // Heavy is introduced with the Chain Goth and remains available for bosses.
-        const heavyUnlocked = !!isBoss || target?.type === 'chain';
-        if (!heavyUnlocked) {
+        const heavyAvailable = heavyUnlocked || !!isBoss || target?.type === 'chain';
+        if (!heavyAvailable) {
             ui.combatStatus.textContent = '🔒 Heavy Attack unlocks with the Chain Goth.';
             return;
         }
@@ -1678,6 +1739,48 @@ export function createLevel1(ui) {
         jumpOffset = 0;
         ui.combatStatus.textContent = '↪ DODGE!';
     }
+    function showHeavyAttackReward() {
+        heavyUnlocked = true;
+        mode = 'reward';
+
+        const overlay = document.createElement('div');
+        overlay.id = 'level1-heavy-reward-overlay';
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(9,7,13,.97);display:flex;align-items:center;justify-content:center;overflow:auto;padding:24px;box-sizing:border-box;';
+
+        const box = document.createElement('div');
+        box.style.cssText = 'width:min(1120px,94vw);max-height:94vh;display:flex;flex-direction:column;align-items:center;gap:16px;background:#18101d;border:1px solid #6f4a61;border-radius:18px;padding:22px;box-sizing:border-box;box-shadow:0 18px 70px rgba(0,0,0,.55);overflow:auto;';
+        overlay.appendChild(box);
+
+        const img = document.createElement('img');
+        img.src = 'assets/encounters/level1/heavy-attack-reward.png?v=6529';
+        img.alt = 'Heavy Attack reward artwork';
+        img.style.cssText = 'display:block;max-width:100%;max-height:62vh;object-fit:contain;border-radius:12px;';
+        box.appendChild(img);
+
+        const title = document.createElement('div');
+        title.textContent = 'YOU\'VE DEFEATED THE CHAIN GOTH!';
+        title.style.cssText = 'color:#f3c6d6;font:900 clamp(22px,3vw,34px) Georgia,serif;text-align:center;';
+        box.appendChild(title);
+
+        const copy = document.createElement('div');
+        copy.innerHTML = '💥 <strong>HEAVY ATTACK UNLOCKED.</strong><br>Press <strong>Z</strong> to unleash it. It deals 20 damage and has a 15 second cooldown.';
+        copy.style.cssText = 'color:#f5eaf0;font:700 clamp(16px,2vw,20px) Georgia,serif;text-align:center;line-height:1.45;';
+        box.appendChild(copy);
+
+        const button = document.createElement('button');
+        button.textContent = 'KEEP EXPLORING';
+        button.style.cssText = 'padding:13px 28px;border:1px solid #d98ba8;border-radius:12px;background:#382132;color:#f8eaf0;font:700 17px Georgia,serif;cursor:pointer;';
+        box.appendChild(button);
+
+        document.body.appendChild(overlay);
+        button.addEventListener('click', () => {
+            overlay.remove();
+            mode = 'map';
+            ui.dialogue.textContent = '💥 Heavy Attack unlocked. The cemetery is going to regret that chain goth.';
+            stats();
+        }, { once:true });
+    }
+
     function endCombat(won) {
         clearInterval(enemyTimer);
         enemyTimer = null;
@@ -1692,10 +1795,19 @@ export function createLevel1(ui) {
                 return;
             }
             if (target) {
+                const defeatedType = target.type;
                 target.dead = true;
                 target.hp = 0;
                 kills++;
                 target = null;
+
+                if (defeatedType === 'chain') {
+                    heavyUnlocked = true;
+                    stats();
+                    showHeavyAttackReward();
+                    return;
+                }
+
                 ui.dialogue.textContent = kills === 1 ? '✅ Zombie Goth defeated. Your health carries into the next fight.' : '✅ Both Zombie Goths defeated. Now complete the special events, because apparently fighting was only the easy bit.';
             }
         }
@@ -1830,7 +1942,7 @@ export function createLevel1(ui) {
     function saveGame() {
         try {
             const state = {
-                version: 4,
+                version: 5,
                 savedAt: new Date().toISOString(),
                 level: 1,
                 x,
@@ -1842,6 +1954,7 @@ export function createLevel1(ui) {
                 puzzleSolved,
                 keyCollected,
                 gateOpened,
+                heavyUnlocked,
                 inventory,
                 checkpoint,
                 enemies: enemies.map(e => ({
@@ -1859,7 +1972,7 @@ export function createLevel1(ui) {
     }
     function loadGame() {
         const state = safeParseSave();
-        if (!state || ![2, 3, 4].includes(state.version))
+        if (!state || ![2, 3, 4, 5].includes(state.version))
             return false;
         try {
             x = Number.isFinite(state.x) ? Math.min(WORLD_W - 40, Math.max(40, state.x)) : x;
@@ -1890,6 +2003,9 @@ export function createLevel1(ui) {
                     }
                 })
             }
+            heavyUnlocked = state.version >= 5 ? !!state.heavyUnlocked : false;
+            if (enemies[1]?.dead)
+                heavyUnlocked = true;
             mode = 'map';
             target = null;
             bossRoomEntered = false;
