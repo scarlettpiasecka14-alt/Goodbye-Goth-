@@ -896,6 +896,7 @@ export function createLevel1(ui) {
         enemyCombatWalkCycle = 0,
         enemyCombatAttackStartX = 0,
         enemyCombatAttackTargetX = 0,
+        enemyCombatAttackCount = 0,
         playerHurtUntil = 0,
         playerDeathTriggered = false,
         jumpT = 0,
@@ -1406,6 +1407,7 @@ export function createLevel1(ui) {
         enemyCombatWalkCycle = 0;
         enemyCombatAttackStartX = enemyCombatX;
         enemyCombatAttackTargetX = enemyCombatX;
+        enemyCombatAttackCount = 0;
         playerHurtUntil = 0;
         playerDeathTriggered = false;
         comboCount = 0;
@@ -1436,14 +1438,14 @@ export function createLevel1(ui) {
     function updateCombatMovement(dt) {
         if (mode !== 'combat')
             return;
-        const speed = 430;
-        const enemyX = enemyCombatX;
-        const playerMinX = 150;
-        const playerMaxX = Math.min(COMBAT_W - 150, enemyX - 145);
 
-        // Combat is side-on: horizontal movement only. Jumping supplies all
-        // vertical movement so Olly cannot be walked off the top/bottom of the arena.
-        let dx = (held.right ? 1 : 0) - (held.left ? 1 : 0);
+        const speed = 430;
+        const playerMinX = 100;
+        const playerMaxX = COMBAT_W - 100;
+
+        // Olly is free to move across the entire arena. He can pass the Goth,
+        // which prevents the enemy from pinning him permanently against a wall.
+        const dx = (held.right ? 1 : 0) - (held.left ? 1 : 0);
         if (dx) {
             player.x = Math.max(playerMinX, Math.min(playerMaxX, player.x + dx * speed * dt));
             combatFacing = dx < 0 ? 'left' : 'right';
@@ -1455,7 +1457,6 @@ export function createLevel1(ui) {
             const total = 620;
             const startMs = heavyAttackAnimUntil - total;
             const p = Math.max(0, Math.min(1, (nowMs - startMs) / total));
-            // Smooth forward lunge, then settle into the strike/landing.
             const eased = p < .62
                 ? (p / .62) * (1 - Math.pow(1 - (p / .62), 3))
                 : .90 + ((p - .62) / .38) * .10;
@@ -1465,23 +1466,20 @@ export function createLevel1(ui) {
         }
 
         if (jumping) {
-            const jumpDuration = .51; // v6.5.16d: 20% faster, matched to the jump animation
+            const jumpDuration = .51;
             jumpT += dt / jumpDuration;
             if (jumpT >= 1) {
                 jumpT = 1;
                 jumping = false;
             }
-            // Smaller arc. The new sprite art does not need to do the visual
-            // travelling itself, so the jump stays grounded and readable.
             jumpOffset = -Math.sin(jumpT * Math.PI) * 68;
-        }
-        else {
+        } else {
             jumpOffset = 0;
             if (combatAnimationState === 'jump')
                 combatAnimationState = 'idle';
         }
     }
-    function jump() {
+    function jump()    function jump() {
         if (mode !== 'combat' || jumping || heavyAttackAnimUntil > performance.now())
             return;
         jumping = true;
@@ -1663,8 +1661,15 @@ export function createLevel1(ui) {
         c.restore();
     }
 
+    function clampCombatX(value) {
+        return Math.max(95, Math.min(COMBAT_W - 95, value));
+    }
+
     function chooseZombieAttack(nowMs) {
-        enemyCombatAttackType = Math.random() < .72 ? 'claw' : 'lunge';
+        // Alternate attacks so both moves are guaranteed to appear during testing.
+        // Claw first, then lunge, then claw, etc.
+        enemyCombatAttackType = (enemyCombatAttackCount % 2 === 0) ? 'claw' : 'lunge';
+        enemyCombatAttackCount++;
         enemyCombatAttackHit = false;
         enemyCombatState = 'windup';
         enemyCombatStateStart = nowMs;
@@ -1682,20 +1687,26 @@ export function createLevel1(ui) {
         const direction = dx < 0 ? -1 : 1;
 
         if (enemyCombatState === 'idle') {
-            if (nowMs >= enemyCombatNextDecision)
+            // Idle is only a tiny pause between decisions. The Zombie never stays
+            // asleep just because Olly jumped or dodged.
+            if (nowMs >= enemyCombatNextDecision) {
                 enemyCombatState = 'chase';
+                enemyCombatStateStart = nowMs;
+            }
             return;
         }
 
         if (enemyCombatState === 'chase') {
-            if (distance > ZOMBIE_AI_CONFIG.preferredDistance + 35) {
+            // Follow Olly anywhere in the arena. There is no wall-side lock and no
+            // requirement that Olly walk right into the Goth before she attacks.
+            if (distance > ZOMBIE_AI_CONFIG.preferredDistance) {
                 const step = ZOMBIE_AI_CONFIG.chaseSpeed * dt;
-                enemyCombatX += direction * step;
-                enemyCombatX = Math.max(610, Math.min(COMBAT_W - 120, enemyCombatX));
+                enemyCombatX = clampCombatX(enemyCombatX + direction * step);
                 enemyCombatWalkCycle += dt;
-            } else {
-                chooseZombieAttack(nowMs);
+                return;
             }
+
+            chooseZombieAttack(nowMs);
             return;
         }
 
@@ -1704,23 +1715,26 @@ export function createLevel1(ui) {
                 ? ZOMBIE_AI_CONFIG.lungeWindup
                 : ZOMBIE_AI_CONFIG.clawWindup;
 
-            // Small readable prep movement. The Goth stops attacking for a beat
-            // instead of snapping directly from chase to damage.
-            if (enemyCombatAttackType === 'lunge') {
-                const prepDir = player.x < enemyCombatX ? 1 : -1;
-                enemyCombatX += prepDir * dt * 18;
-                enemyCombatX = Math.max(560, Math.min(COMBAT_W - 120, enemyCombatX));
+            // Keep facing/following the player during the telegraph, but do not
+            // lock the player in place. The player can jump or dodge out of it.
+            const faceDx = player.x - enemyCombatX;
+            if (Math.abs(faceDx) > 245) {
+                const tinyStep = Math.min(ZOMBIE_AI_CONFIG.chaseSpeed * .22 * dt, Math.abs(faceDx));
+                enemyCombatX = clampCombatX(enemyCombatX + Math.sign(faceDx) * tinyStep);
             }
+
             if (nowMs - enemyCombatStateStart >= windup) {
                 enemyCombatState = enemyCombatAttackType;
                 enemyCombatStateStart = nowMs;
                 enemyCombatAttackHit = false;
                 enemyAttackPhase = 'active';
+
                 if (enemyCombatAttackType === 'lunge') {
                     enemyCombatAttackStartX = enemyCombatX;
-                    const safeSide = player.x <= enemyCombatX ? 1 : -1;
-                    enemyCombatAttackTargetX = player.x + safeSide * 135;
-                    enemyCombatAttackTargetX = Math.max(360, Math.min(COMBAT_W - 140, enemyCombatAttackTargetX));
+                    // Snapshot the player's current side, then lunge toward that
+                    // position without carrying a second character in the sprite.
+                    const safeSide = player.x <= enemyCombatX ? -1 : 1;
+                    enemyCombatAttackTargetX = clampCombatX(player.x - safeSide * 105);
                 }
             }
             return;
@@ -1742,19 +1756,21 @@ export function createLevel1(ui) {
 
         if (enemyCombatState === 'lunge') {
             const elapsed = nowMs - enemyCombatStateStart;
-            // The lunge advances toward Olly during the middle of the animation.
-            const lungeP = elapsed < 620
-                ? Math.min(1, Math.max(0, (elapsed - 120) / 420))
-                : 1;
-            if (elapsed <= 620) {
+            const travelDuration = 520;
+            const lungeP = Math.min(1, Math.max(0, (elapsed - 90) / travelDuration));
+
+            if (elapsed <= travelDuration + 90) {
                 const eased = lungeP * lungeP * (3 - 2 * lungeP);
-                enemyCombatX = enemyCombatAttackStartX + (enemyCombatAttackTargetX - enemyCombatAttackStartX) * eased;
-                enemyCombatX = Math.max(350, Math.min(COMBAT_W - 95, enemyCombatX));
+                enemyCombatX = clampCombatX(
+                    enemyCombatAttackStartX + (enemyCombatAttackTargetX - enemyCombatAttackStartX) * eased
+                );
             }
+
             if (!enemyCombatAttackHit && elapsed >= ZOMBIE_AI_CONFIG.lungeHitStart && elapsed <= ZOMBIE_AI_CONFIG.lungeHitEnd) {
                 enemyCombatAttackHit = true;
                 applyZombieDamage(ZOMBIE_AI_CONFIG.lungeDamage, ZOMBIE_AI_CONFIG.lungeRange, 105, nowMs, 'LUNGE + BITE');
             }
+
             if (elapsed >= ZOMBIE_AI_CONFIG.lungeDuration) {
                 enemyCombatState = 'recover';
                 enemyCombatStateStart = nowMs;
@@ -1764,10 +1780,12 @@ export function createLevel1(ui) {
         }
 
         if (enemyCombatState === 'recover') {
+            // Recovery never ends the pursuit. Once the animation finishes she
+            // immediately goes back into chase mode and can cross the whole arena.
             if (nowMs - enemyCombatStateStart >= ZOMBIE_AI_CONFIG.recovery) {
-                enemyCombatState = 'idle';
+                enemyCombatState = 'chase';
                 enemyCombatStateStart = nowMs;
-                enemyCombatNextDecision = nowMs + ZOMBIE_AI_CONFIG.decisionDelayMin + Math.random() * (ZOMBIE_AI_CONFIG.decisionDelayMax - ZOMBIE_AI_CONFIG.decisionDelayMin);
+                enemyCombatNextDecision = nowMs;
                 enemyAttackPhase = null;
             }
         }
@@ -1777,6 +1795,7 @@ export function createLevel1(ui) {
         const horizontalDistance = Math.abs(enemyCombatX - player.x);
         const airborne = jumping || jumpOffset < -20;
         const dodging = player.invuln > nowMs;
+
         if (horizontalDistance > range || airborne || dodging) {
             ui.combatStatus.textContent = `↪ ${attackName} missed!`;
             return;
@@ -1787,8 +1806,10 @@ export function createLevel1(ui) {
         playerHurtUntil = nowMs + 280;
         ui.combatStatus.textContent = `💥 ${attackName}! -${damage} HP.`;
 
+        // Push Olly away, but never pin him against the Zombie or a wall.
         const pushDir = player.x <= enemyCombatX ? -1 : 1;
-        player.x = Math.max(150, Math.min(COMBAT_W - 150, player.x + pushDir * pushDistance));
+        player.x = Math.max(100, Math.min(COMBAT_W - 100, player.x + pushDir * pushDistance));
+
         if (hp <= 0 && !playerDeathTriggered) {
             playerDeathTriggered = true;
             setTimeout(() => endCombat(false), 220);
@@ -1825,7 +1846,7 @@ export function createLevel1(ui) {
             const pulse = .82 + Math.sin(nowMs / 90) * .18;
             cctx.globalAlpha = pulse;
             cctx.font = '900 26px Georgia';
-            cctx.fillText(enemyCombatAttackType === 'lunge' ? '⚠ LUNGE INCOMING!' : '⚠ CLAW INCOMING!', enemyX, warningY);
+            cctx.fillText(enemyCombatAttackType === 'lunge' ? '⚠ LUNGE INCOMING! DODGE OR JUMP!' : '⚠ CLAW INCOMING! DODGE OR JUMP!', enemyX, warningY);
             cctx.restore();
         }
 
@@ -1881,7 +1902,8 @@ export function createLevel1(ui) {
             enemyCombatX = COMBAT_W - 320;
             enemyCombatState = 'chase';
             enemyCombatStateStart = performance.now();
-            enemyCombatNextDecision = performance.now() + 300;
+            enemyCombatNextDecision = performance.now() + 250;
+            enemyCombatAttackCount = 0;
         }
         ui.combatName.textContent = bossFight ? 'THE CLASSIC GOTH • QUEEN' : target?.name || 'ZOMBIE GOTH';
         ui.enemyHp.style.width = '100%';
@@ -1979,8 +2001,8 @@ export function createLevel1(ui) {
             return;
 
         const enemyX = (isBoss ? COMBAT_W - 320 : enemyCombatX),
-            playerMinX = 150,
-            playerMaxX = Math.min(COMBAT_W - 150, enemyX - 145),
+            playerMinX = 100,
+            playerMaxX = COMBAT_W - 100,
             dx = enemyX - player.x;
         combatFacing = dx < 0 ? 'left' : 'right';
 
@@ -1997,8 +2019,8 @@ export function createLevel1(ui) {
         // Bring the player to a reliable attack position. This makes the 15s
         // heavy attack useful without requiring the player to stand on the Goth.
         heavyLungeTargetX = dx >= 0
-            ? Math.min(enemyX - 145, playerMaxX)
-            : Math.max(enemyX + 145, playerMinX);
+            ? Math.max(playerMinX, Math.min(enemyX - 120, playerMaxX))
+            : Math.min(playerMaxX, Math.max(enemyX + 120, playerMinX));
         ui.combatStatus.textContent = '💥 HEAVY ATTACK!';
     }
 
@@ -2032,9 +2054,8 @@ export function createLevel1(ui) {
             return;
         }
 
-        const enemyX = (isBoss ? COMBAT_W - 320 : enemyCombatX),
-            playerMinX = 150,
-            playerMaxX = Math.min(COMBAT_W - 150, enemyX - 145),
+        const playerMinX = 100,
+            playerMaxX = COMBAT_W - 100,
             direction = combatFacing === 'right' ? -1 : 1;
         combatDodgeDirection = direction;
         player.x = Math.max(playerMinX, Math.min(playerMaxX, player.x + direction * 180));
