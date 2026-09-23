@@ -1631,27 +1631,33 @@ export function createLevel1(ui) {
         c.ellipse(0, 12, 68, 13, 0, 0, Math.PI * 2);
         c.fill();
 
-        if (frame.sheet.complete && frame.sheet.naturalWidth) {
-            const naturalW = frame.rect.w;
-            const naturalH = frame.rect.h;
+        // v7.0.1 FIX: the new AI uses individual cropped PNG frames, not a sprite sheet.
+        // The previous draft still tried to read frame.sheet/frame.rect, which threw
+        // during drawing and made the Zombie Goth disappear entirely.
+        const img = frame.img;
+        if (img && img.complete && img.naturalWidth) {
+            const naturalW = img.naturalWidth;
+            const naturalH = img.naturalHeight;
             const scale = frame.height / naturalH;
             const drawW = naturalW * scale;
             const drawH = frame.height;
             c.save();
             c.scale(face === 'right' ? -1 : 1, 1);
-            c.drawImage(
-                frame.sheet,
-                frame.rect.x, frame.rect.y, frame.rect.w, frame.rect.h,
-                -drawW / 2, -drawH, drawW, drawH
-            );
+            c.drawImage(img, -drawW / 2, -drawH, drawW, drawH);
             c.restore();
         } else {
-            // Safe fallback while the new sheets are being uploaded to GitHub.
+            // Robust fallback: use the first bundled idle frame while the requested
+            // animation image finishes loading. This fallback is included in this patch.
+            const fallback = zombieAIFrames.idle[0];
             c.save();
             c.scale(face === 'right' ? -1 : 1, 1);
-            const img = zombieSprites.shambler;
-            if (img.complete && img.naturalWidth)
-                c.drawImage(img, -145, -305, 290, 360);
+            if (fallback && fallback.complete && fallback.naturalWidth) {
+                const fallbackH = 360;
+                const fallbackW = fallback.naturalWidth * (fallbackH / fallback.naturalHeight);
+                c.drawImage(fallback, -fallbackW / 2, -fallbackH, fallbackW, fallbackH);
+            } else if (zombieSprites.shambler.complete && zombieSprites.shambler.naturalWidth) {
+                c.drawImage(zombieSprites.shambler, -145, -305, 290, 360);
+            }
             c.restore();
         }
         c.restore();
