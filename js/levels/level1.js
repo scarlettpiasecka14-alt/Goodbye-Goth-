@@ -131,18 +131,19 @@ zombieSprites.shambler.src = 'assets/characters/zombie-goth.png?v=300';
 zombieSprites.chain.src = 'assets/characters/chain-goth-clean.png?v=6513';
 
 
-// v7.0.7: Zombie Goth combat uses clean, individually cropped frames from the
-// supplied reference sheets. This patch deliberately touches combat only.
+// v7.0.8: Zombie Goth combat uses individually cropped frames made from the
+// supplied reference sheets. These are combat-only assets. The map Zombie
+// sprite above remains untouched.
 const zombieCombatFrames = {
-    idle: [1, 2, 3, 4].map(n => new Image()),
-    walk: [1, 2, 3, 4].map(n => new Image()),
-    claw: [1, 2, 3, 4, 5].map(n => new Image()),
-    lunge: [1, 2, 3].map(n => new Image())
+    idle: [1, 2, 3, 4].map(() => new Image()),
+    walk: [1, 2, 3, 4].map(() => new Image()),
+    claw: [1, 2, 3, 4, 5].map(() => new Image()),
+    lunge: [1, 2, 3].map(() => new Image())
 };
-zombieCombatFrames.idle.forEach((img, i) => img.src = `assets/characters/combat/zombie-idle-${i+1}.png?v=7070`);
-zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i+1}.png?v=7070`);
-zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i+1}.png?v=7070`);
-zombieCombatFrames.lunge.forEach((img, i) => img.src = `assets/characters/combat/zombie-lunge-${i+1}.png?v=7070`);
+zombieCombatFrames.idle.forEach((img, i) => img.src = `assets/characters/combat/zombie-idle-${i + 1}.png?v=7080`);
+zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.png?v=7080`);
+zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i + 1}.png?v=7080`);
+zombieCombatFrames.lunge.forEach((img, i) => img.src = `assets/characters/combat/zombie-lunge-${i + 1}.png?v=7080`);
 
 /* v6.0: a complete Level 1 rebuild.
    The background is a clean, character-free cemetery illustration.
@@ -267,9 +268,9 @@ function drawOlly(ctx, x, y, s=.78, t=0, front=true, dir='right', moving=false) 
     ctx.beginPath();
     ctx.ellipse(0, 38 * s, 23 * s, 6 * s, 0, 0, Math.PI * 2);
     ctx.fill();
-    if (ollySprite.complete && ollySprite.naturalWidth) {
-        const w = 96 * s,
-            h = 144 * s;
+    if (ollySprite.complete && ollySprite.naturalWidth && ollySprite.naturalHeight) {
+        const h = 144 * s;
+        const w = h * (ollySprite.naturalWidth / ollySprite.naturalHeight);
         ctx.save();
         ctx.scale(dir === 'right' ? -1 : 1, 1);
         ctx.drawImage(ollySprite, -w / 2, -114 * s, w, h);
@@ -850,6 +851,8 @@ export function createLevel1(ui) {
         zombieCombatNextDecision = 0,
         zombieCombatWalkIndex = 0,
         zombieCombatPrevX = COMBAT_W - 320,
+        playerHurtUntil = 0,
+        playerDeathTriggered = false,
         combatRaf = 0,
         combatCheckpoint = null,
         bossRoomEntered = false,
@@ -1367,6 +1370,16 @@ export function createLevel1(ui) {
 
     function resetCombatVisual() {
         enemyAttackPhase = null;
+        zombieCombatX = COMBAT_W - 320;
+        zombieCombatPrevX = zombieCombatX;
+        zombieCombatState = 'chase';
+        zombieCombatStateStart = performance.now();
+        zombieCombatAttackType = 'claw';
+        zombieCombatAttackHit = false;
+        zombieCombatNextDecision = performance.now() + 450;
+        zombieCombatWalkIndex = 0;
+        playerHurtUntil = 0;
+        playerDeathTriggered = false;
         comboCount = 0;
         attackCooldownUntil = 0;
         heavyAttackCooldownUntil = 0;
@@ -1382,17 +1395,7 @@ export function createLevel1(ui) {
         combatAnimationStart = 0;
         combatAnimationUntil = 0;
         combatDodgeDirection = -1;
-
         const enemyX = COMBAT_W - 320;
-        zombieCombatX = enemyX;
-        zombieCombatPrevX = enemyX;
-        zombieCombatState = 'chase';
-        zombieCombatStateStart = performance.now();
-        zombieCombatAttackType = 'claw';
-        zombieCombatAttackHit = false;
-        zombieCombatNextDecision = performance.now() + 350;
-        zombieCombatWalkIndex = 0;
-
         player = {
             x: 270,
             y: COMBAT_GROUND_Y,
@@ -1405,28 +1408,32 @@ export function createLevel1(ui) {
     function updateCombatMovement(dt) {
         if (mode !== 'combat')
             return;
+
         const speed = 430;
         const playerMinX = 140;
         const playerMaxX = COMBAT_W - 140;
+        const nowMs = performance.now();
         let dx = (held.right ? 1 : 0) - (held.left ? 1 : 0);
 
-        if (dx) {
+        if (dx && !(heavyAttackAnimUntil > nowMs)) {
             const nextX = Math.max(playerMinX, Math.min(playerMaxX, player.x + dx * speed * dt));
-            // While grounded, keep a little breathing room from the Zombie.
-            // During a jump or dodge, Olly can cross her and reposition on the
-            // other side, which prevents the backwards-dodge corner trap.
+            const grounded = !jumping && jumpOffset > -8 && nowMs >= dodgeUntil;
             const gap = 92;
-            const grounded = !jumping && jumpOffset > -8 && performance.now() >= dodgeUntil;
+
+            // On the ground, the Goth has a physical presence. During a jump or
+            // dodge, Olly can cross her and reposition on the other side.
             if (grounded && Math.abs(nextX - zombieCombatX) < gap) {
-                player.x = nextX < zombieCombatX ? Math.max(playerMinX, zombieCombatX - gap) : Math.min(playerMaxX, zombieCombatX + gap);
+                player.x = nextX < zombieCombatX
+                    ? Math.max(playerMinX, zombieCombatX - gap)
+                    : Math.min(playerMaxX, zombieCombatX + gap);
             } else {
                 player.x = nextX;
             }
             combatFacing = dx < 0 ? 'left' : 'right';
         }
+
         player.y = COMBAT_GROUND_Y;
 
-        const nowMs = performance.now();
         if (heavyAttackAnimUntil > nowMs) {
             const total = 620;
             const startMs = heavyAttackAnimUntil - total;
@@ -1503,7 +1510,9 @@ export function createLevel1(ui) {
             frames = ollyCombatSprites.jump;
         } else {
             return {
-                img: ollyCombatSprites.idle,
+                // Use the new canonical Olly art for combat idle as well.
+                // Existing punch/dodge/jump/heavy animations remain untouched.
+                img: (ollySprite.complete && ollySprite.naturalWidth) ? ollySprite : ollyCombatSprites.idle,
                 state: 'idle',
                 progress: 0,
                 drawDir: combatFacing,
@@ -1536,56 +1545,6 @@ export function createLevel1(ui) {
         };
     }
 
-    function getCombatAnimationFrame(nowMs) {
-        const state = combatAnimationState;
-        let cfg = null,
-            frames = null;
-        if (state === 'dodge') {
-            cfg = OLLY_ANIMATIONS.dodge;
-            frames = ollyCombatSprites.dodge;
-        } else if (state === 'heavy') {
-            cfg = OLLY_ANIMATIONS.heavy;
-            frames = ollyCombatSprites.heavy;
-        } else if (state === 'punch') {
-            cfg = OLLY_ANIMATIONS.punch;
-            frames = ollyCombatSprites.punch;
-        } else if (jumping || state === 'jump') {
-            cfg = OLLY_ANIMATIONS.jump;
-            frames = ollyCombatSprites.jump;
-        } else {
-            return {
-                img: ollyCombatSprites.idle,
-                state: 'idle',
-                progress: 0,
-                drawDir: combatFacing,
-                height: OLLY_IDLE_HEIGHT
-            };
-        }
-
-        const total = cfg.frameMs.reduce((a,b) => a + b, 0);
-        let elapsed = Math.max(0, Math.min(total - 1, nowMs - combatAnimationStart));
-        let acc = 0;
-        let localIndex = 0;
-        for (let i = 0; i < cfg.frameMs.length; i++) {
-            acc += cfg.frameMs[i];
-            if (elapsed < acc) {
-                localIndex = i;
-                break;
-            }
-        }
-        const sourceIndex = cfg.indices[Math.min(localIndex, cfg.indices.length - 1)];
-        const img = frames[sourceIndex];
-        return {
-            img,
-            state,
-            progress: elapsed / total,
-            frameIndex: sourceIndex,
-            drawDir: combatFacing,
-            height: cfg.height,
-            visualOffsetY: cfg.frameYOffset ? (cfg.frameYOffset[Math.min(localIndex, cfg.frameYOffset.length - 1)] || 0) : 0,
-            duration: total
-        };
-    }
 
     function getZombieCombatFrame(nowMs) {
         const elapsed = Math.max(0, nowMs - zombieCombatStateStart);
@@ -1597,88 +1556,69 @@ export function createLevel1(ui) {
         if (zombieCombatState === 'chase') {
             frames = zombieCombatFrames.walk;
             frameMs = 145;
-            index = Math.floor(elapsed / frameMs) % frames.length;
-            targetHeight = 285;
+            index = Math.floor(zombieCombatWalkIndex) % frames.length;
         } else if (zombieCombatState === 'claw') {
             frames = zombieCombatFrames.claw;
             const total = 720;
             index = Math.min(frames.length - 1, Math.floor(Math.min(.999, elapsed / total) * frames.length));
-            targetHeight = 285;
         } else if (zombieCombatState === 'lunge') {
             frames = zombieCombatFrames.lunge;
             const total = 1050;
             index = Math.min(frames.length - 1, Math.floor(Math.min(.999, elapsed / total) * frames.length));
-            targetHeight = 305;
+            targetHeight = 300;
         } else if (zombieCombatState === 'windup') {
-            if (zombieCombatAttackType === 'lunge') {
-                frames = zombieCombatFrames.lunge;
-                index = 0;
-                targetHeight = 305;
-            } else {
-                frames = zombieCombatFrames.claw;
-                index = 0;
-                targetHeight = 285;
-            }
-        } else if (zombieCombatState === 'recover') {
-            frames = zombieCombatFrames.idle;
-            frameMs = 180;
+            frames = zombieCombatAttackType === 'lunge' ? zombieCombatFrames.lunge : zombieCombatFrames.claw;
+            index = 0;
+            targetHeight = zombieCombatAttackType === 'lunge' ? 300 : 285;
+        } else {
             index = Math.floor(elapsed / frameMs) % frames.length;
-            targetHeight = 285;
         }
 
-        return {
-            img: frames[index],
-            targetHeight
-        };
+        return { img: frames[index], targetHeight };
+    }
+
+    function drawCombatImage(c, img, x, groundY, targetHeight, face, maxWidth = 270, alpha = 1) {
+        if (!img || !img.complete || !img.naturalWidth || !img.naturalHeight)
+            return;
+        const naturalScale = targetHeight / img.naturalHeight;
+        let drawW = img.naturalWidth * naturalScale;
+        let drawH = targetHeight;
+        if (drawW > maxWidth) {
+            const scale = maxWidth / img.naturalWidth;
+            drawW = maxWidth;
+            drawH = img.naturalHeight * scale;
+        }
+        c.save();
+        c.globalAlpha = alpha;
+        c.translate(x, groundY + 40);
+        c.scale(face === 'right' ? -1 : 1, 1);
+        c.imageSmoothingEnabled = true;
+        c.imageSmoothingQuality = 'high';
+        c.drawImage(img, -drawW / 2, -drawH, drawW, drawH);
+        c.restore();
     }
 
     function drawZombieCombat(c, enemyX, enemyY, nowMs) {
         const useAI = !isBoss && target?.type === 'shambler';
         if (!useAI) {
-            drawZombieSprite(c, enemyX, enemyY, target?.type || 'shambler', 2.08, nowMs / 1000, false, player.x < enemyX ? 'left' : 'right');
+            drawZombieSprite(c, enemyX, enemyY, target?.type || (isBoss ? 'chain' : 'shambler'), 2.08, nowMs / 1000, false, player.x < enemyX ? 'left' : 'right');
             return;
         }
 
         const frame = getZombieCombatFrame(nowMs);
         const face = player.x < enemyX ? 'left' : 'right';
-        c.save();
-        c.translate(enemyX, enemyY + 40);
-
-        c.fillStyle = 'rgba(0,0,0,.30)';
-        c.beginPath();
-        c.ellipse(0, 10, 56, 11, 0, 0, Math.PI * 2);
-        c.fill();
-
-        const img = frame.img;
-        if (img && img.complete && img.naturalWidth) {
-            const scale = frame.targetHeight / img.naturalHeight;
-            const drawW = img.naturalWidth * scale;
-            const drawH = frame.targetHeight;
-            c.save();
-            c.imageSmoothingEnabled = true;
-            c.imageSmoothingQuality = 'high';
-            c.scale(face === 'right' ? -1 : 1, 1);
-            c.drawImage(img, -drawW / 2, -drawH, drawW, drawH);
-            c.restore();
-        } else {
-            const fallback = zombieSprites.shambler;
-            if (fallback.complete && fallback.naturalWidth) {
-                c.save();
-                c.scale(face === 'right' ? -1 : 1, 1);
-                c.drawImage(fallback, -120, -300, 240, 300);
-                c.restore();
-            }
-        }
-        c.restore();
+        drawCombatImage(c, frame.img, enemyX, enemyY, frame.targetHeight, face, 290);
     }
 
     function chooseZombieAttack(nowMs) {
-        // Alternate attacks for now so both animations can be tested reliably.
         zombieCombatAttackType = zombieCombatAttackType === 'claw' ? 'lunge' : 'claw';
         zombieCombatAttackHit = false;
         zombieCombatState = 'windup';
         zombieCombatStateStart = nowMs;
         enemyAttackPhase = 'windup';
+        ui.combatStatus.textContent = zombieCombatAttackType === 'lunge'
+            ? 'The Zombie Goth crouches. Something nasty is coming.'
+            : 'The Zombie Goth draws back her claws.';
     }
 
     function updateZombieAI(dt, nowMs) {
@@ -1693,18 +1633,15 @@ export function createLevel1(ui) {
             if (distance > 205) {
                 const desiredX = player.x - direction * 185;
                 const targetX = Math.max(280, Math.min(COMBAT_W - 280, desiredX));
-                const chaseStep = Math.min(Math.abs(targetX - zombieCombatX), 135 * dt);
-                zombieCombatX += (targetX >= zombieCombatX ? 1 : -1) * chaseStep;
+                const step = Math.min(Math.abs(targetX - zombieCombatX), 135 * dt);
+                zombieCombatX += (targetX >= zombieCombatX ? 1 : -1) * step;
                 zombieCombatX = Math.max(170, Math.min(COMBAT_W - 170, zombieCombatX));
-                if (Math.abs(zombieCombatX - zombieCombatPrevX) > 0.2) {
-                    zombieCombatWalkIndex = (zombieCombatWalkIndex + (dt * 7)) % 4;
-                }
+                zombieCombatWalkIndex = (zombieCombatWalkIndex + dt * 7) % 4;
                 zombieCombatPrevX = zombieCombatX;
                 return;
             }
-            if (nowMs >= zombieCombatNextDecision) {
+            if (nowMs >= zombieCombatNextDecision)
                 chooseZombieAttack(nowMs);
-            }
             return;
         }
 
@@ -1716,8 +1653,6 @@ export function createLevel1(ui) {
                 zombieCombatAttackHit = false;
                 enemyAttackPhase = 'active';
                 if (zombieCombatAttackType === 'lunge') {
-                    // Aim for Olly's current side of the arena, but stop short of
-                    // overshooting him so the enemy cannot strand itself behind him.
                     const side = player.x <= zombieCombatX ? 1 : -1;
                     zombieCombatPrevX = zombieCombatX;
                     zombieCombatNextDecision = nowMs + 900;
@@ -1755,13 +1690,11 @@ export function createLevel1(ui) {
             return;
         }
 
-        if (zombieCombatState === 'recover') {
-            if (nowMs - zombieCombatStateStart >= 600) {
-                zombieCombatState = 'chase';
-                zombieCombatStateStart = nowMs;
-                zombieCombatNextDecision = nowMs + 250;
-                enemyAttackPhase = null;
-            }
+        if (zombieCombatState === 'recover' && nowMs - zombieCombatStateStart >= 600) {
+            zombieCombatState = 'chase';
+            zombieCombatStateStart = nowMs;
+            zombieCombatNextDecision = nowMs + 250;
+            enemyAttackPhase = null;
         }
     }
 
@@ -1792,11 +1725,10 @@ export function createLevel1(ui) {
         cctx.imageSmoothingQuality = 'high';
         drawCombatBackground(cctx);
 
-        const enemyX = isBoss ? COMBAT_W - 320 : zombieCombatX,
-            enemyY = COMBAT_GROUND_Y,
-            nowMs = performance.now(),
-            enemyFace = player.x < enemyX ? 'left' : 'right',
-            enemyType = target?.type || (isBoss ? 'chain' : 'shambler');
+        const enemyX = isBoss ? COMBAT_W - 320 : zombieCombatX;
+        const enemyY = COMBAT_GROUND_Y;
+        const nowMs = performance.now();
+        const enemyType = target?.type || (isBoss ? 'chain' : 'shambler');
 
         if (combatAnimationUntil && nowMs >= combatAnimationUntil && combatAnimationState !== 'idle') {
             if (combatAnimationState !== 'jump' || !jumping) {
@@ -1806,9 +1738,44 @@ export function createLevel1(ui) {
         }
 
         const anim = getCombatAnimationFrame(nowMs);
-        const renderHurt = player.invuln > nowMs && nowMs >= dodgeUntil;
+        const renderHurt = playerHurtUntil > nowMs;
         drawOllyWorldCombat(cctx, player.x, player.y, anim, nowMs / 1000, renderHurt, jumpOffset);
         drawZombieCombat(cctx, enemyX, enemyY, nowMs);
+
+        // Player HP display stays inside combat so the player can always see it.
+        cctx.save();
+        cctx.fillStyle = 'rgba(18,12,22,.88)';
+        cctx.strokeStyle = 'rgba(239,183,201,.55)';
+        cctx.lineWidth = 1.5;
+        cctx.beginPath();
+        cctx.roundRect(24, 24, 300, 68, 12);
+        cctx.fill();
+        cctx.stroke();
+        cctx.fillStyle = '#f6eaf0';
+        cctx.font = '900 18px Georgia';
+        cctx.fillText('OLLY', 40, 49);
+        cctx.font = '700 16px system-ui';
+        cctx.fillText(`${hp} / ${maxHp} HP`, 220, 49);
+        cctx.fillStyle = 'rgba(255,255,255,.16)';
+        cctx.fillRect(40, 60, 264, 14);
+        cctx.fillStyle = '#e787ad';
+        cctx.fillRect(40, 60, 264 * Math.max(0, Math.min(1, hp / Math.max(1, maxHp))), 14);
+        cctx.restore();
+
+        // Minimal attack telegraph, kept visual rather than a giant text warning.
+        if (!isBoss && enemyType === 'shambler' && enemyAttackPhase === 'windup') {
+            cctx.save();
+            const pulse = 1 + Math.sin(nowMs / 90) * .08;
+            const radius = zombieCombatAttackType === 'lunge' ? 82 : 56;
+            cctx.translate(enemyX, enemyY - 12);
+            cctx.scale(pulse, pulse);
+            cctx.strokeStyle = zombieCombatAttackType === 'lunge' ? 'rgba(220,92,150,.9)' : 'rgba(235,145,172,.9)';
+            cctx.lineWidth = 4;
+            cctx.beginPath();
+            cctx.arc(0, 0, radius, 0, Math.PI * 2);
+            cctx.stroke();
+            cctx.restore();
+        }
 
         if (nowMs < attackCooldownUntil) {
             const seconds = Math.max(0, (attackCooldownUntil - nowMs) / 1000);
@@ -1829,6 +1796,7 @@ export function createLevel1(ui) {
         c.translate(px, visualY);
         if (hurt)
             c.globalAlpha = .5;
+        // Keep the shadow on the actual combat floor, separate from the animation pose.
         c.fillStyle = 'rgba(0,0,0,.28)';
         c.beginPath();
         c.ellipse(0, 20 - offsetY, 46, 10, 0, 0, Math.PI * 2);
@@ -2108,7 +2076,7 @@ export function createLevel1(ui) {
     }
     function retryCombat() {
         ui.death.classList.add('hidden');
-        hp = maxHp;
+        hp = Math.max(1, Math.ceil(maxHp * 0.5));
         stats();
         if (combatCheckpoint) {
             x = combatCheckpoint.x;
