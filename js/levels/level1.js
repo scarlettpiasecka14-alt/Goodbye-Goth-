@@ -1591,7 +1591,9 @@ export function createLevel1(ui) {
         c.save();
         c.globalAlpha = alpha;
         c.translate(x, groundY + 40);
-        c.scale(face === 'right' ? -1 : 1, 1);
+        // The supplied Zombie combat artwork faces RIGHT by default.
+        // Mirror it only when Olly is on the left so the Goth always faces him.
+        c.scale(face === 'left' ? -1 : 1, 1);
         c.imageSmoothingEnabled = true;
         c.imageSmoothingQuality = 'high';
         c.drawImage(img, -drawW / 2, -drawH, drawW, drawH);
@@ -1656,7 +1658,9 @@ export function createLevel1(ui) {
                     const side = player.x <= zombieCombatX ? 1 : -1;
                     zombieCombatPrevX = zombieCombatX;
                     zombieCombatNextDecision = nowMs + 900;
-                    zombieCombatX = Math.max(220, Math.min(COMBAT_W - 220, player.x + side * 115));
+                    // Land slightly past Olly's current position only if the
+                    // attack is coming from that side, leaving a readable gap.
+                    zombieCombatX = Math.max(220, Math.min(COMBAT_W - 220, player.x + side * 120));
                 }
             }
             return;
@@ -1712,8 +1716,20 @@ export function createLevel1(ui) {
         playerHurtUntil = nowMs + 300;
         ui.combatStatus.textContent = `💥 ${attackName}! -${damage} HP.`;
 
-        const pushDir = player.x <= zombieCombatX ? -1 : 1;
-        player.x = Math.max(140, Math.min(COMBAT_W - 140, player.x + pushDir * pushDistance));
+        // Knockback always travels AWAY from the Zombie. Avoid repeated
+        // full-distance corner shoves that can make the encounter unreadable.
+        const awayDir = player.x < zombieCombatX ? -1 : 1;
+        const requestedPush = Math.min(pushDistance, attackName === 'LUNGE + BITE' ? 72 : 34);
+        let pushedX = player.x + awayDir * requestedPush;
+        const edge = 165;
+        if (pushedX < edge) {
+            // Near the left wall, give Olly a little inward slide instead of
+            // repeatedly pinning him against the boundary.
+            pushedX = Math.max(edge, player.x + Math.min(18, requestedPush * .5));
+        } else if (pushedX > COMBAT_W - edge) {
+            pushedX = Math.min(COMBAT_W - edge, player.x - Math.min(18, requestedPush * .5));
+        }
+        player.x = Math.max(140, Math.min(COMBAT_W - 140, pushedX));
         if (hp <= 0 && !playerDeathTriggered) {
             playerDeathTriggered = true;
             setTimeout(() => endCombat(false), 220);
@@ -1762,18 +1778,31 @@ export function createLevel1(ui) {
         cctx.fillRect(40, 60, 264 * Math.max(0, Math.min(1, hp / Math.max(1, maxHp))), 14);
         cctx.restore();
 
-        // Minimal attack telegraph, kept visual rather than a giant text warning.
+        // Player-centered attack telegraph. It appears during the wind-up,
+        // rather than underneath the Zombie, so the threat is attached to Olly.
         if (!isBoss && enemyType === 'shambler' && enemyAttackPhase === 'windup') {
             cctx.save();
-            const pulse = 1 + Math.sin(nowMs / 90) * .08;
-            const radius = zombieCombatAttackType === 'lunge' ? 82 : 56;
-            cctx.translate(enemyX, enemyY - 12);
+            const windupMs = nowMs - zombieCombatStateStart;
+            const windupTotal = zombieCombatAttackType === 'lunge' ? 500 : 360;
+            const progress = Math.max(0, Math.min(1, windupMs / windupTotal));
+            const pulse = 1 + Math.sin(nowMs / 85) * .06;
+            const radius = zombieCombatAttackType === 'lunge'
+                ? 92 + progress * 12
+                : 66 + progress * 8;
+            cctx.translate(player.x, COMBAT_GROUND_Y + 2);
             cctx.scale(pulse, pulse);
-            cctx.strokeStyle = zombieCombatAttackType === 'lunge' ? 'rgba(220,92,150,.9)' : 'rgba(235,145,172,.9)';
+            cctx.strokeStyle = zombieCombatAttackType === 'lunge'
+                ? 'rgba(229,104,168,.92)'
+                : 'rgba(241,160,190,.92)';
             cctx.lineWidth = 4;
             cctx.beginPath();
             cctx.arc(0, 0, radius, 0, Math.PI * 2);
             cctx.stroke();
+            cctx.globalAlpha = .18 + progress * .12;
+            cctx.fillStyle = zombieCombatAttackType === 'lunge' ? '#e568a8' : '#f1a0be';
+            cctx.beginPath();
+            cctx.arc(0, 0, radius - 14, 0, Math.PI * 2);
+            cctx.fill();
             cctx.restore();
         }
 

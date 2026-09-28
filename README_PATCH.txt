@@ -1,28 +1,23 @@
-Goodbye Goth v7.0.8
-Zombie combat baseline + canonical Olly asset
+Goodbye Goth v7.0.9 - Zombie facing / telegraph / combat asset fix
 
-IMPORTANT
-This patch is built from the known working Level 1 source supplied before the AI experiments. The exploration code is preserved except for the map Olly draw maintaining the new asset's aspect ratio.
+BASE:
+- Built from the v7.0.8 Zombie Combat Baseline.
+- Map/exploration structure is preserved.
+- No AI balance changes.
 
-Replace / merge:
-- js/levels/level1.js
-- assets/characters/olly.png
-- assets/characters/combat/* (all files in this patch)
+CHANGES:
+- Zombie combat frames are cleaned from the existing supplied sheets rather than regenerated.
+- Baked checkerboard/background and detached frame-number artefacts are removed from the combat PNGs.
+- Zombie combat artwork is treated as facing RIGHT by default and is mirrored only when Olly is on the left, so she faces Olly.
+- Attack telegraph is now a small pulsing ring around OLly during the wind-up, not underneath the Zombie.
+- Knockback is directional away from the Zombie and reduced to avoid repetitive full-distance corner shoves.
+- New canonical Olly sprite is included as assets/characters/olly.png.
+- No changes to map collision, challenges, gate, progression, Chain Goth logic, story.js, or game.js.
 
-What this patch changes:
-- Uses the supplied cropped Zombie Goth combat frames as individual PNGs.
-- Keeps the Zombie chase / wind-up / claw / lunge / recovery AI.
-- Lets Olly cross the Zombie during a jump or dodge so he is not permanently boxed to one side.
-- Uses the Zombie's live combat X position for punch, heavy attack, and dodge calculations.
-- Adds a simple in-combat Olly HP display.
-- Retry after death starts at 50% HP.
-- Uses the new supplied Olly image and preserves its proportions on the map.
-
-UNCHANGED / DO NOT TOUCH
-- game.js
-- story.js
-- css/game.css
-- Level 1 map layout, objectives, gate, key, relationship challenge, Princess Question, Chain Goth logic, Heavy Attack unlock flow
-- Current combat difficulty values
-
-Note: Zombie lunge currently uses the 3 clean Zombie-only lunge poses available in the cropped reference pack. The embedded victim/Bite frames from the original sheet are intentionally not used.
+TEST:
+1. Check the map first. Olly should keep the same proportions and movement.
+2. Enter Zombie Goth combat.
+3. Check Zombie faces Olly while she walks and attacks.
+4. Check the attack warning appears around Olly.
+5. Let her land a hit and check knockback.
+6. Check no one gets duplicated or trapped because of the attack animation.
