@@ -1,23 +1,26 @@
-Goodbye Goth v7.0.9 - Zombie facing / telegraph / combat asset fix
+Goodbye Goth v7.0.10 - Zombie combat reactions / sprite cleanup / attack warning
 
 BASE:
-- Built from the v7.0.8 Zombie Combat Baseline.
-- Map/exploration structure is preserved.
-- No AI balance changes.
+- Built directly from the supplied v7.0.9 Zombie Facing / Telegraph build.
+- Exploration, gate, challenges, story, Chain Goth logic and Heavy Attack unlock are preserved.
+- Zombie AI speed, damage, wind-up and recovery values are preserved.
 
 CHANGES:
-- Zombie combat frames are cleaned from the existing supplied sheets rather than regenerated.
-- Baked checkerboard/background and detached frame-number artefacts are removed from the combat PNGs.
-- Zombie combat artwork is treated as facing RIGHT by default and is mirrored only when Olly is on the left, so she faces Olly.
-- Attack telegraph is now a small pulsing ring around OLly during the wind-up, not underneath the Zombie.
-- Knockback is directional away from the Zombie and reduced to avoid repetitive full-distance corner shoves.
-- New canonical Olly sprite is included as assets/characters/olly.png.
-- No changes to map collision, challenges, gate, progression, Chain Goth logic, story.js, or game.js.
+- Zombie combat images are re-cleaned from the existing cropped frames with the baked checkerboard removed and fresh cache-busted asset URLs.
+- Zombie hit reaction: clear stagger, backward stumble, brief flash and impact sparks.
+- Heavy Attack causes a stronger Zombie stagger.
+- Olly visibly flinches and recoils when hit.
+- Olly's punch hit detection now uses a clear horizontal combat hitbox against Zombie Goth, so a visibly connected hit still damages her during her own wind-up/attack states.
+- A hit immediately interrupts the Zombie's current attack and sends her back into chase after the stagger.
+- Ground collision is resolved after both player movement and Zombie AI movement, preventing body-blocking / corner pinning while preserving jump-over and dodge-through behaviour.
+- Attack telegraph is restored as an animated warning banner: “! ATTACK INCOMING !” with a smaller “CLAW SWIPE” or “LUNGE + BITE” cue and MOVE / DODGE / JUMP.
+- Olly's canonical sprite is cache-busted so the current asset is used reliably.
 
 TEST:
-1. Check the map first. Olly should keep the same proportions and movement.
-2. Enter Zombie Goth combat.
-3. Check Zombie faces Olly while she walks and attacks.
-4. Check the attack warning appears around Olly.
-5. Let her land a hit and check knockback.
-6. Check no one gets duplicated or trapped because of the attack animation.
+1. Enter Zombie Goth combat.
+2. Walk directly into her and confirm Olly stops at her body instead of walking through.
+3. Jump over her. You should land on the other side without getting trapped inside her.
+4. During the warning banner, let her attack. The banner should pulse and the attack animation should play.
+5. Punch during her wind-up or attack. Her HP should drop immediately, she should stagger backward, and her attack should be interrupted.
+6. Let her hit Olly. Olly should visibly recoil/flinch and be pushed away.
+7. Test Heavy Attack after Chain Goth. A successful Heavy hit on Zombie should produce the stronger stagger.
