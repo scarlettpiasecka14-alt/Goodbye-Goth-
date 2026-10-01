@@ -1156,7 +1156,8 @@ export function createLevel1(ui) {
             ctx.drawImage(gateLockSprite, -gateLockSprite.naturalWidth * gs / 2, -gateLockSprite.naturalHeight * gs / 2, gateLockSprite.naturalWidth * gs, gateLockSprite.naturalHeight * gs);
             ctx.restore();
         }
-        drawOlly(ctx, playerX, playerY, .78, t / 1000, true, facingDir, walkPulse > 0, walkDir);
+        const mapMoving = mode === 'map' && (held.up || held.down || held.left || held.right);
+        drawOlly(ctx, playerX, playerY, .78, t / 1000, true, facingDir, mapMoving, walkDir);
         // v6.5.16e: unexplored cemetery remains covered; revealed areas stay clear.
         updateFogPatchClears(t);
         updateFogParting(t);
@@ -1644,8 +1645,13 @@ export function createLevel1(ui) {
         let index = 0;
         let targetHeight = 380;
 
+        // v7.8: tightly-cropped walk frames are rendered 75% larger than the
+        // previous visible walk figure. The larger scale is applied only while
+        // the Zombie Goth is chasing, leaving her attack presentation unchanged.
+
         if (zombieCombatState === 'chase') {
             frames = zombieCombatFrames.walk;
+            targetHeight = 415;
             const cycleTime = ((zombieCombatWalkIndex % ZOMBIE_WALK_CYCLE_MS) + ZOMBIE_WALK_CYCLE_MS) % ZOMBIE_WALK_CYCLE_MS;
             let acc = 0;
             let sequenceIndex = 0;
@@ -1736,8 +1742,14 @@ export function createLevel1(ui) {
         }
 
         const face = player.x < enemyX ? 'left' : 'right';
-        const sourceFacing = zombieCombatState === 'chase' ? 'left' : 'right';
-        drawCombatImage(c, frame.img, enemyX, enemyY, frame.targetHeight, face, 380, alpha, offsetX, rotation, sourceFacing);
+        const walking = zombieCombatState === 'chase';
+        const sourceFacing = walking ? 'left' : 'right';
+        // The new walk frames are tightly cropped to the actual character pixels.
+        // Their bottom edge should sit directly on the same combat floor as Olly.
+        // Existing attack frames retain their previous rendering offset.
+        const renderGroundY = walking ? enemyY - 40 : enemyY;
+        const renderMaxWidth = walking ? 430 : 380;
+        drawCombatImage(c, frame.img, enemyX, renderGroundY, frame.targetHeight, face, renderMaxWidth, alpha, offsetX, rotation, sourceFacing);
 
         // Small impact sparks make the hit reaction readable without needing
         // another sprite sheet.
@@ -2565,9 +2577,9 @@ export function createLevel1(ui) {
             now = t;
             if (mode === 'map')
                 updateMovement(dt);
+            drawWorld(t, dt);
             if (walkPulse > 0)
                 walkPulse = 0;
-            drawWorld(t, dt);
             miniFrameCounter++;
             if (miniFrameCounter % 3 === 0) drawMini();
             raf = requestAnimationFrame(loop)
