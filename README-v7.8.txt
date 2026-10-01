@@ -1,11 +1,11 @@
-GOODBYE GOTH v7.8 - MAP WALK FIX + ZOMBIE GOTH SCALE/GROUND FIX
+GOODBYE GOTH v8.0 - MAP WALK FIX + ZOMBIE GOTH SCALE/GROUND FIX
 
 Base: v7.7
 
 Changes:
 1. FIXED OLly MAP WALK DIRECTION RENDER
    - The previous build reset the movement flag before drawWorld rendered the player.
-   - v7.8 now uses the held WASD/arrow movement state directly while drawing the map.
+   - v8.0 now uses the held WASD/arrow movement state directly while drawing the map.
    - W / Up = back-facing walk pose.
    - S / Down = front-facing walk pose.
    - A / Left = left-facing side pose.
@@ -29,7 +29,7 @@ Assets included:
 - assets/characters/map/olly-walk-left.png
 - assets/characters/map/olly-walk-right.png
 - assets/characters/combat/zombie-walk-1.png through zombie-walk-12.png
-- assets/characters/combat/zombie-walk-preview-v7.8.png
+- assets/characters/combat/zombie-walk-preview-v8.0.png
 - js/levels/level1.js
 
 Animation workflow for future character art:
@@ -37,3 +37,6 @@ Animation workflow for future character art:
 2. Generate a consistent orientation or pose using a pose reference image whenever possible.
 3. Use dedicated animation/sprite software to create the movement between poses.
 4. Export transparent frames and integrate them into the game.
+
+
+v8.0 CHANGE: Zombie Goth walking frames are reduced by 60% from the v7.9 render size while retaining the same ground-line alignment. Olly sticky map facing behaviour remains unchanged.

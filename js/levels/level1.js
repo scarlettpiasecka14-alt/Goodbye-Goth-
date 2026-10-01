@@ -1750,13 +1750,12 @@ export function createLevel1(ui) {
         // The new walk frames are tightly cropped to the actual character pixels.
         // Their bottom edge should sit directly on the same combat floor as Olly.
         // Existing attack frames retain their previous rendering offset.
-        // v7.9: the supplied walk frames were landing visibly above the floor in
-        // the browser. Move the walking figure down by 65 px so the boots sit on
-        // the same visual floor as Olly. The walk render is also enlarged
-        // substantially for a more even character scale in the arena.
+        // v8.0: keep the walking frames on the same combat ground line, but reduce
+        // the oversized v7.9 walking render by 60%. The walk frames remain
+        // separately scaled from the existing attack artwork.
         const renderGroundY = walking ? enemyY + 25 : enemyY;
         const renderMaxWidth = walking ? 760 : 380;
-        const renderHeight = walking ? Math.round(frame.targetHeight * 1.75) : frame.targetHeight;
+        const renderHeight = walking ? Math.round(frame.targetHeight * 0.70) : frame.targetHeight;
         drawCombatImage(c, frame.img, enemyX, renderGroundY, renderHeight, face, renderMaxWidth, alpha, offsetX, rotation, sourceFacing);
 
         // Small impact sparks make the hit reaction readable without needing
