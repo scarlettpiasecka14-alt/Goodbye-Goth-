@@ -19,6 +19,19 @@ gateLockSprite.src = 'assets/encounters/level1/gate-lock.png?v=6524';
 const ollySprite = new Image();
 ollySprite.src = 'assets/characters/olly.png?v=7110';
 
+// v7.7: directional map walking poses.
+// These are map-only sprites. Combat keeps its existing side-on movement/animations.
+const ollyMapWalkSprites = {
+    front: new Image(),
+    back: new Image(),
+    left: new Image(),
+    right: new Image()
+};
+ollyMapWalkSprites.front.src = 'assets/characters/map/olly-walk-front.png?v=7700';
+ollyMapWalkSprites.back.src = 'assets/characters/map/olly-walk-back.png?v=7700';
+ollyMapWalkSprites.left.src = 'assets/characters/map/olly-walk-left.png?v=7700';
+ollyMapWalkSprites.right.src = 'assets/characters/map/olly-walk-right.png?v=7700';
+
 // Combat animation frames are cropped from the supplied sprite sheet so each
 // pose keeps its own aspect ratio and stray sprite-sheet labels never render.
 const ollyCombatSprites = {
@@ -264,7 +277,7 @@ function blockedWorld(px, py, r=0) {
     return !walkCellWalkable(px, py);
 }
 
-function drawOlly(ctx, x, y, s=.78, t=0, front=true, dir='right', moving=false) {
+function drawOlly(ctx, x, y, s=.78, t=0, front=true, dir='right', moving=false, mapDir='down') {
     ctx.save();
     const bob = moving ? Math.sin(t * 18) * 1.5 : Math.sin(t * 2) * .35;
     ctx.translate(x, y - bob);
@@ -272,7 +285,31 @@ function drawOlly(ctx, x, y, s=.78, t=0, front=true, dir='right', moving=false) 
     ctx.beginPath();
     ctx.ellipse(0, 38 * s, 23 * s, 6 * s, 0, 0, Math.PI * 2);
     ctx.fill();
-    if (ollySprite.complete && ollySprite.naturalWidth && ollySprite.naturalHeight) {
+
+    let img = ollySprite;
+    let flipX = dir === 'right';
+
+    // Map directional walking poses only. Combat does not call this branch.
+    if (moving) {
+        if (mapDir === 'up') img = ollyMapWalkSprites.back;
+        else if (mapDir === 'down') img = ollyMapWalkSprites.front;
+        else if (mapDir === 'left') {
+            img = ollyMapWalkSprites.left;
+            flipX = false;
+        } else {
+            img = ollyMapWalkSprites.right;
+            flipX = false;
+        }
+    }
+
+    if (img.complete && img.naturalWidth && img.naturalHeight) {
+        const h = 144 * s;
+        const w = h * (img.naturalWidth / img.naturalHeight);
+        ctx.save();
+        if (flipX) ctx.scale(-1, 1);
+        ctx.drawImage(img, -w / 2, -114 * s, w, h);
+        ctx.restore();
+    } else if (ollySprite.complete && ollySprite.naturalWidth && ollySprite.naturalHeight) {
         const h = 144 * s;
         const w = h * (ollySprite.naturalWidth / ollySprite.naturalHeight);
         ctx.save();
@@ -1119,7 +1156,7 @@ export function createLevel1(ui) {
             ctx.drawImage(gateLockSprite, -gateLockSprite.naturalWidth * gs / 2, -gateLockSprite.naturalHeight * gs / 2, gateLockSprite.naturalWidth * gs, gateLockSprite.naturalHeight * gs);
             ctx.restore();
         }
-        drawOlly(ctx, playerX, playerY, .78, t / 1000, true, facingDir, walkPulse > 0);
+        drawOlly(ctx, playerX, playerY, .78, t / 1000, true, facingDir, walkPulse > 0, walkDir);
         // v6.5.16e: unexplored cemetery remains covered; revealed areas stay clear.
         updateFogPatchClears(t);
         updateFogParting(t);
@@ -1605,7 +1642,7 @@ export function createLevel1(ui) {
         let frames = zombieCombatFrames.idle;
         let frameMs = 180;
         let index = 0;
-        let targetHeight = 285;
+        let targetHeight = 380;
 
         if (zombieCombatState === 'chase') {
             frames = zombieCombatFrames.walk;
@@ -1628,16 +1665,16 @@ export function createLevel1(ui) {
             frames = zombieCombatFrames.lunge;
             const total = 1050;
             index = Math.min(frames.length - 1, Math.floor(Math.min(.999, elapsed / total) * frames.length));
-            targetHeight = 300;
+            targetHeight = 400;
         } else if (zombieCombatState === 'hit') {
             frames = zombieCombatFrames.idle;
             // A slightly off-balance idle frame reads better as a hit reaction
             // than repeating the walk cycle while the enemy is staggered.
             index = 1;
-            targetHeight = 285;
+            targetHeight = 380;
         } else if (zombieCombatState === 'windup') {
             frames = zombieCombatAttackType === 'lunge' ? zombieCombatFrames.lunge : zombieCombatFrames.claw;
-            targetHeight = zombieCombatAttackType === 'lunge' ? 300 : 285;
+            targetHeight = zombieCombatAttackType === 'lunge' ? 400 : 380;
             if (zombieCombatAttackType === 'lunge') {
                 index = 0;
             } else {
@@ -1700,7 +1737,7 @@ export function createLevel1(ui) {
 
         const face = player.x < enemyX ? 'left' : 'right';
         const sourceFacing = zombieCombatState === 'chase' ? 'left' : 'right';
-        drawCombatImage(c, frame.img, enemyX, enemyY, frame.targetHeight, face, 290, alpha, offsetX, rotation, sourceFacing);
+        drawCombatImage(c, frame.img, enemyX, enemyY, frame.targetHeight, face, 380, alpha, offsetX, rotation, sourceFacing);
 
         // Small impact sparks make the hit reaction readable without needing
         // another sprite sheet.
