@@ -287,20 +287,14 @@ function drawOlly(ctx, x, y, s=.78, t=0, front=true, dir='right', moving=false, 
     ctx.fill();
 
     let img = ollySprite;
-    let flipX = dir === 'right';
+    let flipX = false;
 
-    // Map directional walking poses only. Combat does not call this branch.
-    if (moving) {
-        if (mapDir === 'up') img = ollyMapWalkSprites.back;
-        else if (mapDir === 'down') img = ollyMapWalkSprites.front;
-        else if (mapDir === 'left') {
-            img = ollyMapWalkSprites.left;
-            flipX = false;
-        } else {
-            img = ollyMapWalkSprites.right;
-            flipX = false;
-        }
-    }
+    // v7.9: use the last selected map direction even when Olly is no longer
+    // moving. This creates the requested sticky facing pose for short taps.
+    if (mapDir === 'up') img = ollyMapWalkSprites.back;
+    else if (mapDir === 'down') img = ollyMapWalkSprites.front;
+    else if (mapDir === 'left') img = ollyMapWalkSprites.left;
+    else if (mapDir === 'right') img = ollyMapWalkSprites.right;
 
     if (img.complete && img.naturalWidth && img.naturalHeight) {
         const h = 144 * s;
@@ -868,6 +862,7 @@ export function createLevel1(ui) {
         mode = 'map',
         walkDir = 'right',
         facingDir = 'right',
+        mapDir = 'right',
         walkPulse = 0,
         kills = 0,
         relationshipDone = false,
@@ -949,14 +944,23 @@ export function createLevel1(ui) {
         const k = (key || '').toLowerCase();
         if (mode !== 'map' && mode !== 'combat')
             return;
-        if (k === 'arrowup' || k === 'w')
-            held.up = down;
-        if (k === 'arrowdown' || k === 's')
-            held.down = down;
-        if (k === 'arrowleft' || k === 'a')
-            held.left = down;
-        if (k === 'arrowright' || k === 'd')
-            held.right = down;
+
+        // v7.9: map facing is sticky. A tap changes Olly's map pose and that
+        // pose remains visible until another direction is pressed. This makes
+        // short taps readable instead of snapping immediately back to a default.
+        if (mode === 'map' && down) {
+            if (k === 'arrowup' || k === 'w') mapDir = 'up';
+            else if (k === 'arrowdown' || k === 's') mapDir = 'down';
+            else if (k === 'arrowleft' || k === 'a') mapDir = 'left';
+            else if (k === 'arrowright' || k === 'd') mapDir = 'right';
+            walkDir = mapDir;
+            facingDir = mapDir === 'left' ? 'left' : 'right';
+        }
+
+        if (k === 'arrowup' || k === 'w') held.up = down;
+        if (k === 'arrowdown' || k === 's') held.down = down;
+        if (k === 'arrowleft' || k === 'a') held.left = down;
+        if (k === 'arrowright' || k === 'd') held.right = down;
     }
     function updateMovement(dt) {
         if (mode !== 'map') return;
@@ -987,8 +991,9 @@ export function createLevel1(ui) {
         if (moved) {
             revealAround(x, y);
             walkPulse = 1;
-            if (Math.abs(moveX) > Math.abs(moveY)) facingDir = moveX < 0 ? 'left' : 'right';
-            walkDir = Math.abs(moveX) > Math.abs(moveY) ? (moveX < 0 ? 'left' : 'right') : (moveY < 0 ? 'up' : 'down');
+            // Directional appearance is controlled by setMoveKey(), so short
+            // taps remain visible as a sticky pose. Keep movement direction
+            // separate from the visual facing state.
             ui.dialogue.textContent = 'The cemetery is strangely peaceful. Somewhere nearby, a goth is probably plotting.';
         }
     }
@@ -1645,9 +1650,7 @@ export function createLevel1(ui) {
         let index = 0;
         let targetHeight = 380;
 
-        // v7.8: tightly-cropped walk frames are rendered 75% larger than the
-        // previous visible walk figure. The larger scale is applied only while
-        // the Zombie Goth is chasing, leaving her attack presentation unchanged.
+        // v7.9: walking frames receive the new enlarged arena render and floor alignment.
 
         if (zombieCombatState === 'chase') {
             frames = zombieCombatFrames.walk;
@@ -1747,9 +1750,14 @@ export function createLevel1(ui) {
         // The new walk frames are tightly cropped to the actual character pixels.
         // Their bottom edge should sit directly on the same combat floor as Olly.
         // Existing attack frames retain their previous rendering offset.
-        const renderGroundY = walking ? enemyY - 40 : enemyY;
-        const renderMaxWidth = walking ? 430 : 380;
-        drawCombatImage(c, frame.img, enemyX, renderGroundY, frame.targetHeight, face, renderMaxWidth, alpha, offsetX, rotation, sourceFacing);
+        // v7.9: the supplied walk frames were landing visibly above the floor in
+        // the browser. Move the walking figure down by 65 px so the boots sit on
+        // the same visual floor as Olly. The walk render is also enlarged
+        // substantially for a more even character scale in the arena.
+        const renderGroundY = walking ? enemyY + 25 : enemyY;
+        const renderMaxWidth = walking ? 760 : 380;
+        const renderHeight = walking ? Math.round(frame.targetHeight * 1.75) : frame.targetHeight;
+        drawCombatImage(c, frame.img, enemyX, renderGroundY, renderHeight, face, renderMaxWidth, alpha, offsetX, rotation, sourceFacing);
 
         // Small impact sparks make the hit reaction readable without needing
         // another sprite sheet.
