@@ -131,17 +131,16 @@ zombieSprites.shambler.src = 'assets/characters/zombie-goth.png?v=300';
 zombieSprites.chain.src = 'assets/characters/chain-goth-clean.png?v=6513';
 
 
-// v7.0.8: Zombie Goth combat uses individually cropped frames made from the
-// supplied reference sheets. These are combat-only assets. The map Zombie
-// sprite above remains untouched.
+// v7.4: Zombie Goth combat walk cycle now uses the new 3-pose sequence supplied
+// in the latest art pass. All other combat sprites and the map sprite remain untouched.
 const zombieCombatFrames = {
     idle: [1, 2, 3, 4].map(() => new Image()),
-    walk: [1, 2, 3, 4].map(() => new Image()),
+    walk: [1, 2, 3].map(() => new Image()),
     claw: [1, 2, 3, 4, 5].map(() => new Image()),
     lunge: [1, 2, 3].map(() => new Image())
 };
 zombieCombatFrames.idle.forEach((img, i) => img.src = `assets/characters/combat/zombie-idle-${i + 1}.png?v=7110`);
-zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.png?v=7110`);
+zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.png?v=7400`);
 zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i + 1}.png?v=7110`);
 zombieCombatFrames.lunge.forEach((img, i) => img.src = `assets/characters/combat/zombie-lunge-${i + 1}.png?v=7110`);
 
@@ -1750,7 +1749,7 @@ export function createLevel1(ui) {
                 const step = Math.min(Math.abs(targetX - zombieCombatX), 135 * dt);
                 zombieCombatX += (targetX >= zombieCombatX ? 1 : -1) * step;
                 zombieCombatX = Math.max(170, Math.min(COMBAT_W - 170, zombieCombatX));
-                zombieCombatWalkIndex = (zombieCombatWalkIndex + dt * 7) % 4;
+                zombieCombatWalkIndex = (zombieCombatWalkIndex + dt * 6.5) % 3;
                 zombieCombatPrevX = zombieCombatX;
                 return;
             }
@@ -2123,10 +2122,11 @@ export function createLevel1(ui) {
         if (mode !== 'combat')
             return;
 
-        // Heavy is introduced with the Chain Goth and remains available for bosses.
-        const heavyAvailable = heavyUnlocked || !!isBoss || target?.type === 'chain';
+        // v7.4: Heavy Attack unlocks after both Level 1 Goths have been defeated,
+        // regardless of which Goth was fought first. Boss fights still permit Heavy.
+        const heavyAvailable = heavyUnlocked || !!isBoss;
         if (!heavyAvailable) {
-            ui.combatStatus.textContent = '🔒 Heavy Attack unlocks with the Chain Goth.';
+            ui.combatStatus.textContent = '🔒 Heavy Attack unlocks after you defeat both Level 1 Goths.';
             return;
         }
 
@@ -2228,7 +2228,7 @@ export function createLevel1(ui) {
         box.appendChild(img);
 
         const title = document.createElement('div');
-        title.textContent = 'YOU\'VE DEFEATED THE CHAIN GOTH!';
+        title.textContent = 'YOU\'VE DEFEATED BOTH LEVEL 1 GOTHS!';
         title.style.cssText = 'color:#f3c6d6;font:900 clamp(22px,3vw,34px) Georgia,serif;text-align:center;';
         box.appendChild(title);
 
@@ -2246,7 +2246,7 @@ export function createLevel1(ui) {
         button.addEventListener('click', () => {
             overlay.remove();
             mode = 'map';
-            ui.dialogue.textContent = '💥 Heavy Attack unlocked. The cemetery is going to regret that chain goth.';
+            ui.dialogue.textContent = '💥 Heavy Attack unlocked. The cemetery is going to regret that.';
             stats();
         }, { once:true });
     }
@@ -2271,14 +2271,20 @@ export function createLevel1(ui) {
                 kills++;
                 target = null;
 
-                if (defeatedType === 'chain') {
+                const bothLevel1GothsDefeated = enemies.every(e => e.dead);
+
+                if (bothLevel1GothsDefeated && !heavyUnlocked) {
                     heavyUnlocked = true;
                     stats();
                     showHeavyAttackReward();
                     return;
                 }
 
-                ui.dialogue.textContent = kills === 1 ? '✅ Zombie Goth defeated. Your health carries into the next fight.' : '✅ Both Zombie Goths defeated. Now complete the special events, because apparently fighting was only the easy bit.';
+                if (defeatedType === 'chain') {
+                    ui.dialogue.textContent = '✅ Chain Goth defeated. One Level 1 Goth remains.';
+                } else {
+                    ui.dialogue.textContent = '✅ Zombie Goth defeated. Your health carries into the next fight.';
+                }
             }
         }
         else {
@@ -2474,7 +2480,7 @@ export function createLevel1(ui) {
                 })
             }
             heavyUnlocked = state.version >= 5 ? !!state.heavyUnlocked : false;
-            if (enemies[1]?.dead)
+            if (enemies.every(e => e.dead))
                 heavyUnlocked = true;
             mode = 'map';
             target = null;
