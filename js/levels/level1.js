@@ -131,16 +131,21 @@ zombieSprites.shambler.src = 'assets/characters/zombie-goth.png?v=300';
 zombieSprites.chain.src = 'assets/characters/chain-goth-clean.png?v=6513';
 
 
-// v7.4: Zombie Goth combat walk cycle now uses the new 3-pose sequence supplied
-// in the latest art pass. All other combat sprites and the map sprite remain untouched.
+// v7.6: Zombie Goth combat walk cycle uses the new 12-frame strict side-profile animation pass.
+// All 12 supplied side-profile poses are used in order. The game flips them only when the Goth needs to face the opposite direction.
 const zombieCombatFrames = {
     idle: [1, 2, 3, 4].map(() => new Image()),
-    walk: [1, 2, 3].map(() => new Image()),
+    walk: Array.from({ length: 12 }, () => new Image()),
     claw: [1, 2, 3, 4, 5].map(() => new Image()),
     lunge: [1, 2, 3].map(() => new Image())
 };
+// v7.6: use the complete 12-frame side-profile cycle at a readable pace.
+// Slightly slower timing preserves the weight transfer instead of making the feet blur together.
+const ZOMBIE_WALK_SEQUENCE = Array.from({ length: 12 }, (_, i) => i);
+const ZOMBIE_WALK_FRAME_MS = [110, 100, 100, 110, 100, 100, 110, 100, 100, 110, 100, 100];
+const ZOMBIE_WALK_CYCLE_MS = ZOMBIE_WALK_FRAME_MS.reduce((a, b) => a + b, 0);
 zombieCombatFrames.idle.forEach((img, i) => img.src = `assets/characters/combat/zombie-idle-${i + 1}.png?v=7110`);
-zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.png?v=7400`);
+zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.png?v=7600`);
 zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i + 1}.png?v=7110`);
 zombieCombatFrames.lunge.forEach((img, i) => img.src = `assets/characters/combat/zombie-lunge-${i + 1}.png?v=7110`);
 
@@ -1604,8 +1609,17 @@ export function createLevel1(ui) {
 
         if (zombieCombatState === 'chase') {
             frames = zombieCombatFrames.walk;
-            frameMs = 145;
-            index = Math.floor(zombieCombatWalkIndex) % frames.length;
+            const cycleTime = ((zombieCombatWalkIndex % ZOMBIE_WALK_CYCLE_MS) + ZOMBIE_WALK_CYCLE_MS) % ZOMBIE_WALK_CYCLE_MS;
+            let acc = 0;
+            let sequenceIndex = 0;
+            for (let i = 0; i < ZOMBIE_WALK_FRAME_MS.length; i++) {
+                acc += ZOMBIE_WALK_FRAME_MS[i];
+                if (cycleTime < acc) {
+                    sequenceIndex = i;
+                    break;
+                }
+            }
+            index = ZOMBIE_WALK_SEQUENCE[sequenceIndex];
         } else if (zombieCombatState === 'claw') {
             frames = zombieCombatFrames.claw;
             const total = 720;
@@ -1638,7 +1652,7 @@ export function createLevel1(ui) {
         return { img: frames[index], targetHeight };
     }
 
-    function drawCombatImage(c, img, x, groundY, targetHeight, face, maxWidth = 270, alpha = 1, offsetX = 0, rotation = 0) {
+    function drawCombatImage(c, img, x, groundY, targetHeight, face, maxWidth = 270, alpha = 1, offsetX = 0, rotation = 0, sourceFacing = 'right') {
         if (!img || !img.complete || !img.naturalWidth || !img.naturalHeight)
             return;
         const naturalScale = targetHeight / img.naturalHeight;
@@ -1654,9 +1668,9 @@ export function createLevel1(ui) {
         c.translate(x + offsetX, groundY + 40);
         if (rotation)
             c.rotate(rotation);
-        // The supplied Zombie combat artwork faces RIGHT by default.
-        // Mirror it only when Olly is on the left so the Goth always faces him.
-        c.scale(face === 'left' ? -1 : 1, 1);
+        // Each animation set can have its own native facing direction.
+        // The new v7.6 walk frames face LEFT; the existing attack frames face RIGHT.
+        c.scale(face === sourceFacing ? 1 : -1, 1);
         c.imageSmoothingEnabled = true;
         c.imageSmoothingQuality = 'high';
         c.drawImage(img, -drawW / 2, -drawH, drawW, drawH);
@@ -1685,7 +1699,8 @@ export function createLevel1(ui) {
         }
 
         const face = player.x < enemyX ? 'left' : 'right';
-        drawCombatImage(c, frame.img, enemyX, enemyY, frame.targetHeight, face, 290, alpha, offsetX, rotation);
+        const sourceFacing = zombieCombatState === 'chase' ? 'left' : 'right';
+        drawCombatImage(c, frame.img, enemyX, enemyY, frame.targetHeight, face, 290, alpha, offsetX, rotation, sourceFacing);
 
         // Small impact sparks make the hit reaction readable without needing
         // another sprite sheet.
@@ -1749,7 +1764,7 @@ export function createLevel1(ui) {
                 const step = Math.min(Math.abs(targetX - zombieCombatX), 135 * dt);
                 zombieCombatX += (targetX >= zombieCombatX ? 1 : -1) * step;
                 zombieCombatX = Math.max(170, Math.min(COMBAT_W - 170, zombieCombatX));
-                zombieCombatWalkIndex = (zombieCombatWalkIndex + dt * 6.5) % 3;
+                zombieCombatWalkIndex += dt * 1000;
                 zombieCombatPrevX = zombieCombatX;
                 return;
             }
@@ -2041,7 +2056,7 @@ export function createLevel1(ui) {
         ui.enemyHpText.textContent = `${combatHp} / ${combatMax}`;
         ui.combatStatus.textContent =
             (target?.type === 'chain')
-                ? 'The Chain Goth is quick. Heavy Attack unlocked. Make it count.'
+                ? 'The Chain Goth is quick. Defeat both Level 1 Goths to unlock Heavy Attack. Make it count.'
                 : (bossFight ? 'The Queen is waiting. Your Heavy Attack is ready.' : 'The Goth is staring you down. Get close.');
         ui.combat.classList.remove('hidden');
         clearInterval(enemyTimer);
