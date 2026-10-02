@@ -1755,7 +1755,7 @@ export function createLevel1(ui) {
         // separately scaled from the existing attack artwork.
         const renderGroundY = walking ? enemyY + 25 : enemyY;
         const renderMaxWidth = walking ? 760 : 380;
-        const renderHeight = walking ? Math.round(frame.targetHeight * 0.70) : frame.targetHeight;
+        const renderHeight = walking ? Math.round(frame.targetHeight * 0.91) : frame.targetHeight;
         drawCombatImage(c, frame.img, enemyX, renderGroundY, renderHeight, face, renderMaxWidth, alpha, offsetX, rotation, sourceFacing);
 
         // Small impact sparks make the hit reaction readable without needing
