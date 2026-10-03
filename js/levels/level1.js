@@ -155,7 +155,7 @@ const zombieCombatFrames = {
 // v7.6: use the complete 12-frame side-profile cycle at a readable pace.
 // Slightly slower timing preserves the weight transfer instead of making the feet blur together.
 const ZOMBIE_WALK_SEQUENCE = Array.from({ length: 12 }, (_, i) => i);
-const ZOMBIE_WALK_FRAME_MS = [110, 100, 100, 110, 100, 100, 110, 100, 100, 110, 100, 100];
+const ZOMBIE_WALK_FRAME_MS = Array(12).fill(150);
 const ZOMBIE_WALK_CYCLE_MS = ZOMBIE_WALK_FRAME_MS.reduce((a, b) => a + b, 0);
 zombieCombatFrames.idle.forEach((img, i) => img.src = `assets/characters/combat/zombie-idle-${i + 1}.png?v=7110`);
 zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.png?v=7600`);
