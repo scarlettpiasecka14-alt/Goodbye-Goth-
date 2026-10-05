@@ -159,7 +159,8 @@ const ZOMBIE_WALK_FRAME_MS = Array(12).fill(150);
 const ZOMBIE_WALK_CYCLE_MS = ZOMBIE_WALK_FRAME_MS.reduce((a, b) => a + b, 0);
 zombieCombatFrames.idle.forEach((img, i) => img.src = `assets/characters/combat/zombie-idle-${i + 1}.png?v=7110`);
 zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.png?v=7600`);
-zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i + 1}.png?v=7110`);
+// v8.4: replace the old Zombie claw artwork with the new clean five-pose scratch attack.
+zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i + 1}.png?v=8400`);
 zombieCombatFrames.lunge.forEach((img, i) => img.src = `assets/characters/combat/zombie-lunge-${i + 1}.png?v=7110`);
 
 /* v6.0: a complete Level 1 rebuild.
@@ -1746,7 +1747,9 @@ export function createLevel1(ui) {
 
         const face = player.x < enemyX ? 'left' : 'right';
         const walking = zombieCombatState === 'chase';
-        const sourceFacing = walking ? 'left' : 'right';
+        // v8.4: the new scratch frames, like the combat walk, are authored facing LEFT.
+// Keep the existing lunge artwork on its original RIGHT-facing source orientation.
+const sourceFacing = (walking || zombieCombatState === 'claw') ? 'left' : 'right';
         // The new walk frames are tightly cropped to the actual character pixels.
         // Their bottom edge should sit directly on the same combat floor as Olly.
         // Existing attack frames retain their previous rendering offset.
