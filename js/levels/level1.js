@@ -149,8 +149,9 @@ zombieSprites.chain.src = 'assets/characters/chain-goth-clean.png?v=6513';
 const zombieCombatFrames = {
     idle: [1, 2, 3, 4].map(() => new Image()),
     walk: Array.from({ length: 12 }, () => new Image()),
-    claw: [1, 2, 3, 4, 5].map(() => new Image()),
-    lunge: [1, 2, 3].map(() => new Image())
+    // v8.5: single clean scratch attack sequence. The old lunge/bite artwork is
+    // no longer used for Zombie Goth combat until a replacement is available.
+    claw: [1, 2, 3, 4, 5].map(() => new Image())
 };
 // v7.6: use the complete 12-frame side-profile cycle at a readable pace.
 // Slightly slower timing preserves the weight transfer instead of making the feet blur together.
@@ -161,7 +162,6 @@ zombieCombatFrames.idle.forEach((img, i) => img.src = `assets/characters/combat/
 zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.png?v=7600`);
 // v8.4: replace the old Zombie claw artwork with the new clean five-pose scratch attack.
 zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i + 1}.png?v=8400`);
-zombieCombatFrames.lunge.forEach((img, i) => img.src = `assets/characters/combat/zombie-lunge-${i + 1}.png?v=7110`);
 
 /* v6.0: a complete Level 1 rebuild.
    The background is a clean, character-free cemetery illustration.
@@ -1671,11 +1671,6 @@ export function createLevel1(ui) {
             frames = zombieCombatFrames.claw;
             const total = 720;
             index = Math.min(frames.length - 1, Math.floor(Math.min(.999, elapsed / total) * frames.length));
-        } else if (zombieCombatState === 'lunge') {
-            frames = zombieCombatFrames.lunge;
-            const total = 1050;
-            index = Math.min(frames.length - 1, Math.floor(Math.min(.999, elapsed / total) * frames.length));
-            targetHeight = 400;
         } else if (zombieCombatState === 'hit') {
             frames = zombieCombatFrames.idle;
             // A slightly off-balance idle frame reads better as a hit reaction
@@ -1683,15 +1678,12 @@ export function createLevel1(ui) {
             index = 1;
             targetHeight = 380;
         } else if (zombieCombatState === 'windup') {
-            frames = zombieCombatAttackType === 'lunge' ? zombieCombatFrames.lunge : zombieCombatFrames.claw;
-            targetHeight = zombieCombatAttackType === 'lunge' ? 400 : 380;
-            if (zombieCombatAttackType === 'lunge') {
-                index = 0;
-            } else {
-                const windupTotal = 360;
-                const p = Math.max(0, Math.min(1, elapsed / windupTotal));
-                index = p < .58 ? 0 : (p < .86 ? 1 : 2);
-            }
+            // v8.5: the wind-up now uses the new scratch frames only.
+            frames = zombieCombatFrames.claw;
+            targetHeight = 380;
+            const windupTotal = 360;
+            const p = Math.max(0, Math.min(1, elapsed / windupTotal));
+            index = p < .58 ? 0 : (p < .86 ? 1 : 2);
         } else {
             index = Math.floor(elapsed / frameMs) % frames.length;
         }
@@ -1747,9 +1739,9 @@ export function createLevel1(ui) {
 
         const face = player.x < enemyX ? 'left' : 'right';
         const walking = zombieCombatState === 'chase';
-        // v8.4: the new scratch frames, like the combat walk, are authored facing LEFT.
-// Keep the existing lunge artwork on its original RIGHT-facing source orientation.
-const sourceFacing = (walking || zombieCombatState === 'claw') ? 'left' : 'right';
+        // v8.5: both the existing walk and the new scratch frames are authored
+        // facing LEFT. Flip only when the player is to the right of the Zombie.
+        const sourceFacing = 'left';
         // The new walk frames are tightly cropped to the actual character pixels.
         // Their bottom edge should sit directly on the same combat floor as Olly.
         // Existing attack frames retain their previous rendering offset.
@@ -1788,14 +1780,15 @@ const sourceFacing = (walking || zombieCombatState === 'claw') ? 'left' : 'right
     }
 
     function chooseZombieAttack(nowMs) {
-        zombieCombatAttackType = zombieCombatAttackType === 'claw' ? 'lunge' : 'claw';
+        // v8.5: use only the new clean scratch attack. The previous lunge/bite
+        // artwork was visually inconsistent and could make the Zombie appear to
+        // attack in the wrong direction. A new lunge sequence can be added later.
+        zombieCombatAttackType = 'claw';
         zombieCombatAttackHit = false;
         zombieCombatState = 'windup';
         zombieCombatStateStart = nowMs;
         enemyAttackPhase = 'windup';
-        ui.combatStatus.textContent = zombieCombatAttackType === 'lunge'
-            ? 'The Zombie Goth crouches. Something nasty is coming.'
-            : 'The Zombie Goth draws back her claws.';
+        ui.combatStatus.textContent = 'The Zombie Goth draws back her claws.';
     }
 
     function updateZombieAI(dt, nowMs) {
@@ -1833,20 +1826,12 @@ const sourceFacing = (walking || zombieCombatState === 'claw') ? 'left' : 'right
         }
 
         if (zombieCombatState === 'windup') {
-            const windup = zombieCombatAttackType === 'lunge' ? 500 : 360;
+            const windup = 360;
             if (nowMs - zombieCombatStateStart >= windup) {
                 zombieCombatState = zombieCombatAttackType;
                 zombieCombatStateStart = nowMs;
                 zombieCombatAttackHit = false;
                 enemyAttackPhase = 'active';
-                if (zombieCombatAttackType === 'lunge') {
-                    const side = player.x <= zombieCombatX ? 1 : -1;
-                    zombieCombatPrevX = zombieCombatX;
-                    zombieCombatNextDecision = nowMs + 900;
-                    // Land slightly past Olly's current position only if the
-                    // attack is coming from that side, leaving a readable gap.
-                    zombieCombatX = Math.max(220, Math.min(COMBAT_W - 220, player.x + side * 120));
-                }
             }
             return;
         }
@@ -1858,20 +1843,6 @@ const sourceFacing = (walking || zombieCombatState === 'claw') ? 'left' : 'right
                 applyZombieDamage(12, 210, 45, nowMs, 'CLAW SWIPE');
             }
             if (elapsed >= 720) {
-                zombieCombatState = 'recover';
-                zombieCombatStateStart = nowMs;
-                enemyAttackPhase = 'recover';
-            }
-            return;
-        }
-
-        if (zombieCombatState === 'lunge') {
-            const elapsed = nowMs - zombieCombatStateStart;
-            if (!zombieCombatAttackHit && elapsed >= 430 && elapsed <= 650) {
-                zombieCombatAttackHit = true;
-                applyZombieDamage(18, 245, 95, nowMs, 'LUNGE + BITE');
-            }
-            if (elapsed >= 1050) {
                 zombieCombatState = 'recover';
                 zombieCombatStateStart = nowMs;
                 enemyAttackPhase = 'recover';
@@ -2004,7 +1975,7 @@ const sourceFacing = (walking || zombieCombatState === 'claw') ? 'left' : 'right
         if (!isBoss && enemyType === 'shambler' && enemyAttackPhase === 'windup') {
             cctx.save();
             const windupMs = nowMs - zombieCombatStateStart;
-            const windupTotal = zombieCombatAttackType === 'lunge' ? 500 : 360;
+            const windupTotal = 360;
             const progress = Math.max(0, Math.min(1, windupMs / windupTotal));
             const pulse = 1 + Math.sin(nowMs / 80) * .035;
             const shake = Math.sin(nowMs / 34) * 2.5 * progress;
@@ -2033,7 +2004,7 @@ const sourceFacing = (walking || zombieCombatState === 'claw') ? 'left' : 'right
             cctx.fillStyle = '#e8a9c4';
             cctx.font = '800 13px system-ui';
             cctx.fillText(
-                zombieCombatAttackType === 'lunge' ? 'LUNGE + BITE  •  MOVE / DODGE / JUMP' : 'CLAW SWIPE  •  MOVE / DODGE / JUMP',
+                'CLAW SWIPE  •  MOVE / DODGE / JUMP',
                 0,
                 22
             );
