@@ -152,6 +152,8 @@ const zombieCombatFrames = {
     walk: Array.from({ length: 12 }, () => new Image()),
     // v8.6: clean five-pose scratch attack.
     claw: [1, 2, 3, 4, 5].map(() => new Image()),
+    // v8.8: eight supplied collapse/hurt poses. Non-lethal hits use 1-2-3-4-3-2-1.
+    hurt: Array.from({ length: 8 }, () => new Image()),
     // v8.6: eight-frame collapse/death sequence.
     death: Array.from({ length: 8 }, () => new Image())
 };
@@ -164,7 +166,12 @@ const ZOMBIE_WALK_CYCLE_MS = ZOMBIE_WALK_FRAME_MS.reduce((a, b) => a + b, 0);
 zombieCombatFrames.idle[0].src = 'assets/characters/combat/zombie-prepost.png?v=8600';
 zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.png?v=7600`);
 zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i + 1}.png?v=8600`);
+zombieCombatFrames.hurt.forEach((img, i) => img.src = `assets/characters/combat/zombie-hurt-${i + 1}.png?v=8800`);
 zombieCombatFrames.death.forEach((img, i) => img.src = `assets/characters/combat/zombie-death-${i + 1}.png?v=8600`);
+// v8.8: short non-lethal hit is 1-2-3-4-3-2-1, using the same supplied fall poses.
+const ZOMBIE_HURT_SEQUENCE = [0, 1, 2, 3, 2, 1, 0];
+const ZOMBIE_HURT_FRAME_MS = [60, 65, 80, 100, 75, 65, 120];
+const ZOMBIE_HURT_TOTAL_MS = ZOMBIE_HURT_FRAME_MS.reduce((a, b) => a + b, 0);
 // v8.7: slow the visible collapse by ~15%, then hold the final grounded pose for 5 seconds.
 const ZOMBIE_DEATH_FRAME_MS = [141, 118, 118, 129, 153, 176, 212, 5000];
 const ZOMBIE_DEATH_TOTAL_MS = ZOMBIE_DEATH_FRAME_MS.reduce((a, b) => a + b, 0);
@@ -1697,10 +1704,18 @@ export function createLevel1(ui) {
                 }
             }
         } else if (zombieCombatState === 'hit') {
-            frames = zombieCombatFrames.idle;
-            // The supplied pre/post pose is also the clean base for the brief hit state.
-            index = 0;
-            targetHeight = 400;
+            // v8.8: non-lethal hurt uses 1-2-3-4-3-2-1, then returns to the crouched ready pose.
+            frames = zombieCombatFrames.hurt;
+            targetHeight = 415;
+            let acc = 0;
+            index = ZOMBIE_HURT_SEQUENCE[ZOMBIE_HURT_SEQUENCE.length - 1];
+            for (let i = 0; i < ZOMBIE_HURT_FRAME_MS.length; i++) {
+                acc += ZOMBIE_HURT_FRAME_MS[i];
+                if (elapsed < acc) {
+                    index = ZOMBIE_HURT_SEQUENCE[i];
+                    break;
+                }
+            }
         } else if (zombieCombatState === 'windup') {
             // v8.6: the supplied crouching pose is the pre-attack pose.
             frames = zombieCombatFrames.idle;
@@ -1911,7 +1926,8 @@ export function createLevel1(ui) {
         // same stagger do not endlessly extend the stun animation.
         if (zombieCombatState !== 'hit' || nowMs >= zombieHitStaggerUntil) {
             const awayDir = zombieCombatX >= player.x ? 1 : -1;
-            const duration = heavy ? 620 : 360;
+            // Keep the sprite reaction and gameplay stagger in sync. Heavy hits use a slightly longer hold.
+            const duration = heavy ? Math.max(620, ZOMBIE_HURT_TOTAL_MS + 60) : ZOMBIE_HURT_TOTAL_MS;
             const strength = heavy ? 62 : 34;
 
             zombieCombatState = 'hit';
