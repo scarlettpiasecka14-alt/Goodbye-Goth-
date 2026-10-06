@@ -158,14 +158,19 @@ const zombieCombatFrames = {
 // v7.6: use the complete 12-frame side-profile cycle at a readable pace.
 // Slightly slower timing preserves the weight transfer instead of making the feet blur together.
 const ZOMBIE_WALK_SEQUENCE = Array.from({ length: 12 }, (_, i) => i);
-const ZOMBIE_WALK_FRAME_MS = Array(12).fill(150);
+// v8.7: speed up the animation cycle itself by ~15% without changing Zombie's movement speed.
+const ZOMBIE_WALK_FRAME_MS = Array(12).fill(128);
 const ZOMBIE_WALK_CYCLE_MS = ZOMBIE_WALK_FRAME_MS.reduce((a, b) => a + b, 0);
 zombieCombatFrames.idle[0].src = 'assets/characters/combat/zombie-prepost.png?v=8600';
 zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.png?v=7600`);
 zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i + 1}.png?v=8600`);
 zombieCombatFrames.death.forEach((img, i) => img.src = `assets/characters/combat/zombie-death-${i + 1}.png?v=8600`);
-const ZOMBIE_DEATH_FRAME_MS = [120, 100, 100, 110, 130, 150, 180, 280];
+// v8.7: slow the visible collapse by ~15%, then hold the final grounded pose for 5 seconds.
+const ZOMBIE_DEATH_FRAME_MS = [141, 118, 118, 129, 153, 176, 212, 5000];
 const ZOMBIE_DEATH_TOTAL_MS = ZOMBIE_DEATH_FRAME_MS.reduce((a, b) => a + b, 0);
+// v8.7: the supplied death PNGs have different transparent margins. These offsets
+// keep the visible bottom of each frame on the combat floor instead of floating.
+const ZOMBIE_DEATH_FLOOR_OFFSETS = [69, 67, 66, 71, 66, 58, 41, 41];
 
 /* v6.0: a complete Level 1 rebuild.
    The background is a clean, character-free cemetery illustration.
@@ -1705,10 +1710,10 @@ export function createLevel1(ui) {
             index = Math.floor(elapsed / frameMs) % frames.length;
         }
 
-        return { img: frames[index], targetHeight };
+        return { img: frames[index], targetHeight, frameIndex: index };
     }
 
-    function drawCombatImage(c, img, x, groundY, targetHeight, face, maxWidth = 270, alpha = 1, offsetX = 0, rotation = 0, sourceFacing = 'right') {
+    function drawCombatImage(c, img, x, groundY, targetHeight, face, maxWidth = 270, alpha = 1, offsetX = 0, rotation = 0, sourceFacing = 'right', offsetY = 0) {
         if (!img || !img.complete || !img.naturalWidth || !img.naturalHeight)
             return;
         const naturalScale = targetHeight / img.naturalHeight;
@@ -1721,7 +1726,7 @@ export function createLevel1(ui) {
         }
         c.save();
         c.globalAlpha = alpha;
-        c.translate(x + offsetX, groundY + 40);
+        c.translate(x + offsetX, groundY + 40 + offsetY);
         if (rotation)
             c.rotate(rotation);
         // Each animation set can have its own native facing direction.
@@ -1769,7 +1774,8 @@ export function createLevel1(ui) {
         const renderGroundY = walking ? enemyY + 25 : enemyY;
         const renderMaxWidth = (walking || dying) ? 760 : 380;
         const renderHeight = dying ? 415 : (walking ? Math.round(frame.targetHeight * 0.91) : frame.targetHeight);
-        drawCombatImage(c, frame.img, enemyX, renderGroundY, renderHeight, face, renderMaxWidth, alpha, offsetX, rotation, sourceFacing);
+        const deathFloorOffset = dying ? (ZOMBIE_DEATH_FLOOR_OFFSETS[frame.frameIndex] || 0) : 0;
+        drawCombatImage(c, frame.img, enemyX, renderGroundY, renderHeight, face, renderMaxWidth, alpha, offsetX, rotation, sourceFacing, deathFloorOffset);
 
         // Small impact sparks make the hit reaction readable without needing
         // another sprite sheet.
