@@ -1703,7 +1703,7 @@ export function createLevel1(ui) {
 
         if (zombieCombatState === 'intro') {
             frames = zombieCombatFrames.prep;
-            targetHeight = 720;
+            targetHeight = 415;
             let acc = 0;
             index = frames.length - 1;
             const t = Math.max(0, Math.min(ZOMBIE_PREP_TOTAL_MS - 1, elapsed));
@@ -1743,7 +1743,7 @@ export function createLevel1(ui) {
             }
         } else if (zombieCombatState === 'hit') {
             frames = zombieCombatFrames.hurt;
-            targetHeight = 720;
+            targetHeight = 415;
             const seq = zombieHitLong ? ZOMBIE_LONG_HURT_SEQUENCE : ZOMBIE_HURT_SEQUENCE;
             const times = zombieHitLong ? ZOMBIE_LONG_HURT_FRAME_MS : ZOMBIE_HURT_FRAME_MS;
             let acc = 0;
@@ -1757,7 +1757,7 @@ export function createLevel1(ui) {
             }
         } else if (zombieCombatState === 'windup') {
             frames = zombieCombatFrames.idle;
-            targetHeight = 720;
+            targetHeight = 415;
             index = 0;
         } else {
             index = Math.floor(elapsed / frameMs) % frames.length;
@@ -1794,7 +1794,9 @@ export function createLevel1(ui) {
     function drawZombieCombat(c, enemyX, enemyY, nowMs) {
         const useAI = !isBoss && target?.type === 'shambler';
         if (!useAI) {
-            drawZombieSprite(c, enemyX, enemyY, target?.type || (isBoss ? 'chain' : 'shambler'), 2.08, nowMs / 1000, false, player.x < enemyX ? 'left' : 'right');
+            const legacyScale = target?.type === 'chain' ? 2.55 : 2.08;
+            const renderY = target?.type === 'chain' ? enemyY - 15 : enemyY;
+            drawZombieSprite(c, enemyX, renderY, target?.type || (isBoss ? 'chain' : 'shambler'), legacyScale, nowMs / 1000, false, player.x < enemyX ? 'left' : 'right');
             return;
         }
 
@@ -1824,10 +1826,12 @@ export function createLevel1(ui) {
         // v8.0: keep the walking frames on the same combat ground line, but reduce
         // the oversized v7.9 walking render by 60%. The walk frames remain
         // separately scaled from the existing attack artwork.
-        const renderGroundY = walking ? enemyY + 25 : enemyY;
-        const prepOrReaction = zombieCombatState === 'intro' || zombieCombatState === 'windup' || zombieCombatState === 'hit';
-        const renderMaxWidth = (walking || dying) ? 760 : (prepOrReaction ? 980 : 380);
-        const renderHeight = dying ? 415 : (walking ? Math.round(frame.targetHeight * 0.91) : (prepOrReaction ? 720 : frame.targetHeight));
+        const renderGroundY = walking ? enemyY + 25 : enemyY + 22;
+        // Keep authored frame proportions intact. The old width cap shrank
+        // different PNGs by different amounts, making the Goth visibly grow
+        // and shrink during attack and reaction sequences.
+        const renderMaxWidth = 1400;
+        const renderHeight = dying ? 415 : (walking ? Math.round(frame.targetHeight * 0.91) : frame.targetHeight);
         const deathFloorOffset = dying ? (ZOMBIE_DEATH_FLOOR_OFFSETS[frame.frameIndex] || 0) : 0;
         drawCombatImage(c, frame.img, enemyX, renderGroundY, renderHeight, face, renderMaxWidth, alpha, offsetX, rotation, sourceFacing, deathFloorOffset);
 
@@ -1977,7 +1981,7 @@ export function createLevel1(ui) {
 
         // Every clear hit still deals its damage, but repeated hits during the
         // same stagger do not endlessly extend the stun animation.
-        if (zombieCombatState !== 'hit' || nowMs >= zombieHitStaggerUntil) {
+        if (zombieCombatState !== 'hit' || nowMs >= zombieHitStaggerUntil || longHit || heavy) {
             const awayDir = zombieCombatX >= player.x ? 1 : -1;
             const duration = longHit
                 ? ZOMBIE_LONG_HURT_TOTAL_MS
@@ -2265,6 +2269,11 @@ export function createLevel1(ui) {
             return;
         }
 
+        // Universal punch cadence. Every enemy now obeys the same minimum
+        // interval, so Zombie Goth cannot be click-spammed.
+        if (nowMs - lastAttackAt < 334)
+            return;
+
         if (nowMs - lastAttackAt > 900)
             comboCount = 0;
 
@@ -2294,7 +2303,6 @@ export function createLevel1(ui) {
             comboCount++;
             ui.combatStatus.textContent = `👊 HIT! ${damage} damage.`;
             const longHit = target?.type === 'shambler' && comboCount >= 3;
-            triggerZombieHitReaction(nowMs, false, longHit);
             if (combatHp <= 0) {
                 if (target?.type === 'shambler')
                     triggerZombieDeath(nowMs);
@@ -2302,10 +2310,10 @@ export function createLevel1(ui) {
                     setTimeout(() => endCombat(true), 180);
                 return;
             }
+            triggerZombieHitReaction(nowMs, false, longHit);
         } else {
             ui.combatStatus.textContent = '👊 Too far. Get closer.';
             comboCount = 0;
-            lastAttackAt = 0;
         }
 
         if (comboCount >= 3) {
@@ -2375,12 +2383,13 @@ export function createLevel1(ui) {
             ui.enemyHp.style.width = (combatHp / combatMax * 100) + '%';
             ui.enemyHpText.textContent = `${combatHp} / ${combatMax}`;
             ui.combatStatus.textContent = `💥 HEAVY HIT! ${damage} damage. Heavy attack on cooldown for 15s.`;
-            triggerZombieHitReaction(nowMs, true);
             if (combatHp <= 0) {
                 if (target?.type === 'shambler')
                     triggerZombieDeath(nowMs);
                 else
                     setTimeout(() => endCombat(true), 180);
+            } else {
+                triggerZombieHitReaction(nowMs, true);
             }
         } else {
             ui.combatStatus.textContent = '💥 Heavy attack missed.';
@@ -2489,6 +2498,7 @@ export function createLevel1(ui) {
             }
         }
         else {
+            hp = Math.max(1, Math.ceil(maxHp * 0.5));
             ui.deathText.textContent = 'The Goth got you. Olly wakes at the last checkpoint, bruised but ready for another shot.';
             ui.death.classList.remove('hidden');
             mode = 'dead';
@@ -2510,6 +2520,8 @@ export function createLevel1(ui) {
     }
     function backToMap() {
         ui.death.classList.add('hidden');
+        // Knockout recovery: Olly always re-enters the map at 50 HP.
+        hp = Math.max(1, Math.ceil(maxHp * 0.5));
         if (combatCheckpoint) {
             x = combatCheckpoint.x;
             y = combatCheckpoint.y;
@@ -2532,6 +2544,10 @@ export function createLevel1(ui) {
         relationshipDuration = 2600;
         relationshipStart = performance.now();
         ui.relationship.classList.remove('hidden');
+        const relationshipCopy = ui.relationship.querySelector('.ironic-copy');
+        if (relationshipCopy) {
+            relationshipCopy.textContent = 'The princess is rambling. Press WOULD YOU? when the moving marker lands inside the pink timing zone. Get 5 correct timings to complete the relationship challenge.';
+        }
         ui.wouldFeedback.textContent = 'The princess is rambling. Your job is to weaponise your timing. Round 1 of 5.';
         ui.wouldDisplay.textContent = '“Can I ask you a question...”';
         animateRelationship();

@@ -738,3 +738,68 @@ html,body,#app{height:100%;overflow:hidden}
   #relationship.overlay .relationship-image,
   #puzzle.overlay .quiz-image{width:96vw !important;max-height:42dvh !important}
 }
+
+
+/* v8.8 FINAL: combat is a true full-screen arena. */
+#combat.overlay{
+  position:fixed !important;
+  inset:0 !important;
+  z-index:5000 !important;
+  padding:0 !important;
+  border-radius:0 !important;
+  place-items:stretch !important;
+  overflow:hidden !important;
+  background:rgba(12,9,16,.98) !important;
+}
+#combat.overlay > .overlay-box{
+  width:100vw !important;
+  max-width:none !important;
+  height:100dvh !important;
+  max-height:none !important;
+  min-height:100dvh !important;
+  margin:0 !important;
+  padding:12px clamp(12px,2vw,28px) !important;
+  border-radius:0 !important;
+  box-sizing:border-box !important;
+  overflow:hidden !important;
+  display:flex !important;
+  flex-direction:column !important;
+}
+#combat .combat-arena{
+  width:100% !important;
+  flex:1 1 auto !important;
+  min-height:0 !important;
+  margin:10px 0 !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  overflow:hidden !important;
+}
+#combat .combat-arena canvas{
+  display:block !important;
+  width:100% !important;
+  height:auto !important;
+  max-width:none !important;
+  max-height:100% !important;
+  aspect-ratio:16/9 !important;
+  object-fit:contain !important;
+}
+
+/* v8.8: full-screen activity artwork. */
+#relationship.overlay .relationship-image{
+  width:min(94vw,1400px) !important;
+  max-width:1400px !important;
+  max-height:60dvh !important;
+}
+#relationship.overlay .story-title{display:none !important;}
+#relationship.overlay .ironic-copy{
+  width:min(92vw,1200px) !important;
+  max-width:1200px !important;
+  font-size:clamp(.9rem,1.35vw,1.05rem) !important;
+  line-height:1.42 !important;
+}
+#puzzle.overlay .quiz-image{
+  width:min(94vw,1400px) !important;
+  max-width:1400px !important;
+  max-height:57dvh !important;
+}
