@@ -147,21 +147,25 @@ zombieSprites.chain.src = 'assets/characters/chain-goth-clean.png?v=6513';
 // v7.6: Zombie Goth combat walk cycle uses the new 12-frame strict side-profile animation pass.
 // All 12 supplied side-profile poses are used in order. The game flips them only when the Goth needs to face the opposite direction.
 const zombieCombatFrames = {
-    idle: [1, 2, 3, 4].map(() => new Image()),
+    // v8.6: one consistent crouching pose for pre-attack, post-attack and recovery.
+    idle: [new Image()],
     walk: Array.from({ length: 12 }, () => new Image()),
-    // v8.5: single clean scratch attack sequence. The old lunge/bite artwork is
-    // no longer used for Zombie Goth combat until a replacement is available.
-    claw: [1, 2, 3, 4, 5].map(() => new Image())
+    // v8.6: clean five-pose scratch attack.
+    claw: [1, 2, 3, 4, 5].map(() => new Image()),
+    // v8.6: eight-frame collapse/death sequence.
+    death: Array.from({ length: 8 }, () => new Image())
 };
 // v7.6: use the complete 12-frame side-profile cycle at a readable pace.
 // Slightly slower timing preserves the weight transfer instead of making the feet blur together.
 const ZOMBIE_WALK_SEQUENCE = Array.from({ length: 12 }, (_, i) => i);
 const ZOMBIE_WALK_FRAME_MS = Array(12).fill(150);
 const ZOMBIE_WALK_CYCLE_MS = ZOMBIE_WALK_FRAME_MS.reduce((a, b) => a + b, 0);
-zombieCombatFrames.idle.forEach((img, i) => img.src = `assets/characters/combat/zombie-idle-${i + 1}.png?v=7110`);
+zombieCombatFrames.idle[0].src = 'assets/characters/combat/zombie-prepost.png?v=8600';
 zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.png?v=7600`);
-// v8.4: replace the old Zombie claw artwork with the new clean five-pose scratch attack.
-zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i + 1}.png?v=8400`);
+zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i + 1}.png?v=8600`);
+zombieCombatFrames.death.forEach((img, i) => img.src = `assets/characters/combat/zombie-death-${i + 1}.png?v=8600`);
+const ZOMBIE_DEATH_FRAME_MS = [120, 100, 100, 110, 130, 150, 180, 280];
+const ZOMBIE_DEATH_TOTAL_MS = ZOMBIE_DEATH_FRAME_MS.reduce((a, b) => a + b, 0);
 
 /* v6.0: a complete Level 1 rebuild.
    The background is a clean, character-free cemetery illustration.
@@ -893,6 +897,8 @@ export function createLevel1(ui) {
         zombieHitDirection = 1,
         zombieHitStrength = 0,
         zombieHitFlashUntil = 0,
+        zombieDeathStarted = false,
+        zombieDeathEndAt = 0,
         playerHurtUntil = 0,
         playerHurtStart = 0,
         playerHurtDirection = 1,
@@ -1438,6 +1444,8 @@ export function createLevel1(ui) {
         zombieHitDirection = 1;
         zombieHitStrength = 0;
         zombieHitFlashUntil = 0;
+        zombieDeathStarted = false;
+        zombieDeathEndAt = 0;
         playerHurtUntil = 0;
         playerHurtStart = 0;
         playerHurtDirection = 1;
@@ -1671,19 +1679,28 @@ export function createLevel1(ui) {
             frames = zombieCombatFrames.claw;
             const total = 720;
             index = Math.min(frames.length - 1, Math.floor(Math.min(.999, elapsed / total) * frames.length));
+        } else if (zombieCombatState === 'death') {
+            frames = zombieCombatFrames.death;
+            targetHeight = 415;
+            let acc = 0;
+            index = frames.length - 1;
+            for (let i = 0; i < ZOMBIE_DEATH_FRAME_MS.length; i++) {
+                acc += ZOMBIE_DEATH_FRAME_MS[i];
+                if (elapsed < acc) {
+                    index = i;
+                    break;
+                }
+            }
         } else if (zombieCombatState === 'hit') {
             frames = zombieCombatFrames.idle;
-            // A slightly off-balance idle frame reads better as a hit reaction
-            // than repeating the walk cycle while the enemy is staggered.
-            index = 1;
-            targetHeight = 380;
+            // The supplied pre/post pose is also the clean base for the brief hit state.
+            index = 0;
+            targetHeight = 400;
         } else if (zombieCombatState === 'windup') {
-            // v8.5: the wind-up now uses the new scratch frames only.
-            frames = zombieCombatFrames.claw;
-            targetHeight = 380;
-            const windupTotal = 360;
-            const p = Math.max(0, Math.min(1, elapsed / windupTotal));
-            index = p < .58 ? 0 : (p < .86 ? 1 : 2);
+            // v8.6: the supplied crouching pose is the pre-attack pose.
+            frames = zombieCombatFrames.idle;
+            targetHeight = 415;
+            index = 0;
         } else {
             index = Math.floor(elapsed / frameMs) % frames.length;
         }
@@ -1708,7 +1725,7 @@ export function createLevel1(ui) {
         if (rotation)
             c.rotate(rotation);
         // Each animation set can have its own native facing direction.
-        // The new v7.6 walk frames face LEFT; the existing attack frames face RIGHT.
+        // The current Zombie combat assets are authored facing LEFT.
         c.scale(face === sourceFacing ? 1 : -1, 1);
         c.imageSmoothingEnabled = true;
         c.imageSmoothingQuality = 'high';
@@ -1739,8 +1756,9 @@ export function createLevel1(ui) {
 
         const face = player.x < enemyX ? 'left' : 'right';
         const walking = zombieCombatState === 'chase';
-        // v8.5: both the existing walk and the new scratch frames are authored
-        // facing LEFT. Flip only when the player is to the right of the Zombie.
+        const dying = zombieCombatState === 'death';
+        // v8.6: attack/death/pre-post assets are authored facing LEFT.
+        // Flip only when Olly is to the right of Zombie so the action points toward him.
         const sourceFacing = 'left';
         // The new walk frames are tightly cropped to the actual character pixels.
         // Their bottom edge should sit directly on the same combat floor as Olly.
@@ -1749,8 +1767,8 @@ export function createLevel1(ui) {
         // the oversized v7.9 walking render by 60%. The walk frames remain
         // separately scaled from the existing attack artwork.
         const renderGroundY = walking ? enemyY + 25 : enemyY;
-        const renderMaxWidth = walking ? 760 : 380;
-        const renderHeight = walking ? Math.round(frame.targetHeight * 0.91) : frame.targetHeight;
+        const renderMaxWidth = (walking || dying) ? 760 : 380;
+        const renderHeight = dying ? 415 : (walking ? Math.round(frame.targetHeight * 0.91) : frame.targetHeight);
         drawCombatImage(c, frame.img, enemyX, renderGroundY, renderHeight, face, renderMaxWidth, alpha, offsetX, rotation, sourceFacing);
 
         // Small impact sparks make the hit reaction readable without needing
@@ -1779,6 +1797,20 @@ export function createLevel1(ui) {
         }
     }
 
+    function triggerZombieDeath(nowMs) {
+        if (mode !== 'combat' || isBoss || target?.type !== 'shambler' || zombieDeathStarted)
+            return;
+
+        zombieDeathStarted = true;
+        zombieDeathEndAt = nowMs + ZOMBIE_DEATH_TOTAL_MS + 80;
+        zombieCombatState = 'death';
+        zombieCombatStateStart = nowMs;
+        zombieCombatAttackHit = true;
+        enemyAttackPhase = 'death';
+        zombieCombatNextDecision = Infinity;
+        ui.combatStatus.textContent = '💀 ZOMBIE GOTH DEFEATED.';
+    }
+
     function chooseZombieAttack(nowMs) {
         // v8.5: use only the new clean scratch attack. The previous lunge/bite
         // artwork was visually inconsistent and could make the Zombie appear to
@@ -1794,6 +1826,12 @@ export function createLevel1(ui) {
     function updateZombieAI(dt, nowMs) {
         if (mode !== 'combat' || isBoss || target?.type !== 'shambler' || playerDeathTriggered)
             return;
+
+        if (zombieCombatState === 'death') {
+            if (nowMs >= zombieDeathEndAt)
+                endCombat(true);
+            return;
+        }
 
         if (zombieCombatState === 'hit') {
             if (nowMs >= zombieHitStaggerUntil) {
@@ -2148,7 +2186,10 @@ export function createLevel1(ui) {
             ui.combatStatus.textContent = `👊 HIT! ${damage} damage.`;
             triggerZombieHitReaction(nowMs, false);
             if (combatHp <= 0) {
-                setTimeout(() => endCombat(true), 180);
+                if (target?.type === 'shambler')
+                    triggerZombieDeath(nowMs);
+                else
+                    setTimeout(() => endCombat(true), 180);
                 return;
             }
         } else {
@@ -2224,8 +2265,12 @@ export function createLevel1(ui) {
             ui.enemyHpText.textContent = `${combatHp} / ${combatMax}`;
             ui.combatStatus.textContent = `💥 HEAVY HIT! ${damage} damage. Heavy attack on cooldown for 15s.`;
             triggerZombieHitReaction(nowMs, true);
-            if (combatHp <= 0)
-                setTimeout(() => endCombat(true), 180);
+            if (combatHp <= 0) {
+                if (target?.type === 'shambler')
+                    triggerZombieDeath(nowMs);
+                else
+                    setTimeout(() => endCombat(true), 180);
+            }
         } else {
             ui.combatStatus.textContent = '💥 Heavy attack missed.';
         }
