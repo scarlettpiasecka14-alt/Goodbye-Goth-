@@ -920,6 +920,7 @@ export function createLevel1(ui) {
         zombieCombatState = 'chase',
         zombieCombatStateStart = 0,
         zombieCombatAttackType = 'claw',
+        zombieAttackCycle = 0,
         zombieCombatAttackHit = false,
         zombieCombatNextDecision = 0,
         zombieCombatWalkIndex = 0,
@@ -1472,6 +1473,7 @@ export function createLevel1(ui) {
         zombieCombatState = 'chase';
         zombieCombatStateStart = performance.now();
         zombieCombatAttackType = 'claw';
+        zombieAttackCycle = 0;
         zombieCombatAttackHit = false;
         zombieCombatNextDecision = performance.now() + 450;
         zombieCombatWalkIndex = 0;
@@ -1703,7 +1705,8 @@ export function createLevel1(ui) {
 
         if (zombieCombatState === 'intro') {
             frames = zombieCombatFrames.prep;
-            targetHeight = 415;
+            // v8.9: non-walk/non-attack animation pass is 20% larger.
+            targetHeight = 498;
             let acc = 0;
             index = frames.length - 1;
             const t = Math.max(0, Math.min(ZOMBIE_PREP_TOTAL_MS - 1, elapsed));
@@ -1713,7 +1716,8 @@ export function createLevel1(ui) {
             }
         } else if (zombieCombatState === 'chase') {
             frames = zombieCombatFrames.walk;
-            targetHeight = 415;
+            // v8.9: walk is 10% smaller than the v8.8 visible walk size.
+            targetHeight = 340;
             const cycleTime = ((zombieCombatWalkIndex % ZOMBIE_WALK_CYCLE_MS) + ZOMBIE_WALK_CYCLE_MS) % ZOMBIE_WALK_CYCLE_MS;
             let acc = 0;
             let sequenceIndex = 0;
@@ -1725,13 +1729,16 @@ export function createLevel1(ui) {
                 }
             }
             index = ZOMBIE_WALK_SEQUENCE[sequenceIndex];
-        } else if (zombieCombatState === 'claw') {
+        } else if (zombieCombatState === 'claw' || zombieCombatState === 'heavyClaw') {
             frames = zombieCombatFrames.claw;
-            const total = 720;
+            // v8.9: all attack poses are 10% smaller than v8.8.
+            targetHeight = 374;
+            const total = zombieCombatState === 'heavyClaw' ? 900 : 720;
             index = Math.min(frames.length - 1, Math.floor(Math.min(.999, elapsed / total) * frames.length));
         } else if (zombieCombatState === 'death') {
             frames = zombieCombatFrames.death;
-            targetHeight = 415;
+            // v8.9: death/reaction artwork is 20% larger.
+            targetHeight = 498;
             let acc = 0;
             index = frames.length - 1;
             for (let i = 0; i < ZOMBIE_DEATH_FRAME_MS.length; i++) {
@@ -1743,7 +1750,8 @@ export function createLevel1(ui) {
             }
         } else if (zombieCombatState === 'hit') {
             frames = zombieCombatFrames.hurt;
-            targetHeight = 415;
+            // v8.9: hurt/reaction artwork is 20% larger.
+            targetHeight = 498;
             const seq = zombieHitLong ? ZOMBIE_LONG_HURT_SEQUENCE : ZOMBIE_HURT_SEQUENCE;
             const times = zombieHitLong ? ZOMBIE_LONG_HURT_FRAME_MS : ZOMBIE_HURT_FRAME_MS;
             let acc = 0;
@@ -1757,7 +1765,8 @@ export function createLevel1(ui) {
             }
         } else if (zombieCombatState === 'windup') {
             frames = zombieCombatFrames.idle;
-            targetHeight = 415;
+            // v8.9: crouch/windup is 20% larger.
+            targetHeight = 498;
             index = 0;
         } else {
             index = Math.floor(elapsed / frameMs) % frames.length;
@@ -1823,15 +1832,13 @@ export function createLevel1(ui) {
         // The new walk frames are tightly cropped to the actual character pixels.
         // Their bottom edge should sit directly on the same combat floor as Olly.
         // Existing attack frames retain their previous rendering offset.
-        // v8.0: keep the walking frames on the same combat ground line, but reduce
-        // the oversized v7.9 walking render by 60%. The walk frames remain
-        // separately scaled from the existing attack artwork.
+        // v8.9: walk and attack are deliberately 10% smaller; every other
+        // Zombie combat animation is 20% larger than its v8.8 size.
         const renderGroundY = walking ? enemyY + 25 : enemyY + 22;
-        // Keep authored frame proportions intact. The old width cap shrank
-        // different PNGs by different amounts, making the Goth visibly grow
-        // and shrink during attack and reaction sequences.
+        // Never constrain by width. The supplied frames have different native
+        // aspect ratios, so a width cap makes the character visibly grow/shrink.
         const renderMaxWidth = 1400;
-        const renderHeight = dying ? 415 : (walking ? Math.round(frame.targetHeight * 0.91) : frame.targetHeight);
+        const renderHeight = Math.round(frame.targetHeight);
         const deathFloorOffset = dying ? (ZOMBIE_DEATH_FLOOR_OFFSETS[frame.frameIndex] || 0) : 0;
         drawCombatImage(c, frame.img, enemyX, renderGroundY, renderHeight, face, renderMaxWidth, alpha, offsetX, rotation, sourceFacing, deathFloorOffset);
 
@@ -1876,15 +1883,19 @@ export function createLevel1(ui) {
     }
 
     function chooseZombieAttack(nowMs) {
-        // v8.5: use only the new clean scratch attack. The previous lunge/bite
-        // artwork was visually inconsistent and could make the Zombie appear to
-        // attack in the wrong direction. A new lunge sequence can be added later.
-        zombieCombatAttackType = 'claw';
+        // v8.9: deterministic AI pattern = 2 regular attacks, then 1 heavy.
+        // The heavy reuses the approved claw artwork but has slower timing, a
+        // wider hit window and double the regular damage.
+        const isHeavy = zombieAttackCycle === 2;
+        zombieCombatAttackType = isHeavy ? 'heavyClaw' : 'claw';
+        zombieAttackCycle = (zombieAttackCycle + 1) % 3;
         zombieCombatAttackHit = false;
         zombieCombatState = 'windup';
         zombieCombatStateStart = nowMs;
         enemyAttackPhase = 'windup';
-        ui.combatStatus.textContent = 'The Zombie Goth draws back her claws.';
+        ui.combatStatus.textContent = isHeavy
+            ? '⚠️ The Zombie Goth is charging a HEAVY CLAW.'
+            : 'The Zombie Goth draws back her claws.';
     }
 
     function updateZombieAI(dt, nowMs) {
@@ -1952,13 +1963,17 @@ export function createLevel1(ui) {
             return;
         }
 
-        if (zombieCombatState === 'claw') {
+        if (zombieCombatState === 'claw' || zombieCombatState === 'heavyClaw') {
             const elapsed = nowMs - zombieCombatStateStart;
-            if (!zombieCombatAttackHit && elapsed >= 330 && elapsed <= 500) {
+            const heavy = zombieCombatState === 'heavyClaw';
+            const hitStart = heavy ? 390 : 330;
+            const hitEnd = heavy ? 620 : 500;
+            const attackTotal = heavy ? 900 : 720;
+            if (!zombieCombatAttackHit && elapsed >= hitStart && elapsed <= hitEnd) {
                 zombieCombatAttackHit = true;
-                applyZombieDamage(12, 210, 45, nowMs, 'CLAW SWIPE');
+                applyZombieDamage(heavy ? 24 : 12, heavy ? 250 : 210, heavy ? 58 : 45, nowMs, heavy ? 'HEAVY CLAW' : 'CLAW SWIPE');
             }
-            if (elapsed >= 720) {
+            if (elapsed >= attackTotal) {
                 zombieCombatState = 'recover';
                 zombieCombatStateStart = nowMs;
                 enemyAttackPhase = 'recover';
@@ -2133,7 +2148,7 @@ export function createLevel1(ui) {
             cctx.translate(cx, cy);
             cctx.scale(pulse, pulse);
             cctx.fillStyle = 'rgba(25,13,24,.94)';
-            cctx.strokeStyle = zombieCombatAttackType === 'lunge'
+            cctx.strokeStyle = zombieCombatAttackType === 'heavyClaw'
                 ? 'rgba(229,104,168,.96)'
                 : 'rgba(243,191,211,.96)';
             cctx.lineWidth = 3;
