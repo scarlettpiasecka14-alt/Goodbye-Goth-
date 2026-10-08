@@ -1,4 +1,4 @@
-/* Goodbye Goth v8.11 - corrected Zombie Goth AI + player reaction/KO pass. */
+/* Goodbye Goth v8.12 - Zombie Goth sizing/countdown/cooldown polish + player reaction/KO pass. */
 const WORLD_W = 1536,
     WORLD_H = 1024;
 const SAVE_KEY = 'goodbyeGothSave_v6';
@@ -61,7 +61,9 @@ ollyReactionSprites.ko.forEach((img, i) => img.src = `assets/characters/combat/o
 const OLLY_HURT_FRAME_MS = [70, 80, 80, 90, 100, 150];
 const OLLY_HURT_TOTAL_MS = OLLY_HURT_FRAME_MS.reduce((a, b) => a + b, 0);
 const OLLY_KO_FRAME_MS = [90, 100, 120, 140, 170, 190, 210, 430];
-const OLLY_KO_TOTAL_MS = OLLY_KO_FRAME_MS.reduce((a, b) => a + b, 0);
+const OLLY_KO_ANIMATION_MS = OLLY_KO_FRAME_MS.reduce((a, b) => a + b, 0);
+const OLLY_KO_HOLD_MS = 5000;
+const OLLY_KO_TOTAL_MS = OLLY_KO_ANIMATION_MS + OLLY_KO_HOLD_MS;
 
 // v6.5.10 readability pass: use a smaller set of deliberate keyframes rather than
 // playing every dramatic pose in the supplied sheets. This keeps combat readable
@@ -1757,20 +1759,16 @@ export function createLevel1(ui) {
         // v7.9: walking frames receive the new enlarged arena render and floor alignment.
 
         if (zombieCombatState === 'intro') {
+            // v8.12: the prep sequence is ONLY the Zombie's staring pose during
+            // the 3-2-1-FIGHT intro. Freeze one clean frame so it reads as a
+            // deliberate stare rather than a slow, bitty animation.
             frames = zombieCombatFrames.prep;
-            // v8.9: non-walk/non-attack animation pass is 20% larger.
-            targetHeight = 498;
-            let acc = 0;
-            index = frames.length - 1;
-            const t = Math.max(0, Math.min(ZOMBIE_PREP_TOTAL_MS - 1, elapsed));
-            for (let i = 0; i < ZOMBIE_PREP_FRAME_MS.length; i++) {
-                acc += ZOMBIE_PREP_FRAME_MS[i];
-                if (t < acc) { index = i; break; }
-            }
+            targetHeight = 440;
+            index = 0;
         } else if (zombieCombatState === 'chase') {
             frames = zombieCombatFrames.walk;
-            // v8.9: walk is 10% smaller than the v8.8 visible walk size.
-            targetHeight = 340;
+            // v8.12: all Zombie walk artwork is 15% smaller than v8.11.
+            targetHeight = 289;
             const cycleTime = ((zombieCombatWalkIndex % ZOMBIE_WALK_CYCLE_MS) + ZOMBIE_WALK_CYCLE_MS) % ZOMBIE_WALK_CYCLE_MS;
             let acc = 0;
             let sequenceIndex = 0;
@@ -1784,13 +1782,14 @@ export function createLevel1(ui) {
             index = ZOMBIE_WALK_SEQUENCE[sequenceIndex];
         } else if (zombieCombatState === 'claw') {
             frames = zombieCombatFrames.claw;
-            // v8.11: regular attack is smaller than the walk.
-            targetHeight = 315;
+            // v8.12: all Zombie attack artwork is 15% smaller than v8.11.
+            targetHeight = 268;
             const total = 720;
             index = Math.min(frames.length - 1, Math.floor(Math.min(.999, elapsed / total) * frames.length));
         } else if (zombieCombatState === 'heavyKick') {
             frames = zombieCombatFrames.heavyKick;
-            targetHeight = 330;
+            // v8.12: heavy kick is also 15% smaller than v8.11.
+            targetHeight = 281;
             const total = 1000;
             index = Math.min(frames.length - 1, Math.floor(Math.min(.999, elapsed / total) * frames.length));
         } else if (zombieCombatState === 'death') {
@@ -1820,10 +1819,20 @@ export function createLevel1(ui) {
                     break;
                 }
             }
-        } else if (zombieCombatState === 'ready' || zombieCombatState === 'windup' || zombieCombatState === 'recover') {
+        } else if (zombieCombatState === 'windup') {
+            // v8.12: attack telegraph uses the actual attack's first pose. The
+            // crouched ready pose is reserved for the post-countdown ready state.
+            if (zombieCombatAttackType === 'heavyKick') {
+                frames = zombieCombatFrames.heavyKick;
+                targetHeight = 281;
+            } else {
+                frames = zombieCombatFrames.claw;
+                targetHeight = 268;
+            }
+            index = 0;
+        } else if (zombieCombatState === 'ready' || zombieCombatState === 'recover') {
             frames = zombieCombatFrames.idle;
-            // v8.11: approved crouch-ready pose is intentionally larger and is
-            // used after the countdown and during post-attack recovery.
+            // Keep the approved crouched ready pose clearly larger than the walk.
             targetHeight = 440;
             index = 0;
         } else {
@@ -1951,7 +1960,7 @@ export function createLevel1(ui) {
         zombieCombatStateStart = nowMs;
         enemyAttackPhase = 'windup';
         ui.combatStatus.textContent = isHeavy
-            ? '⚠️ The Zombie Goth is charging a HEAVY CLAW.'
+            ? '⚠️ The Zombie Goth is charging a HEAVY KICK.'
             : 'The Zombie Goth draws back her claws.';
     }
 
@@ -2108,6 +2117,9 @@ export function createLevel1(ui) {
         stats();
 
         const awayDir = player.x < zombieCombatX ? -1 : 1;
+        // Face the Zombie who just hit Olly. If the Zombie is on Olly's left,
+        // Olly's hurt animation must face left, and vice versa.
+        combatFacing = zombieCombatX < player.x ? 'left' : 'right';
         playerHurtUntil = nowMs + OLLY_HURT_TOTAL_MS;
         playerHurtStart = nowMs;
         playerHurtDirection = awayDir;
@@ -2206,24 +2218,26 @@ export function createLevel1(ui) {
         drawZombieCombat(cctx, enemyX, enemyY, nowMs);
         drawZombieCountdown(cctx, nowMs);
 
-        // Player HP display stays inside combat so the player can always see it.
+        // v8.12: compact player HP bar sits directly beneath the enemy HP HUD.
+        // It remains out of 100 HP but uses roughly half the width of the old
+        // player panel so the arena stays visually clean.
         cctx.save();
         cctx.fillStyle = 'rgba(18,12,22,.88)';
         cctx.strokeStyle = 'rgba(239,183,201,.55)';
         cctx.lineWidth = 1.5;
         cctx.beginPath();
-        cctx.roundRect(24, 24, 300, 68, 12);
+        cctx.roundRect(24, 18, 205, 48, 10);
         cctx.fill();
         cctx.stroke();
         cctx.fillStyle = '#f6eaf0';
-        cctx.font = '900 18px Georgia';
-        cctx.fillText('OLLY', 40, 49);
-        cctx.font = '700 16px system-ui';
-        cctx.fillText(`${hp} / ${maxHp} HP`, 220, 49);
+        cctx.font = '900 15px Georgia';
+        cctx.fillText('OLLY', 36, 38);
+        cctx.font = '700 13px system-ui';
+        cctx.fillText(`${hp} / ${maxHp}`, 88, 38);
         cctx.fillStyle = 'rgba(255,255,255,.16)';
-        cctx.fillRect(40, 60, 264, 14);
+        cctx.fillRect(36, 46, 177, 9);
         cctx.fillStyle = '#e787ad';
-        cctx.fillRect(40, 60, 264 * Math.max(0, Math.min(1, hp / Math.max(1, maxHp))), 14);
+        cctx.fillRect(36, 46, 177 * Math.max(0, Math.min(1, hp / Math.max(1, maxHp))), 9);
         cctx.restore();
 
         // Readable but not boring attack telegraph. It sits high enough to avoid
@@ -2235,8 +2249,8 @@ export function createLevel1(ui) {
             const progress = Math.max(0, Math.min(1, windupMs / windupTotal));
             const pulse = 1 + Math.sin(nowMs / 80) * .035;
             const shake = Math.sin(nowMs / 34) * 2.5 * progress;
-            const boxW = 420 + progress * 20;
-            const boxH = 62;
+            const boxW = 360 + progress * 18;
+            const boxH = 54;
             const cx = COMBAT_W / 2 + shake;
             const cy = 118;
 
@@ -2253,12 +2267,12 @@ export function createLevel1(ui) {
             cctx.stroke();
 
             cctx.fillStyle = '#f6e6ee';
-            cctx.font = '900 27px system-ui';
+            cctx.font = '900 22px system-ui';
             cctx.textAlign = 'center';
             cctx.fillText('! ATTACK INCOMING !', 0, -2);
 
             cctx.fillStyle = '#e8a9c4';
-            cctx.font = '800 13px system-ui';
+            cctx.font = '800 11px system-ui';
             cctx.fillText(
                 zombieCombatAttackType === 'heavyKick'
                     ? 'HEAVY KICK  •  MOVE / DODGE / JUMP'
@@ -2269,18 +2283,11 @@ export function createLevel1(ui) {
             cctx.restore();
         }
 
-        if (nowMs < attackCooldownUntil) {
-            const seconds = Math.max(0, (attackCooldownUntil - nowMs) / 1000);
-            cctx.fillStyle = '#efb7c9';
-            cctx.font = '900 20px system-ui';
-            cctx.textAlign = 'center';
-            cctx.fillText(`PUNCH COOLDOWN  ${seconds.toFixed(1)}s`, COMBAT_W / 2, COMBAT_H - 36);
-        } else {
-            cctx.fillStyle = '#c9b6c2';
-            cctx.font = '700 15px system-ui';
-            cctx.textAlign = 'center';
-            const remaining = Math.max(0, 3 - comboCount);
-            cctx.fillText(`${remaining} punch${remaining === 1 ? '' : 'es'} before cooldown`, COMBAT_W / 2, COMBAT_H - 36);
+        // v8.12: move the punch counter fully into the lower status bar.
+        if (ui.combatStatus) {
+            ui.combatStatus.dataset.comboHint = nowMs < attackCooldownUntil
+                ? `PUNCH COOLDOWN  ${Math.max(0, (attackCooldownUntil - nowMs) / 1000).toFixed(1)}s`
+                : `${Math.max(0, 3 - comboCount)} punch${Math.max(0, 3 - comboCount) === 1 ? '' : 'es'} before cooldown`;
         }
     }
 
@@ -2359,6 +2366,18 @@ export function createLevel1(ui) {
             (target?.type === 'chain')
                 ? 'The Chain Goth is quick. Defeat both Level 1 Goths to unlock Heavy Attack. Make it count.'
                 : (bossFight ? 'The Queen is waiting. Your Heavy Attack is ready.' : 'GET READY...');
+        if (ui.combatStatus) {
+            ui.combatStatus.dataset.comboHint = '3 punches before cooldown';
+            ui.combatStatus.style.position = 'relative';
+            ui.combatStatus.style.marginTop = '16px';
+            ui.combatStatus.style.paddingRight = '250px';
+            if (!document.getElementById('goodbye-goth-combo-hint-style')) {
+                const style = document.createElement('style');
+                style.id = 'goodbye-goth-combo-hint-style';
+                style.textContent = `#combat-status[data-combo-hint]:not([data-combo-hint=\"\"])::after{content:attr(data-combo-hint);position:absolute;right:18px;top:50%;transform:translateY(-50%);font:800 14px system-ui,sans-serif;color:#efb7c9;letter-spacing:.1px;white-space:nowrap;pointer-events:none}`;
+                document.head.appendChild(style);
+            }
+        }
         ui.combat.classList.remove('hidden');
         clearInterval(enemyTimer);
         enemyTimer = null;
@@ -2387,6 +2406,12 @@ export function createLevel1(ui) {
             const seconds = Math.ceil((attackCooldownUntil - nowMs) / 1000);
             ui.combatStatus.textContent = `⏳ Combo recovering. ${seconds}s.`;
             return;
+        }
+        if (comboCount >= 3) {
+            // The five-second lockout has completed. Start a fresh three-hit
+            // sequence on the next successful punch.
+            comboCount = 0;
+            attackCooldownUntil = 0;
         }
 
         // Universal punch cadence. Every enemy now obeys the same minimum
@@ -2428,8 +2453,9 @@ export function createLevel1(ui) {
             }
             triggerZombieHitReaction(nowMs, false, false);
         } else {
+            // A miss does not erase successful hits already landed. The combo
+            // counter represents successful punches only.
             ui.combatStatus.textContent = '👊 Too far. Get closer.';
-            comboCount = 0;
         }
 
         if (comboCount >= 3) {
