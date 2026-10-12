@@ -189,7 +189,9 @@ const ZOMBIE_WALK_SEQUENCE = Array.from({ length: 12 }, (_, i) => i);
 // v8.7: speed up the animation cycle itself by ~15% without changing Zombie's movement speed.
 const ZOMBIE_WALK_FRAME_MS = Array(12).fill(128);
 const ZOMBIE_WALK_CYCLE_MS = ZOMBIE_WALK_FRAME_MS.reduce((a, b) => a + b, 0);
-zombieCombatFrames.idle[0].src = 'assets/characters/combat/zombie-heavy-1.png?v=8110';
+// Use the dedicated crouched ready pose. The first heavy-kick frame belongs
+// exclusively to the kick animation and must not appear as the neutral/telegraph pose.
+zombieCombatFrames.idle[0].src = 'assets/characters/combat/zombie-ready-crouch.png?v=8111';
 zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.png?v=7600`);
 zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i + 1}.png?v=8600`);
 zombieCombatFrames.heavyKick.forEach((img, i) => img.src = `assets/characters/combat/zombie-heavy-${i + 1}.png?v=8110`);
@@ -204,8 +206,13 @@ zombieCountdownFrames.fight.src = 'assets/characters/combat/zombie-countdown-fig
 const ZOMBIE_HURT_SEQUENCE = [0, 1, 2, 3, 2, 1, 0];
 const ZOMBIE_HURT_FRAME_MS = [60, 65, 80, 100, 75, 65, 120];
 const ZOMBIE_HURT_TOTAL_MS = ZOMBIE_HURT_FRAME_MS.reduce((a, b) => a + b, 0);
-const ZOMBIE_PREP_FRAME_MS = Array(8).fill(625);
-const ZOMBIE_PREP_TOTAL_MS = ZOMBIE_PREP_FRAME_MS.reduce((a, b) => a + b, 0);
+// Keep the original 5-second prep window, but animate its existing frames at a
+// smooth pace in a gentle ping-pong loop rather than pausing for 625 ms per frame.
+// The final prep frame is held for the last second of the countdown.
+const ZOMBIE_PREP_FRAME_MS = 125;
+const ZOMBIE_PREP_SEQUENCE = [0, 1, 2, 3, 4, 5, 6, 7, 6, 5, 4, 3, 2, 1];
+const ZOMBIE_PREP_CYCLE_MS = ZOMBIE_PREP_FRAME_MS * ZOMBIE_PREP_SEQUENCE.length;
+const ZOMBIE_PREP_TOTAL_MS = 5000;
 const ZOMBIE_COUNTDOWN_PHASE_MS = 1500;
 const ZOMBIE_INTRO_TOTAL_MS = ZOMBIE_COUNTDOWN_PHASE_MS * 4;
 const ZOMBIE_LONG_HURT_SEQUENCE = [0, 1, 2, 3, 4, 5, 6, 7, 6, 5, 4, 3, 2, 1, 0];
@@ -1318,11 +1325,27 @@ export function createLevel1(ui) {
             return;
         }
     }
+    function matchArtworkLetterboxing(img) {
+        if (!img) return;
+        // Use the page's actual background colour for any object-fit letterboxing.
+        // This changes the framing only; the underlying artwork remains untouched.
+        let pageBackground = '#18121b';
+        try {
+            const computedBackground = window.getComputedStyle(document.body).backgroundColor;
+            if (computedBackground && computedBackground !== 'rgba(0, 0, 0, 0)') {
+                pageBackground = computedBackground;
+            }
+        } catch (_) { /* Keep the matching plum fallback in non-browser test contexts. */ }
+        img.style.background = pageBackground;
+    }
+
     function openPrincessQuestion() {
         mode = 'puzzle';
         const img = document.querySelector('#puzzle .quiz-image');
-        if (img)
+        if (img) {
             img.src = 'assets/encounters/level1/princess-question-art.png?v=501';
+            matchArtworkLetterboxing(img);
+        }
         ui.puzzle.classList.remove('hidden');
         ui.puzzleFeedback.textContent = 'Choose wisely. The Goths have inexplicably made this a formal assessment.';
     }
@@ -1760,12 +1783,12 @@ export function createLevel1(ui) {
             frames = zombieCombatFrames.prep;
             // v8.9: non-walk/non-attack animation pass is 20% larger.
             targetHeight = 498;
-            let acc = 0;
-            index = frames.length - 1;
-            const t = Math.max(0, Math.min(ZOMBIE_PREP_TOTAL_MS - 1, elapsed));
-            for (let i = 0; i < ZOMBIE_PREP_FRAME_MS.length; i++) {
-                acc += ZOMBIE_PREP_FRAME_MS[i];
-                if (t < acc) { index = i; break; }
+            const t = Math.max(0, elapsed);
+            if (t >= ZOMBIE_PREP_TOTAL_MS) {
+                index = frames.length - 1;
+            } else {
+                const sequenceIndex = Math.floor((t % ZOMBIE_PREP_CYCLE_MS) / ZOMBIE_PREP_FRAME_MS);
+                index = ZOMBIE_PREP_SEQUENCE[sequenceIndex];
             }
         } else if (zombieCombatState === 'chase') {
             frames = zombieCombatFrames.walk;
@@ -2662,9 +2685,17 @@ export function createLevel1(ui) {
         relationshipDuration = 2600;
         relationshipStart = performance.now();
         ui.relationship.classList.remove('hidden');
+        const relationshipImage = ui.relationship.querySelector('.relationship-image');
+        matchArtworkLetterboxing(relationshipImage);
         const relationshipCopy = ui.relationship.querySelector('.ironic-copy');
         if (relationshipCopy) {
-            relationshipCopy.textContent = 'The princess is rambling. Press WOULD YOU? when the moving marker lands inside the pink timing zone. Get 5 correct timings to complete the relationship challenge.';
+            relationshipCopy.textContent = 'Princesses have lots of important things to say, but sometimes they lose their train of thought along the way... and all they can manage is “Would you...?”\n\nPress WOULD YOU? in time with the princess to complete the challenge.';
+            relationshipCopy.style.textAlign = 'center';
+            relationshipCopy.style.whiteSpace = 'pre-line';
+            relationshipCopy.style.width = '100%';
+            relationshipCopy.style.boxSizing = 'border-box';
+            relationshipCopy.style.marginLeft = 'auto';
+            relationshipCopy.style.marginRight = 'auto';
         }
         ui.wouldFeedback.textContent = 'The princess is rambling. Your job is to weaponise your timing. Round 1 of 5.';
         ui.wouldDisplay.textContent = '“Can I ask you a question...”';
