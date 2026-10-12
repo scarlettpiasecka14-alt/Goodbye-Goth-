@@ -210,7 +210,7 @@ const ZOMBIE_HURT_TOTAL_MS = ZOMBIE_HURT_FRAME_MS.reduce((a, b) => a + b, 0);
 // smooth pace in a gentle ping-pong loop rather than pausing for 625 ms per frame.
 // The final prep frame is held for the last second of the countdown.
 const ZOMBIE_PREP_FRAME_MS = 125;
-const ZOMBIE_PREP_SEQUENCE = [0, 1, 2, 3, 4, 5, 6, 7, 6, 5, 4, 3, 2, 1];
+const ZOMBIE_PREP_SEQUENCE = [0, 1, 2, 3, 4, 5, 6, 7];
 const ZOMBIE_PREP_CYCLE_MS = ZOMBIE_PREP_FRAME_MS * ZOMBIE_PREP_SEQUENCE.length;
 const ZOMBIE_PREP_TOTAL_MS = 5000;
 const ZOMBIE_COUNTDOWN_PHASE_MS = 1500;
@@ -221,6 +221,7 @@ const ZOMBIE_LONG_HURT_TOTAL_MS = ZOMBIE_LONG_HURT_FRAME_MS.reduce((a, b) => a +
 // v8.7: slow the visible collapse by ~15%, then hold the final grounded pose for 5 seconds.
 const ZOMBIE_DEATH_FRAME_MS = [110, 100, 110, 120, 130, 145, 170, 700];
 const ZOMBIE_DEATH_TOTAL_MS = ZOMBIE_DEATH_FRAME_MS.reduce((a, b) => a + b, 0);
+const ZOMBIE_DEATH_HOLD_MS = 5000;
 // v8.7: the supplied death PNGs have different transparent margins. These offsets
 // keep the visible bottom of each frame on the combat floor instead of floating.
 const ZOMBIE_DEATH_FLOOR_OFFSETS = [69, 67, 66, 71, 66, 58, 41, 41];
@@ -1336,7 +1337,16 @@ export function createLevel1(ui) {
                 pageBackground = computedBackground;
             }
         } catch (_) { /* Keep the matching plum fallback in non-browser test contexts. */ }
-        img.style.background = pageBackground;
+        img.style.setProperty('background', pageBackground, 'important');
+        // The old wide image element forced object-fit:contain to paint black side bars.
+        // Let the element itself follow the artwork's native aspect ratio instead.
+        img.style.setProperty('width', 'auto', 'important');
+        img.style.setProperty('height', 'auto', 'important');
+        img.style.setProperty('max-width', '96vw', 'important');
+        img.style.setProperty('object-fit', 'contain', 'important');
+        img.style.setProperty('display', 'block', 'important');
+        img.style.setProperty('margin-left', 'auto', 'important');
+        img.style.setProperty('margin-right', 'auto', 'important');
     }
 
     function openPrincessQuestion() {
@@ -1787,7 +1797,8 @@ export function createLevel1(ui) {
             if (t >= ZOMBIE_PREP_TOTAL_MS) {
                 index = frames.length - 1;
             } else {
-                const sequenceIndex = Math.floor((t % ZOMBIE_PREP_CYCLE_MS) / ZOMBIE_PREP_FRAME_MS);
+                const frameDuration = ZOMBIE_PREP_TOTAL_MS / frames.length;
+                const sequenceIndex = Math.min(frames.length - 1, Math.floor(t / frameDuration));
                 index = ZOMBIE_PREP_SEQUENCE[sequenceIndex];
             }
         } else if (zombieCombatState === 'chase') {
@@ -1843,12 +1854,27 @@ export function createLevel1(ui) {
                     break;
                 }
             }
-        } else if (zombieCombatState === 'ready' || zombieCombatState === 'windup' || zombieCombatState === 'recover') {
+        } else if (zombieCombatState === 'ready' || zombieCombatState === 'windup') {
             frames = zombieCombatFrames.idle;
-            // v8.11: approved crouch-ready pose is intentionally larger and is
-            // used after the countdown and during post-attack recovery.
-            targetHeight = 440;
+            // Dedicated crouched pose is used only when getting ready to attack.
+            targetHeight = 370;
             index = 0;
+        } else if (zombieCombatState === 'recover') {
+            // After an attack, visibly walk/reposition instead of snapping back
+            // into the crouch. The crouch returns before the next attack.
+            frames = zombieCombatFrames.walk;
+            targetHeight = 340;
+            const cycleTime = ((zombieCombatWalkIndex % ZOMBIE_WALK_CYCLE_MS) + ZOMBIE_WALK_CYCLE_MS) % ZOMBIE_WALK_CYCLE_MS;
+            let acc = 0;
+            let sequenceIndex = 0;
+            for (let i = 0; i < ZOMBIE_WALK_FRAME_MS.length; i++) {
+                acc += ZOMBIE_WALK_FRAME_MS[i];
+                if (cycleTime < acc) {
+                    sequenceIndex = i;
+                    break;
+                }
+            }
+            index = ZOMBIE_WALK_SEQUENCE[sequenceIndex];
         } else {
             index = Math.floor(elapsed / frameMs) % frames.length;
         }
@@ -1954,7 +1980,7 @@ export function createLevel1(ui) {
             return;
 
         zombieDeathStarted = true;
-        zombieDeathEndAt = nowMs + ZOMBIE_DEATH_TOTAL_MS + 80;
+        zombieDeathEndAt = nowMs + ZOMBIE_DEATH_TOTAL_MS + ZOMBIE_DEATH_HOLD_MS;
         zombieCombatState = 'death';
         zombieCombatStateStart = nowMs;
         zombieCombatAttackHit = true;
@@ -2017,17 +2043,17 @@ export function createLevel1(ui) {
         const direction = dx < 0 ? -1 : 1;
 
         if (zombieCombatState === 'ready') {
-            if (nowMs - zombieCombatStateStart >= 520) {
+            if (nowMs - zombieCombatStateStart >= 360) {
                 zombieCombatState = 'chase';
                 zombieCombatStateStart = nowMs;
-                zombieCombatNextDecision = nowMs + 180;
+                zombieCombatNextDecision = nowMs;
             }
             return;
         }
 
         if (zombieCombatState === 'chase') {
-            if (distance > 205) {
-                const desiredX = player.x - direction * 185;
+            if (distance > 135) {
+                const desiredX = player.x - direction * 100;
                 const targetX = Math.max(280, Math.min(COMBAT_W - 280, desiredX));
                 const step = Math.min(Math.abs(targetX - zombieCombatX), 135 * dt);
                 zombieCombatX += (targetX >= zombieCombatX ? 1 : -1) * step;
@@ -2062,7 +2088,7 @@ export function createLevel1(ui) {
                 zombieCombatAttackHit = true;
                 applyZombieDamage(
                     heavy ? 10 : 5,
-                    heavy ? 245 : 205,
+                    heavy ? 165 : 135,
                     heavy ? 70 : 38,
                     nowMs,
                     heavy ? 'HEAVY KICK' : 'CLAW SWIPE'
@@ -2077,11 +2103,23 @@ export function createLevel1(ui) {
             return;
         }
 
-        if (zombieCombatState === 'recover' && nowMs - zombieCombatStateStart >= zombieRecoveryDuration) {
-            zombieCombatState = 'chase';
-            zombieCombatStateStart = nowMs;
-            zombieCombatNextDecision = nowMs + 220;
-            enemyAttackPhase = null;
+        if (zombieCombatState === 'recover') {
+            // Use recovery to step back into a readable melee distance. This is
+            // also the requested walk phase between claw/kick attacks.
+            const desiredX = player.x - direction * 100;
+            const step = Math.min(Math.abs(desiredX - zombieCombatX), 95 * dt);
+            if (step > 0.5) {
+                zombieCombatX += (desiredX >= zombieCombatX ? 1 : -1) * step;
+                zombieCombatX = Math.max(170, Math.min(COMBAT_W - 170, zombieCombatX));
+            }
+            zombieCombatWalkIndex += dt * 1000;
+            if (nowMs - zombieCombatStateStart >= zombieRecoveryDuration) {
+                zombieCombatState = 'ready';
+                zombieCombatStateStart = nowMs;
+                zombieCombatNextDecision = nowMs + 360;
+                enemyAttackPhase = null;
+            }
+            return;
         }
     }
 
@@ -2689,9 +2727,11 @@ export function createLevel1(ui) {
         matchArtworkLetterboxing(relationshipImage);
         const relationshipCopy = ui.relationship.querySelector('.ironic-copy');
         if (relationshipCopy) {
-            relationshipCopy.textContent = 'Princesses have lots of important things to say, but sometimes they lose their train of thought along the way... and all they can manage is “Would you...?”\n\nPress WOULD YOU? in time with the princess to complete the challenge.';
+            relationshipCopy.textContent = 'Princesses have lots of important things to say, but sometimes they lose their train of thought along the way... and all they can manage is “Would you...?”\nPress WOULD YOU? in time with the princess to complete the challenge.';
             relationshipCopy.style.textAlign = 'center';
             relationshipCopy.style.whiteSpace = 'pre-line';
+            relationshipCopy.style.setProperty('line-height', '1.22', 'important');
+            relationshipCopy.style.setProperty('margin-bottom', '2px', 'important');
             relationshipCopy.style.width = '100%';
             relationshipCopy.style.boxSizing = 'border-box';
             relationshipCopy.style.marginLeft = 'auto';
