@@ -1,6 +1,6 @@
 GOODBYE GOTH v3.7 - COMPACT UPDATEs
 
-Upload the contents of this ZIP to the GitHub `testing` branch
+Upload the contents of this ZIP to the GitHub `testing` branch.
 
 Changed files:
 - js/levels/level1.js
