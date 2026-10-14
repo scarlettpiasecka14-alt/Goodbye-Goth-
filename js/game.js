@@ -167,7 +167,7 @@ function showControls(){
 
 function showLevel1Intro(){
   showImageTransitionScreen(
-    'assets/story/level1-entrance.png',
+    'assets/story/level1-entrance.png?v=657',
     'Level 1: The Cemetery. Enter if you dare.',
     mountLevel1,
     'Level 1 entrance'
@@ -256,7 +256,6 @@ function mountLevel1(loadSaved=false){
         <div class="combat-topline">
           <div>
             <strong id="combat-name">ZOMBIE GOTH</strong>
-            <div id="combat-pattern" class="small">Move with WASD / arrows • left click to punch • right click to dodge • SPACE to jump</div>
           </div>
           <div class="combat-enemy-hp-wrap">
             <div class="combat-enemy-hp-label">ENEMY HP <span id="enemy-hp-text">50 / 50</span></div>
@@ -267,14 +266,10 @@ function mountLevel1(loadSaved=false){
         <div class="combat-arena"><canvas id="combat-canvas" width="1440" height="810" aria-label="Combat arena"></canvas></div>
 
         <div id="combat-status" class="combat-note">The Goth is staring you down.</div>
-        <div class="combat-actions">
-          <button id="combat-attack" class="primary">👊 PUNCH</button>
-          <button id="combat-dodge">↪ DODGE</button>
-        </div>
       </div></div>
 
       <div id="death" class="overlay hidden"><div class="overlay-box center death-card">
-        <div class="death-title">YOU DIED</div><p id="death-text">The Goths have won this round.</p>
+        <div class="death-title">YOU’VE BEEN KNOCKED OUT</div><p id="death-text">The Goths have won this round.</p>
         <div class="story-actions"><button id="retry-combat" class="primary">TRY AGAIN</button><button id="back-map">BACK TO MAP</button></div>
       </div></div>
 
@@ -291,7 +286,7 @@ function mountLevel1(loadSaved=false){
 
       <div id="puzzle" class="overlay hidden"><div class="overlay-box center quiz-box">
         <img class="story-art quiz-image" src="assets/story/princess-quiz.png" alt="Scarlett, the kidnapped princess, with a warning about getting the answer right">
-        <div class="ironic-copy quiz-copy">A simple question, apparently. The fate of your princess rests on your ability to demonstrate absolutely normal communication skills.</div>
+        
         <p class="quiz-question">What is the correct way to ask a princess to undress?</p>
         <div class="answers quiz-answers">
           <button data-answer="wrong"><strong>A.</strong> “Your Highness, may I assist you with your attire?”</button>
@@ -319,7 +314,7 @@ function mountLevel1(loadSaved=false){
     goalGoths:document.getElementById('goal-goths'), goalRel:document.getElementById('goal-rel'), goalPuzzle:document.getElementById('goal-puzzle'), goalBoss:document.getElementById('goal-boss'), checkpoint:document.getElementById('checkpoint'),
     saveGame:document.getElementById('save-game'), loadGame:document.getElementById('load-game'), saveStatus:document.getElementById('save-status'), inventory:document.getElementById('inventory'), inventoryButton:document.getElementById('inventory-button'), inventoryClose:document.getElementById('inventory-close'),
     encounter:document.getElementById('encounter'), encounterImage:document.getElementById('encounter-image'), encounterName:document.getElementById('encounter-name'), encounterText:document.getElementById('encounter-text'), encounterReady:document.getElementById('encounter-ready'), encounterExplore:document.getElementById('encounter-explore'),
-    combat:document.getElementById('combat'), combatCanvas:document.getElementById('combat-canvas'), combatName:document.getElementById('combat-name'), combatPattern:document.getElementById('combat-pattern'), enemyHp:document.getElementById('enemy-hp'), enemyHpText:document.getElementById('enemy-hp-text'), combatStatus:document.getElementById('combat-status'), combatAttack:document.getElementById('combat-attack'), combatDodge:document.getElementById('combat-dodge'),
+    combat:document.getElementById('combat'), combatCanvas:document.getElementById('combat-canvas'), combatName:document.getElementById('combat-name'), enemyHp:document.getElementById('enemy-hp'), enemyHpText:document.getElementById('enemy-hp-text'), combatStatus:document.getElementById('combat-status'),
     death:document.getElementById('death'), deathText:document.getElementById('death-text'), retryCombat:document.getElementById('retry-combat'), backMap:document.getElementById('back-map'),
     relationship:document.getElementById('relationship'), relationshipCanvas:document.getElementById('relationship-canvas'), wouldDisplay:document.getElementById('would-display'), wouldTap:document.getElementById('would-tap'), wouldFeedback:document.getElementById('would-feedback'), timingZone:document.getElementById('timing-zone'), timingCursor:document.getElementById('timing-cursor'),
     puzzle:document.getElementById('puzzle'), puzzleFeedback:document.getElementById('puzzle-feedback'), bossIntro:document.getElementById('boss-intro'), bossStart:document.getElementById('boss-start'), win:document.getElementById('win'), replay:document.getElementById('replay')
@@ -330,19 +325,24 @@ function mountLevel1(loadSaved=false){
   ui.loadGame.addEventListener('click',()=>{ const ok=level.loadGame(); ui.saveStatus.textContent=ok?'Loaded ✓':'No save found'; });
   ui.encounterReady.addEventListener('click',()=>level.confirmEncounter());
   ui.encounterExplore.addEventListener('click',()=>level.closeEncounter());
-  ui.combatAttack.addEventListener('click',()=>level.combatAttack());
-  ui.combatDodge.addEventListener('click',()=>level.combatDodge());
   ui.retryCombat.addEventListener('click',()=>level.retryCombat());
   ui.backMap.addEventListener('click',()=>level.backToMap());
   ui.wouldTap.addEventListener('click',()=>level.completeRelationship());
   ui.bossStart.addEventListener('click',()=>level.startBoss());
   ui.replay.addEventListener('click',()=>mountLevel1());
   document.querySelectorAll('[data-answer]').forEach(b=>b.addEventListener('click',()=>level.answerPuzzle(b.dataset.answer)));
-  ui.combatCanvas.addEventListener('pointerdown',e=>{
-    if(e.button===0) level.combatAttack();
-    if(e.button===2) level.combatDodge();
+  ui.combatCanvas.addEventListener('mousedown',e=>{
+    if(e.button!==0 && e.button!==2) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if(e.button===0){
+      level.combatAttack();
+    } else if(e.button===2){
+      level.combatDodge();
+    }
   });
   ui.combatCanvas.addEventListener('contextmenu',e=>e.preventDefault());
+  ui.combatCanvas.addEventListener('auxclick',e=>e.preventDefault());
   function toggleInventory(){
     if(!ui.inventory) return;
     const open = ui.inventory.classList.toggle('hidden') === false;
@@ -360,6 +360,16 @@ function mountLevel1(loadSaved=false){
     const k=e.key.toLowerCase();
     if(k==='y' && !e.repeat){ e.preventDefault(); toggleInventory(); return; }
     if(!ui.inventory?.classList.contains('hidden')) return;
+    if(k==='r' && !ui.combat.classList.contains('hidden')){
+      e.preventDefault();
+      if(!e.repeat) level.combatDodge?.();
+      return;
+    }
+    if(k==='z' && !ui.combat.classList.contains('hidden')){
+      e.preventDefault();
+      if(!e.repeat) level.combatHeavyAttack?.();
+      return;
+    }
     if(['arrowup','arrowdown','arrowleft','arrowright',' ','w','a','s','d','x'].includes(k))e.preventDefault();
     if(['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d'].includes(k))level.setMoveKey?.(k,true);
     if(k===' ')level.primaryAction();

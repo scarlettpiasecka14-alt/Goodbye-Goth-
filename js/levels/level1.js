@@ -1,4 +1,4 @@
-/* Goodbye Goth v8.13 - Zombie Goth scale/countdown/ready-pose + combat HUD polish. */
+/* Goodbye Goth v8.11 - corrected Zombie Goth AI + player reaction/KO pass. */
 const WORLD_W = 1536,
     WORLD_H = 1024;
 const SAVE_KEY = 'goodbyeGothSave_v6';
@@ -61,9 +61,7 @@ ollyReactionSprites.ko.forEach((img, i) => img.src = `assets/characters/combat/o
 const OLLY_HURT_FRAME_MS = [70, 80, 80, 90, 100, 150];
 const OLLY_HURT_TOTAL_MS = OLLY_HURT_FRAME_MS.reduce((a, b) => a + b, 0);
 const OLLY_KO_FRAME_MS = [90, 100, 120, 140, 170, 190, 210, 430];
-const OLLY_KO_ANIMATION_MS = OLLY_KO_FRAME_MS.reduce((a, b) => a + b, 0);
-const OLLY_KO_HOLD_MS = 5000;
-const OLLY_KO_TOTAL_MS = OLLY_KO_ANIMATION_MS + OLLY_KO_HOLD_MS;
+const OLLY_KO_TOTAL_MS = OLLY_KO_FRAME_MS.reduce((a, b) => a + b, 0);
 
 // v6.5.10 readability pass: use a smaller set of deliberate keyframes rather than
 // playing every dramatic pose in the supplied sheets. This keeps combat readable
@@ -126,13 +124,13 @@ const ENCOUNTER_DATA = {
     zombieGoth: {
         role: 'zombieGoth',
         name: 'ZOMBIE GOTH',
-        image: 'assets/encounters/level1/zombie-goth-encounter.png?v=500',
+        image: 'assets/encounters/level1/zombie-goth-encounter.png?v=9000',
         text: 'The zombie goth reaches for you with her claws moaning about the burning sun. You stumble backwards partially blinded by the light. Are you ready?'
     },
     chainGoth: {
         role: 'chainGoth',
         name: 'CHAIN GOTH',
-        image: 'assets/encounters/level1/chain-goth-encounter.png?v=500',
+        image: 'assets/encounters/level1/chain-goth-encounter.png?v=9000',
         text: 'You encounter the chain goth, she raises her chain high above her head demanding eyeliner. You turn expecting a blow that never comes. Are you ready?'
     },
     relationshipChallenge: {
@@ -165,11 +163,9 @@ zombieSprites.chain.src = 'assets/characters/chain-goth-clean.png?v=6513';
 // v7.6: Zombie Goth combat walk cycle uses the new 12-frame strict side-profile animation pass.
 // All 12 supplied side-profile poses are used in order. The game flips them only when the Goth needs to face the opposite direction.
 const zombieCombatFrames = {
-    // v8.13: the approved crouch-ready pose is a dedicated frame. It is NEVER
-    // borrowed from the heavy-kick sequence. Heavy kick frames are reserved for
-    // the actual Heavy Kick attack.
+    // v8.11: the approved crouched ready pose is the first frame of the supplied
+    // heavy-kick sequence. It is used as the post-countdown ready/recovery pose.
     idle: [new Image()],
-    readyCrouch: new Image(),
     walk: Array.from({ length: 12 }, () => new Image()),
     // Regular claw swipe.
     claw: [1, 2, 3, 4, 5].map(() => new Image()),
@@ -178,6 +174,14 @@ const zombieCombatFrames = {
     // Existing supplied Zombie Goth reaction/death art.
     hurt: Array.from({ length: 8 }, () => new Image()),
     death: Array.from({ length: 8 }, () => new Image()),
+    // Countdown-only staring/prep animation. It is not an attack state.
+    prep: Array.from({ length: 61 }, () => new Image())
+};
+const zombieCountdownFrames = {
+    3: new Image(),
+    2: new Image(),
+    1: new Image(),
+    fight: new Image()
 };
 // v7.6: use the complete 12-frame side-profile cycle at a readable pace.
 // Slightly slower timing preserves the weight transfer instead of making the feet blur together.
@@ -185,18 +189,26 @@ const ZOMBIE_WALK_SEQUENCE = Array.from({ length: 12 }, (_, i) => i);
 // v8.7: speed up the animation cycle itself by ~15% without changing Zombie's movement speed.
 const ZOMBIE_WALK_FRAME_MS = Array(12).fill(128);
 const ZOMBIE_WALK_CYCLE_MS = ZOMBIE_WALK_FRAME_MS.reduce((a, b) => a + b, 0);
-zombieCombatFrames.readyCrouch.src = 'assets/characters/combat/zombie-ready-crouch.png?v=8130';
-zombieCombatFrames.idle[0] = zombieCombatFrames.readyCrouch;
+// Use the dedicated crouched ready pose. The first heavy-kick frame belongs
+// exclusively to the kick animation and must not appear as the neutral/telegraph pose.
+zombieCombatFrames.idle[0].src = 'assets/characters/combat/zombie-ready-crouch.png?v=8111';
 zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.png?v=7600`);
 zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i + 1}.png?v=8600`);
-zombieCombatFrames.heavyKick.forEach((img, i) => img.src = `assets/characters/combat/zombie-heavy-kick-${i + 1}.png?v=8130`);
+zombieCombatFrames.heavyKick.forEach((img, i) => img.src = `assets/characters/combat/zombie-heavy-${i + 1}.png?v=8110`);
 zombieCombatFrames.hurt.forEach((img, i) => img.src = `assets/characters/combat/zombie-hurt-${i + 1}.png?v=8800`);
 zombieCombatFrames.death.forEach((img, i) => img.src = `assets/characters/combat/zombie-death-${i + 1}.png?v=8600`);
+zombieCombatFrames.prep.forEach((img, i) => img.src = `assets/characters/combat/zombie-prep-frames/frame_${String(i).padStart(4, '0')}.png?v=9000`);
+zombieCountdownFrames[3].src = 'assets/characters/combat/zombie-countdown-3.png?v=8600';
+zombieCountdownFrames[2].src = 'assets/characters/combat/zombie-countdown-2.png?v=8600';
+zombieCountdownFrames[1].src = 'assets/characters/combat/zombie-countdown-1.png?v=8600';
+zombieCountdownFrames.fight.src = 'assets/characters/combat/zombie-countdown-fight.png?v=8600';
 // v8.8: short non-lethal hit is 1-2-3-4-3-2-1, using the same supplied fall poses.
 const ZOMBIE_HURT_SEQUENCE = [0, 1, 2, 3, 2, 1, 0];
 const ZOMBIE_HURT_FRAME_MS = [60, 65, 80, 100, 75, 65, 120];
 const ZOMBIE_HURT_TOTAL_MS = ZOMBIE_HURT_FRAME_MS.reduce((a, b) => a + b, 0);
-const ZOMBIE_COUNTDOWN_PHASE_MS = 1500; // 1.5 seconds per 3 / 2 / 1 / FIGHT phase
+// Play all supplied prep frames once across the five-second countdown prep.
+const ZOMBIE_PREP_TOTAL_MS = 5000;
+const ZOMBIE_COUNTDOWN_PHASE_MS = 1500;
 const ZOMBIE_INTRO_TOTAL_MS = ZOMBIE_COUNTDOWN_PHASE_MS * 4;
 const ZOMBIE_LONG_HURT_SEQUENCE = [0, 1, 2, 3, 4, 5, 6, 7, 6, 5, 4, 3, 2, 1, 0];
 const ZOMBIE_LONG_HURT_FRAME_MS = [70, 80, 90, 100, 120, 140, 180, 500, 180, 140, 120, 100, 90, 80, 150];
@@ -204,6 +216,7 @@ const ZOMBIE_LONG_HURT_TOTAL_MS = ZOMBIE_LONG_HURT_FRAME_MS.reduce((a, b) => a +
 // v8.7: slow the visible collapse by ~15%, then hold the final grounded pose for 5 seconds.
 const ZOMBIE_DEATH_FRAME_MS = [110, 100, 110, 120, 130, 145, 170, 700];
 const ZOMBIE_DEATH_TOTAL_MS = ZOMBIE_DEATH_FRAME_MS.reduce((a, b) => a + b, 0);
+const ZOMBIE_DEATH_HOLD_MS = 5000;
 // v8.7: the supplied death PNGs have different transparent margins. These offsets
 // keep the visible bottom of each frame on the combat floor instead of floating.
 const ZOMBIE_DEATH_FLOOR_OFFSETS = [69, 67, 66, 71, 66, 58, 41, 41];
@@ -1073,13 +1086,10 @@ export function createLevel1(ui) {
         const slots = document.querySelectorAll('#inventory .inventory-slot');
         if (slots.length) {
             slots.forEach((slot, i) => {
-                if (i === 0 && count) {
-                    slot.innerHTML = '🔑<span style="display:block;font-size:10px;margin-top:6px;">GOLDEN KEY</span>';
-                    slot.classList.add('inventory-filled');
-                } else {
-                    slot.textContent = String(i + 1).padStart(2, '0');
-                    slot.classList.remove('inventory-filled');
-                }
+                slot.classList.toggle('inventory-filled', i === 0 && !!count);
+                slot.innerHTML = i === 0 && count
+                    ? '<span class="inventory-item-icon" aria-hidden="true">🔑</span><span class="inventory-item-name">Golden Key</span>'
+                    : `<span class="inventory-slot-number">${String(i + 1).padStart(2, '0')}</span><span class="inventory-empty-label">Empty</span>`;
             });
         }
         const emptyCopy = document.querySelector('#inventory .inventory-empty-copy');
@@ -1091,7 +1101,6 @@ export function createLevel1(ui) {
         ui.hpEl.textContent = `${hp} / ${maxHp} HP`;
         if (ui.hpFill)
             ui.hpFill.style.width = (hp / maxHp * 100) + '%';
-        updateCombatPlayerHpHud();
         ui.gothEl.textContent = `${kills}/2`;
         ui.relEl.textContent = relationshipDone ? 'Solved' : 'Locked';
         ui.puzzleEl.textContent = puzzleSolved ? 'Answered' : 'Locked';
@@ -1309,11 +1318,36 @@ export function createLevel1(ui) {
             return;
         }
     }
+    function matchArtworkLetterboxing(img) {
+        if (!img) return;
+        // Use the page's actual background colour for any object-fit letterboxing.
+        // This changes the framing only; the underlying artwork remains untouched.
+        let pageBackground = '#18121b';
+        try {
+            const computedBackground = window.getComputedStyle(document.body).backgroundColor;
+            if (computedBackground && computedBackground !== 'rgba(0, 0, 0, 0)') {
+                pageBackground = computedBackground;
+            }
+        } catch (_) { /* Keep the matching plum fallback in non-browser test contexts. */ }
+        img.style.setProperty('background', pageBackground, 'important');
+        // The old wide image element forced object-fit:contain to paint black side bars.
+        // Let the element itself follow the artwork's native aspect ratio instead.
+        img.style.setProperty('width', 'auto', 'important');
+        img.style.setProperty('height', 'auto', 'important');
+        img.style.setProperty('max-width', '96vw', 'important');
+        img.style.setProperty('object-fit', 'contain', 'important');
+        img.style.setProperty('display', 'block', 'important');
+        img.style.setProperty('margin-left', 'auto', 'important');
+        img.style.setProperty('margin-right', 'auto', 'important');
+    }
+
     function openPrincessQuestion() {
         mode = 'puzzle';
         const img = document.querySelector('#puzzle .quiz-image');
-        if (img)
+        if (img) {
             img.src = 'assets/encounters/level1/princess-question-art.png?v=501';
+            matchArtworkLetterboxing(img);
+        }
         ui.puzzle.classList.remove('hidden');
         ui.puzzleFeedback.textContent = 'Choose wisely. The Goths have inexplicably made this a formal assessment.';
     }
@@ -1694,7 +1728,7 @@ export function createLevel1(ui) {
                 progress: elapsed / OLLY_KO_TOTAL_MS,
                 frameIndex: index,
                 drawDir: combatFacing,
-                targetWidth: 360,
+                height: 260,
                 duration: OLLY_KO_TOTAL_MS
             };
         } else if (jumping || state === 'jump') {
@@ -1748,15 +1782,15 @@ export function createLevel1(ui) {
         // v7.9: walking frames receive the new enlarged arena render and floor alignment.
 
         if (zombieCombatState === 'intro') {
-            // v8.13: the countdown uses one dedicated crouched staring pose.
-            // Do not animate through attack-prep frames here.
-            frames = zombieCombatFrames.readyCrouch ? [zombieCombatFrames.readyCrouch] : zombieCombatFrames.idle;
-            targetHeight = 430;
-            index = 0;
+            frames = zombieCombatFrames.prep;
+            // v8.9: non-walk/non-attack animation pass is 20% larger.
+            targetHeight = 498;
+            const prepProgress = Math.min(1, Math.max(0, elapsed) / ZOMBIE_PREP_TOTAL_MS);
+            index = Math.min(frames.length - 1, Math.floor(prepProgress * frames.length));
         } else if (zombieCombatState === 'chase') {
             frames = zombieCombatFrames.walk;
-            // v8.13: keep Zombie walk clearly larger than Olly.
-            targetHeight = 360;
+            // v8.9: walk is 10% smaller than the v8.8 visible walk size.
+            targetHeight = 340;
             const cycleTime = ((zombieCombatWalkIndex % ZOMBIE_WALK_CYCLE_MS) + ZOMBIE_WALK_CYCLE_MS) % ZOMBIE_WALK_CYCLE_MS;
             let acc = 0;
             let sequenceIndex = 0;
@@ -1770,14 +1804,13 @@ export function createLevel1(ui) {
             index = ZOMBIE_WALK_SEQUENCE[sequenceIndex];
         } else if (zombieCombatState === 'claw') {
             frames = zombieCombatFrames.claw;
-            // v8.13: keep regular claw clearly larger than Olly.
-            targetHeight = 345;
+            // v8.11: regular attack is smaller than the walk.
+            targetHeight = 315;
             const total = 720;
             index = Math.min(frames.length - 1, Math.floor(Math.min(.999, elapsed / total) * frames.length));
         } else if (zombieCombatState === 'heavyKick') {
             frames = zombieCombatFrames.heavyKick;
-            // v8.13: heavy kick stays consistent with the enlarged attack scale.
-            targetHeight = 360;
+            targetHeight = 410;
             const total = 1000;
             index = Math.min(frames.length - 1, Math.floor(Math.min(.999, elapsed / total) * frames.length));
         } else if (zombieCombatState === 'death') {
@@ -1807,22 +1840,27 @@ export function createLevel1(ui) {
                     break;
                 }
             }
-        } else if (zombieCombatState === 'windup') {
-            // v8.12: attack telegraph uses the actual attack's first pose. The
-            // crouched ready pose is reserved for the post-countdown ready state.
-            if (zombieCombatAttackType === 'heavyKick') {
-                frames = zombieCombatFrames.heavyKick;
-                targetHeight = 360;
-            } else {
-                frames = zombieCombatFrames.claw;
-                targetHeight = 345;
+        } else if (zombieCombatState === 'ready' || zombieCombatState === 'windup') {
+            frames = zombieCombatFrames.idle;
+            // Dedicated crouched pose is used only when getting ready to attack.
+            targetHeight = 370;
+            index = 0;
+        } else if (zombieCombatState === 'recover') {
+            // After an attack, visibly walk/reposition instead of snapping back
+            // into the crouch. The crouch returns before the next attack.
+            frames = zombieCombatFrames.walk;
+            targetHeight = 340;
+            const cycleTime = ((zombieCombatWalkIndex % ZOMBIE_WALK_CYCLE_MS) + ZOMBIE_WALK_CYCLE_MS) % ZOMBIE_WALK_CYCLE_MS;
+            let acc = 0;
+            let sequenceIndex = 0;
+            for (let i = 0; i < ZOMBIE_WALK_FRAME_MS.length; i++) {
+                acc += ZOMBIE_WALK_FRAME_MS[i];
+                if (cycleTime < acc) {
+                    sequenceIndex = i;
+                    break;
+                }
             }
-            index = 0;
-        } else if (zombieCombatState === 'ready' || zombieCombatState === 'recover') {
-            frames = zombieCombatFrames.readyCrouch ? [zombieCombatFrames.readyCrouch] : zombieCombatFrames.idle;
-            // Dedicated crouch-ready pose. It is separate from the attack frames.
-            targetHeight = 430;
-            index = 0;
+            index = ZOMBIE_WALK_SEQUENCE[sequenceIndex];
         } else {
             index = Math.floor(elapsed / frameMs) % frames.length;
         }
@@ -1887,7 +1925,8 @@ export function createLevel1(ui) {
         // The new walk frames are tightly cropped to the actual character pixels.
         // Their bottom edge should sit directly on the same combat floor as Olly.
         // Existing attack frames retain their previous rendering offset.
-        // v8.13: walk and attack are enlarged again, with a dedicated crouch-ready pose.
+        // v8.9: walk and attack are deliberately 10% smaller; every other
+        // Zombie combat animation is 20% larger than its v8.8 size.
         const renderGroundY = walking ? enemyY + 25 : (dying ? enemyY + 8 : enemyY + 22);
         // Never constrain by width. The supplied frames have different native
         // aspect ratios, so a width cap makes the character visibly grow/shrink.
@@ -1927,7 +1966,7 @@ export function createLevel1(ui) {
             return;
 
         zombieDeathStarted = true;
-        zombieDeathEndAt = nowMs + ZOMBIE_DEATH_TOTAL_MS + 80;
+        zombieDeathEndAt = nowMs + ZOMBIE_DEATH_TOTAL_MS + ZOMBIE_DEATH_HOLD_MS;
         zombieCombatState = 'death';
         zombieCombatStateStart = nowMs;
         zombieCombatAttackHit = true;
@@ -1958,9 +1997,9 @@ export function createLevel1(ui) {
         if (zombieIntroActive) {
             if (nowMs >= zombieIntroEndAt) {
                 zombieIntroActive = false;
-                zombieCombatState = 'ready';
+                zombieCombatState = 'chase';
                 zombieCombatStateStart = nowMs;
-                zombieCombatNextDecision = nowMs + 650;
+                zombieCombatNextDecision = nowMs;
                 zombieCombatWalkIndex = 0;
                 enemyAttackPhase = null;
                 ui.combatStatus.textContent = 'The Zombie Goth is coming for you. Get ready.';
@@ -1990,17 +2029,21 @@ export function createLevel1(ui) {
         const direction = dx < 0 ? -1 : 1;
 
         if (zombieCombatState === 'ready') {
-            if (nowMs - zombieCombatStateStart >= 520) {
+            // Show the crouched pose only when she is close enough to attack.
+            // If Olly has moved away, return straight to the walking chase.
+            if (distance > 135) {
                 zombieCombatState = 'chase';
                 zombieCombatStateStart = nowMs;
-                zombieCombatNextDecision = nowMs + 180;
+                zombieCombatNextDecision = nowMs;
+            } else if (nowMs - zombieCombatStateStart >= 360) {
+                chooseZombieAttack(nowMs);
             }
             return;
         }
 
         if (zombieCombatState === 'chase') {
-            if (distance > 205) {
-                const desiredX = player.x - direction * 185;
+            if (distance > 135) {
+                const desiredX = player.x - direction * 100;
                 const targetX = Math.max(280, Math.min(COMBAT_W - 280, desiredX));
                 const step = Math.min(Math.abs(targetX - zombieCombatX), 135 * dt);
                 zombieCombatX += (targetX >= zombieCombatX ? 1 : -1) * step;
@@ -2028,14 +2071,14 @@ export function createLevel1(ui) {
         if (zombieCombatState === 'claw' || zombieCombatState === 'heavyKick') {
             const elapsed = nowMs - zombieCombatStateStart;
             const heavy = zombieCombatState === 'heavyKick';
-            const hitStart = heavy ? 450 : 300;
-            const hitEnd = heavy ? 700 : 500;
+            const hitStart = heavy ? 350 : 300;
+            const hitEnd = heavy ? 760 : 500;
             const attackTotal = heavy ? 1000 : 720;
             if (!zombieCombatAttackHit && elapsed >= hitStart && elapsed <= hitEnd) {
                 zombieCombatAttackHit = true;
                 applyZombieDamage(
                     heavy ? 10 : 5,
-                    heavy ? 245 : 205,
+                    heavy ? 220 : 135,
                     heavy ? 70 : 38,
                     nowMs,
                     heavy ? 'HEAVY KICK' : 'CLAW SWIPE'
@@ -2050,11 +2093,23 @@ export function createLevel1(ui) {
             return;
         }
 
-        if (zombieCombatState === 'recover' && nowMs - zombieCombatStateStart >= zombieRecoveryDuration) {
-            zombieCombatState = 'chase';
-            zombieCombatStateStart = nowMs;
-            zombieCombatNextDecision = nowMs + 220;
-            enemyAttackPhase = null;
+        if (zombieCombatState === 'recover') {
+            // Use recovery to step back into a readable melee distance. This is
+            // also the requested walk phase between claw/kick attacks.
+            const desiredX = player.x - direction * 100;
+            const step = Math.min(Math.abs(desiredX - zombieCombatX), 95 * dt);
+            if (step > 0.5) {
+                zombieCombatX += (desiredX >= zombieCombatX ? 1 : -1) * step;
+                zombieCombatX = Math.max(170, Math.min(COMBAT_W - 170, zombieCombatX));
+            }
+            zombieCombatWalkIndex += dt * 1000;
+            if (nowMs - zombieCombatStateStart >= zombieRecoveryDuration) {
+                zombieCombatState = 'ready';
+                zombieCombatStateStart = nowMs;
+                zombieCombatNextDecision = nowMs + 360;
+                enemyAttackPhase = null;
+            }
+            return;
         }
     }
 
@@ -2104,16 +2159,12 @@ export function createLevel1(ui) {
         stats();
 
         const awayDir = player.x < zombieCombatX ? -1 : 1;
-        // Face the Zombie who just hit Olly. If the Zombie is on Olly's left,
-        // Olly's hurt animation must face left, and vice versa.
-        combatFacing = zombieCombatX < player.x ? 'left' : 'right';
         playerHurtUntil = nowMs + OLLY_HURT_TOTAL_MS;
         playerHurtStart = nowMs;
         playerHurtDirection = awayDir;
         combatAnimationState = 'hurt';
         combatAnimationStart = nowMs;
         combatAnimationUntil = nowMs + OLLY_HURT_TOTAL_MS;
-        updateCombatPlayerHpHud();
         ui.combatStatus.textContent = `💥 ${attackName}! -${damage} HP.`;
 
         // Knockback always travels AWAY from the Zombie. Avoid repeated
@@ -2149,7 +2200,6 @@ export function createLevel1(ui) {
         attackAnimUntil = 0;
         heavyAttackAnimUntil = 0;
         enemyAttackPhase = null;
-        updateCombatPlayerHpHud();
         ui.combatStatus.textContent = '💫 OLLY HAS BEEN KNOCKED OUT.';
         setTimeout(() => endCombat(false), OLLY_KO_TOTAL_MS + 280);
     }
@@ -2159,41 +2209,24 @@ export function createLevel1(ui) {
         const elapsed = Math.max(0, nowMs - zombieIntroStart);
         const phase = Math.min(3, Math.floor(elapsed / ZOMBIE_COUNTDOWN_PHASE_MS));
         const phaseT = (elapsed % ZOMBIE_COUNTDOWN_PHASE_MS) / ZOMBIE_COUNTDOWN_PHASE_MS;
-        const label = phase === 0 ? '3' : phase === 1 ? '2' : phase === 2 ? '1' : 'FIGHT!';
+        const img = phase === 0 ? zombieCountdownFrames[3]
+            : phase === 1 ? zombieCountdownFrames[2]
+            : phase === 2 ? zombieCountdownFrames[1]
+            : zombieCountdownFrames.fight;
+        if (!img || !img.complete || !img.naturalWidth || !img.naturalHeight) return;
         const isFight = phase === 3;
-        // Smooth entrance/settle rather than swapping between sprite images.
-        const eased = 0.5 - 0.5 * Math.cos(phaseT * Math.PI * 2);
-        const scale = isFight ? 1 + 0.045 * Math.sin(phaseT * Math.PI) : 0.96 + 0.04 * Math.sin(phaseT * Math.PI);
-        const alpha = 0.92 + 0.08 * Math.sin(phaseT * Math.PI);
-        const boxW = isFight ? 320 : 180;
-        const boxH = isFight ? 118 : 150;
-        const cx = COMBAT_W / 2;
-        const cy = COMBAT_H / 2 - 70;
-
+        const pulse = isFight ? 1 + Math.sin(phaseT * Math.PI) * .07 : .96 + Math.sin(phaseT * Math.PI) * .04;
+        const maxW = isFight ? 560 : 240;
+        const maxH = isFight ? 220 : 210;
+        const scale = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight) * pulse;
+        const w = img.naturalWidth * scale;
+        const h = img.naturalHeight * scale;
         c.save();
-        c.globalAlpha = alpha;
-        c.translate(cx, cy);
-        c.scale(scale + eased * 0.015, scale + eased * 0.015);
-        c.fillStyle = 'rgba(25,13,24,.92)';
-        c.strokeStyle = 'rgba(229,104,168,.96)';
-        c.lineWidth = 4;
-        c.beginPath();
-        c.roundRect(-boxW / 2, -boxH / 2, boxW, boxH, 22);
-        c.fill();
-        c.stroke();
-        c.shadowColor = 'rgba(239,135,170,.7)';
-        c.shadowBlur = isFight ? 24 : 16;
-        c.fillStyle = '#f8e8ef';
-        c.textAlign = 'center';
-        c.textBaseline = 'middle';
-        c.font = isFight ? '900 54px Georgia,serif' : '900 82px Georgia,serif';
-        c.fillText(label, 0, isFight ? -8 : 0);
-        if (isFight) {
-            c.shadowBlur = 0;
-            c.fillStyle = '#e8a9c4';
-            c.font = '800 13px system-ui,sans-serif';
-            c.fillText('THE ZOMBIE GOTH IS COMING', 0, 34);
-        }
+        c.globalAlpha = isFight ? 1 : .96;
+        c.shadowColor = 'rgba(239,135,170,.65)';
+        c.shadowBlur = isFight ? 24 : 14;
+        c.translate(COMBAT_W / 2, COMBAT_H / 2 - 50);
+        c.drawImage(img, -w / 2, -h / 2, w, h);
         c.restore();
     }
 
@@ -2224,6 +2257,25 @@ export function createLevel1(ui) {
         drawZombieCombat(cctx, enemyX, enemyY, nowMs);
         drawZombieCountdown(cctx, nowMs);
 
+        // Player HP display stays inside combat so the player can always see it.
+        cctx.save();
+        cctx.fillStyle = 'rgba(18,12,22,.88)';
+        cctx.strokeStyle = 'rgba(239,183,201,.55)';
+        cctx.lineWidth = 1.5;
+        cctx.beginPath();
+        cctx.roundRect(24, 24, 300, 68, 12);
+        cctx.fill();
+        cctx.stroke();
+        cctx.fillStyle = '#f6eaf0';
+        cctx.font = '900 18px Georgia';
+        cctx.fillText('OLLY', 40, 49);
+        cctx.font = '700 16px system-ui';
+        cctx.fillText(`${hp} / ${maxHp} HP`, 220, 49);
+        cctx.fillStyle = 'rgba(255,255,255,.16)';
+        cctx.fillRect(40, 60, 264, 14);
+        cctx.fillStyle = '#e787ad';
+        cctx.fillRect(40, 60, 264 * Math.max(0, Math.min(1, hp / Math.max(1, maxHp))), 14);
+        cctx.restore();
 
         // Readable but not boring attack telegraph. It sits high enough to avoid
         // covering either fighter and pulses only during the wind-up.
@@ -2234,8 +2286,8 @@ export function createLevel1(ui) {
             const progress = Math.max(0, Math.min(1, windupMs / windupTotal));
             const pulse = 1 + Math.sin(nowMs / 80) * .035;
             const shake = Math.sin(nowMs / 34) * 2.5 * progress;
-            const boxW = 360 + progress * 18;
-            const boxH = 54;
+            const boxW = 420 + progress * 20;
+            const boxH = 62;
             const cx = COMBAT_W / 2 + shake;
             const cy = 118;
 
@@ -2252,12 +2304,12 @@ export function createLevel1(ui) {
             cctx.stroke();
 
             cctx.fillStyle = '#f6e6ee';
-            cctx.font = '900 22px system-ui';
+            cctx.font = '900 27px system-ui';
             cctx.textAlign = 'center';
             cctx.fillText('! ATTACK INCOMING !', 0, -2);
 
             cctx.fillStyle = '#e8a9c4';
-            cctx.font = '800 11px system-ui';
+            cctx.font = '800 13px system-ui';
             cctx.fillText(
                 zombieCombatAttackType === 'heavyKick'
                     ? 'HEAVY KICK  •  MOVE / DODGE / JUMP'
@@ -2268,11 +2320,18 @@ export function createLevel1(ui) {
             cctx.restore();
         }
 
-        // v8.12: move the punch counter fully into the lower status bar.
-        if (ui.combatStatus) {
-            ui.combatStatus.dataset.comboHint = nowMs < attackCooldownUntil
-                ? `PUNCH COOLDOWN  ${Math.max(0, (attackCooldownUntil - nowMs) / 1000).toFixed(1)}s`
-                : `${Math.max(0, 3 - comboCount)} punch${Math.max(0, 3 - comboCount) === 1 ? '' : 'es'} before cooldown`;
+        if (nowMs < attackCooldownUntil) {
+            const seconds = Math.max(0, (attackCooldownUntil - nowMs) / 1000);
+            cctx.fillStyle = '#efb7c9';
+            cctx.font = '900 20px system-ui';
+            cctx.textAlign = 'center';
+            cctx.fillText(`PUNCH COOLDOWN  ${seconds.toFixed(1)}s`, COMBAT_W / 2, COMBAT_H - 36);
+        } else {
+            cctx.fillStyle = '#c9b6c2';
+            cctx.font = '700 15px system-ui';
+            cctx.textAlign = 'center';
+            const remaining = Math.max(0, 3 - comboCount);
+            cctx.fillText(`${remaining} punch${remaining === 1 ? '' : 'es'} before cooldown`, COMBAT_W / 2, COMBAT_H - 36);
         }
     }
 
@@ -2327,46 +2386,6 @@ export function createLevel1(ui) {
         return Math.max(0, nowMs - startMs);
     }
 
-    function ensureCombatPlayerHpHud() {
-        if (!ui.combat) return;
-        let hud = ui.combat.querySelector('#combat-player-hp');
-        if (hud) return hud;
-
-        hud = document.createElement('div');
-        hud.id = 'combat-player-hp';
-        hud.style.cssText = [
-            'position:fixed', 'left:22px', 'top:92px', 'z-index:10020',
-            'width:min(320px,34vw)', 'min-width:240px', 'padding:8px 10px 9px',
-            'box-sizing:border-box', 'border:1px solid rgba(239,183,201,.55)',
-            'border-radius:10px', 'background:rgba(18,12,22,.9)',
-            'box-shadow:0 6px 24px rgba(0,0,0,.25)', 'pointer-events:none'
-        ].join(';');
-
-        const label = document.createElement('div');
-        label.style.cssText = 'display:flex;align-items:center;justify-content:space-between;color:#f6eaf0;font:900 13px Georgia,serif;margin-bottom:5px;';
-        label.innerHTML = '<span>OLLY</span><span id="combat-player-hp-text">100 / 100 HP</span>';
-
-        const track = document.createElement('div');
-        track.style.cssText = 'height:9px;border-radius:999px;background:rgba(255,255,255,.14);overflow:hidden;border:1px solid rgba(255,255,255,.08);';
-        const fill = document.createElement('div');
-        fill.id = 'combat-player-hp-fill';
-        fill.style.cssText = 'height:100%;width:100%;background:#e787ad;transition:width .12s linear;';
-        track.appendChild(fill);
-        hud.appendChild(label);
-        hud.appendChild(track);
-        ui.combat.appendChild(hud);
-        return hud;
-    }
-
-    function updateCombatPlayerHpHud() {
-        const hud = ensureCombatPlayerHpHud();
-        if (!hud) return;
-        const text = hud.querySelector('#combat-player-hp-text');
-        const fill = hud.querySelector('#combat-player-hp-fill');
-        if (text) text.textContent = `${hp} / ${maxHp} HP`;
-        if (fill) fill.style.width = `${Math.max(0, Math.min(1, hp / Math.max(1, maxHp))) * 100}%`;
-    }
-
     function startCombat(bossFight) {
         isBoss = bossFight;
         mode = 'combat';
@@ -2391,21 +2410,7 @@ export function createLevel1(ui) {
             (target?.type === 'chain')
                 ? 'The Chain Goth is quick. Defeat both Level 1 Goths to unlock Heavy Attack. Make it count.'
                 : (bossFight ? 'The Queen is waiting. Your Heavy Attack is ready.' : 'GET READY...');
-        if (ui.combatStatus) {
-            ui.combatStatus.dataset.comboHint = '3 punches before cooldown';
-            ui.combatStatus.style.position = 'relative';
-            ui.combatStatus.style.marginTop = '16px';
-            ui.combatStatus.style.paddingRight = '250px';
-            if (!document.getElementById('goodbye-goth-combo-hint-style')) {
-                const style = document.createElement('style');
-                style.id = 'goodbye-goth-combo-hint-style';
-                style.textContent = `#combat-status[data-combo-hint]:not([data-combo-hint=\"\"])::after{content:attr(data-combo-hint);position:absolute;right:18px;top:50%;transform:translateY(-50%);font:800 14px system-ui,sans-serif;color:#efb7c9;letter-spacing:.1px;white-space:nowrap;pointer-events:none}`;
-                document.head.appendChild(style);
-            }
-        }
         ui.combat.classList.remove('hidden');
-        ensureCombatPlayerHpHud();
-        updateCombatPlayerHpHud();
         clearInterval(enemyTimer);
         enemyTimer = null;
         cancelAnimationFrame(combatRaf);
@@ -2433,12 +2438,6 @@ export function createLevel1(ui) {
             const seconds = Math.ceil((attackCooldownUntil - nowMs) / 1000);
             ui.combatStatus.textContent = `⏳ Combo recovering. ${seconds}s.`;
             return;
-        }
-        if (comboCount >= 3) {
-            // The five-second lockout has completed. Start a fresh three-hit
-            // sequence on the next successful punch.
-            comboCount = 0;
-            attackCooldownUntil = 0;
         }
 
         // Universal punch cadence. Every enemy now obeys the same minimum
@@ -2471,7 +2470,6 @@ export function createLevel1(ui) {
             ui.enemyHpText.textContent = `${combatHp} / ${combatMax}`;
             comboCount++;
             ui.combatStatus.textContent = `👊 HIT! ${damage} damage.`;
-            updateCombatPlayerHpHud();
             if (combatHp <= 0) {
                 if (target?.type === 'shambler')
                     triggerZombieDeath(nowMs);
@@ -2481,9 +2479,8 @@ export function createLevel1(ui) {
             }
             triggerZombieHitReaction(nowMs, false, false);
         } else {
-            // A miss does not erase successful hits already landed. The combo
-            // counter represents successful punches only.
             ui.combatStatus.textContent = '👊 Too far. Get closer.';
+            comboCount = 0;
         }
 
         if (comboCount >= 3) {
@@ -2631,6 +2628,50 @@ export function createLevel1(ui) {
         }, { once:true });
     }
 
+    function makeCompletionPlaceholder(label) {
+        const placeholder = document.createElement('div');
+        placeholder.className = 'task-completion-placeholder';
+        placeholder.textContent = label;
+        return placeholder;
+    }
+
+    function showTaskCompletion({ title, artPath = null, alt = '', buttonText = 'KEEP EXPLORING', onContinue = null, placeholder = 'COMPLETION ART WILL BE ADDED' }) {
+        mode = 'completion';
+        const overlay = document.createElement('div');
+        overlay.className = 'task-completion-overlay';
+        overlay.setAttribute('role', 'dialog');
+        overlay.setAttribute('aria-modal', 'true');
+        overlay.setAttribute('aria-label', title);
+        const card = document.createElement('div');
+        card.className = 'task-completion-card';
+        if (artPath) {
+            const art = document.createElement('img');
+            art.className = 'task-completion-art';
+            art.src = artPath;
+            art.alt = alt || title;
+            art.addEventListener('error', () => art.replaceWith(makeCompletionPlaceholder(placeholder)), { once: true });
+            card.appendChild(art);
+        } else {
+            card.appendChild(makeCompletionPlaceholder(placeholder));
+        }
+        const heading = document.createElement('h2');
+        heading.className = 'task-completion-title';
+        heading.textContent = title;
+        card.appendChild(heading);
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'primary task-completion-button';
+        button.textContent = buttonText;
+        button.addEventListener('click', () => {
+            overlay.remove();
+            if (onContinue) onContinue();
+            else { mode = 'map'; ui.dialogue.textContent = 'You completed an objective. Keep exploring the cemetery.'; stats(); }
+        }, { once: true });
+        card.appendChild(button);
+        overlay.appendChild(card);
+        document.body.appendChild(overlay);
+        button.focus();
+    }
     function endCombat(won) {
         clearInterval(enemyTimer);
         enemyTimer = null;
@@ -2653,25 +2694,46 @@ export function createLevel1(ui) {
 
                 const bothLevel1GothsDefeated = enemies.every(e => e.dead);
 
+                const defeatedName = defeatedType === 'chain' ? 'CHAIN GOTH' : 'ZOMBIE GOTH';
+                const defeatedArt = defeatedType === 'chain'
+                    ? 'assets/encounters/level1/chain-goth-defeated.png?v=9000'
+                    : 'assets/encounters/level1/zombie-goth-defeated.png?v=9000';
                 if (bothLevel1GothsDefeated && !heavyUnlocked) {
                     heavyUnlocked = true;
                     stats();
-                    showHeavyAttackReward();
+                    showTaskCompletion({
+                        title: `YOU’VE DEFEATED THE ${defeatedName}`,
+                        artPath: defeatedArt,
+                        alt: `${defeatedName} defeated`,
+                        buttonText: 'CONTINUE',
+                        onContinue: () => showHeavyAttackReward(),
+                        placeholder: `${defeatedName} DEFEATED`
+                    });
                     return;
                 }
-
-                if (defeatedType === 'chain') {
-                    ui.dialogue.textContent = '✅ Chain Goth defeated. One Level 1 Goth remains.';
-                } else {
-                    ui.dialogue.textContent = '✅ Zombie Goth defeated. Your health carries into the next fight.';
-                }
+                showTaskCompletion({
+                    title: `YOU’VE DEFEATED THE ${defeatedName}`,
+                    artPath: defeatedArt,
+                    alt: `${defeatedName} defeated`,
+                    placeholder: `${defeatedName} DEFEATED`
+                });
             }
         }
         else {
             hp = Math.max(1, Math.ceil(maxHp * 0.5));
             const deathTitle = ui.death?.querySelector('.death-title');
-            if (deathTitle) deathTitle.textContent = 'KNOCKED OUT';
-            ui.deathText.textContent = 'The Zombie Goth knocked Olly out. He will wake at the last checkpoint with 50 HP.';
+            if (deathTitle) deathTitle.textContent = 'YOU’VE BEEN KNOCKED OUT';
+            const knockedOutBy = isBoss ? 'the Classic Goth' : target?.type === 'chain' ? 'the Chain Goth' : 'the Zombie Goth';
+            ui.deathText.textContent = `${knockedOutBy} knocked you out. You’ll wake at the last checkpoint with 50 HP.`;
+            const deathCard = ui.death?.querySelector('.death-card');
+            if (deathCard && !deathCard.querySelector('.knockout-art, .knockout-art-placeholder')) {
+                const knockoutArt = document.createElement('img');
+                knockoutArt.className = 'task-completion-art knockout-art';
+                knockoutArt.src = 'assets/encounters/level1/olly-knocked-out.png?v=9000';
+                knockoutArt.alt = 'Olly knocked out';
+                knockoutArt.addEventListener('error', () => knockoutArt.replaceWith(makeCompletionPlaceholder('KNOCKOUT ART WILL BE ADDED')), { once: true });
+                deathCard.insertBefore(knockoutArt, deathTitle);
+            }
             ui.death.classList.remove('hidden');
             mode = 'dead';
         }
@@ -2716,9 +2778,19 @@ export function createLevel1(ui) {
         relationshipDuration = 2600;
         relationshipStart = performance.now();
         ui.relationship.classList.remove('hidden');
+        const relationshipImage = ui.relationship.querySelector('.relationship-image');
+        matchArtworkLetterboxing(relationshipImage);
         const relationshipCopy = ui.relationship.querySelector('.ironic-copy');
         if (relationshipCopy) {
-            relationshipCopy.textContent = 'The princess is rambling. Press WOULD YOU? when the moving marker lands inside the pink timing zone. Get 5 correct timings to complete the relationship challenge.';
+            relationshipCopy.textContent = 'Princesses have lots of important things to say, but sometimes they lose their train of thought along the way... and all they can manage is “Would you...?”\nPress WOULD YOU? in time with the princess to complete the challenge.';
+            relationshipCopy.style.textAlign = 'center';
+            relationshipCopy.style.whiteSpace = 'pre-line';
+            relationshipCopy.style.setProperty('line-height', '1.22', 'important');
+            relationshipCopy.style.setProperty('margin-bottom', '2px', 'important');
+            relationshipCopy.style.width = '100%';
+            relationshipCopy.style.boxSizing = 'border-box';
+            relationshipCopy.style.marginLeft = 'auto';
+            relationshipCopy.style.marginRight = 'auto';
         }
         ui.wouldFeedback.textContent = 'The princess is rambling. Your job is to weaponise your timing. Round 1 of 5.';
         ui.wouldDisplay.textContent = '“Can I ask you a question...”';
@@ -2765,10 +2837,13 @@ export function createLevel1(ui) {
             relationshipStep++;
             if (relationshipStep >= 5) {
                 relationshipDone = true;
-                mode = 'map';
                 cancelAnimationFrame(relationshipRAF);
                 ui.relationship.classList.add('hidden');
-                ui.dialogue.textContent = unlockedBoss() ? '💕 WOULD YOU? complete. Miraculously, the rest of the requirements are also done. The gate can now open.' : '💕 WOULD YOU? complete. Five perfectly timed interruptions. One more requirement remains before the gate can open.';
+                showTaskCompletion({
+                    title: 'YOU’VE COMPLETED THE RELATIONSHIP CHALLENGE',
+                    artPath: 'assets/encounters/level1/relationship-challenge-complete.png?v=9000',
+                    alt: 'Relationship challenge completed'
+                });
                 stats();
             } else {
                 relationshipRound++;
@@ -2786,9 +2861,12 @@ export function createLevel1(ui) {
             return;
         if (answer === 'correct') {
             puzzleSolved = true;
-            mode = 'map';
             ui.puzzle.classList.add('hidden');
-            ui.dialogue.textContent = unlockedBoss() ? '🧩 Correct. “Get your kit off, mate.” Against all odds, the rest of the requirements are also complete. The gate can now open.' : '🧩 Correct. “Get your kit off, mate.” One objective down. The Goths are still guarding the exit, because apparently there are rules.';
+            showTaskCompletion({
+                title: 'YOU’VE CORRECTLY ANSWERED THE PRINCESS’S QUESTION',
+                artPath: 'assets/encounters/level1/princess-question-complete.png?v=9000',
+                alt: 'Princess question answered correctly'
+            });
             stats();
         } else {
             ui.puzzleFeedback.textContent = '❌ Incorrect. The princess remains imprisoned, and somewhere a goth has just judged you.';

@@ -1,0 +1,21 @@
+Goodbye Goth patch bundle (2026-10-14)
+
+Apply this bundle at the root of your GitHub repository (branch Testing). It contains the three updated source files and replacement/additional art assets using their repository-relative paths. Merge the contents into the repository root and allow existing image files with matching names to be replaced.
+
+Included changes
+- Zombie Goth prep animation uses all 61 supplied frames and plays once, holding on the final frame.
+- Olly’s knockout animation uses a fixed display height so it does not swell before falling. The knockout screen keeps Try Again and Back to Map.
+- Inventory is a 5 by 2 backpack pocket grid, showing the Golden Key icon/name and all 10 slot states.
+- Zombie Goth and Chain Goth encounter images are replaced with the supplied artwork.
+- Each Goth defeat shows its supplied splash art and the line “You’ve defeated the [Goth]”. When that Goth is the second defeated, CONTINUE leads to the Heavy Attack unlocked screen; the first Goth’s screen has KEEP EXPLORING.
+- Relationship and Princess question completion screens are wired with artwork placeholders and KEEP EXPLORING.
+- The knockout screen has an artwork placeholder and retains TRY AGAIN and BACK TO MAP.
+
+Artwork paths for images you will provide later
+- assets/encounters/level1/relationship-challenge-complete.png
+- assets/encounters/level1/princess-question-complete.png
+- assets/encounters/level1/olly-knocked-out.png
+
+Those images are optional for this patch: the screens display a styled placeholder until the files are added at those paths.
+
+The ZIP root mirrors the repository root.
