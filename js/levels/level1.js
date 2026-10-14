@@ -124,13 +124,13 @@ const ENCOUNTER_DATA = {
     zombieGoth: {
         role: 'zombieGoth',
         name: 'ZOMBIE GOTH',
-        image: 'assets/encounters/level1/zombie-goth-encounter.png?v=500',
+        image: 'assets/encounters/level1/zombie-goth-encounter.png?v=8614',
         text: 'The zombie goth reaches for you with her claws moaning about the burning sun. You stumble backwards partially blinded by the light. Are you ready?'
     },
     chainGoth: {
         role: 'chainGoth',
         name: 'CHAIN GOTH',
-        image: 'assets/encounters/level1/chain-goth-encounter.png?v=500',
+        image: 'assets/encounters/level1/chain-goth-encounter.png?v=8614',
         text: 'You encounter the chain goth, she raises her chain high above her head demanding eyeliner. You turn expecting a blow that never comes. Are you ready?'
     },
     relationshipChallenge: {
@@ -177,12 +177,12 @@ const zombieCombatFrames = {
     // Countdown-only staring/prep animation. It is not an attack state.
     prep: Array.from({ length: 8 }, () => new Image())
 };
-const zombieCountdownFrames = {
-    3: new Image(),
-    2: new Image(),
-    1: new Image(),
-    fight: new Image()
-};
+const ZOMBIE_COUNTDOWN_FRAME_COUNT = 61;
+const zombieCountdownFrames = Array.from({ length: ZOMBIE_COUNTDOWN_FRAME_COUNT }, (_, i) => {
+    const img = new Image();
+    img.src = 'assets/characters/combat/zombie-prep-frames/frame_' + String(i).padStart(4, '0') + '.png?v=8614';
+    return img;
+});
 // v7.6: use the complete 12-frame side-profile cycle at a readable pace.
 // Slightly slower timing preserves the weight transfer instead of making the feet blur together.
 const ZOMBIE_WALK_SEQUENCE = Array.from({ length: 12 }, (_, i) => i);
@@ -198,10 +198,7 @@ zombieCombatFrames.heavyKick.forEach((img, i) => img.src = `assets/characters/co
 zombieCombatFrames.hurt.forEach((img, i) => img.src = `assets/characters/combat/zombie-hurt-${i + 1}.png?v=8800`);
 zombieCombatFrames.death.forEach((img, i) => img.src = `assets/characters/combat/zombie-death-${i + 1}.png?v=8600`);
 zombieCombatFrames.prep.forEach((img, i) => img.src = `assets/characters/combat/zombie-prep-${i + 1}.png?v=8600`);
-zombieCountdownFrames[3].src = 'assets/characters/combat/zombie-countdown-3.png?v=8600';
-zombieCountdownFrames[2].src = 'assets/characters/combat/zombie-countdown-2.png?v=8600';
-zombieCountdownFrames[1].src = 'assets/characters/combat/zombie-countdown-1.png?v=8600';
-zombieCountdownFrames.fight.src = 'assets/characters/combat/zombie-countdown-fight.png?v=8600';
+
 // v8.8: short non-lethal hit is 1-2-3-4-3-2-1, using the same supplied fall poses.
 const ZOMBIE_HURT_SEQUENCE = [0, 1, 2, 3, 2, 1, 0];
 const ZOMBIE_HURT_FRAME_MS = [60, 65, 80, 100, 75, 65, 120];
@@ -1088,17 +1085,16 @@ export function createLevel1(ui) {
         if (countEl) countEl.textContent = countText;
         if (largeCountEl) largeCountEl.textContent = `${count} / 10 ITEMS`;
         const slots = document.querySelectorAll('#inventory .inventory-slot');
-        if (slots.length) {
-            slots.forEach((slot, i) => {
-                if (i === 0 && count) {
-                    slot.innerHTML = '🔑<span style="display:block;font-size:10px;margin-top:6px;">GOLDEN KEY</span>';
-                    slot.classList.add('inventory-filled');
-                } else {
-                    slot.textContent = String(i + 1).padStart(2, '0');
-                    slot.classList.remove('inventory-filled');
-                }
-            });
-        }
+        slots.forEach((slot, i) => {
+            const filled = i === 0 && !!count;
+            slot.classList.toggle('inventory-filled', filled);
+            const number = slot.querySelector('.inventory-slot-number');
+            const icon = slot.querySelector('.inventory-slot-icon');
+            const name = slot.querySelector('.inventory-slot-name');
+            if (number) number.textContent = filled ? '' : String(i + 1).padStart(2, '0');
+            if (icon) icon.textContent = filled ? '🔑' : '＋';
+            if (name) name.textContent = filled ? 'GOLDEN KEY' : 'EMPTY';
+        });
         const emptyCopy = document.querySelector('#inventory .inventory-empty-copy');
         if (emptyCopy) emptyCopy.textContent = count ? 'One suspiciously important key. Probably useful.' : 'Nothing in here yet. A suspiciously empty bag.';
     }
@@ -1735,7 +1731,7 @@ export function createLevel1(ui) {
                 progress: elapsed / OLLY_KO_TOTAL_MS,
                 frameIndex: index,
                 drawDir: combatFacing,
-                targetWidth: 360,
+                targetWidth: 270,
                 duration: OLLY_KO_TOTAL_MS
             };
         } else if (jumping || state === 'jump') {
@@ -2213,31 +2209,24 @@ export function createLevel1(ui) {
     }
 
     function drawZombieCountdown(c, nowMs) {
-        if (!zombieIntroActive) return;
-        const elapsed = Math.max(0, nowMs - zombieIntroStart);
-        const phase = Math.min(3, Math.floor(elapsed / ZOMBIE_COUNTDOWN_PHASE_MS));
-        const phaseT = (elapsed % ZOMBIE_COUNTDOWN_PHASE_MS) / ZOMBIE_COUNTDOWN_PHASE_MS;
-        const img = phase === 0 ? zombieCountdownFrames[3]
-            : phase === 1 ? zombieCountdownFrames[2]
-            : phase === 2 ? zombieCountdownFrames[1]
-            : zombieCountdownFrames.fight;
+        if (!zombieIntroActive || !zombieCountdownFrames.length) return;
+        // Play the supplied intro frames once; clamp at the end so the sequence cannot loop.
+        const elapsed = Math.max(0, Math.min(ZOMBIE_INTRO_TOTAL_MS - 1, nowMs - zombieIntroStart));
+        const progress = elapsed / ZOMBIE_INTRO_TOTAL_MS;
+        const frameIndex = Math.min(zombieCountdownFrames.length - 1, Math.floor(progress * zombieCountdownFrames.length));
+        const img = zombieCountdownFrames[frameIndex];
         if (!img || !img.complete || !img.naturalWidth || !img.naturalHeight) return;
-        const isFight = phase === 3;
-        const pulse = isFight ? 1 + Math.sin(phaseT * Math.PI) * .07 : .96 + Math.sin(phaseT * Math.PI) * .04;
-        const maxW = isFight ? 560 : 240;
-        const maxH = isFight ? 220 : 210;
-        const scale = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight) * pulse;
+        const scale = Math.min(360 / img.naturalWidth, 360 / img.naturalHeight);
         const w = img.naturalWidth * scale;
         const h = img.naturalHeight * scale;
         c.save();
-        c.globalAlpha = isFight ? 1 : .96;
+        c.globalAlpha = .98;
         c.shadowColor = 'rgba(239,135,170,.65)';
-        c.shadowBlur = isFight ? 24 : 14;
+        c.shadowBlur = 18;
         c.translate(COMBAT_W / 2, COMBAT_H / 2 - 50);
         c.drawImage(img, -w / 2, -h / 2, w, h);
         c.restore();
     }
-
     function drawCombat() {
         cctx.imageSmoothingEnabled = true;
         cctx.imageSmoothingQuality = 'high';
@@ -2636,6 +2625,26 @@ export function createLevel1(ui) {
         }, { once:true });
     }
 
+    let completionNextAction = null;
+    function showCompletionScreen(image, alt, title, buttonLabel, nextAction = null) {
+        completionNextAction = nextAction;
+        ui.completionImage.src = image;
+        ui.completionImage.alt = alt;
+        ui.completionTitle.textContent = title;
+        ui.completionContinue.textContent = buttonLabel;
+        ui.completion.classList.remove('hidden');
+        mode = 'completion';
+    }
+    function continueCompletion() {
+        if (mode !== 'completion') return;
+        ui.completion.classList.add('hidden');
+        const nextAction = completionNextAction;
+        completionNextAction = null;
+        if (nextAction === 'heavy-reward') { showHeavyAttackReward(); return; }
+        mode = 'map';
+        stats();
+    }
+
     function endCombat(won) {
         clearInterval(enemyTimer);
         enemyTimer = null;
@@ -2655,28 +2664,27 @@ export function createLevel1(ui) {
                 target.hp = 0;
                 kills++;
                 target = null;
-
-                const bothLevel1GothsDefeated = enemies.every(e => e.dead);
-
-                if (bothLevel1GothsDefeated && !heavyUnlocked) {
+                const secondGothDefeated = enemies.every(e => e.dead);
+                const isZombie = defeatedType === 'shambler' || defeatedType === 'zombie';
+                const gothName = isZombie ? 'Zombie Goth' : 'Chain Goth';
+                const defeatArt = isZombie
+                    ? 'assets/encounters/level1/zombie-goth-defeated.png?v=8614'
+                    : 'assets/encounters/level1/chain-goth-defeated.png?v=8614';
+                stats();
+                if (secondGothDefeated) {
                     heavyUnlocked = true;
-                    stats();
-                    showHeavyAttackReward();
-                    return;
-                }
-
-                if (defeatedType === 'chain') {
-                    ui.dialogue.textContent = '✅ Chain Goth defeated. One Level 1 Goth remains.';
+                    showCompletionScreen(defeatArt, gothName + ' defeated', 'YOU’VE DEFEATED THE ' + gothName.toUpperCase(), 'CONTINUE', 'heavy-reward');
                 } else {
-                    ui.dialogue.textContent = '✅ Zombie Goth defeated. Your health carries into the next fight.';
+                    showCompletionScreen(defeatArt, gothName + ' defeated', 'YOU’VE DEFEATED THE ' + gothName.toUpperCase(), 'KEEP EXPLORING');
                 }
+                return;
             }
         }
         else {
             hp = Math.max(1, Math.ceil(maxHp * 0.5));
             const deathTitle = ui.death?.querySelector('.death-title');
             if (deathTitle) deathTitle.textContent = 'KNOCKED OUT';
-            ui.deathText.textContent = 'The Zombie Goth knocked Olly out. He will wake at the last checkpoint with 50 HP.';
+            ui.deathText.textContent = 'The Zombie Goth knocked you out. You will wake at the last checkpoint with 50 HP.';
             ui.death.classList.remove('hidden');
             mode = 'dead';
         }
@@ -2783,8 +2791,8 @@ export function createLevel1(ui) {
                 mode = 'map';
                 cancelAnimationFrame(relationshipRAF);
                 ui.relationship.classList.add('hidden');
-                ui.dialogue.textContent = unlockedBoss() ? '💕 WOULD YOU? complete. Miraculously, the rest of the requirements are also done. The gate can now open.' : '💕 WOULD YOU? complete. Five perfectly timed interruptions. One more requirement remains before the gate can open.';
                 stats();
+                showCompletionScreen('assets/encounters/level1/relationship-challenge-completed.png?v=8614', 'You and Scarlett celebrating the completed relationship challenge', 'YOU’VE COMPLETED THE RELATIONSHIP CHALLENGE', 'KEEP EXPLORING');
             } else {
                 relationshipRound++;
                 relationshipDuration = [2600, 2250, 1950, 1650, 1400][relationshipRound] || 1200;
@@ -2803,8 +2811,8 @@ export function createLevel1(ui) {
             puzzleSolved = true;
             mode = 'map';
             ui.puzzle.classList.add('hidden');
-            ui.dialogue.textContent = unlockedBoss() ? '🧩 Correct. “Get your kit off, mate.” Against all odds, the rest of the requirements are also complete. The gate can now open.' : '🧩 Correct. “Get your kit off, mate.” One objective down. The Goths are still guarding the exit, because apparently there are rules.';
             stats();
+            showCompletionScreen('assets/encounters/level1/princess-question-completed.png?v=8614', 'The princess celebrates your correct answer', 'YOU’VE CORRECTLY ANSWERED THE PRINCESS’S QUESTION', 'KEEP EXPLORING');
         } else {
             ui.puzzleFeedback.textContent = '❌ Incorrect. The princess remains imprisoned, and somewhere a goth has just judged you.';
         }
@@ -2949,6 +2957,7 @@ export function createLevel1(ui) {
         shootAtPointer,
         retryCombat,
         backToMap,
+        continueCompletion,
         completeRelationship,
         answerPuzzle,
         startBoss,

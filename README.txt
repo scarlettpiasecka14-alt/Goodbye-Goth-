@@ -1,16 +1,19 @@
-GOODBYE GOTH — TARGETED ZOMBIE GOTH POLISH
+Goodbye Goth patch — prepared from the Version-8-safe code for upload to Testing-3
 
-Starting point: js/levels/level1.js from the Testing branch as read on 13 October 2026.
+Install
+1. Download and unzip this patch.
+2. Copy the included files into the root of the Testing-3 repository, preserving the folder paths and allowing the two encounter files to be replaced.
+3. Commit the changed files and the new artwork to Testing-3.
 
-REPLACE
-- Replace the existing js/levels/level1.js with the included file at js/levels/level1.js.
-- No art assets are changed or added.
+Included changes
+- A 10-slot, backpack-style inventory grid with clear item icons and names.
+- The supplied Zombie Goth and Chain Goth encounter art.
+- First-person enemy defeat screens, relationship challenge completion, and princess question completion screens.
+- Second Goth defeated → Continue → Heavy Attack unlocked → Keep Exploring.
+- Olly knockout artwork and a smaller knockout animation, retaining Try Again and Back to Map.
+- Zombie Goth countdown animation that plays its numbered image sequence once from frame_0000.png through frame_0060.png.
 
-CHANGES
-- The countdown prep uses a 100 ms ping-pong animation loop throughout the five-second countdown, instead of holding each of eight poses for 625 ms.
-- The crouched ready pose is shown only while Zombie Goth is in close range preparing an attack. If Olly moves away, she returns immediately to her walking chase.
-- The heavy kick is enlarged from 330 px to 410 px and has a longer active window and a wider 220 px hit range. Damage remains 10 HP.
-- The warning label now correctly says HEAVY KICK.
+The 61 countdown frames are already present in the safe branch at:
+assets/characters/combat/zombie-prep-frames/
 
-VALIDATION
-- This is a targeted source replacement based on the Testing branch. It has not been deployed or tested live in a browser. Please check the countdown and a full Zombie Goth fight before treating the changes as confirmed.
+The patch does not include index.html or map-walk changes. It is based on Version-8-safe so the existing map walk and level encounter flow remain from that safe version.

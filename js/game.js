@@ -234,8 +234,16 @@ function mountLevel1(loadSaved=false){
           <div class="story-title">INVENTORY</div>
           <div class="inventory-capacity"><span id="inventory-count-large">0 / 10 ITEMS</span></div>
           <div class="inventory-slots" aria-label="Inventory slots">
-            <div class="inventory-slot">01</div><div class="inventory-slot">02</div><div class="inventory-slot">03</div><div class="inventory-slot">04</div><div class="inventory-slot">05</div>
-            <div class="inventory-slot">06</div><div class="inventory-slot">07</div><div class="inventory-slot">08</div><div class="inventory-slot">09</div><div class="inventory-slot">10</div>
+              <div class="inventory-slot" data-slot="0"><span class="inventory-slot-number">01</span><span class="inventory-slot-icon" aria-hidden="true">＋</span><span class="inventory-slot-name">EMPTY</span></div>
+              <div class="inventory-slot" data-slot="1"><span class="inventory-slot-number">02</span><span class="inventory-slot-icon" aria-hidden="true">＋</span><span class="inventory-slot-name">EMPTY</span></div>
+              <div class="inventory-slot" data-slot="2"><span class="inventory-slot-number">03</span><span class="inventory-slot-icon" aria-hidden="true">＋</span><span class="inventory-slot-name">EMPTY</span></div>
+              <div class="inventory-slot" data-slot="3"><span class="inventory-slot-number">04</span><span class="inventory-slot-icon" aria-hidden="true">＋</span><span class="inventory-slot-name">EMPTY</span></div>
+              <div class="inventory-slot" data-slot="4"><span class="inventory-slot-number">05</span><span class="inventory-slot-icon" aria-hidden="true">＋</span><span class="inventory-slot-name">EMPTY</span></div>
+              <div class="inventory-slot" data-slot="5"><span class="inventory-slot-number">06</span><span class="inventory-slot-icon" aria-hidden="true">＋</span><span class="inventory-slot-name">EMPTY</span></div>
+              <div class="inventory-slot" data-slot="6"><span class="inventory-slot-number">07</span><span class="inventory-slot-icon" aria-hidden="true">＋</span><span class="inventory-slot-name">EMPTY</span></div>
+              <div class="inventory-slot" data-slot="7"><span class="inventory-slot-number">08</span><span class="inventory-slot-icon" aria-hidden="true">＋</span><span class="inventory-slot-name">EMPTY</span></div>
+              <div class="inventory-slot" data-slot="8"><span class="inventory-slot-number">09</span><span class="inventory-slot-icon" aria-hidden="true">＋</span><span class="inventory-slot-name">EMPTY</span></div>
+              <div class="inventory-slot" data-slot="9"><span class="inventory-slot-number">10</span><span class="inventory-slot-icon" aria-hidden="true">＋</span><span class="inventory-slot-name">EMPTY</span></div>
           </div>
           <p class="inventory-empty-copy">Nothing in here yet. A suspiciously empty bag.</p>
           <button id="inventory-close" type="button" class="primary inventory-close-button">CLOSE</button>
@@ -269,8 +277,16 @@ function mountLevel1(loadSaved=false){
       </div></div>
 
       <div id="death" class="overlay hidden"><div class="overlay-box center death-card">
-        <div class="death-title">YOU DIED</div><p id="death-text">The Goths have won this round.</p>
+        <div class="death-title">KNOCKED OUT</div>
+        <img id="death-image" class="completion-art death-art" src="assets/characters/combat/olly-after-knockout.png" alt="You sit up after being knocked out, dazed but recovering">
+        <p id="death-text">The Goth knocked you out. You will wake at the last checkpoint with 50 HP.</p>
         <div class="story-actions"><button id="retry-combat" class="primary">TRY AGAIN</button><button id="back-map">BACK TO MAP</button></div>
+      </div></div>
+
+      <div id="completion" class="overlay hidden"><div class="overlay-box center completion-card">
+        <img id="completion-image" class="completion-art" alt="">
+        <div id="completion-title" class="story-title completion-title"></div>
+        <div class="story-actions"><button id="completion-continue" class="primary">KEEP EXPLORING</button></div>
       </div></div>
 
       <div id="relationship" class="overlay hidden"><div class="overlay-box center relationship-box ironic-box">
@@ -316,6 +332,7 @@ function mountLevel1(loadSaved=false){
     encounter:document.getElementById('encounter'), encounterImage:document.getElementById('encounter-image'), encounterName:document.getElementById('encounter-name'), encounterText:document.getElementById('encounter-text'), encounterReady:document.getElementById('encounter-ready'), encounterExplore:document.getElementById('encounter-explore'),
     combat:document.getElementById('combat'), combatCanvas:document.getElementById('combat-canvas'), combatName:document.getElementById('combat-name'), enemyHp:document.getElementById('enemy-hp'), enemyHpText:document.getElementById('enemy-hp-text'), combatStatus:document.getElementById('combat-status'),
     death:document.getElementById('death'), deathText:document.getElementById('death-text'), retryCombat:document.getElementById('retry-combat'), backMap:document.getElementById('back-map'),
+    completion:document.getElementById('completion'), completionImage:document.getElementById('completion-image'), completionTitle:document.getElementById('completion-title'), completionContinue:document.getElementById('completion-continue'),
     relationship:document.getElementById('relationship'), relationshipCanvas:document.getElementById('relationship-canvas'), wouldDisplay:document.getElementById('would-display'), wouldTap:document.getElementById('would-tap'), wouldFeedback:document.getElementById('would-feedback'), timingZone:document.getElementById('timing-zone'), timingCursor:document.getElementById('timing-cursor'),
     puzzle:document.getElementById('puzzle'), puzzleFeedback:document.getElementById('puzzle-feedback'), bossIntro:document.getElementById('boss-intro'), bossStart:document.getElementById('boss-start'), win:document.getElementById('win'), replay:document.getElementById('replay')
   };
@@ -327,6 +344,7 @@ function mountLevel1(loadSaved=false){
   ui.encounterExplore.addEventListener('click',()=>level.closeEncounter());
   ui.retryCombat.addEventListener('click',()=>level.retryCombat());
   ui.backMap.addEventListener('click',()=>level.backToMap());
+  ui.completionContinue.addEventListener('click',()=>level.continueCompletion());
   ui.wouldTap.addEventListener('click',()=>level.completeRelationship());
   ui.bossStart.addEventListener('click',()=>level.startBoss());
   ui.replay.addEventListener('click',()=>mountLevel1());
