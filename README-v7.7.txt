@@ -1,7 +1,7 @@
 GOODBYE GOTH v7.7 - OLLY MAP DIRECTIONS + ZOMBIE GOTH SCALE
 
 Base:
-- v7.6 Zombie Goth Side-Profile Walk build.
+- v7.6 Zombie Goth Side-Profile Walk build
 
 THIS PATCH CHANGES
 1. MAP OLly now uses direction-specific walking poses:
