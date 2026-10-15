@@ -1,33 +1,19 @@
-Goodbye Goth — Testing4 interaction-art patch
+GOODBYE GOTH: ZOMBIE GOTH STATIC COUNTDOWN PATCH
 
-Baseline verified: Testing4 branch of scarlettpiasecka14-alt/Goodbye-Goth-
-Latest repository commit at review: bce06aa690c6f531111e8374377c0b45e8eec3f6 (README-only update).
+WHAT THIS CHANGES
+- Uses the included Zombie Goth portrait as a single static pose during the existing intro countdown.
+- Leaves the 3, 2, 1 and FIGHT artwork and timing unchanged.
+- Leaves her post-countdown movement, ready pose, attacks, damage and other fight mechanics unchanged.
+- Avoids mirroring the front-facing intro portrait.
 
-Install
-1. Unzip this archive.
-2. Copy its contents into the Testing4 branch, keeping every folder path.
-3. Replace files when GitHub asks.
-4. Commit the files below. Do not upload the ZIP itself.
+HOW TO APPLY (MAC)
+1. Make sure you are working on your Testing4 game folder, not your safe backup.
+2. Unzip this patch directly into the game folder, the one containing index.html. Allow the included asset folder to merge with the existing assets folder.
+3. Double-click Apply-Zombie-Static-Patch.command. If macOS blocks it, right-click it and choose Open.
+4. The script backs up js/levels/level1.js as js/levels/level1.js.before-zombie-static.bak before editing it.
+5. Test the Zombie Goth fight locally. This patch does not commit or upload anything to GitHub.
 
-Changed files
-- js/game.js — adds only the knockout illustration and reusable completion-screen markup/event.
-- js/levels/level1.js — replaces the two encounter artwork URLs and opens completion screens after the two fights, Relationship Challenge, and correct Princess Question answer.
-- css/game.css — sizes the new completion and knockout artwork.
-- assets/characters/combat/olly-after-knockout.png — supplied knockout artwork.
-- assets/encounters/level1/zombie-goth-encounter.png — supplied Zombie Goth encounter artwork.
-- assets/encounters/level1/chain-goth-encounter.png — supplied Chain Goth encounter artwork.
-- assets/encounters/level1/zombie-goth-defeated.png — supplied Zombie Goth completion artwork.
-- assets/encounters/level1/chain-goth-defeated.png — supplied Chain Goth completion artwork.
-- assets/encounters/level1/relationship-challenge-completed.png — supplied Relationship Challenge completion artwork.
-- assets/encounters/level1/princess-question-completed.png — supplied Princess Question completion artwork.
+If the script reports that the file does not match, stop rather than forcing it. The patch deliberately refuses to edit an unexpected version.
 
-Not changed
-- Level 1 entry and map logic.
-- Boss/Classic Goth code.
-- Combat mechanics, animation timing, countdown, inventory, save/load, and other artwork.
-
-Expected flow
-- Defeat either first Goth → that Goth's completed screen → Keep Exploring.
-- Defeat the second Goth → that Goth's completed screen → Continue → existing Heavy Attack reward → Keep Exploring.
-- Finish Relationship Challenge or correctly answer the Princess Question → its completed screen → Keep Exploring.
-- Lose a Goth fight → knockout artwork, approved text, Try Again, and Back to Map.
+TO UNDO
+Restore js/levels/level1.js from js/levels/level1.js.before-zombie-static.bak and remove assets/characters/combat/zombie-intro-static.png.
