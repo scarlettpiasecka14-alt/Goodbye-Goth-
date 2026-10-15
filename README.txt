@@ -1,16 +1,19 @@
-GOODBYE GOTH — TARGETED ZOMBIE GOTH POLISH
+GOODBYE GOTH: ZOMBIE GOTH STATIC COUNTDOWN PATCH
 
-Starting point: js/levels/level1.js from the Testing branch as read on 13 October 2026.
+WHAT THIS CHANGES
+- Uses the included Zombie Goth portrait as a single static pose during the existing intro countdown.
+- Leaves the 3, 2, 1 and FIGHT artwork and timing unchanged.
+- Leaves her post-countdown movement, ready pose, attacks, damage and other fight mechanics unchanged.
+- Avoids mirroring the front-facing intro portrait.
 
-REPLACE
-- Replace the existing js/levels/level1.js with the included file at js/levels/level1.js.
-- No art assets are changed or added.
+HOW TO APPLY (MAC)
+1. Make sure you are working on your Testing4 game folder, not your safe backup.
+2. Unzip this patch directly into the game folder, the one containing index.html. Allow the included asset folder to merge with the existing assets folder.
+3. Double-click Apply-Zombie-Static-Patch.command. If macOS blocks it, right-click it and choose Open.
+4. The script backs up js/levels/level1.js as js/levels/level1.js.before-zombie-static.bak before editing it.
+5. Test the Zombie Goth fight locally. This patch does not commit or upload anything to GitHub.
 
-CHANGES
-- The countdown prep uses a 100 ms ping-pong animation loop throughout the five-second countdown, instead of holding each of eight poses for 625 ms.
-- The crouched ready pose is shown only while Zombie Goth is in close range preparing an attack. If Olly moves away, she returns immediately to her walking chase.
-- The heavy kick is enlarged from 330 px to 410 px and has a longer active window and a wider 220 px hit range. Damage remains 10 HP.
-- The warning label now correctly says HEAVY KICK.
+If the script reports that the file does not match, stop rather than forcing it. The patch deliberately refuses to edit an unexpected version.
 
-VALIDATION
-- This is a targeted source replacement based on the Testing branch. It has not been deployed or tested live in a browser. Please check the countdown and a full Zombie Goth fight before treating the changes as confirmed.
+TO UNDO
+Restore js/levels/level1.js from js/levels/level1.js.before-zombie-static.bak and remove assets/characters/combat/zombie-intro-static.png.
