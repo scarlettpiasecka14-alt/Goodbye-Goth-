@@ -210,7 +210,8 @@ const ZOMBIE_PREP_SEQUENCE = [0, 1, 2, 3, 4, 5, 6, 7, 6, 5, 4, 3, 2, 1];
 const ZOMBIE_PREP_CYCLE_MS = ZOMBIE_PREP_FRAME_MS * ZOMBIE_PREP_SEQUENCE.length;
 const ZOMBIE_PREP_TOTAL_MS = 5000;
 const ZOMBIE_COUNTDOWN_PHASE_MS = 1500;
-const ZOMBIE_INTRO_TOTAL_MS = ZOMBIE_COUNTDOWN_PHASE_MS * 4;
+// The supplied 61-frame ready animation gets one complete five-second pass.
+const ZOMBIE_INTRO_TOTAL_MS = 5000;
 const ZOMBIE_LONG_HURT_SEQUENCE = [0, 1, 2, 3, 4, 5, 6, 7, 6, 5, 4, 3, 2, 1, 0];
 const ZOMBIE_LONG_HURT_FRAME_MS = [70, 80, 90, 100, 120, 140, 180, 500, 180, 140, 120, 100, 90, 80, 150];
 const ZOMBIE_LONG_HURT_TOTAL_MS = ZOMBIE_LONG_HURT_FRAME_MS.reduce((a, b) => a + b, 0);
@@ -1178,7 +1179,7 @@ export function createLevel1(ui) {
         ctx.clearRect(0, 0, ui.canvas.width, ui.canvas.height);
         ctx.save();
         ctx.scale(sx, sy);
-        const zoom = 1.24;
+        const zoom = 1.30;
         const playerX = x,
             playerY = y,
             viewW = vw / zoom,
@@ -1241,7 +1242,7 @@ export function createLevel1(ui) {
         const rect = ui.canvas.getBoundingClientRect(),
             vw = ui.canvas.clientWidth || 1000,
             vh = ui.canvas.clientHeight || 600;
-        const zoom = 1.24;
+        const zoom = 1.30;
         const sx = (e.clientX - rect.left) * (vw / rect.width),
             sy = (e.clientY - rect.top) * (vh / rect.height),
             viewW = vw / zoom,
@@ -2209,22 +2210,41 @@ export function createLevel1(ui) {
     }
 
     function drawZombieCountdown(c, nowMs) {
-        if (!zombieIntroActive || !zombieCountdownFrames.length) return;
-        // Play the supplied intro frames once; clamp at the end so the sequence cannot loop.
+        if (!zombieIntroActive) return;
+        // Clamp progress: each of the 61 frames appears once, across five seconds.
         const elapsed = Math.max(0, Math.min(ZOMBIE_INTRO_TOTAL_MS - 1, nowMs - zombieIntroStart));
         const progress = elapsed / ZOMBIE_INTRO_TOTAL_MS;
         const frameIndex = Math.min(zombieCountdownFrames.length - 1, Math.floor(progress * zombieCountdownFrames.length));
         const img = zombieCountdownFrames[frameIndex];
-        if (!img || !img.complete || !img.naturalWidth || !img.naturalHeight) return;
-        const scale = Math.min(360 / img.naturalWidth, 360 / img.naturalHeight);
-        const w = img.naturalWidth * scale;
-        const h = img.naturalHeight * scale;
+        if (img && img.complete && img.naturalWidth && img.naturalHeight) {
+            const scale = Math.min(360 / img.naturalWidth, 360 / img.naturalHeight);
+            const w = img.naturalWidth * scale;
+            const h = img.naturalHeight * scale;
+            c.save();
+            c.globalAlpha = .98;
+            c.shadowColor = 'rgba(239,135,170,.65)';
+            c.shadowBlur = 18;
+            c.translate(COMBAT_W / 2, COMBAT_H / 2 - 50);
+            c.drawImage(img, -w / 2, -h / 2, w, h);
+            c.restore();
+        }
+
+        // The countdown lettering is independent of the artwork so it cannot vanish
+        // while frames are loading.
+        const labels = ['3', '2', '1', 'FIGHT'];
+        const phase = Math.min(labels.length - 1, Math.floor(elapsed / (ZOMBIE_INTRO_TOTAL_MS / labels.length)));
+        const label = labels[phase];
         c.save();
-        c.globalAlpha = .98;
-        c.shadowColor = 'rgba(239,135,170,.65)';
-        c.shadowBlur = 18;
-        c.translate(COMBAT_W / 2, COMBAT_H / 2 - 50);
-        c.drawImage(img, -w / 2, -h / 2, w, h);
+        c.textAlign = 'center';
+        c.textBaseline = 'middle';
+        c.font = label === 'FIGHT' ? '900 72px Georgia, serif' : '900 96px Georgia, serif';
+        c.lineWidth = 11;
+        c.strokeStyle = 'rgba(24, 8, 20, .94)';
+        c.fillStyle = label === 'FIGHT' ? '#ff5c8b' : '#ffe8ef';
+        c.shadowColor = 'rgba(255, 76, 133, .9)';
+        c.shadowBlur = 16;
+        c.strokeText(label, COMBAT_W / 2, 118);
+        c.fillText(label, COMBAT_W / 2, 118);
         c.restore();
     }
     function drawCombat() {
@@ -2589,10 +2609,10 @@ export function createLevel1(ui) {
 
         const overlay = document.createElement('div');
         overlay.id = 'level1-heavy-reward-overlay';
-        overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(9,7,13,.97);display:flex;align-items:center;justify-content:center;overflow:auto;padding:24px;box-sizing:border-box;';
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:#110c14;display:flex;align-items:center;justify-content:center;overflow:auto;padding:0;box-sizing:border-box;';
 
         const box = document.createElement('div');
-        box.style.cssText = 'width:min(1120px,94vw);max-height:94vh;display:flex;flex-direction:column;align-items:center;gap:16px;background:#18101d;border:1px solid #6f4a61;border-radius:18px;padding:22px;box-sizing:border-box;box-shadow:0 18px 70px rgba(0,0,0,.55);overflow:auto;';
+        box.style.cssText = 'width:100%;min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:radial-gradient(circle at top,#2a1727,#110c14 60%);border:0;border-radius:0;padding:clamp(18px,4vw,48px);box-sizing:border-box;overflow:auto;';
         overlay.appendChild(box);
 
         const img = document.createElement('img');
@@ -2626,11 +2646,12 @@ export function createLevel1(ui) {
     }
 
     let completionNextAction = null;
-    function showCompletionScreen(image, alt, title, buttonLabel, nextAction = null) {
+    function showCompletionScreen(image, alt, title, copy, buttonLabel, nextAction = null) {
         completionNextAction = nextAction;
         ui.completionImage.src = image;
         ui.completionImage.alt = alt;
         ui.completionTitle.textContent = title;
+        ui.completionCopy.textContent = copy;
         ui.completionContinue.textContent = buttonLabel;
         ui.completion.classList.remove('hidden');
         mode = 'completion';
@@ -2673,9 +2694,9 @@ export function createLevel1(ui) {
                 stats();
                 if (secondGothDefeated) {
                     heavyUnlocked = true;
-                    showCompletionScreen(defeatArt, gothName + ' defeated', 'YOU’VE DEFEATED THE ' + gothName.toUpperCase(), 'CONTINUE', 'heavy-reward');
+                    showCompletionScreen(defeatArt, gothName + ' defeated', isZombie ? 'ZOMBIE GOTH DEFEATED!' : 'CHAIN GOTH DEFEATED!', isZombie ? 'The Zombie Goth collapses at last. Her quest for fishnets has been cut short, and you’ve narrowly avoided becoming tonight’s dinner. A productive evening all round.' : 'With one final clatter, the Chain Goth hits the ground. The chains are quiet, the immediate threat is over, and the path ahead is marginally safer. Let’s not get carried away.', 'CONTINUE', 'heavy-reward');
                 } else {
-                    showCompletionScreen(defeatArt, gothName + ' defeated', 'YOU’VE DEFEATED THE ' + gothName.toUpperCase(), 'KEEP EXPLORING');
+                    showCompletionScreen(defeatArt, gothName + ' defeated', isZombie ? 'ZOMBIE GOTH DEFEATED!' : 'CHAIN GOTH DEFEATED!', isZombie ? 'The Zombie Goth collapses at last. Her quest for fishnets has been cut short, and you’ve narrowly avoided becoming tonight’s dinner. A productive evening all round.' : 'With one final clatter, the Chain Goth hits the ground. The chains are quiet, the immediate threat is over, and the path ahead is marginally safer. Let’s not get carried away.', 'KEEP EXPLORING');
                 }
                 return;
             }
@@ -2684,7 +2705,7 @@ export function createLevel1(ui) {
             hp = Math.max(1, Math.ceil(maxHp * 0.5));
             const deathTitle = ui.death?.querySelector('.death-title');
             if (deathTitle) deathTitle.textContent = 'KNOCKED OUT';
-            ui.deathText.textContent = 'The Zombie Goth knocked you out. You will wake at the last checkpoint with 50 HP.';
+            ui.deathText.textContent = 'You wake with a pounding headache. You’re alive, if somewhat worse for wear. You’re not entirely sure what the Goths did while you were out, and frankly, you’re not sure you want to know.';
             ui.death.classList.remove('hidden');
             mode = 'dead';
         }
@@ -2792,7 +2813,7 @@ export function createLevel1(ui) {
                 cancelAnimationFrame(relationshipRAF);
                 ui.relationship.classList.add('hidden');
                 stats();
-                showCompletionScreen('assets/encounters/level1/relationship-challenge-completed.png?v=8614', 'You and Scarlett celebrating the completed relationship challenge', 'YOU’VE COMPLETED THE RELATIONSHIP CHALLENGE', 'KEEP EXPLORING');
+                showCompletionScreen('assets/encounters/level1/relationship-challenge-completed.png?v=8614', 'You and Scarlett celebrating the completed relationship challenge', 'CHALLENGE COMPLETE!', 'You’ve successfully endured this highly scientific test of patience. What it’s actually proved remains unclear, but you’ve passed, and that’s what matters. Probably.', 'KEEP EXPLORING');
             } else {
                 relationshipRound++;
                 relationshipDuration = [2600, 2250, 1950, 1650, 1400][relationshipRound] || 1200;
@@ -2812,7 +2833,7 @@ export function createLevel1(ui) {
             mode = 'map';
             ui.puzzle.classList.add('hidden');
             stats();
-            showCompletionScreen('assets/encounters/level1/princess-question-completed.png?v=8614', 'The princess celebrates your correct answer', 'YOU’VE CORRECTLY ANSWERED THE PRINCESS’S QUESTION', 'KEEP EXPLORING');
+            showCompletionScreen('assets/encounters/level1/princess-question-completed.png?v=8614', 'The princess celebrates your correct answer', 'CONGRATULATIONS!', 'You’ve answered the Princess Question correctly, proving that love and intelligence can, on rare occasions, coexist. Princess Scarlett would be proud. Try not to let it go to your head.', 'KEEP EXPLORING');
         } else {
             ui.puzzleFeedback.textContent = '❌ Incorrect. The princess remains imprisoned, and somewhere a goth has just judged you.';
         }

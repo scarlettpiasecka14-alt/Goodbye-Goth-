@@ -861,3 +861,75 @@ html,body,#app{height:100%;overflow:hidden}
 .completion-title{max-width:900px;margin:4px auto 8px;line-height:1.08}
 .death-art{width:min(100%,760px);max-height:45vh}
 @media(max-width:600px){.inventory-slots{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:12px}.inventory-slot{min-height:76px}.completion-art{max-height:48vh}}
+
+/* v9: the map and every interaction use the whole game viewport. */
+.game-screen{width:100vw !important;height:100dvh !important;border:0 !important;border-radius:0 !important;}
+.game-screen .game-layout{grid-template-columns:minmax(0,1fr) !important;gap:0 !important;padding:0 !important;}
+.game-screen .side-column{display:none !important;}
+.game-screen .world-wrap{padding:4px !important;}
+.game-screen #world{border-radius:0 !important;}
+
+#encounter.overlay,
+#inventory.overlay,
+#death.overlay,
+#completion.overlay,
+#boss-intro.overlay,
+#boss-ready.overlay,
+#win.overlay{
+  position:fixed !important;
+  inset:0 !important;
+  z-index:5000 !important;
+  display:grid !important;
+  place-items:center !important;
+  padding:0 !important;
+  border-radius:0 !important;
+  overflow:auto !important;
+  background:#110c14 !important;
+}
+#encounter.overlay > .overlay-box,
+#inventory.overlay > .overlay-box,
+#death.overlay > .overlay-box,
+#completion.overlay > .overlay-box,
+#boss-intro.overlay > .overlay-box,
+#boss-ready.overlay > .overlay-box,
+#win.overlay > .overlay-box{
+  width:100vw !important;
+  max-width:none !important;
+  min-height:100dvh !important;
+  max-height:none !important;
+  margin:0 !important;
+  padding:clamp(18px,3.5vw,52px) !important;
+  border:0 !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+  background:radial-gradient(circle at 50% 15%,#2b1a2a 0,#110c14 60%) !important;
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:center !important;
+  justify-content:center !important;
+  overflow:auto !important;
+}
+
+#encounter .encounter-art,
+#completion .completion-art,
+#death .completion-art{width:min(100%,1180px) !important;max-height:60dvh !important;object-fit:contain !important;}
+#encounter .encounter-name,
+#completion .completion-title,
+#death .death-title,
+#boss-intro .story-title,
+#boss-ready .story-title,
+#win .win-title{font-size:clamp(1.55rem,3.2vw,2.55rem) !important;line-height:1.05 !important;letter-spacing:-.03em !important;}
+#encounter .encounter-copy,
+#completion .completion-copy,
+#death #death-text,
+#boss-intro p,
+#boss-ready p,
+#win p{width:min(860px,94vw) !important;margin:12px auto !important;font-size:clamp(.98rem,1.45vw,1.15rem) !important;line-height:1.5 !important;}
+.completion-copy{color:var(--text);}
+#inventory .inventory-box{width:min(900px,100%) !important;min-height:0 !important;border:0 !important;border-radius:0 !important;box-shadow:none !important;background:transparent !important;}
+#inventory .inventory-slots{width:min(720px,100%) !important;}
+
+@media(max-width:700px){
+  #encounter.overlay > .overlay-box,#inventory.overlay > .overlay-box,#death.overlay > .overlay-box,#completion.overlay > .overlay-box,#boss-intro.overlay > .overlay-box,#boss-ready.overlay > .overlay-box,#win.overlay > .overlay-box{padding:18px 12px !important;}
+  #encounter .encounter-art,#completion .completion-art,#death .completion-art{max-height:48dvh !important;}
+}
