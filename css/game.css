@@ -842,3 +842,12 @@ html,body,#app{height:100%;overflow:hidden}
   max-width:1400px !important;
   max-height:57dvh !important;
 }
+
+/* Testing4 patch: artwork-led completion and knockout screens. */
+.completion-card{width:min(1040px,94vw);max-height:94vh;overflow:auto}
+.completion-art{display:block;width:min(100%,900px);max-height:62vh;margin:0 auto 12px;object-fit:contain;border-radius:10px}
+.completion-title{max-width:900px;margin:4px auto 8px;line-height:1.08}
+.completion-copy{max-width:820px;margin:0 auto 12px;line-height:1.48}
+.death-art{width:min(100%,760px);max-height:45vh}
+@media(max-width:600px){.completion-art{max-height:48vh}}
+

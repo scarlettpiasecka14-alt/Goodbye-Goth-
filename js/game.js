@@ -269,8 +269,17 @@ function mountLevel1(loadSaved=false){
       </div></div>
 
       <div id="death" class="overlay hidden"><div class="overlay-box center death-card">
-        <div class="death-title">YOU DIED</div><p id="death-text">The Goths have won this round.</p>
+        <div class="death-title">YOU DIED</div>
+        <img id="death-image" class="completion-art death-art" src="assets/characters/combat/olly-after-knockout.png?v=1" alt="Olly recovering after being knocked out">
+        <p id="death-text">The Goths have won this round.</p>
         <div class="story-actions"><button id="retry-combat" class="primary">TRY AGAIN</button><button id="back-map">BACK TO MAP</button></div>
+      </div></div>
+
+      <div id="completion" class="overlay hidden"><div class="overlay-box center completion-card">
+        <img id="completion-image" class="completion-art" alt="">
+        <div id="completion-title" class="story-title completion-title"></div>
+        <p id="completion-copy" class="completion-copy"></p>
+        <div class="story-actions"><button id="completion-continue" class="primary">KEEP EXPLORING</button></div>
       </div></div>
 
       <div id="relationship" class="overlay hidden"><div class="overlay-box center relationship-box ironic-box">
@@ -316,6 +325,7 @@ function mountLevel1(loadSaved=false){
     encounter:document.getElementById('encounter'), encounterImage:document.getElementById('encounter-image'), encounterName:document.getElementById('encounter-name'), encounterText:document.getElementById('encounter-text'), encounterReady:document.getElementById('encounter-ready'), encounterExplore:document.getElementById('encounter-explore'),
     combat:document.getElementById('combat'), combatCanvas:document.getElementById('combat-canvas'), combatName:document.getElementById('combat-name'), enemyHp:document.getElementById('enemy-hp'), enemyHpText:document.getElementById('enemy-hp-text'), combatStatus:document.getElementById('combat-status'),
     death:document.getElementById('death'), deathText:document.getElementById('death-text'), retryCombat:document.getElementById('retry-combat'), backMap:document.getElementById('back-map'),
+    completion:document.getElementById('completion'), completionImage:document.getElementById('completion-image'), completionTitle:document.getElementById('completion-title'), completionCopy:document.getElementById('completion-copy'), completionContinue:document.getElementById('completion-continue'),
     relationship:document.getElementById('relationship'), relationshipCanvas:document.getElementById('relationship-canvas'), wouldDisplay:document.getElementById('would-display'), wouldTap:document.getElementById('would-tap'), wouldFeedback:document.getElementById('would-feedback'), timingZone:document.getElementById('timing-zone'), timingCursor:document.getElementById('timing-cursor'),
     puzzle:document.getElementById('puzzle'), puzzleFeedback:document.getElementById('puzzle-feedback'), bossIntro:document.getElementById('boss-intro'), bossStart:document.getElementById('boss-start'), win:document.getElementById('win'), replay:document.getElementById('replay')
   };
@@ -327,6 +337,7 @@ function mountLevel1(loadSaved=false){
   ui.encounterExplore.addEventListener('click',()=>level.closeEncounter());
   ui.retryCombat.addEventListener('click',()=>level.retryCombat());
   ui.backMap.addEventListener('click',()=>level.backToMap());
+  ui.completionContinue.addEventListener('click',()=>level.continueCompletion());
   ui.wouldTap.addEventListener('click',()=>level.completeRelationship());
   ui.bossStart.addEventListener('click',()=>level.startBoss());
   ui.replay.addEventListener('click',()=>mountLevel1());

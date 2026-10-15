@@ -124,13 +124,13 @@ const ENCOUNTER_DATA = {
     zombieGoth: {
         role: 'zombieGoth',
         name: 'ZOMBIE GOTH',
-        image: 'assets/encounters/level1/zombie-goth-encounter.png?v=500',
+        image: 'assets/encounters/level1/zombie-goth-encounter.png?v=2',
         text: 'The zombie goth reaches for you with her claws moaning about the burning sun. You stumble backwards partially blinded by the light. Are you ready?'
     },
     chainGoth: {
         role: 'chainGoth',
         name: 'CHAIN GOTH',
-        image: 'assets/encounters/level1/chain-goth-encounter.png?v=500',
+        image: 'assets/encounters/level1/chain-goth-encounter.png?v=2',
         text: 'You encounter the chain goth, she raises her chain high above her head demanding eyeliner. You turn expecting a blow that never comes. Are you ready?'
     },
     relationshipChallenge: {
@@ -2636,6 +2636,27 @@ export function createLevel1(ui) {
         }, { once:true });
     }
 
+    let completionNextAction = null;
+    function showCompletionScreen(image, alt, title, copy, buttonLabel, nextAction = null) {
+        completionNextAction = nextAction;
+        ui.completionImage.src = image;
+        ui.completionImage.alt = alt;
+        ui.completionTitle.textContent = title;
+        ui.completionCopy.textContent = copy;
+        ui.completionContinue.textContent = buttonLabel;
+        ui.completion.classList.remove('hidden');
+        mode = 'completion';
+    }
+    function continueCompletion() {
+        if (mode !== 'completion') return;
+        ui.completion.classList.add('hidden');
+        const nextAction = completionNextAction;
+        completionNextAction = null;
+        if (nextAction === 'heavy-reward') { showHeavyAttackReward(); return; }
+        mode = 'map';
+        stats();
+    }
+
     function endCombat(won) {
         clearInterval(enemyTimer);
         enemyTimer = null;
@@ -2657,26 +2678,31 @@ export function createLevel1(ui) {
                 target = null;
 
                 const bothLevel1GothsDefeated = enemies.every(e => e.dead);
+                const isZombie = defeatedType === 'shambler' || defeatedType === 'zombie';
+                const defeatArt = isZombie
+                    ? 'assets/encounters/level1/zombie-goth-defeated.png?v=1'
+                    : 'assets/encounters/level1/chain-goth-defeated.png?v=1';
+                const defeatTitle = isZombie ? 'ZOMBIE GOTH DEFEATED!' : 'CHAIN GOTH DEFEATED!';
+                const defeatCopy = isZombie
+                    ? "The Zombie Goth collapses at last. Her quest for fishnets has been cut short, and you've narrowly avoided becoming tonight's dinner. A productive evening all round."
+                    : "With one final clatter, the Chain Goth hits the ground. The chains are quiet, the immediate threat is over, and the path ahead is marginally safer. Let's not get carried away.";
 
                 if (bothLevel1GothsDefeated && !heavyUnlocked) {
                     heavyUnlocked = true;
                     stats();
-                    showHeavyAttackReward();
+                    showCompletionScreen(defeatArt, defeatTitle, defeatTitle, defeatCopy, 'CONTINUE', 'heavy-reward');
                     return;
                 }
 
-                if (defeatedType === 'chain') {
-                    ui.dialogue.textContent = '✅ Chain Goth defeated. One Level 1 Goth remains.';
-                } else {
-                    ui.dialogue.textContent = '✅ Zombie Goth defeated. Your health carries into the next fight.';
-                }
+                showCompletionScreen(defeatArt, defeatTitle, defeatTitle, defeatCopy, 'KEEP EXPLORING');
+                return;
             }
         }
         else {
             hp = Math.max(1, Math.ceil(maxHp * 0.5));
             const deathTitle = ui.death?.querySelector('.death-title');
             if (deathTitle) deathTitle.textContent = 'KNOCKED OUT';
-            ui.deathText.textContent = 'The Zombie Goth knocked Olly out. He will wake at the last checkpoint with 50 HP.';
+            ui.deathText.textContent = "You wake with a pounding headache. You're alive, if somewhat worse for wear. You're not entirely sure what the Goths did while you were out, and frankly, you're not sure you want to know.";
             ui.death.classList.remove('hidden');
             mode = 'dead';
         }
@@ -2783,8 +2809,8 @@ export function createLevel1(ui) {
                 mode = 'map';
                 cancelAnimationFrame(relationshipRAF);
                 ui.relationship.classList.add('hidden');
-                ui.dialogue.textContent = unlockedBoss() ? '💕 WOULD YOU? complete. Miraculously, the rest of the requirements are also done. The gate can now open.' : '💕 WOULD YOU? complete. Five perfectly timed interruptions. One more requirement remains before the gate can open.';
                 stats();
+                showCompletionScreen('assets/encounters/level1/relationship-challenge-completed.png?v=1', 'Relationship Challenge complete', 'CHALLENGE COMPLETE!', "You've successfully endured this highly scientific test of patience. What it's actually proved remains unclear, but you've passed, and that's what matters. Probably.", 'KEEP EXPLORING');
             } else {
                 relationshipRound++;
                 relationshipDuration = [2600, 2250, 1950, 1650, 1400][relationshipRound] || 1200;
@@ -2803,8 +2829,8 @@ export function createLevel1(ui) {
             puzzleSolved = true;
             mode = 'map';
             ui.puzzle.classList.add('hidden');
-            ui.dialogue.textContent = unlockedBoss() ? '🧩 Correct. “Get your kit off, mate.” Against all odds, the rest of the requirements are also complete. The gate can now open.' : '🧩 Correct. “Get your kit off, mate.” One objective down. The Goths are still guarding the exit, because apparently there are rules.';
             stats();
+            showCompletionScreen('assets/encounters/level1/princess-question-completed.png?v=1', 'Princess Question complete', 'CONGRATULATIONS!', "You've answered the Princess Question correctly, proving that love and intelligence can, on rare occasions, coexist. Princess Scarlett would be proud. Try not to let it go to your head.", 'KEEP EXPLORING');
         } else {
             ui.puzzleFeedback.textContent = '❌ Incorrect. The princess remains imprisoned, and somewhere a goth has just judged you.';
         }
@@ -2949,6 +2975,7 @@ export function createLevel1(ui) {
         shootAtPointer,
         retryCombat,
         backToMap,
+        continueCompletion,
         completeRelationship,
         answerPuzzle,
         startBoss,
@@ -2956,3 +2983,4 @@ export function createLevel1(ui) {
         loadGame
     };
 }
+
