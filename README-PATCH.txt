@@ -1,27 +1,32 @@
-GOODBYE GOTH — SHARED SCREEN POLISH PATCH
-Target: public repository branch Testing4
+GOODBYE GOTH — LOADING BAT PATCH
+Target: Testing4 branch, applied on top of the existing Screen Polish Patch.
 
-PURPOSE
-- Remove nested card borders/backgrounds from encounter, completion and knockout screens.
-- Put artwork on the plain page background, with title/copy/buttons below it.
-- Give the completion and knockout artwork more usable width/height.
-- Make the Heavy Attack reward use the same full-viewport treatment.
-- Make the gate cutscene video fill the viewport and hide the ordinary “LOADING CUTSCENE...” label.
-- Change the visible knockout button text from “BACK TO MAP” to “KEEP EXPLORING”, without changing its existing action.
-- Remove inner image borders from the Princess Question and WOULD YOU? live activity screens.
+WHAT THIS ADDS
+- Shows one complete loading-bat illustration while the Level 1 gate cutscene video is loading.
+- Gently floats the whole illustration; no separate sprite frames or complex animation.
+- Fades the artwork away when video playback begins.
+- Keeps the existing PLAY CUTSCENE fallback visible if autoplay is blocked.
+- Keeps the existing playback-failure message if both video formats fail.
+- Hides the old “LOADING CUTSCENE...” label while the illustrated loading screen is shown.
 
-FILES
-- Replace index.html with the included index.html.
-- Add css/screen-polish.css at that exact path.
-- Add js/screen-polish.js at that exact path.
+FILES TO REPLACE / ADD
+- Replace: js/screen-polish.js
+- Replace: css/screen-polish.css
+- Add: assets/story/loading-bat.webp
 
-IMPORTANT
-- This is an additive presentation patch. It does not replace js/game.js or js/levels/level1.js.
-- It does not intentionally alter combat AI, hit detection, enemy damage, challenge answers, map logic, inventory, save/load, or progression.
-- The existing cutscene play fallback and actual playback-failure message remain available.
-- The new helper script only changes the knockout button's displayed label and the cutscene's normal loading message/presentation.
+INSTALL
+1. Unzip this patch into the project root, preserving folder paths.
+2. Replace the two existing screen-polish files when prompted.
+3. Add the new WebP asset at assets/story/loading-bat.webp.
+4. Commit to Testing4 only and test the locked-gate cutscene.
 
-VALIDATION
-- Check JavaScript syntax and the patch ZIP integrity before delivery.
-- Live browser testing isn't available from this patch-building environment. After applying to Testing4, check encounter intro screens, both enemy completion screens, knockout, Princess Question, WOULD YOU?, Heavy Attack reward, and the gate video at desktop and mobile widths.
-- Keep Version-8-safe unchanged. Apply this only to Testing4 and test before promoting anything.
+NOT CHANGED
+- js/game.js and js/levels/level1.js are not replaced or edited.
+- No combat, challenge, map, save/load, or progression logic is changed.
+- Image sizing for other screens is intentionally unchanged in this patch; see the chat recommendation before deciding on a separate sizing adjustment.
+
+CHECKS
+- JavaScript syntax checked.
+- CSS parsing checked.
+- WebP alpha channel verified and file optimized from the original 1.78 MB PNG to a roughly 0.38 MB WebP.
+- Live browser playback still needs to be tested in the Testing4 deployment.

@@ -339,3 +339,43 @@
     font-size: clamp(.9rem, 3.6vw, 1.05rem) !important;
   }
 }
+
+/* Gate cutscene loading: one complete illustration, gently floating until playback starts. */
+#level1-cutscene2-overlay .gg-cutscene-loading-art {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 1 !important;
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  pointer-events: none !important;
+  opacity: 1;
+  animation: gg-cutscene-bat-float 3.8s ease-in-out infinite;
+  transition: opacity .4s ease;
+}
+
+#level1-cutscene2-overlay .gg-cutscene-loading-art.gg-loading-art-hidden {
+  opacity: 0 !important;
+  animation-play-state: paused !important;
+}
+
+@keyframes gg-cutscene-bat-float {
+  0%, 100% { transform: translateY(0) rotate(-0.25deg); }
+  50% { transform: translateY(-7px) rotate(0.25deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #level1-cutscene2-overlay .gg-cutscene-loading-art {
+    animation: none !important;
+  }
+}
+
