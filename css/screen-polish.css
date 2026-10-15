@@ -1,0 +1,341 @@
+/* Goodbye Goth: shared full-viewport presentation for Level 1 screens.
+   Loaded after game.css so these narrow overrides win without rewriting the main stylesheet. */
+
+:root {
+  --gg-screen-bg: var(--bg, #100d13);
+}
+
+/* Encounter intros: image, title, copy and buttons sit directly on the page background. */
+#encounter.overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 5100 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: var(--gg-screen-bg) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  place-items: stretch !important;
+}
+
+#encounter.overlay > .encounter-box {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0 !important;
+  width: 100vw !important;
+  max-width: none !important;
+  min-height: 100dvh !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: clamp(14px, 2.2vh, 24px) 2vw !important;
+  overflow: visible !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: var(--gg-screen-bg) !important;
+}
+
+#encounter .encounter-art {
+  display: block !important;
+  flex: 0 1 auto !important;
+  width: min(96vw, 1440px) !important;
+  max-width: 96vw !important;
+  height: auto !important;
+  max-height: 62dvh !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  margin: 0 auto 8px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+#encounter #encounter-name,
+#encounter .encounter-name {
+  flex: 0 0 auto !important;
+  margin: 4px 12px 0 !important;
+  text-align: center !important;
+}
+
+#encounter .encounter-copy {
+  flex: 0 0 auto !important;
+  width: min(1100px, 94vw) !important;
+  max-width: 1100px !important;
+  margin: 8px auto 14px !important;
+  padding: 0 !important;
+  text-align: center !important;
+}
+
+#encounter .encounter-actions {
+  flex: 0 0 auto !important;
+  justify-content: center !important;
+  width: 100% !important;
+  margin: 4px auto 0 !important;
+  padding: 0 8px !important;
+}
+
+/* Completion artwork screens: the image stays separate from the heading, copy and action. */
+#completion.overlay,
+#death.overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 5200 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: var(--gg-screen-bg) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  place-items: stretch !important;
+}
+
+#completion.overlay > .completion-card,
+#death.overlay > .death-card {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0 !important;
+  width: 100vw !important;
+  max-width: none !important;
+  min-height: 100dvh !important;
+  height: auto !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: clamp(14px, 2.2vh, 24px) 2vw !important;
+  overflow: visible !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: var(--gg-screen-bg) !important;
+}
+
+#completion .completion-art,
+#death .death-art {
+  display: block !important;
+  flex: 0 1 auto !important;
+  width: min(94vw, 1440px) !important;
+  max-width: 94vw !important;
+  height: auto !important;
+  max-height: 58dvh !important;
+  margin: 0 auto 8px !important;
+  padding: 0 !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+#completion .completion-title,
+#death .death-title {
+  flex: 0 0 auto !important;
+  width: min(1200px, 96vw) !important;
+  max-width: 1200px !important;
+  margin: 4px auto 8px !important;
+  text-align: center !important;
+}
+
+#completion .completion-copy,
+#death #death-text {
+  flex: 0 0 auto !important;
+  width: min(1100px, 94vw) !important;
+  max-width: 1100px !important;
+  margin: 0 auto 12px !important;
+  padding: 0 !important;
+  text-align: center !important;
+  line-height: 1.45 !important;
+}
+
+#completion .story-actions,
+#death .story-actions {
+  flex: 0 0 auto !important;
+  justify-content: center !important;
+  width: 100% !important;
+  margin: 4px auto 0 !important;
+}
+
+/* The live Princess Question and WOULD YOU? activities already use a viewport overlay.
+   Remove the nested card and image borders so they follow the same visual language. */
+#relationship.overlay,
+#puzzle.overlay {
+  background: var(--gg-screen-bg) !important;
+}
+
+#relationship.overlay > .relationship-box,
+#puzzle.overlay > .quiz-box {
+  background: var(--gg-screen-bg) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+#relationship .relationship-image,
+#puzzle .quiz-image {
+  border: 0 !important;
+  border-radius: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Heavy Attack reward currently constructs its own card with inline styles. */
+#level1-heavy-reward-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 10000 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  padding: clamp(14px, 2.2vh, 24px) 2vw !important;
+  margin: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  align-items: stretch !important;
+  justify-content: stretch !important;
+  background: var(--gg-screen-bg) !important;
+}
+
+#level1-heavy-reward-overlay > div {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  width: 100vw !important;
+  max-width: none !important;
+  min-height: 100dvh !important;
+  height: auto !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: var(--gg-screen-bg) !important;
+}
+
+#level1-heavy-reward-overlay img {
+  display: block !important;
+  width: min(94vw, 1440px) !important;
+  max-width: 94vw !important;
+  height: auto !important;
+  max-height: 58dvh !important;
+  margin: 0 auto 6px !important;
+  object-fit: contain !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+#level1-heavy-reward-overlay > div > div {
+  max-width: min(1200px, 96vw) !important;
+}
+
+#level1-heavy-reward-overlay button {
+  flex: 0 0 auto !important;
+  margin-top: 4px !important;
+}
+
+/* Gate cutscene: full viewport video, no framed inner player and no normal loading label. */
+#level1-cutscene2-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 10000 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: #09070d !important;
+}
+
+#level1-cutscene2-overlay > div:first-child {
+  position: relative !important;
+  width: 100vw !important;
+  max-width: none !important;
+  height: 100dvh !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: #09070d !important;
+  overflow: hidden !important;
+}
+
+#level1-cutscene2 {
+  display: block !important;
+  width: 100vw !important;
+  max-width: none !important;
+  height: 100dvh !important;
+  max-height: none !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: #09070d !important;
+}
+
+#level1-cutscene2-overlay .gg-cutscene-status {
+  left: 50% !important;
+  top: auto !important;
+  bottom: 20px !important;
+  transform: translateX(-50%) !important;
+  max-width: min(92vw, 760px) !important;
+  padding: 10px 14px !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  background: rgba(9, 7, 13, .82) !important;
+  color: #f5dce7 !important;
+  text-align: center !important;
+  font: 600 15px Georgia, serif !important;
+  letter-spacing: 0 !important;
+}
+
+#level1-cutscene2-overlay button {
+  z-index: 3 !important;
+}
+
+@media (max-width: 700px) {
+  #encounter .encounter-art {
+    width: 96vw !important;
+    max-height: 45dvh !important;
+  }
+
+  #completion .completion-art,
+  #death .death-art,
+  #level1-heavy-reward-overlay img {
+    width: 96vw !important;
+    max-height: 43dvh !important;
+  }
+
+  #encounter.overlay > .encounter-box,
+  #completion.overlay > .completion-card,
+  #death.overlay > .death-card,
+  #level1-heavy-reward-overlay > div {
+    padding: 12px 2vw !important;
+  }
+
+  #encounter .encounter-copy,
+  #completion .completion-copy,
+  #death #death-text {
+    width: 94vw !important;
+    font-size: clamp(.9rem, 3.6vw, 1.05rem) !important;
+  }
+}
