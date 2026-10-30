@@ -1939,7 +1939,8 @@ export function createLevel1(ui) {
         // The Ankle Biter frames are wide, low-to-the-ground poses. Give this
         // attack a width cap matching Zombie Goth's normal combat footprint so
         // the horizontal artwork does not become enormous on screen.
-        const renderMaxWidth = zombieCombatState === 'heavyKick' ? 270 : 1400;
+        // Increased by 15% from 270px after the first size adjustment.
+        const renderMaxWidth = zombieCombatState === 'heavyKick' ? 310.5 : 1400;
         const renderHeight = Math.round(frame.targetHeight);
         const deathFloorOffset = dying ? (ZOMBIE_DEATH_FLOOR_OFFSETS[frame.frameIndex] || 0) : 0;
         drawCombatImage(c, frame.img, enemyX, renderGroundY, renderHeight, face, renderMaxWidth, alpha, offsetX, rotation, sourceFacing, deathFloorOffset);
