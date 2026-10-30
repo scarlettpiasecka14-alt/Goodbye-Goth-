@@ -2081,6 +2081,25 @@ export function createLevel1(ui) {
         if (zombieCombatState === 'claw' || zombieCombatState === 'heavyKick') {
             const elapsed = nowMs - zombieCombatStateStart;
             const heavy = zombieCombatState === 'heavyKick';
+
+            if (heavy) {
+                // The Ankle Biter is a tracking attack: keep crawling towards
+                // Olly's current position for the duration of the bite. This
+                // makes walking away insufficient, while a jump or dodge can
+                // still avoid the actual hit window.
+                const trackingDx = player.x - zombieCombatX;
+                const trackingDirection = trackingDx < 0 ? -1 : 1;
+                const trackingGap = 112; // just beyond the existing 108px body-collision gap
+                const desiredX = player.x - trackingDirection * trackingGap;
+                const targetX = Math.max(170, Math.min(COMBAT_W - 170, desiredX));
+                const crawlStep = Math.min(Math.abs(targetX - zombieCombatX), 520 * dt);
+                if (crawlStep > 0.5) {
+                    zombieCombatX += (targetX >= zombieCombatX ? 1 : -1) * crawlStep;
+                    zombieCombatX = Math.max(170, Math.min(COMBAT_W - 170, zombieCombatX));
+                    zombieCombatWalkIndex += dt * 1000;
+                }
+            }
+
             const hitStart = heavy ? 350 : 300;
             const hitEnd = heavy ? 760 : 500;
             const attackTotal = heavy ? 1000 : 720;
