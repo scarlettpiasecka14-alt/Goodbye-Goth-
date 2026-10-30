@@ -164,13 +164,13 @@ zombieSprites.chain.src = 'assets/characters/chain-goth-clean.png?v=6513';
 // All 12 supplied side-profile poses are used in order. The game flips them only when the Goth needs to face the opposite direction.
 const zombieCombatFrames = {
     // v8.11: the approved crouched ready pose is the first frame of the supplied
-    // heavy-kick sequence. It is used as the post-countdown ready/recovery pose.
+    // heavy-attack sequence. It is used as the post-countdown ready/recovery pose.
     idle: [new Image()],
     walk: Array.from({ length: 12 }, () => new Image()),
     // Regular claw swipe.
     claw: [1, 2, 3, 4, 5].map(() => new Image()),
-    // v8.11: approved four-frame heavy KICK sequence.
-    heavyKick: [1, 2, 3, 4].map(() => new Image()),
+    // Eight Ankle Biter frames used by the existing HEAVY ATTACK state.
+    heavyKick: Array.from({ length: 8 }, () => new Image()),
     // Existing supplied Zombie Goth reaction/death art.
     hurt: Array.from({ length: 8 }, () => new Image()),
     death: Array.from({ length: 8 }, () => new Image()),
@@ -189,12 +189,12 @@ const ZOMBIE_WALK_SEQUENCE = Array.from({ length: 12 }, (_, i) => i);
 // v8.7: speed up the animation cycle itself by ~15% without changing Zombie's movement speed.
 const ZOMBIE_WALK_FRAME_MS = Array(12).fill(128);
 const ZOMBIE_WALK_CYCLE_MS = ZOMBIE_WALK_FRAME_MS.reduce((a, b) => a + b, 0);
-// Use the dedicated crouched ready pose. The first heavy-kick frame belongs
-// exclusively to the kick animation and must not appear as the neutral/telegraph pose.
+// Use the dedicated crouched ready pose. The attack frames belong
+// exclusively to the heavy attack and must not appear as the neutral/telegraph pose.
 zombieCombatFrames.idle[0].src = 'assets/characters/combat/zombie-ready-crouch.png?v=8111';
 zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.png?v=7600`);
 zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i + 1}.png?v=8600`);
-zombieCombatFrames.heavyKick.forEach((img, i) => img.src = `assets/characters/combat/zombie-heavy-${i + 1}.png?v=8110`);
+zombieCombatFrames.heavyKick.forEach((img, i) => img.src = `assets/characters/combat/zombie-ankle-biter-${String(i + 1).padStart(2, '0')}.png?v=10100`);
 zombieCombatFrames.hurt.forEach((img, i) => img.src = `assets/characters/combat/zombie-hurt-${i + 1}.png?v=8800`);
 zombieCombatFrames.death.forEach((img, i) => img.src = `assets/characters/combat/zombie-death-${i + 1}.png?v=8600`);
 zombieCombatFrames.prep.forEach((img, i) => img.src = `assets/characters/combat/zombie-prep-${i + 1}.png?v=8600`);
@@ -1985,7 +1985,7 @@ export function createLevel1(ui) {
 
     function chooseZombieAttack(nowMs) {
         // v8.11: deterministic pattern = at least two normal attacks,
-        // then the approved heavy KICK, followed by a longer attack break.
+        // then the approved heavy attack, followed by a longer attack break.
         const isHeavy = zombieAttackCycle >= 2;
         zombieCombatAttackType = isHeavy ? 'heavyKick' : 'claw';
         zombieAttackCycle = (zombieAttackCycle + 1) % 3;
@@ -1994,7 +1994,7 @@ export function createLevel1(ui) {
         zombieCombatStateStart = nowMs;
         enemyAttackPhase = 'windup';
         ui.combatStatus.textContent = isHeavy
-            ? '⚠️ The Zombie Goth is charging a HEAVY KICK.'
+            ? '⚠️ The Zombie Goth is charging a HEAVY ATTACK.'
             : 'The Zombie Goth draws back her claws.';
     }
 
@@ -2089,7 +2089,7 @@ export function createLevel1(ui) {
                     heavy ? 220 : 135,
                     heavy ? 70 : 38,
                     nowMs,
-                    heavy ? 'HEAVY KICK' : 'CLAW SWIPE'
+                    heavy ? 'HEAVY ATTACK' : 'CLAW SWIPE'
                 );
             }
             if (elapsed >= attackTotal) {
@@ -2320,7 +2320,7 @@ export function createLevel1(ui) {
             cctx.font = '800 13px system-ui';
             cctx.fillText(
                 zombieCombatAttackType === 'heavyKick'
-                    ? 'HEAVY KICK  •  MOVE / DODGE / JUMP'
+                    ? 'HEAVY ATTACK  •  MOVE / DODGE / JUMP'
                     : 'CLAW SWIPE  •  MOVE / DODGE / JUMP',
                 0,
                 22
