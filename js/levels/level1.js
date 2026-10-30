@@ -1936,9 +1936,10 @@ export function createLevel1(ui) {
         // v8.9: walk and attack are deliberately 10% smaller; every other
         // Zombie combat animation is 20% larger than its v8.8 size.
         const renderGroundY = walking ? enemyY + 25 : (dying ? enemyY + 8 : enemyY + 22);
-        // Never constrain by width. The supplied frames have different native
-        // aspect ratios, so a width cap makes the character visibly grow/shrink.
-        const renderMaxWidth = 1400;
+        // The Ankle Biter frames are wide, low-to-the-ground poses. Give this
+        // attack a width cap matching Zombie Goth's normal combat footprint so
+        // the horizontal artwork does not become enormous on screen.
+        const renderMaxWidth = zombieCombatState === 'heavyKick' ? 270 : 1400;
         const renderHeight = Math.round(frame.targetHeight);
         const deathFloorOffset = dying ? (ZOMBIE_DEATH_FLOOR_OFFSETS[frame.frameIndex] || 0) : 0;
         drawCombatImage(c, frame.img, enemyX, renderGroundY, renderHeight, face, renderMaxWidth, alpha, offsetX, rotation, sourceFacing, deathFloorOffset);
