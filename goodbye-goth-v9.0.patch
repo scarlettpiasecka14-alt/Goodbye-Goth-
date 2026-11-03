@@ -1,0 +1,131 @@
+diff --git a/js/game.js b/js/game.js
+index 5539568..0000000 100644
+--- a/js/game.js
++++ b/js/game.js
+@@ -200,33 +200,20 @@ function mountLevel1(loadSaved=false){
+           </div>
+           <div id="dialogue" class="dialogue" aria-live="polite">You wake up somewhere very dark...</div>
+         </div>
+-        <aside class="side-column">
+-          <div class="side-card">
+-            <strong>LEVEL 1 OBJECTIVES</strong>
+-            <div class="objective-list">
+-              <div id="goal-goths">○ Defeat the required Zombie Goths (0/2)</div>
+-              <div id="goal-rel">○ Complete the WOULD YOU? Puzzle</div>
+-              <div id="goal-puzzle">○ Answer the Princess Question</div>
+-              <div id="goal-boss">🔒 Boss gate locked</div>
+-            </div>
+-          </div>
+-          <div class="side-card">
+-            <strong>MAP</strong>
+-            <canvas id="mini-map" class="mini-map" width="250" height="180"></canvas>
+-            <div class="legend"><span>○ You</span><span>♥ challenge</span><span>✣ puzzle</span><span>♛ boss</span></div>
+-          </div>
+-          <div class="side-card"><strong>Checkpoint</strong><div id="checkpoint" class="small">Cemetery entrance</div></div>
+-          <div class="side-card save-side-card">
+-            <strong>GAME PROGRESS</strong>
+-            <div class="save-load-side-actions">
+-              <button id="save-game" type="button">SAVE GAME</button>
+-              <button id="load-game" type="button">LOAD GAME</button>
+-            </div>
+-            <div class="save-hint">Press <strong>X</strong> at any time to save.</div>
+-            <div id="save-status" class="small save-status" aria-live="polite"></div>
+-          </div>
+-        </aside>
+       </div>
++
++      <!-- v9.0: Keep legacy gameplay support nodes available without displaying a sidebar. -->
++      <div id="game-support-ui" hidden aria-hidden="true">
++        <canvas id="mini-map" class="mini-map" width="250" height="180"></canvas>
++        <div id="goal-goths">○ Defeat the required Zombie Goths (0/2)</div>
++        <div id="goal-rel">○ Complete the WOULD YOU? Puzzle</div>
++        <div id="goal-puzzle">○ Answer the Princess Question</div>
++        <div id="goal-boss">🔒 Boss gate locked</div>
++        <div id="checkpoint" class="small">Cemetery entrance</div>
++        <button id="save-game" type="button">SAVE GAME</button>
++        <button id="load-game" type="button">LOAD GAME</button>
++        <div id="save-status" class="small save-status" aria-live="polite"></div>
++      </div>
+ 
+       <div id="inventory" class="overlay hidden" style="z-index:40">
+         <div class="overlay-box center inventory-box">
+
+diff --git a/js/levels/level1.js b/js/levels/level1.js
+index f2046bd..0000000 100644
+--- a/js/levels/level1.js
++++ b/js/levels/level1.js
+@@ -1,1 +1,1 @@
+-/* Goodbye Goth v8.11 - corrected Zombie Goth AI + player reaction/KO pass. */
++/* Goodbye Goth v9.0 - full-width cemetery map and transparent overlay HUD. */
+@@ -1188,1 +1188,1 @@
+-        const zoom = 1.24;
++        const zoom = 1.30;
+@@ -1251,1 +1251,1 @@
+-        const zoom = 1.24;
++        const zoom = 1.30;
+
+diff --git a/css/game.css b/css/game.css
+index 6313df3..0000000 100644
+--- a/css/game.css
++++ b/css/game.css
+@@ -854,0 +855,60 @@
++
++/* ============================================================
++   GOODBYE GOTH V9.0 - FULL-WIDTH MAP + TRANSPARENT HUD OVERLAY
++   ============================================================ */
++.game-screen .game-layout {
++  display: grid;
++  grid-template-columns: minmax(0, 1fr);
++  gap: 0;
++  padding: 4px;
++  width: 100%;
++  flex: 1;
++  min-height: 0;
++}
++
++.game-screen .play-column {
++  width: 100%;
++  min-width: 0;
++  min-height: 0;
++}
++
++.game-screen .world-wrap {
++  width: 100%;
++  flex: 1 1 auto;
++  min-height: 0;
++  padding: 0;
++  overflow: hidden;
++}
++
++.game-screen #world {
++  display: block;
++  width: 100%;
++  height: 100%;
++  min-height: 0;
++  max-height: none;
++  aspect-ratio: auto;
++  object-fit: fill;
++}
++
++/* The sidebar is removed from the layout; Olly's HUD floats above the map. */
++.game-screen .side-column {
++  display: none !important;
++}
++
++.game-screen .player-hud {
++  background: transparent;
++  border: 0;
++  border-radius: 0;
++  box-shadow: none;
++  padding: 0;
++  pointer-events: none;
++}
++
++.game-screen .player-hud-name,
++.game-screen .player-hp-text {
++  text-shadow: 0 1px 4px rgba(0, 0, 0, .95);
++}
++
++.game-screen .player-hud button {
++  pointer-events: auto;
++}
