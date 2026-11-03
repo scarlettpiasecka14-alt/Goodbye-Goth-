@@ -951,6 +951,9 @@ export function createLevel1(ui) {
         zombieCombatNextDecision = 0,
         zombieRecoveryDuration = 520,
         zombieCombatWalkIndex = 0,
+        zombieBiteCaughtAt = 0,
+        zombieBiteHoldUntil = 0,
+        zombieBiteHoldX = 0,
         zombieCombatPrevX = COMBAT_W - 320,
         zombieHitStaggerUntil = 0,
         zombieHitReactionStart = 0,
@@ -1527,6 +1530,9 @@ export function createLevel1(ui) {
         zombieCombatAttackType = 'claw';
         zombieAttackCycle = 0;
         zombieCombatAttackHit = false;
+        zombieBiteCaughtAt = 0;
+        zombieBiteHoldUntil = 0;
+        zombieBiteHoldX = 0;
         zombieRecoveryDuration = 520;
         zombieCombatNextDecision = performance.now() + 450;
         zombieCombatWalkIndex = 0;
@@ -1578,6 +1584,14 @@ export function createLevel1(ui) {
         const playerMinX = 140;
         const playerMaxX = COMBAT_W - 140;
         const nowMs = performance.now();
+        if (nowMs < zombieBiteHoldUntil) {
+            player.x = zombieBiteHoldX;
+            player.y = COMBAT_GROUND_Y;
+            jumping = false;
+            jumpT = 1;
+            jumpOffset = 0;
+            return;
+        }
         let dx = (held.right ? 1 : 0) - (held.left ? 1 : 0);
 
         if (dx && !(heavyAttackAnimUntil > nowMs)) {
@@ -1655,7 +1669,8 @@ export function createLevel1(ui) {
     }
 
     function jump() {
-        if (mode !== 'combat' || zombieIntroActive || playerDeathTriggered || jumping || heavyAttackAnimUntil > performance.now())
+        const nowMs = performance.now();
+        if (mode !== 'combat' || zombieIntroActive || playerDeathTriggered || jumping || heavyAttackAnimUntil > nowMs || nowMs < zombieBiteHoldUntil)
             return;
         jumping = true;
         jumpT = 0;
@@ -1819,8 +1834,16 @@ export function createLevel1(ui) {
         } else if (zombieCombatState === 'heavyKick') {
             frames = zombieCombatFrames.heavyKick;
             targetHeight = 410;
-            const total = 1000;
-            index = Math.min(frames.length - 1, Math.floor(Math.min(.999, elapsed / total) * frames.length));
+            if (zombieBiteCaughtAt > 0) {
+                const sinceCatch = Math.max(0, nowMs - zombieBiteCaughtAt);
+                if (sinceCatch < 1000) index = 5;       // Frame 06: bite contact, held for one second.
+                else if (sinceCatch < 1200) index = 6;  // Frame 07: recoil.
+                else index = 7;                         // Frame 08: return to crouch.
+            } else {
+                const crawlAnimationMs = 1200;
+                const progress = Math.min(.999, elapsed / crawlAnimationMs);
+                index = Math.min(4, Math.floor(progress * 5)); // Frames 01-05: slower approach.
+            }
         } else if (zombieCombatState === 'death') {
             frames = zombieCombatFrames.death;
             targetHeight = 360;
@@ -1939,8 +1962,8 @@ export function createLevel1(ui) {
         // The Ankle Biter frames are wide, low-to-the-ground poses. Give this
         // attack a width cap matching Zombie Goth's normal combat footprint so
         // the horizontal artwork does not become enormous on screen.
-        // Increased by 15% from 270px after the first size adjustment.
-        const renderMaxWidth = zombieCombatState === 'heavyKick' ? 310.5 : 1400;
+        // Increased by a further 10% so the bite-contact pose reads clearly.
+        const renderMaxWidth = zombieCombatState === 'heavyKick' ? 341.55 : 1400;
         const renderHeight = Math.round(frame.targetHeight);
         const deathFloorOffset = dying ? (ZOMBIE_DEATH_FLOOR_OFFSETS[frame.frameIndex] || 0) : 0;
         drawCombatImage(c, frame.img, enemyX, renderGroundY, renderHeight, face, renderMaxWidth, alpha, offsetX, rotation, sourceFacing, deathFloorOffset);
@@ -1990,6 +2013,11 @@ export function createLevel1(ui) {
         // then the approved heavy attack, followed by a longer attack break.
         const isHeavy = zombieAttackCycle >= 2;
         zombieCombatAttackType = isHeavy ? 'heavyKick' : 'claw';
+        if (isHeavy) {
+            zombieBiteCaughtAt = 0;
+            zombieBiteHoldUntil = 0;
+            zombieBiteHoldX = 0;
+        }
         zombieAttackCycle = (zombieAttackCycle + 1) % 3;
         zombieCombatAttackHit = false;
         zombieCombatState = 'windup';
@@ -2083,37 +2111,53 @@ export function createLevel1(ui) {
             const heavy = zombieCombatState === 'heavyKick';
 
             if (heavy) {
-                // The Ankle Biter is a tracking attack: keep crawling towards
-                // Olly's current position for the duration of the bite. This
-                // makes walking away insufficient, while a jump or dodge can
-                // still avoid the actual hit window.
-                const trackingDx = player.x - zombieCombatX;
-                const trackingDirection = trackingDx < 0 ? -1 : 1;
-                const trackingGap = 112; // just beyond the existing 108px body-collision gap
-                const desiredX = player.x - trackingDirection * trackingGap;
-                const targetX = Math.max(170, Math.min(COMBAT_W - 170, desiredX));
-                const crawlStep = Math.min(Math.abs(targetX - zombieCombatX), 520 * dt);
-                if (crawlStep > 0.5) {
-                    zombieCombatX += (targetX >= zombieCombatX ? 1 : -1) * crawlStep;
-                    zombieCombatX = Math.max(170, Math.min(COMBAT_W - 170, zombieCombatX));
-                    zombieCombatWalkIndex += dt * 1000;
+                // Crawl towards Olly at a slightly slower pace. If she reaches
+                // him while he is grounded and not dodging, the bite connects.
+                // Jumping or dodging can still avoid the catch.
+                if (zombieBiteCaughtAt === 0) {
+                    const trackingDx = player.x - zombieCombatX;
+                    const trackingDirection = trackingDx < 0 ? -1 : 1;
+                    const trackingGap = 112;
+                    const desiredX = player.x - trackingDirection * trackingGap;
+                    const targetX = Math.max(170, Math.min(COMBAT_W - 170, desiredX));
+                    const crawlStep = Math.min(Math.abs(targetX - zombieCombatX), 450 * dt);
+                    if (crawlStep > 0.5) {
+                        zombieCombatX += (targetX >= zombieCombatX ? 1 : -1) * crawlStep;
+                        zombieCombatX = Math.max(170, Math.min(COMBAT_W - 170, zombieCombatX));
+                        zombieCombatWalkIndex += dt * 1000;
+                    }
+
+                    const catchDistance = Math.abs(player.x - zombieCombatX);
+                    const canCatch = !jumping && jumpOffset > -18 && nowMs >= dodgeUntil;
+                    if (canCatch && catchDistance <= 155) {
+                        zombieBiteCaughtAt = nowMs || 1;
+                        zombieBiteHoldX = player.x;
+                        zombieBiteHoldUntil = nowMs + 1000;
+                        zombieCombatAttackHit = true;
+                        applyZombieDamage(10, 220, 0, nowMs, 'HEAVY ATTACK');
+                        // Keep the hold anchor aligned if arena-edge handling nudges Olly inward.
+                        zombieBiteHoldX = player.x;
+                    }
+                } else if (nowMs < zombieBiteHoldUntil) {
+                    // Keep Olly exactly where the bite made contact.
+                    player.x = zombieBiteHoldX;
+                    jumping = false;
+                    jumpT = 1;
+                    jumpOffset = 0;
                 }
             }
 
-            const hitStart = heavy ? 350 : 300;
-            const hitEnd = heavy ? 760 : 500;
-            const attackTotal = heavy ? 1000 : 720;
-            if (!zombieCombatAttackHit && elapsed >= hitStart && elapsed <= hitEnd) {
+            if (!heavy && !zombieCombatAttackHit && elapsed >= 300 && elapsed <= 500) {
                 zombieCombatAttackHit = true;
-                applyZombieDamage(
-                    heavy ? 10 : 5,
-                    heavy ? 220 : 135,
-                    heavy ? 70 : 38,
-                    nowMs,
-                    heavy ? 'HEAVY ATTACK' : 'CLAW SWIPE'
-                );
+                applyZombieDamage(5, 135, 38, nowMs, 'CLAW SWIPE');
             }
-            if (elapsed >= attackTotal) {
+
+            // A successful bite holds contact for 1s, then plays recoil and
+            // return frames for another 400ms. A missed bite times out cleanly.
+            const attackCompleteAt = heavy
+                ? (zombieBiteCaughtAt > 0 ? (zombieBiteHoldUntil - zombieCombatStateStart + 400) : 2200)
+                : 720;
+            if (elapsed >= attackCompleteAt) {
                 zombieCombatState = 'recover';
                 zombieCombatStateStart = nowMs;
                 zombieRecoveryDuration = heavy ? 1250 : 520;
@@ -2595,6 +2639,7 @@ export function createLevel1(ui) {
         if (mode !== 'combat' || zombieIntroActive || playerDeathTriggered)
             return;
         const nowMs = performance.now();
+        if (nowMs < zombieBiteHoldUntil) return;
         if (nowMs < dodgeUntil) {
             ui.combatStatus.textContent = '↪ Dodge is still recovering.';
             return;
