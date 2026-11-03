@@ -1,0 +1,15 @@
+Apply the supplied `goodbye-goth-v9.0.patch` to this local Goodbye Goth repository.
+
+Before doing anything:
+1. Confirm the repository is on branch `Testing5`.
+2. Confirm there are no uncommitted changes. Do not discard or overwrite any user work.
+3. Confirm the source files match the patch baseline.
+
+Then run `git apply --check` on `goodbye-goth-v9.0.patch`. If it passes, run `git apply` on the same patch. Do not rewrite the patch or make unrelated changes.
+
+The only expected changed files are:
+- `js/game.js`
+- `js/levels/level1.js`
+- `css/game.css`
+
+Run `node --check` on the changed JavaScript files. Show me the diff summary and the validation results. Do not commit or push; I will review and do that myself.
