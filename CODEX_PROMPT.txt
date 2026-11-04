@@ -1,0 +1,10 @@
+Please apply the supplied Goodbye Goth V9.0 corrected layout package to this local repository.
+
+1. Confirm the repository root and that the current branch is Testing5.
+2. Confirm git status is clean. Do not discard or overwrite user work.
+3. Run the included apply_v9.0.py script with the repository root as the working directory.
+4. Review the resulting diff. Only js/game.js, js/levels/level1.js and css/game.css should change; the script creates a .goodbye-goth-v9.0-backup folder as a safety copy.
+5. Verify the Olly HP/inventory HUD is now inside .world-wrap and has no opaque card background, the visible sidebar is removed, both map zoom values are 1.30, and hidden compatibility nodes remain.
+6. Run node --check on the changed JavaScript files if Node is installed, and report the result.
+
+Do not commit or push. I will review and commit the changes myself. Do not alter Zombie Goth combat or any unrelated files.

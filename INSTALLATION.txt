@@ -1,0 +1,5 @@
+Goodbye Goth V9.0 corrected map layout
+
+Read README.md.
+Use Codex with CODEX_PROMPT.txt, or run apply_v9.0.py from the local repository root while checked out to Testing5.
+Do not upload the ZIP itself to GitHub. The Python installer must be executed against your local repository checkout.

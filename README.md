@@ -1,52 +1,47 @@
-# Goodbye Goth V9.0 — Reapplication Package for Testing5
+# Goodbye Goth V9.0 — Corrected map layout package
 
-## Why this package exists
-The earlier V9.0 ZIP contained a Git patch, not complete replacement source files. The Testing5 commit `ff0e4637328134c16d34ce897da35ca386c7cb83` only added the master-context document. It did not change `js/game.js`, `js/levels/level1.js`, or `css/game.css`, which is why the deployed screen stayed unchanged.
+This package replaces the previous V9.0 patch-only workflow with a self-contained installer script. It is designed for the local repository checkout on **Testing5**.
 
-This package contains the same targeted V9.0 changes, now explicitly based on the source files currently present on `Testing5`. It also includes a guarded apply script and a ready-to-use Codex prompt.
+## Why the previous attempt did not change the screen
 
-## Current repository state checked
-- Repository: `scarlettpiasecka14-alt/Goodbye-Goth-`
-- Development branch: `Testing5`
-- Default / safe branch: `Version-9.0-safe`
-- Testing5 commit at inspection: `ff0e4637328134c16d34ce897da35ca386c7cb83`
-- Active files: `js/game.js`, `js/levels/level1.js`, `css/game.css`
-- Active entry point: `index.html` loads `js/game.js` and `js/screen-polish.js`.
+The latest inspected `Testing5` commit (`1db12ab07228acf4978b80822fb96fa21ba9806b`) added helper documents and an `apply-v9.0.sh` file, but did not modify the live game source. The three live files still had the old sidebar, the opaque HUD card and map zoom `1.24`. The earlier shell script depended on a separate `.patch` file being present beside it; that patch was not in the commit's changed-file list. Uploading a ZIP or its instructions to GitHub does not execute the installer or apply a patch. The corrected installer in this ZIP is self-contained and does not depend on a separate patch file.
 
-## Important: do not upload this ZIP itself to GitHub
-GitHub's web upload does not unpack ZIP files or apply `.patch` files. The patch must be applied to a local checkout of the repository.
+## What the corrected installer changes
 
-## Easiest workflow using Codex
-1. Download and extract this ZIP.
-2. Open your local Goodbye Goth repository in Codex and make sure it is on branch `Testing5` with no uncommitted changes.
-3. Give Codex the contents of `CODEX_APPLY_PROMPT.txt` and make the extracted `goodbye-goth-v9.0.patch` available in the workspace.
-4. Review the three changed files, then commit and push them to `Testing5`.
-5. Let Vercel deploy the `Testing5` branch and test the checklist below.
+- `js/game.js`: moves Olly's HP and Inventory HUD **inside `.world-wrap`**, directly over the cemetery canvas; removes the visible right sidebar; retains its legacy mini-map/objective/checkpoint/save-load nodes in a hidden compatibility container so `level1.js` does not encounter null references.
+- `js/levels/level1.js`: changes both map zoom values from `1.24` to `1.30` and updates the version comment.
+- `css/game.css`: adds a final high-specificity layout override. The map fills the main game area. The HUD is moved inside the map wrapper and anchored directly over the canvas. It has no background/border/shadow card, and its inventory button remains clickable. The map canvas uses flex sizing so the help text and dialogue remain visible below it.
+
+The top level header/status pills and the dialogue strip remain as before. The Zoom and pointer-coordinate values are changed together to preserve marker-click alignment.
+
+## Apply using Codex
+
+1. Download and extract this ZIP somewhere accessible to Codex.
+2. Open your **local Goodbye Goth repository** in Codex. Make sure it is on `Testing5` and has no uncommitted changes.
+3. Give Codex the contents of `CODEX_PROMPT.txt` and ask it to run the included `apply_v9.0.py` from the repository root.
+4. The installer checks the branch, checks for a clean working tree, validates all required source anchors, makes a backup folder, then changes only the three files listed above.
+5. Review the diff. Do not ask Codex to commit or push automatically. Commit and push to Testing5 when you are happy.
+6. Confirm Vercel has deployed the latest Testing5 commit, then hard-refresh the deployment.
 
 ## Terminal alternative
-From the root of your local Goodbye Goth repository, run:
+
+From the root of your local repository, while checked out to `Testing5`, run:
 
 ```bash
-bash "/path/to/extracted/goodbye_goth_v9_0/apply-v9.0.sh"
+python3 "/path/to/extracted/Goodbye_Goth_V9.0_Corrected/apply_v9.0.py"
 ```
 
-The script checks that the current branch is `Testing5`, stops if the working tree has uncommitted changes, verifies the patch applies cleanly, then applies it. It does not commit or push.
+The script stops without changes if the branch is wrong, the worktree is dirty, or expected source structures do not match. It creates `.goodbye-goth-v9.0-backup/` before writing the three modified source files.
 
-## What the patch changes
-- `js/game.js`: removes the visible right-hand objectives, mini-map, checkpoint and Game Progress sidebar. Keeps the legacy DOM nodes hidden so existing Level 1 code can continue updating them, and preserves keyboard saving / title-screen loading.
-- `js/levels/level1.js`: updates the version marker and camera zoom from `1.24` to `1.30` in both rendering and click-coordinate conversion.
-- `css/game.css`: makes the map full-width and removes the background, border and shadow from Olly's floating HUD wrapper. The Inventory button retains its own visible button styling.
+## Acceptance test
 
-The top header indicators remain. The dialogue strip remains beneath the map. Zombie Goth combat is not modified.
+- Sidebar with Objectives, mini-map, Checkpoint and Game Progress is no longer visible.
+- Cemetery map uses the full width previously divided with the sidebar.
+- Olly's HP and Inventory sit over the map in the upper-right, with no dark card behind the HUD.
+- Inventory button is clickable.
+- Map zoom is slightly closer; map clicks still align with challenges and enemies.
+- Movement, collision, fog of war and interactions still work.
+- X still saves and title-screen Load Game still loads.
+- Header status pills and bottom dialogue strip remain.
 
-## Test after deployment
-- Right sidebar is gone.
-- Map fills the freed width.
-- HP and Inventory overlay the map at top-right.
-- No dark rectangular HUD box appears behind them.
-- Inventory button remains clickable.
-- Challenge/enemy clicks still align at the new zoom.
-- Fog of war, movement and collision still work.
-- X saves; title-screen Load Game loads.
-
-This patch has not been tested in the live browser deployment. Do not treat it as complete until Scarlett tests it.
+This package has not been browser-tested or deployed. The installer can prepare the source changes locally; Scarlett must review, commit/push, and test the Vercel deployment.
