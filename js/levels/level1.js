@@ -1,4 +1,4 @@
-/* Goodbye Goth V9.0 - map interface cleanup (no side panel / mini-map) on top of v8.11 Zombie Goth AI. */
+/* Goodbye Goth V9.1 - Chain Goth fight (AI + intro/walk/swipe art) on top of V9.0 map cleanup and the v8.11 Zombie Goth AI. */
 const WORLD_W = 1536,
     WORLD_H = 1024;
 const SAVE_KEY = 'goodbyeGothSave_v6';
@@ -224,6 +224,57 @@ const ZOMBIE_DEATH_HOLD_MS = 5000;
 // v8.7: the supplied death PNGs have different transparent margins. These offsets
 // keep the visible bottom of each frame on the combat floor instead of floating.
 const ZOMBIE_DEATH_FLOOR_OFFSETS = [69, 67, 66, 71, 66, 58, 41, 41];
+
+/* V9.1: Chain Goth combat animation packs.
+   Each pack is ONE small image holding the chosen frames of an animation (built from the
+   animator's 1440x1440 frames by tools/build_chain_assets.py). Every frame row is
+   [packX, packY, packW, packH, offsetX, offsetY]; the offsets place the trimmed frame
+   relative to her feet. The art faces LEFT, like the Zombie Goth art. */
+const CHAIN_ATLAS_DATA = {"intro":{"size":[4018,2009],"frames":[[0,0,261,388,-211,-623],[263,0,260,384,-211,-615],[525,0,265,374,-211,-601],[792,0,291,388,-211,-621],[1085,0,348,404,-211,-649],[1435,0,368,522,-215,-839],[1805,0,355,526,-436,-844],[2162,0,442,378,-399,-606],[2606,0,406,485,-292,-777],[3014,0,461,509,-423,-819],[3477,0,505,388,-477,-624],[0,528,369,517,-209,-792],[371,528,565,503,-452,-807],[938,528,373,531,-452,-856],[1313,528,487,416,-425,-649],[1802,528,368,510,-210,-771],[2172,528,416,508,-258,-815],[2590,528,560,495,-434,-794],[3152,528,504,513,-429,-824],[3658,528,360,544,-437,-877],[0,1074,471,446,-464,-718],[473,1074,524,396,-464,-623],[999,1074,410,466,-279,-704],[1411,1074,381,532,-210,-801],[1794,1074,472,489,-330,-784],[2268,1074,586,499,-462,-801],[2856,1074,482,521,-427,-839],[3340,1074,358,542,-443,-874],[0,1618,502,389,-475,-626]]},"walk":{"size":[3812,786],"frames":[[0,0,410,381,-261,-619],[412,0,401,381,-244,-617],[815,0,373,388,-198,-621],[1190,0,345,391,-151,-625],[1537,0,349,391,-157,-628],[1888,0,370,387,-190,-624],[2260,0,411,381,-255,-619],[2673,0,412,381,-256,-617],[3087,0,371,389,-189,-622],[3460,0,352,391,-156,-625],[0,393,353,391,-157,-628],[355,393,378,386,-197,-625]]},"swipe":{"size":[3717,986],"frames":[[0,0,259,390,-211,-626],[261,0,246,396,-211,-630],[509,0,259,383,-211,-614],[770,0,281,383,-211,-614],[1053,0,290,388,-236,-622],[1345,0,345,405,-339,-650],[1692,0,330,386,-385,-619],[2024,0,359,381,-441,-620],[2385,0,463,400,-457,-641],[2850,0,487,449,-396,-690],[3339,0,378,469,-180,-724],[0,471,405,513,-182,-799]]}};
+const chainAtlas = {};
+for (const [name, data] of Object.entries(CHAIN_ATLAS_DATA)) {
+    const img = new Image();
+    img.src = `assets/characters/combat/chain-goth/chain-${name}.webp?v=9100`;
+    chainAtlas[name] = { img, frames: data.frames };
+}
+const CHAIN_ATLAS_SCALE = 0.62;          // pack pixels per original animator pixel
+const CHAIN_RENDER_SCALE = 0.56;         // size in the arena (original pixels -> screen pixels)
+const CHAIN_INTRO_SCALE_BOOST = 1.12;    // the 3-2-1 showboating pose is a little bigger
+const CHAIN_FLOOR_Y = 535;               // same floor line Olly and the Zombie stand on
+// Intro: 14 build-up frames, then a 15-frame chain-twirl loop that repeats until FIGHT.
+const CHAIN_INTRO_PRE_COUNT = 14, CHAIN_INTRO_PRE_MS = 80, CHAIN_INTRO_LOOP_COUNT = 15, CHAIN_INTRO_LOOP_MS = 50;
+const CHAIN_WALK_FRAME_MS = 105;
+// Swipe pack: frames 0-5 = wind-up (chain lifts behind her), frames 6-11 = the low sweep.
+const CHAIN_SWIPE_WINDUP_COUNT = 6, CHAIN_SWIPE_WINDUP_MS = 520;
+const CHAIN_SWIPE_STRIKE_FIRST = 6;
+const CHAIN_SWIPE_STRIKE_MS = [70, 60, 60, 60, 70, 90];
+const CHAIN_SWIPE_TOTAL_MS = CHAIN_SWIPE_STRIKE_MS.reduce((a, b) => a + b, 0);
+const CHAIN_SWIPE_HIT_AT_MS = 130;       // the moment the mace sweeps across the floor in front of her
+const CHAIN_SWIPE_DAMAGE = 5, CHAIN_SWIPE_RANGE = 250, CHAIN_SWIPE_PUSH = 34;
+const CHAIN_STAND_OFF = 235;             // how far from Olly she likes to stand
+const CHAIN_CHASE_SPEED = 170;           // quicker than the Zombie Goth (135)
+const CHAIN_RECOVER_MS = 520;
+// Death is a simple topple + fade until the dedicated death art is added.
+const CHAIN_DEATH_FALL_MS = 850, CHAIN_DEATH_HOLD_MS = 1400;
+
+function drawChainAtlasFrame(c, pack, index, x, floorY, face, scaleMul = 1, alpha = 1, rotation = 0, offsetX = 0) {
+    const img = pack?.img;
+    const f = pack?.frames?.[index];
+    if (!img || !img.complete || !img.naturalWidth || !f)
+        return;
+    const rs = CHAIN_RENDER_SCALE * scaleMul;
+    const k = rs / CHAIN_ATLAS_SCALE;
+    c.save();
+    c.globalAlpha = alpha;
+    c.translate(x + offsetX, floorY);
+    if (rotation)
+        c.rotate(rotation);
+    c.scale(face === 'left' ? 1 : -1, 1);   // art is authored facing left
+    c.imageSmoothingEnabled = true;
+    c.imageSmoothingQuality = 'high';
+    c.drawImage(img, f[0], f[1], f[2], f[3], f[4] * rs, f[5] * rs, f[2] * k, f[3] * k);
+    c.restore();
+}
 
 /* v6.0: a complete Level 1 rebuild.
    The background is a clean, character-free cemetery illustration.
@@ -1613,7 +1664,7 @@ export function createLevel1(ui) {
     }
 
     function resolveCombatBodyCollision(nowMs) {
-        if (mode !== 'combat' || isBoss || target?.type !== 'shambler')
+        if (!isAIFight())
             return;
         if (jumping || jumpOffset < -18 || nowMs < dodgeUntil || heavyAttackAnimUntil > nowMs)
             return;
@@ -1891,6 +1942,10 @@ export function createLevel1(ui) {
     }
 
     function drawZombieCombat(c, enemyX, enemyY, nowMs) {
+        if (isChainFight()) {
+            drawChainCombat(c, enemyX, enemyY, nowMs);
+            return;
+        }
         const useAI = !isBoss && target?.type === 'shambler';
         if (!useAI) {
             const legacyScale = target?.type === 'chain' ? 2.55 : 2.08;
@@ -2154,7 +2209,7 @@ export function createLevel1(ui) {
 
 
     function triggerZombieHitReaction(nowMs, heavy = false, longHit = false) {
-        if (mode !== 'combat' || isBoss || target?.type !== 'shambler')
+        if (!isAIFight())
             return;
 
         // Every clear hit still deals its damage, but repeated hits during the
@@ -2243,6 +2298,247 @@ export function createLevel1(ui) {
         setTimeout(() => endCombat(false), OLLY_KO_TOTAL_MS + 280);
     }
 
+    // ------------------------------------------------------------------
+    // V9.1: Chain Goth fight. Same finite-state approach as the Zombie Goth
+    // (intro -> chase -> wind-up -> attack -> recover, plus hit and death) and it
+    // shares the Zombie's state variables, but it has its own art, timing and
+    // attack. The Zombie functions above are untouched.
+    // ------------------------------------------------------------------
+    function isAIFight() {
+        return mode === 'combat' && !isBoss && (target?.type === 'shambler' || target?.type === 'chain');
+    }
+
+    function isChainFight() {
+        return mode === 'combat' && !isBoss && target?.type === 'chain';
+    }
+
+    function getChainCombatFrame(nowMs) {
+        const elapsed = Math.max(0, nowMs - zombieCombatStateStart);
+        const walkFrames = chainAtlas.walk?.frames?.length || 1;
+        if (zombieCombatState === 'intro') {
+            const preMs = CHAIN_INTRO_PRE_COUNT * CHAIN_INTRO_PRE_MS;
+            const index = elapsed < preMs
+                ? Math.floor(elapsed / CHAIN_INTRO_PRE_MS)
+                : CHAIN_INTRO_PRE_COUNT + (Math.floor((elapsed - preMs) / CHAIN_INTRO_LOOP_MS) % CHAIN_INTRO_LOOP_COUNT);
+            return { pack: chainAtlas.intro, index, scale: CHAIN_INTRO_SCALE_BOOST };
+        }
+        if (zombieCombatState === 'chase' || zombieCombatState === 'recover') {
+            const index = Math.floor(Math.max(0, zombieCombatWalkIndex) / CHAIN_WALK_FRAME_MS) % walkFrames;
+            return { pack: chainAtlas.walk, index, scale: 1 };
+        }
+        if (zombieCombatState === 'windup') {
+            const p = Math.min(.999, elapsed / CHAIN_SWIPE_WINDUP_MS);
+            return { pack: chainAtlas.swipe, index: Math.floor(p * CHAIN_SWIPE_WINDUP_COUNT), scale: 1 };
+        }
+        if (zombieCombatState === 'swipe') {
+            let acc = 0;
+            let index = CHAIN_SWIPE_STRIKE_FIRST + CHAIN_SWIPE_STRIKE_MS.length - 1;
+            for (let i = 0; i < CHAIN_SWIPE_STRIKE_MS.length; i++) {
+                acc += CHAIN_SWIPE_STRIKE_MS[i];
+                if (elapsed < acc) {
+                    index = CHAIN_SWIPE_STRIKE_FIRST + i;
+                    break;
+                }
+            }
+            return { pack: chainAtlas.swipe, index, scale: 1 };
+        }
+        // ready, hit and death all use the neutral standing pose.
+        return { pack: chainAtlas.swipe, index: 0, scale: 1 };
+    }
+
+    function drawChainCombat(c, enemyX, enemyY, nowMs) {
+        const frame = getChainCombatFrame(nowMs);
+        const face = player.x < enemyX ? 'left' : 'right';
+        let offsetX = 0;
+        let rotation = 0;
+        let alpha = 1;
+
+        if (zombieCombatState === 'hit') {
+            const total = zombieHitStaggerUntil - zombieHitReactionStart || 1;
+            const p = Math.max(0, Math.min(1, (nowMs - zombieHitReactionStart) / total));
+            const ease = 1 - Math.pow(1 - p, 2);
+            offsetX = zombieHitDirection * zombieHitStrength * (1 - ease);
+            rotation = zombieHitDirection * -0.13 * (1 - ease);
+            alpha = nowMs < zombieHitFlashUntil ? .72 : 1;
+        } else if (zombieCombatState === 'death') {
+            const t = Math.max(0, nowMs - zombieCombatStateStart);
+            const fall = Math.min(1, t / CHAIN_DEATH_FALL_MS);
+            const ease = 1 - Math.pow(1 - fall, 3);
+            const awayDir = zombieCombatX >= player.x ? 1 : -1;
+            rotation = awayDir * ease * (Math.PI / 2 - .08);
+            offsetX = awayDir * ease * 70;
+            const fadeStart = CHAIN_DEATH_FALL_MS + CHAIN_DEATH_HOLD_MS * .45;
+            alpha = t < fadeStart ? 1 : Math.max(0, 1 - (t - fadeStart) / (CHAIN_DEATH_HOLD_MS * .55));
+        }
+
+        // Soft floor shadow so she sits on the ground like Olly does.
+        if (zombieCombatState !== 'death') {
+            c.save();
+            c.fillStyle = 'rgba(0,0,0,.28)';
+            c.beginPath();
+            c.ellipse(enemyX + offsetX, CHAIN_FLOOR_Y + 6, 58 * frame.scale, 11, 0, 0, Math.PI * 2);
+            c.fill();
+            c.restore();
+        }
+
+        drawChainAtlasFrame(c, frame.pack, frame.index, enemyX, CHAIN_FLOOR_Y, face, frame.scale, alpha, rotation, offsetX);
+
+        // Impact sparks, same as the Zombie hit reaction.
+        if (zombieCombatState === 'hit') {
+            const elapsed = nowMs - zombieHitReactionStart;
+            if (elapsed < 240) {
+                const p = elapsed / 240;
+                const burstX = enemyX - zombieHitDirection * 18;
+                const burstY = enemyY - 150;
+                c.save();
+                c.globalAlpha = Math.max(0, 1 - p);
+                c.strokeStyle = '#c8f08a';
+                c.lineWidth = 4;
+                for (let i = 0; i < 6; i++) {
+                    const a = (Math.PI * 2 * i) / 6 + .25;
+                    const r1 = 8 + p * 5;
+                    const r2 = 20 + p * 28;
+                    c.beginPath();
+                    c.moveTo(burstX + Math.cos(a) * r1, burstY + Math.sin(a) * r1);
+                    c.lineTo(burstX + Math.cos(a) * r2, burstY + Math.sin(a) * r2);
+                    c.stroke();
+                }
+                c.restore();
+            }
+        }
+    }
+
+    function triggerChainDeath(nowMs) {
+        if (!isChainFight() || zombieDeathStarted)
+            return;
+        zombieDeathStarted = true;
+        zombieDeathEndAt = nowMs + CHAIN_DEATH_FALL_MS + CHAIN_DEATH_HOLD_MS;
+        zombieCombatState = 'death';
+        zombieCombatStateStart = nowMs;
+        zombieCombatAttackHit = true;
+        enemyAttackPhase = 'death';
+        zombieCombatNextDecision = Infinity;
+        ui.combatStatus.textContent = '💀 CHAIN GOTH DEFEATED.';
+    }
+
+    function chooseChainAttack(nowMs) {
+        zombieCombatAttackType = 'swipe';
+        zombieCombatAttackHit = false;
+        zombieCombatState = 'windup';
+        zombieCombatStateStart = nowMs;
+        enemyAttackPhase = 'windup';
+        ui.combatStatus.textContent = 'The Chain Goth whips her chain back. Jump or dodge!';
+    }
+
+    function updateChainAI(dt, nowMs) {
+        if (!isChainFight() || playerDeathTriggered)
+            return;
+
+        if (zombieIntroActive) {
+            if (nowMs >= zombieIntroEndAt) {
+                zombieIntroActive = false;
+                zombieCombatState = 'chase';
+                zombieCombatStateStart = nowMs;
+                zombieCombatNextDecision = nowMs;
+                zombieCombatWalkIndex = 0;
+                enemyAttackPhase = null;
+                ui.combatStatus.textContent = 'The Chain Goth is coming for you. Get ready.';
+            }
+            return;
+        }
+
+        if (zombieCombatState === 'death') {
+            if (nowMs >= zombieDeathEndAt)
+                endCombat(true);
+            return;
+        }
+
+        if (zombieCombatState === 'hit') {
+            if (nowMs >= zombieHitStaggerUntil) {
+                zombieHitLong = false;
+                zombieCombatState = 'chase';
+                zombieCombatStateStart = nowMs;
+                zombieCombatNextDecision = nowMs + 220;
+                enemyAttackPhase = null;
+            }
+            return;
+        }
+
+        const dx = player.x - zombieCombatX;
+        const distance = Math.abs(dx);
+        const direction = dx < 0 ? -1 : 1;
+
+        if (zombieCombatState === 'ready') {
+            if (distance > CHAIN_STAND_OFF + 40) {
+                zombieCombatState = 'chase';
+                zombieCombatStateStart = nowMs;
+                zombieCombatNextDecision = nowMs;
+            } else if (nowMs - zombieCombatStateStart >= 280) {
+                chooseChainAttack(nowMs);
+            }
+            return;
+        }
+
+        if (zombieCombatState === 'chase') {
+            if (distance > CHAIN_STAND_OFF) {
+                const desiredX = player.x - direction * (CHAIN_STAND_OFF - 20);
+                const targetX = Math.max(280, Math.min(COMBAT_W - 280, desiredX));
+                const step = Math.min(Math.abs(targetX - zombieCombatX), CHAIN_CHASE_SPEED * dt);
+                zombieCombatX += (targetX >= zombieCombatX ? 1 : -1) * step;
+                zombieCombatX = Math.max(170, Math.min(COMBAT_W - 170, zombieCombatX));
+                zombieCombatWalkIndex += dt * 1000;
+                zombieCombatPrevX = zombieCombatX;
+                return;
+            }
+            if (nowMs >= zombieCombatNextDecision)
+                chooseChainAttack(nowMs);
+            return;
+        }
+
+        if (zombieCombatState === 'windup') {
+            if (nowMs - zombieCombatStateStart >= CHAIN_SWIPE_WINDUP_MS) {
+                zombieCombatState = 'swipe';
+                zombieCombatStateStart = nowMs;
+                zombieCombatAttackHit = false;
+                enemyAttackPhase = 'active';
+            }
+            return;
+        }
+
+        if (zombieCombatState === 'swipe') {
+            const elapsed = nowMs - zombieCombatStateStart;
+            // The sweep is low along the floor in front of her: jumping or dodging avoids it.
+            if (!zombieCombatAttackHit && elapsed >= CHAIN_SWIPE_HIT_AT_MS) {
+                zombieCombatAttackHit = true;
+                applyZombieDamage(CHAIN_SWIPE_DAMAGE, CHAIN_SWIPE_RANGE, CHAIN_SWIPE_PUSH, nowMs, 'CHAIN SWIPE');
+            }
+            if (elapsed >= CHAIN_SWIPE_TOTAL_MS + 60) {
+                zombieCombatState = 'recover';
+                zombieCombatStateStart = nowMs;
+                zombieRecoveryDuration = CHAIN_RECOVER_MS;
+                enemyAttackPhase = 'recover';
+            }
+            return;
+        }
+
+        if (zombieCombatState === 'recover') {
+            const desiredX = player.x - direction * (CHAIN_STAND_OFF - 20);
+            const step = Math.min(Math.abs(desiredX - zombieCombatX), 95 * dt);
+            if (step > 0.5) {
+                zombieCombatX += (desiredX >= zombieCombatX ? 1 : -1) * step;
+                zombieCombatX = Math.max(170, Math.min(COMBAT_W - 170, zombieCombatX));
+            }
+            zombieCombatWalkIndex += dt * 1000;
+            if (nowMs - zombieCombatStateStart >= zombieRecoveryDuration) {
+                zombieCombatState = 'ready';
+                zombieCombatStateStart = nowMs;
+                zombieCombatNextDecision = nowMs + 280;
+                enemyAttackPhase = null;
+            }
+            return;
+        }
+    }
+
     function drawZombieCountdown(c, nowMs) {
         if (!zombieIntroActive) return;
         const elapsed = Math.max(0, nowMs - zombieIntroStart);
@@ -2318,10 +2614,10 @@ export function createLevel1(ui) {
 
         // Readable but not boring attack telegraph. It sits high enough to avoid
         // covering either fighter and pulses only during the wind-up.
-        if (!isBoss && enemyType === 'shambler' && enemyAttackPhase === 'windup') {
+        if (!isBoss && (enemyType === 'shambler' || enemyType === 'chain') && enemyAttackPhase === 'windup') {
             cctx.save();
             const windupMs = nowMs - zombieCombatStateStart;
-            const windupTotal = 420;
+            const windupTotal = enemyType === 'chain' ? CHAIN_SWIPE_WINDUP_MS : 420;
             const progress = Math.max(0, Math.min(1, windupMs / windupTotal));
             const pulse = 1 + Math.sin(nowMs / 80) * .035;
             const shake = Math.sin(nowMs / 34) * 2.5 * progress;
@@ -2350,9 +2646,11 @@ export function createLevel1(ui) {
             cctx.fillStyle = '#e8a9c4';
             cctx.font = '800 13px system-ui';
             cctx.fillText(
-                zombieCombatAttackType === 'heavyKick'
-                    ? 'HEAVY ATTACK  •  MOVE / DODGE / JUMP'
-                    : 'CLAW SWIPE  •  MOVE / DODGE / JUMP',
+                enemyType === 'chain'
+                    ? 'CHAIN SWIPE  •  JUMP / DODGE'
+                    : (zombieCombatAttackType === 'heavyKick'
+                        ? 'HEAVY ATTACK  •  MOVE / DODGE / JUMP'
+                        : 'CLAW SWIPE  •  MOVE / DODGE / JUMP'),
                 0,
                 22
             );
@@ -2431,7 +2729,7 @@ export function createLevel1(ui) {
         combatMax = bossFight ? 100 : (target?.maxHp || 50);
         combatHp = combatMax;
         resetCombatVisual();
-        if (!bossFight && target?.type === 'shambler') {
+        if (!bossFight && (target?.type === 'shambler' || target?.type === 'chain')) {
             const introStart = performance.now();
             zombieCombatX = COMBAT_W - 320;
             zombieIntroActive = true;
@@ -2461,6 +2759,7 @@ export function createLevel1(ui) {
             combatLastFrame = t;
             updateCombatMovement(dt);
             updateZombieAI(dt, t);
+            updateChainAI(dt, t);
             resolveCombatBodyCollision(t);
             resolveHeavyStrike(t);
             drawCombat();
@@ -2498,7 +2797,7 @@ export function createLevel1(ui) {
 
         const horizontalDistance = Math.abs(dx);
         const verticalDistance = Math.abs(dy);
-        const hit = target?.type === 'shambler'
+        const hit = isAIFight()
             ? horizontalDistance <= 205 && verticalDistance <= 105
             : Math.hypot(dx, dy) <= 180;
 
@@ -2512,6 +2811,8 @@ export function createLevel1(ui) {
             if (combatHp <= 0) {
                 if (target?.type === 'shambler')
                     triggerZombieDeath(nowMs);
+                else if (isChainFight())
+                    triggerChainDeath(nowMs);
                 else
                     setTimeout(() => endCombat(true), 180);
                 return;
@@ -2592,6 +2893,8 @@ export function createLevel1(ui) {
             if (combatHp <= 0) {
                 if (target?.type === 'shambler')
                     triggerZombieDeath(nowMs);
+                else if (isChainFight())
+                    triggerChainDeath(nowMs);
                 else
                     setTimeout(() => endCombat(true), 180);
             } else {
