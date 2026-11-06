@@ -228,12 +228,14 @@ function mountLevel1(loadSaved=false){
 
       <div id="combat" class="overlay hidden"><div class="overlay-box combat-box">
         <div class="combat-topline">
-          <div>
-            <strong id="combat-name">ZOMBIE GOTH</strong>
-          </div>
+          <strong id="combat-name">ZOMBIE GOTH</strong>
           <div class="combat-enemy-hp-wrap">
-            <div class="combat-enemy-hp-label">ENEMY HP <span id="enemy-hp-text">50 / 50</span></div>
+            <div class="combat-enemy-hp-label">HP <span id="enemy-hp-text">50 / 50</span></div>
             <div class="bar"><div id="enemy-hp"></div></div>
+          </div>
+          <div id="enemy-stun-wrap" class="combat-stun-wrap hidden">
+            <div class="combat-enemy-hp-label"><span id="enemy-stun-label">STUN</span></div>
+            <div class="bar stun-bar"><div id="enemy-stun"></div></div>
           </div>
         </div>
 
@@ -296,7 +298,7 @@ function mountLevel1(loadSaved=false){
     hpEl:document.getElementById('player-hp-text'), hpFill:document.getElementById('player-hp-fill'), gothEl:document.getElementById('goth-count'), relEl:document.getElementById('rel-state'), puzzleEl:document.getElementById('puzzle-state'),
     inventory:document.getElementById('inventory'), inventoryButton:document.getElementById('inventory-button'), inventoryClose:document.getElementById('inventory-close'),
     encounter:document.getElementById('encounter'), encounterImage:document.getElementById('encounter-image'), encounterName:document.getElementById('encounter-name'), encounterText:document.getElementById('encounter-text'), encounterReady:document.getElementById('encounter-ready'), encounterExplore:document.getElementById('encounter-explore'),
-    combat:document.getElementById('combat'), combatCanvas:document.getElementById('combat-canvas'), combatName:document.getElementById('combat-name'), enemyHp:document.getElementById('enemy-hp'), enemyHpText:document.getElementById('enemy-hp-text'), combatStatus:document.getElementById('combat-status'),
+    combat:document.getElementById('combat'), combatCanvas:document.getElementById('combat-canvas'), combatName:document.getElementById('combat-name'), enemyHp:document.getElementById('enemy-hp'), enemyHpText:document.getElementById('enemy-hp-text'), enemyStunWrap:document.getElementById('enemy-stun-wrap'), enemyStun:document.getElementById('enemy-stun'), enemyStunLabel:document.getElementById('enemy-stun-label'), combatStatus:document.getElementById('combat-status'),
     death:document.getElementById('death'), deathText:document.getElementById('death-text'), retryCombat:document.getElementById('retry-combat'), backMap:document.getElementById('back-map'),
     completion:document.getElementById('completion'), completionImage:document.getElementById('completion-image'), completionTitle:document.getElementById('completion-title'), completionCopy:document.getElementById('completion-copy'), completionContinue:document.getElementById('completion-continue'),
     relationship:document.getElementById('relationship'), relationshipCanvas:document.getElementById('relationship-canvas'), wouldDisplay:document.getElementById('would-display'), wouldTap:document.getElementById('would-tap'), wouldFeedback:document.getElementById('would-feedback'), timingZone:document.getElementById('timing-zone'), timingCursor:document.getElementById('timing-cursor'),

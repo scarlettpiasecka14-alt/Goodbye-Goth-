@@ -522,3 +522,36 @@
 .game-screen .player-hud #inventory-button {
   pointer-events: auto !important;
 }
+
+/* V9.5 combat HUD: compact God-of-War style enemy plate (top-left) + stun meter; Olly's HP + Inventory stay visible (top-right). */
+#combat .combat-topline {
+  left: 18px !important;
+  right: auto !important;
+  width: 300px !important;
+  padding: 8px 12px 10px !important;
+  display: grid !important;
+  gap: 5px !important;
+}
+#combat .combat-topline strong { font-size: 13px; letter-spacing: .12em; }
+#combat .combat-enemy-hp-label { font-size: 11px; letter-spacing: .1em; display: flex; justify-content: space-between; margin-bottom: 2px; }
+#combat .combat-topline .bar { height: 10px !important; }
+#combat .combat-topline .stun-bar { height: 7px !important; }
+#combat .combat-topline .stun-bar > div {
+  height: 100%; width: 0%; background: linear-gradient(90deg, #c99a2e, #ffe27a);
+  transition: width .12s linear;
+}
+#combat .combat-stun-wrap.full .stun-bar > div { background: #ffe27a; box-shadow: 0 0 10px #ffe27a; }
+#combat .combat-stun-wrap.full .combat-enemy-hp-label { color: #ffe27a; }
+#combat .combat-stun-wrap.hidden { display: none !important; }
+/* Olly's HUD rises above the fight overlay while a fight is on. */
+.game-screen:has(#combat:not(.hidden)) .player-hud {
+  position: fixed !important;
+  top: 14px !important;
+  right: 18px !important;
+  z-index: 6000 !important;
+  padding: 8px 10px !important;
+  border-radius: 12px !important;
+  background: rgba(12, 9, 16, .72) !important;
+  border: 1px solid rgba(239, 183, 201, .28) !important;
+  backdrop-filter: blur(4px) !important;
+}

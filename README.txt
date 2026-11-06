@@ -1,19 +1,27 @@
-GOODBYE GOTH: ZOMBIE GOTH STATIC COUNTDOWN PATCH
+GOODBYE GOTH V9.5 - Chain Goth full-size intro + new fight HUD
 
-WHAT THIS CHANGES
-- Uses the included Zombie Goth portrait as a single static pose during the existing intro countdown.
-- Leaves the 3, 2, 1 and FIGHT artwork and timing unchanged.
-- Leaves her post-countdown movement, ready pose, attacks, damage and other fight mechanics unchanged.
-- Avoids mirroring the front-facing intro portrait.
+Upload each file to Testing5, same path (replace the existing file):
+  js/game.js
+  js/levels/level1.js
+  css/screen-polish.css
+  assets/characters/combat/chain-goth/chain-intro.webp
+  tools/build_chain_assets.py   (optional, just my packer script)
 
-HOW TO APPLY (MAC)
-1. Make sure you are working on your Testing4 game folder, not your safe backup.
-2. Unzip this patch directly into the game folder, the one containing index.html. Allow the included asset folder to merge with the existing assets folder.
-3. Double-click Apply-Zombie-Static-Patch.command. If macOS blocks it, right-click it and choose Open.
-4. The script backs up js/levels/level1.js as js/levels/level1.js.before-zombie-static.bak before editing it.
-5. Test the Zombie Goth fight locally. This patch does not commit or upload anything to GitHub.
+WHAT CHANGED
+1. Chain Goth is now full fighting size for the whole 3-2-1 (no more growing into it).
+2. The 3 yellow dots are gone. Replaced by a STUN meter under her HP bar: it fills with each hit
+   (3 hits, heavy counts double), fades if you stop hitting her, then turns gold and drains
+   while she is stunned. The "ENEMY STUNNED!" label above her head stays.
+3. Enemy HP is now a small God-of-War style plate in the top-left (name, HP bar, stun bar)
+   instead of the full-width bar. Zombie Goth gets the same plate without a stun meter.
+4. Olly's HP bar + Inventory button now sit top-right during fights.
 
-If the script reports that the file does not match, stop rather than forcing it. The patch deliberately refuses to edit an unexpected version.
-
-TO UNDO
-Restore js/levels/level1.js from js/levels/level1.js.before-zombie-static.bak and remove assets/characters/combat/zombie-intro-static.png.
+TESTING CHECKLIST
+[ ] Chain Goth fight: she is the same size on 3, 2, 1 and when the fight starts
+[ ] Her chain tip may touch the very top edge on a couple of intro frames - tell me if it bothers you
+[ ] Hit her once: stun bar partly fills, then drains away after ~4s if you stop
+[ ] Hit her 3 times quickly: bar fills, goes gold, label says STUNNED!, drains over ~2s
+[ ] Zombie Goth fight: small plate top-left, no stun bar, Olly HP + Inventory top-right
+[ ] Inventory button is clickable during a fight
+Note: tested in a headless browser (HUD, intro, meter filling/decay). The full gold stun-drain
+state and the Zombie fight were not played through.
