@@ -1,27 +1,18 @@
-GOODBYE GOTH V9.5 - Chain Goth full-size intro + new fight HUD
+GOODBYE GOTH V9.6 - Chain Goth balance + HUD sides
 
-Upload each file to Testing5, same path (replace the existing file):
-  js/game.js
+Upload to Testing5 (replace, same paths):
   js/levels/level1.js
   css/screen-polish.css
-  assets/characters/combat/chain-goth/chain-intro.webp
-  tools/build_chain_assets.py   (optional, just my packer script)
 
 WHAT CHANGED
-1. Chain Goth is now full fighting size for the whole 3-2-1 (no more growing into it).
-2. The 3 yellow dots are gone. Replaced by a STUN meter under her HP bar: it fills with each hit
-   (3 hits, heavy counts double), fades if you stop hitting her, then turns gold and drains
-   while she is stunned. The "ENEMY STUNNED!" label above her head stays.
-3. Enemy HP is now a small God-of-War style plate in the top-left (name, HP bar, stun bar)
-   instead of the full-width bar. Zombie Goth gets the same plate without a stun meter.
-4. Olly's HP bar + Inventory button now sit top-right during fights.
+1. Chain Goth HP 50 -> 80 (8 punches instead of 5). Easy to tune: the two "hp: 80 / maxHp: 80" lines on the Chain Goth entry.
+2. Olly's punch reach vs Chain Goth is now 280px (was 205). She stands ~250px away, so you no longer have to stand on her.
+   Zombie Goth reach is unchanged.
+3. HUD sides swapped during fights: Olly's HP + Inventory on the LEFT, enemy plate on the RIGHT.
 
 TESTING CHECKLIST
-[ ] Chain Goth fight: she is the same size on 3, 2, 1 and when the fight starts
-[ ] Her chain tip may touch the very top edge on a couple of intro frames - tell me if it bothers you
-[ ] Hit her once: stun bar partly fills, then drains away after ~4s if you stop
-[ ] Hit her 3 times quickly: bar fills, goes gold, label says STUNNED!, drains over ~2s
-[ ] Zombie Goth fight: small plate top-left, no stun bar, Olly HP + Inventory top-right
-[ ] Inventory button is clickable during a fight
-Note: tested in a headless browser (HUD, intro, meter filling/decay). The full gold stun-drain
-state and the Zombie fight were not played through.
+[ ] Punch Chain Goth from her normal stand-off distance - it should land
+[ ] Fight now takes about 8 hits (2-3 combos + the 5s cooldown), still stunning her after 3 quick hits
+[ ] Olly HP + Inventory top-left, enemy plate with stun bar top-right
+[ ] Zombie Goth reach feels the same as before
+Tested: punch reach in a headless browser. The HP swap and difficulty feel were not played in-game.

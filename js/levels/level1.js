@@ -959,8 +959,8 @@ export function createLevel1(ui) {
         y: 505,
         type: 'chain',
         name: 'CHAIN GOTH',
-        hp: 50,
-        maxHp: 50,
+        hp: 80,
+        maxHp: 80,
         dead: false,
         pattern: 'Whip • Chain Slam'
     }
@@ -3064,7 +3064,7 @@ export function createLevel1(ui) {
         const horizontalDistance = Math.abs(dx);
         const verticalDistance = Math.abs(dy);
         const hit = isAIFight()
-            ? horizontalDistance <= 205 && verticalDistance <= 105
+            ? horizontalDistance <= (isChainFight() ? 280 : 205) && verticalDistance <= 105   // Chain Goth keeps ~250px away, so her reach is longer
             : Math.hypot(dx, dy) <= 180;
 
         if (hit) {

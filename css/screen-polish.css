@@ -525,8 +525,8 @@
 
 /* V9.5 combat HUD: compact God-of-War style enemy plate (top-left) + stun meter; Olly's HP + Inventory stay visible (top-right). */
 #combat .combat-topline {
-  left: 18px !important;
-  right: auto !important;
+  left: auto !important;
+  right: 18px !important;
   width: 300px !important;
   padding: 8px 12px 10px !important;
   display: grid !important;
@@ -547,7 +547,8 @@
 .game-screen:has(#combat:not(.hidden)) .player-hud {
   position: fixed !important;
   top: 14px !important;
-  right: 18px !important;
+  left: 18px !important;
+  right: auto !important;
   z-index: 6000 !important;
   padding: 8px 10px !important;
   border-radius: 12px !important;
