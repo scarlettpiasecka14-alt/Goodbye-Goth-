@@ -11,17 +11,19 @@ import sys, os, json
 from PIL import Image
 
 ANCHOR = (720, 1030)      # feet position shared by every animator canvas (source px)
-ATLAS_SCALE = 0.62        # atlas pixels per source pixel
 MAX_W = 4096
 
-# name -> (source folder inside assets/characters/combat, frame numbers to keep)
+# name -> (source folder inside assets/characters/combat, frame numbers to keep, atlas scale)
+# The atlas scale is the exact size the frames are drawn at in the arena, so the game never has to
+# resample them (that is what kept them crisp). 0.56 = same size as Olly's opponent walk.
 ANIMS = {
-    'intro': ('321 fight', list(range(0, 28, 2)) + list(range(28, 43))),
-    'walk':  ('CGwalk',    list(range(14, 38, 2))),
-    'swipe': ('chaingothchainswipe', [4, 6, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]),
+    'intro': ('321 fight', list(range(0, 60)), 0.50),                 # frames 0-27 build up, 28-59 loop
+    'walk':  ('CGwalk',    list(range(14, 38, 2)), 0.56),
+    'swipe': ('chaingothchainswipe', list(range(0, 20)), 0.56),       # 0-9 wind-up, 10-19 sweep
+    'death': ('chaingothdeath', list(range(6, 37)) + [60], 0.56),     # 6-36 hit + fall, 60 = lying on the floor
 }
 
-def pack(repo, name, folder, frames):
+def pack(repo, name, folder, frames, ATLAS_SCALE):
     src_dir = os.path.join(repo, 'assets/characters/combat', folder, 'frames')
     tiles = []
     for n in frames:
@@ -52,16 +54,16 @@ def pack(repo, name, folder, frames):
     os.makedirs(out_dir, exist_ok=True)
     out = os.path.join(out_dir, 'chain-%s.webp' % name)
     atlas.save(out, 'WEBP', quality=90, alpha_quality=100, method=6)
-    return out, atlas.size, table
+    return out, atlas.size, table, ATLAS_SCALE
 
 if __name__ == '__main__':
     repo = sys.argv[1]
     names = sys.argv[2:] or list(ANIMS)
     result = {}
     for name in names:
-        folder, frames = ANIMS[name]
-        out, size, table = pack(repo, name, folder, frames)
+        folder, frames, sc = ANIMS[name]
+        out, size, table, sc = pack(repo, name, folder, frames, sc)
         kb = os.path.getsize(out) / 1024
         print('%-6s %2d frames  atlas %dx%d  %.0f KB  -> %s' % (name, len(frames), size[0], size[1], kb, os.path.relpath(out, repo)), file=sys.stderr)
-        result[name] = {'size': list(size), 'frames': table}
+        result[name] = {'size': list(size), 'scale': sc, 'frames': table}
     print(json.dumps(result, separators=(',', ':')))

@@ -1,41 +1,35 @@
-# Goodbye Goth V9.1 – Chain Goth (Part 1)
+# Goodbye Goth V9.2 – Chain Goth fixes + death animation
 
-Chain Goth is now the second Level 1 enemy, built from the Zombie Goth AI.
-Part 1 uses the three animation folders you've uploaded so far: 3-2-1 FIGHT, walk and chain swipe.
-
-## What she does
-- 3-2-1 FIGHT intro (same countdown flow as Zombie Goth), then she walks toward Olly.
-- Chain swipe: about half a second of wind-up with the "ATTACK INCOMING" banner, then a fast low sweep. 5 damage. Jump or dodge (R / right-click) avoids it.
-- Gets hit: flinches and flashes with green sparks (placeholder until your hurt-reaction art is uploaded).
-- Defeated: topples and fades, then "CHAIN GOTH DEFEATED!" (placeholder until the death art is uploaded).
-- Zombie Goth, the Heavy Attack unlock and the 50 HP return are unchanged.
+## What changed (from your feedback)
+- 3-2-1 FIGHT: she is drawn smaller so her chain no longer goes behind the HP bar. At the very end of the countdown she grows smoothly to her normal fighting size.
+- 3-2-1 chain swing: now uses every frame of your animation and plays about one swing per countdown number, so it is slower and smoother.
+- Chain swipe: now uses all 20 frames (before it was 12), with the strike at about 30 frames per second, so it reads as one fluid motion instead of separate frames. The wind-up is also smoother. The damage moment is unchanged (5 damage; jump or dodge avoids it).
+- Sharper look: the pictures are now drawn at their own size with no resizing. That was the main reason she looked soft before.
+- Death: your new death animation is in. She takes the hit, falls, lies on the floor and fades, then the "CHAIN GOTH DEFEATED!" screen appears.
+- Walk: unchanged (you said it was perfect).
+- Zombie Goth is untouched.
 
 ## Where each file goes (branch Testing5)
-| File in this ZIP | GitHub destination (replace / add) |
+| File in this ZIP | GitHub destination |
 |---|---|
 | js/levels/level1.js | js/levels/level1.js (replace) |
-| assets/characters/combat/chain-goth/chain-intro.webp | same path (new) |
-| assets/characters/combat/chain-goth/chain-walk.webp | same path (new) |
-| assets/characters/combat/chain-goth/chain-swipe.webp | same path (new) |
-| tools/build_chain_assets.py | optional, only for my future use |
-
-Upload keeping the folder structure (GitHub: Add file > Upload files, drag the folders in).
-The big original folders (321 fight, CGwalk, chaingothchainswipe) are NOT used by the game. They're only my source frames, so you can leave them or delete them later to keep the repo light.
+| assets/characters/combat/chain-goth/chain-intro.webp | same path (replace) |
+| assets/characters/combat/chain-goth/chain-walk.webp | same path (replace) |
+| assets/characters/combat/chain-goth/chain-swipe.webp | same path (replace) |
+| assets/characters/combat/chain-goth/chain-death.webp | same path (NEW) |
+| tools/build_chain_assets.py | optional, my packing script |
 
 ## Checks done here (honest list)
-- JS syntax check: passed.
-- Headless Chrome test (not real play): intro runs, then chase, wind-up, swipe. Each swipe did exactly 5 damage once. Punching her and killing her reaches the "CHAIN GOTH DEFEATED!" screen with no page errors. Zombie Goth still starts and runs.
-- Screenshots reviewed: size, floor line and facing match Olly.
-- My test browser only ran about 4 fps, so I could NOT properly test jump or dodge timing.
+- JS syntax check passed.
+- Headless Chrome with the game slowed down so I could capture individual frames: reviewed the intro, swipe and death frames. The chain stays below the HP bar in the countdown, the swipe is continuous, and the death plays through and lies on the floor.
+- Headless run: killing her reaches the "CHAIN GOTH DEFEATED!" screen with no page errors.
+- NOT tested: real-speed feel, and jump/dodge timing (my test browser runs about 4 fps). Please judge speed in the live game.
 
 ## Please test in-game
-1. Fight Chain Goth: do 3-2-1 FIGHT and the walk look right? Is she the right size and on the floor?
-2. Does the swipe look/feel fair? Does jumping over it or dodging (R / right-click) avoid the damage?
-3. Punch and Heavy Attack her: does she react? Does she die and show the defeated screen?
-4. Beat both Goths: Heavy Attack still unlocks, 50 HP return still works.
-5. Re-check Zombie Goth quickly.
-6. If an animation loops badly, tell me which one and send frames you prefer.
+1. 3-2-1: is she the right size? Chain fully visible? Swing speed okay? (If still too fast or slow, tell me which and by how much.)
+2. Does the chain swipe now feel fluid and fair? Jump and dodge (R / right-click) still avoid it?
+3. Kill her: death plays properly and the defeated screen follows?
+4. Does she still look too thin or soft?
 
-## Part 2 (when you upload the rest)
-Chain spin (hits around her, dodge works, jumping doesn't), stunned after the spin, real hurt reaction, real death, then the pattern swipe, swipe, spin.
-You only need the `frames` folders, not the `spritesheet-...` files.
+## Still waiting for
+Hurt reaction, stunned and chain spin (the hurt and stun folders had not arrived on Testing5 when I looked). Her hit reaction is still the placeholder flinch until the hurt reaction frames arrive.
