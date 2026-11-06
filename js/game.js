@@ -200,32 +200,6 @@ function mountLevel1(loadSaved=false){
           </div>
           <div id="dialogue" class="dialogue" aria-live="polite">You wake up somewhere very dark...</div>
         </div>
-        <aside class="side-column">
-          <div class="side-card">
-            <strong>LEVEL 1 OBJECTIVES</strong>
-            <div class="objective-list">
-              <div id="goal-goths">○ Defeat the required Zombie Goths (0/2)</div>
-              <div id="goal-rel">○ Complete the WOULD YOU? Puzzle</div>
-              <div id="goal-puzzle">○ Answer the Princess Question</div>
-              <div id="goal-boss">🔒 Boss gate locked</div>
-            </div>
-          </div>
-          <div class="side-card">
-            <strong>MAP</strong>
-            <canvas id="mini-map" class="mini-map" width="250" height="180"></canvas>
-            <div class="legend"><span>○ You</span><span>♥ challenge</span><span>✣ puzzle</span><span>♛ boss</span></div>
-          </div>
-          <div class="side-card"><strong>Checkpoint</strong><div id="checkpoint" class="small">Cemetery entrance</div></div>
-          <div class="side-card save-side-card">
-            <strong>GAME PROGRESS</strong>
-            <div class="save-load-side-actions">
-              <button id="save-game" type="button">SAVE GAME</button>
-              <button id="load-game" type="button">LOAD GAME</button>
-            </div>
-            <div class="save-hint">Press <strong>X</strong> at any time to save.</div>
-            <div id="save-status" class="small save-status" aria-live="polite"></div>
-          </div>
-        </aside>
       </div>
 
       <div id="inventory" class="overlay hidden" style="z-index:40">
@@ -318,10 +292,9 @@ function mountLevel1(loadSaved=false){
     </section>`;
 
   const ui = {
-    canvas:document.getElementById('world'), miniMap:document.getElementById('mini-map'), dialogue:document.getElementById('dialogue'),
+    canvas:document.getElementById('world'), dialogue:document.getElementById('dialogue'),
     hpEl:document.getElementById('player-hp-text'), hpFill:document.getElementById('player-hp-fill'), gothEl:document.getElementById('goth-count'), relEl:document.getElementById('rel-state'), puzzleEl:document.getElementById('puzzle-state'),
-    goalGoths:document.getElementById('goal-goths'), goalRel:document.getElementById('goal-rel'), goalPuzzle:document.getElementById('goal-puzzle'), goalBoss:document.getElementById('goal-boss'), checkpoint:document.getElementById('checkpoint'),
-    saveGame:document.getElementById('save-game'), loadGame:document.getElementById('load-game'), saveStatus:document.getElementById('save-status'), inventory:document.getElementById('inventory'), inventoryButton:document.getElementById('inventory-button'), inventoryClose:document.getElementById('inventory-close'),
+    inventory:document.getElementById('inventory'), inventoryButton:document.getElementById('inventory-button'), inventoryClose:document.getElementById('inventory-close'),
     encounter:document.getElementById('encounter'), encounterImage:document.getElementById('encounter-image'), encounterName:document.getElementById('encounter-name'), encounterText:document.getElementById('encounter-text'), encounterReady:document.getElementById('encounter-ready'), encounterExplore:document.getElementById('encounter-explore'),
     combat:document.getElementById('combat'), combatCanvas:document.getElementById('combat-canvas'), combatName:document.getElementById('combat-name'), enemyHp:document.getElementById('enemy-hp'), enemyHpText:document.getElementById('enemy-hp-text'), combatStatus:document.getElementById('combat-status'),
     death:document.getElementById('death'), deathText:document.getElementById('death-text'), retryCombat:document.getElementById('retry-combat'), backMap:document.getElementById('back-map'),
@@ -331,8 +304,6 @@ function mountLevel1(loadSaved=false){
   };
 
   const level = createLevel1(ui);
-  ui.saveGame.addEventListener('click',()=>{ const ok=level.saveGame(); ui.saveStatus.textContent=ok?'Saved ✓':'Save failed'; });
-  ui.loadGame.addEventListener('click',()=>{ const ok=level.loadGame(); ui.saveStatus.textContent=ok?'Loaded ✓':'No save found'; });
   ui.encounterReady.addEventListener('click',()=>level.confirmEncounter());
   ui.encounterExplore.addEventListener('click',()=>level.closeEncounter());
   ui.retryCombat.addEventListener('click',()=>level.retryCombat());

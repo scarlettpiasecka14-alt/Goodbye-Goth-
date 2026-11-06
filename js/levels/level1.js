@@ -1,4 +1,4 @@
-/* Goodbye Goth v8.11 - corrected Zombie Goth AI + player reaction/KO pass. */
+/* Goodbye Goth V9.0 - map interface cleanup (no side panel / mini-map) on top of v8.11 Zombie Goth AI. */
 const WORLD_W = 1536,
     WORLD_H = 1024;
 const SAVE_KEY = 'goodbyeGothSave_v6';
@@ -404,7 +404,6 @@ function drawZombieSprite(ctx, x, y, type, s=.68, t=0, attack=false, face='left'
 
 export function createLevel1(ui) {
     const ctx = ui.canvas.getContext('2d'),
-        mctx = ui.miniMap.getContext('2d'),
         cctx = ui.combatCanvas.getContext('2d'),
         rctx = ui.relationshipCanvas.getContext('2d');
     const GRID = 32,
@@ -919,7 +918,6 @@ export function createLevel1(ui) {
         y = 340,
         cameraX = 240,
         cameraY = 340,
-        miniFrameCounter = 0,
         hp = 100,
         maxHp = 100,
         mode = 'map',
@@ -1114,10 +1112,6 @@ export function createLevel1(ui) {
         ui.gothEl.textContent = `${kills}/2`;
         ui.relEl.textContent = relationshipDone ? 'Solved' : 'Locked';
         ui.puzzleEl.textContent = puzzleSolved ? 'Answered' : 'Locked';
-        ui.goalGoths.innerHTML = kills >= 2 ? '<span class="good">✓ Defeat the required Zombie Goths</span>' : `○ Defeat the required Zombie Goths (${kills}/2)`;
-        ui.goalRel.innerHTML = relationshipDone ? `<span class="good">✓ ${ACTIVITY_DATA.relationshipChallenge.name} complete</span>` : `○ Complete the ${ACTIVITY_DATA.relationshipChallenge.name} Challenge`;
-        ui.goalPuzzle.innerHTML = puzzleSolved ? '<span class="good">✓ Princess Question answered</span>' : '○ Answer the Princess Question';
-        ui.goalBoss.innerHTML = unlockedBoss() ? '<span class="good">✓ Boss gate unlocked</span>' : '<span class="locked">🔒 Boss gate locked</span>';
         refreshInventoryUI();
         if (objectivesComplete() && !keyCollected && !keySpawnAnnounced) {
             keySpawnAnnounced = true;
@@ -1125,34 +1119,6 @@ export function createLevel1(ui) {
         }
     }
 
-    function drawMini() {
-        mctx.clearRect(0, 0, 250, 180);
-        mctx.fillStyle = '#0d0b11';
-        mctx.fillRect(0, 0, 250, 180);
-        if (mapBackground.complete && mapBackground.naturalWidth)
-            mctx.drawImage(mapBackground, 0, 0, 250, 167);
-        const marker = (px, py, c, r=4) => {
-            mctx.fillStyle = c;
-            mctx.beginPath();
-            mctx.arc(px / WORLD_W * 250, py / WORLD_H * 167, r, 0, Math.PI * 2);
-            mctx.fill()
-        };
-        if (!relationshipDone)
-            marker(relationshipChallenge.x, relationshipChallenge.y, '#ef91ac');
-        if (!puzzleSolved)
-            marker(princessQuestion.x, princessQuestion.y, '#9deaff');
-        if (!enemies[0].dead)
-            marker(enemies[0].x, enemies[0].y, '#ef91ac', 4);
-        if (!enemies[1].dead)
-            marker(enemies[1].x, enemies[1].y, '#ef91ac', 4);
-        if (!keyCollected && objectivesComplete())
-            marker(key.x, key.y, '#f0cf8b', 5);
-        marker(boss.x, boss.y, unlockedBoss() ? '#f0cf8b' : '#8f7286', 4);
-        // Fog also covers the mini-map so undiscovered objectives do not leak through.
-        mctx.drawImage(fogCanvas, 0, 0, 250, 167);
-        // Olly remains visible as the exploration reference point.
-        marker(x, y, '#fff', 4);
-    }
     function drawMarker(ctx, img, px, py, w=68, h=68, label='', t=0) {
         ctx.save();
         const bob = Math.sin(t * 4.8) * 4.5;
@@ -1185,7 +1151,7 @@ export function createLevel1(ui) {
         ctx.clearRect(0, 0, ui.canvas.width, ui.canvas.height);
         ctx.save();
         ctx.scale(sx, sy);
-        const zoom = 1.24;
+        const zoom = 1.30;
         const playerX = x,
             playerY = y,
             viewW = vw / zoom,
@@ -1248,7 +1214,7 @@ export function createLevel1(ui) {
         const rect = ui.canvas.getBoundingClientRect(),
             vw = ui.canvas.clientWidth || 1000,
             vh = ui.canvas.clientHeight || 600;
-        const zoom = 1.24;
+        const zoom = 1.30;
         const sx = (e.clientX - rect.left) * (vw / rect.width),
             sy = (e.clientY - rect.top) * (vh / rect.height),
             viewW = vw / zoom,
@@ -2987,7 +2953,6 @@ export function createLevel1(ui) {
             lastFogRevealX = null;
             lastFogRevealY = null;
             revealAround(x, y, true);
-            drawMini();
             ui.dialogue.textContent = '📂 Game loaded. Welcome back to the cemetery.';
             return true;
         } catch (err) {
@@ -3000,7 +2965,6 @@ export function createLevel1(ui) {
         cameraX = x;
         cameraY = y;
         stats();
-        drawMini();
         cancelAnimationFrame(relationshipRAF);
         clearInterval(enemyTimer);
         cancelAnimationFrame(raf);
@@ -3012,8 +2976,6 @@ export function createLevel1(ui) {
             drawWorld(t, dt);
             if (walkPulse > 0)
                 walkPulse = 0;
-            miniFrameCounter++;
-            if (miniFrameCounter % 3 === 0) drawMini();
             raf = requestAnimationFrame(loop)
         };
         raf = requestAnimationFrame(loop)

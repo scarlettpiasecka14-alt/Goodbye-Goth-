@@ -486,3 +486,39 @@
   }
 }
 
+
+
+/* ==========================================================================
+   Goodbye Goth V9.0 - map interface cleanup.
+   The right-hand side panel (objectives, mini-map, checkpoint, save/load) has
+   been removed from js/game.js. Older stylesheet rules kept re-creating a
+   second grid column for it, so this block (loaded last) forces one full-width
+   column and turns the Olly HP/Inventory HUD into a floating overlay with no
+   box behind it.
+   ========================================================================== */
+.game-screen .game-layout {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.game-screen .player-hud {
+  top: 58px !important;
+  right: 20px !important;
+  width: 205px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  pointer-events: none !important;
+}
+
+.game-screen .player-hud .player-hud-name,
+.game-screen .player-hud .player-hp-text {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .95), 0 0 8px rgba(0, 0, 0, .8);
+}
+
+/* The Inventory button keeps its own button styling and stays clickable. */
+.game-screen .player-hud #inventory-button {
+  pointer-events: auto !important;
+}
