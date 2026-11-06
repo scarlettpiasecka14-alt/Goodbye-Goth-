@@ -1,4 +1,4 @@
-/* Goodbye Goth V9.2 - Chain Goth fight (AI + intro/walk/swipe art) on top of V9.0 map cleanup and the v8.11 Zombie Goth AI. */
+/* Goodbye Goth V9.3 - Chain Goth fight (AI + all seven animations: intro, walk, swipe, spin, stun, hurt, death) on top of V9.0 map cleanup and the v8.11 Zombie Goth AI. */
 const WORLD_W = 1536,
     WORLD_H = 1024;
 const SAVE_KEY = 'goodbyeGothSave_v6';
@@ -230,11 +230,11 @@ const ZOMBIE_DEATH_FLOOR_OFFSETS = [69, 67, 66, 71, 66, 58, 41, 41];
    animator's 1440x1440 frames by tools/build_chain_assets.py). Every frame row is
    [packX, packY, packW, packH, offsetX, offsetY]; the offsets place the trimmed frame
    relative to her feet. The art faces LEFT, like the Zombie Goth art. */
-const CHAIN_ATLAS_DATA = {"intro":{"size":[4040,2644],"scale":0.5,"frames":[[0,0,210,313,-211,-623],[212,0,210,313,-211,-622],[424,0,210,310,-211,-615],[636,0,210,304,-211,-605],[848,0,214,302,-211,-601],[1064,0,216,306,-211,-610],[1282,0,234,312,-211,-621],[1518,0,260,316,-211,-629],[1780,0,280,326,-211,-649],[2062,0,294,367,-211,-731],[2358,0,296,421,-215,-839],[2656,0,326,404,-382,-804],[2984,0,286,424,-436,-844],[3272,0,303,362,-443,-719],[3577,0,356,305,-399,-606],[0,426,275,380,-211,-756],[277,426,328,391,-292,-777],[607,426,433,398,-450,-791],[1042,426,372,410,-423,-819],[1416,426,294,433,-440,-865],[1712,426,408,312,-477,-624],[2122,426,400,340,-446,-664],[2524,426,298,417,-209,-792],[2824,426,341,403,-269,-788],[3167,426,456,406,-452,-807],[3625,426,390,416,-427,-829],[0,861,300,428,-452,-856],[302,861,414,312,-491,-625],[718,861,393,336,-425,-649],[1113,861,297,411,-210,-771],[1412,861,336,410,-258,-815],[1750,861,452,399,-434,-794],[2204,861,406,414,-429,-824],[2612,861,290,439,-437,-877],[2904,861,380,360,-464,-718],[3286,861,422,320,-464,-623],[3710,861,330,376,-279,-704],[0,1302,307,429,-210,-801],[309,1302,381,394,-330,-784],[692,1302,472,402,-462,-801],[1166,1302,388,420,-427,-839],[1556,1302,289,438,-443,-874],[1847,1302,405,314,-475,-626],[2254,1302,406,322,-442,-626],[2662,1302,316,396,-241,-740],[2980,1302,320,452,-225,-830],[3302,1302,424,394,-413,-782],[0,1756,466,402,-461,-798],[468,1756,350,418,-424,-834],[820,1756,316,437,-436,-873],[1138,1756,412,312,-467,-624],[1552,1756,396,332,-414,-634],[1950,1756,304,426,-209,-783],[2256,1756,330,440,-237,-803],[2588,1756,427,398,-404,-790],[3017,1756,476,402,-461,-799],[3495,1756,374,418,-427,-833],[0,2198,293,444,-431,-887],[295,2198,401,354,-455,-706],[698,2198,414,330,-447,-630]]},"walk":{"size":[3765,706],"scale":0.56,"frames":[[0,0,371,344,-261,-619],[373,0,362,344,-244,-617],[737,0,337,351,-198,-621],[1076,0,311,353,-151,-625],[1389,0,315,353,-157,-628],[1706,0,334,349,-190,-624],[2042,0,371,344,-255,-619],[2415,0,372,344,-256,-617],[2789,0,335,351,-189,-622],[3126,0,318,353,-156,-625],[3446,0,319,353,-157,-628],[0,355,341,349,-197,-625]]},"swipe":{"size":[3978,834],"scale":0.56,"frames":[[0,0,236,351,-211,-623],[238,0,236,351,-211,-623],[476,0,236,351,-211,-624],[714,0,235,351,-211,-624],[951,0,234,352,-211,-626],[1187,0,230,353,-211,-627],[1419,0,222,357,-211,-630],[1643,0,220,353,-211,-627],[1865,0,234,346,-211,-614],[2101,0,254,346,-211,-614],[2357,0,262,351,-236,-622],[2621,0,311,366,-339,-650],[2934,0,298,348,-385,-619],[3234,0,324,344,-441,-620],[3560,0,418,361,-457,-641],[0,368,440,405,-396,-690],[442,368,341,423,-180,-724],[785,368,366,464,-182,-799],[1153,368,337,429,-122,-868],[1492,368,338,444,-97,-913]]},"death":{"size":[4025,897],"scale":0.56,"frames":[[0,0,256,345,-263,-614],[258,0,291,343,-336,-610],[551,0,299,342,-360,-608],[852,0,281,360,-319,-656],[1135,0,334,394,-399,-725],[1471,0,411,442,-518,-805],[1884,0,306,387,-325,-713],[2192,0,304,390,-322,-703],[2498,0,304,338,-321,-609],[2804,0,304,337,-321,-609],[3110,0,303,337,-320,-615],[3415,0,304,338,-320,-611],[3721,0,304,338,-319,-615],[0,444,303,335,-317,-615],[305,444,305,329,-310,-597],[612,444,306,320,-304,-580],[920,444,309,299,-293,-542],[1231,444,316,277,-288,-501],[1549,444,352,218,-304,-384],[1903,444,405,140,-321,-216],[2310,444,405,114,-321,-167],[2717,444,405,114,-321,-167],[3124,444,405,114,-321,-167],[3531,444,405,114,-321,-168],[0,781,405,114,-321,-167],[407,781,405,114,-321,-168],[814,781,405,114,-321,-167],[1221,781,405,114,-321,-167],[1628,781,405,114,-321,-167],[2035,781,405,114,-321,-167],[2442,781,405,114,-321,-167],[2849,781,405,114,-321,-167]]}};
+const CHAIN_ATLAS_DATA = {"intro":{"size":[4040,2644],"scale":0.5,"frames":[[0,0,210,313,-211,-623],[212,0,210,313,-211,-622],[424,0,210,310,-211,-615],[636,0,210,304,-211,-605],[848,0,214,302,-211,-601],[1064,0,216,306,-211,-610],[1282,0,234,312,-211,-621],[1518,0,260,316,-211,-629],[1780,0,280,326,-211,-649],[2062,0,294,367,-211,-731],[2358,0,296,421,-215,-839],[2656,0,326,404,-382,-804],[2984,0,286,424,-436,-844],[3272,0,303,362,-443,-719],[3577,0,356,305,-399,-606],[0,426,275,380,-211,-756],[277,426,328,391,-292,-777],[607,426,433,398,-450,-791],[1042,426,372,410,-423,-819],[1416,426,294,433,-440,-865],[1712,426,408,312,-477,-624],[2122,426,400,340,-446,-664],[2524,426,298,417,-209,-792],[2824,426,341,403,-269,-788],[3167,426,456,406,-452,-807],[3625,426,390,416,-427,-829],[0,861,300,428,-452,-856],[302,861,414,312,-491,-625],[718,861,393,336,-425,-649],[1113,861,297,411,-210,-771],[1412,861,336,410,-258,-815],[1750,861,452,399,-434,-794],[2204,861,406,414,-429,-824],[2612,861,290,439,-437,-877],[2904,861,380,360,-464,-718],[3286,861,422,320,-464,-623],[3710,861,330,376,-279,-704],[0,1302,307,429,-210,-801],[309,1302,381,394,-330,-784],[692,1302,472,402,-462,-801],[1166,1302,388,420,-427,-839],[1556,1302,289,438,-443,-874],[1847,1302,405,314,-475,-626],[2254,1302,406,322,-442,-626],[2662,1302,316,396,-241,-740],[2980,1302,320,452,-225,-830],[3302,1302,424,394,-413,-782],[0,1756,466,402,-461,-798],[468,1756,350,418,-424,-834],[820,1756,316,437,-436,-873],[1138,1756,412,312,-467,-624],[1552,1756,396,332,-414,-634],[1950,1756,304,426,-209,-783],[2256,1756,330,440,-237,-803],[2588,1756,427,398,-404,-790],[3017,1756,476,402,-461,-799],[3495,1756,374,418,-427,-833],[0,2198,293,444,-431,-887],[295,2198,401,354,-455,-706],[698,2198,414,330,-447,-630]]},"walk":{"size":[3765,706],"scale":0.56,"frames":[[0,0,371,344,-261,-619],[373,0,362,344,-244,-617],[737,0,337,351,-198,-621],[1076,0,311,353,-151,-625],[1389,0,315,353,-157,-628],[1706,0,334,349,-190,-624],[2042,0,371,344,-255,-619],[2415,0,372,344,-256,-617],[2789,0,335,351,-189,-622],[3126,0,318,353,-156,-625],[3446,0,319,353,-157,-628],[0,355,341,349,-197,-625]]},"swipe":{"size":[3978,834],"scale":0.56,"frames":[[0,0,236,351,-211,-623],[238,0,236,351,-211,-623],[476,0,236,351,-211,-624],[714,0,235,351,-211,-624],[951,0,234,352,-211,-626],[1187,0,230,353,-211,-627],[1419,0,222,357,-211,-630],[1643,0,220,353,-211,-627],[1865,0,234,346,-211,-614],[2101,0,254,346,-211,-614],[2357,0,262,351,-236,-622],[2621,0,311,366,-339,-650],[2934,0,298,348,-385,-619],[3234,0,324,344,-441,-620],[3560,0,418,361,-457,-641],[0,368,440,405,-396,-690],[442,368,341,423,-180,-724],[785,368,366,464,-182,-799],[1153,368,337,429,-122,-868],[1492,368,338,444,-97,-913]]},"death":{"size":[4025,897],"scale":0.56,"frames":[[0,0,256,345,-263,-614],[258,0,291,343,-336,-610],[551,0,299,342,-360,-608],[852,0,281,360,-319,-656],[1135,0,334,394,-399,-725],[1471,0,411,442,-518,-805],[1884,0,306,387,-325,-713],[2192,0,304,390,-322,-703],[2498,0,304,338,-321,-609],[2804,0,304,337,-321,-609],[3110,0,303,337,-320,-615],[3415,0,304,338,-320,-611],[3721,0,304,338,-319,-615],[0,444,303,335,-317,-615],[305,444,305,329,-310,-597],[612,444,306,320,-304,-580],[920,444,309,299,-293,-542],[1231,444,316,277,-288,-501],[1549,444,352,218,-304,-384],[1903,444,405,140,-321,-216],[2310,444,405,114,-321,-167],[2717,444,405,114,-321,-167],[3124,444,405,114,-321,-167],[3531,444,405,114,-321,-168],[0,781,405,114,-321,-167],[407,781,405,114,-321,-168],[814,781,405,114,-321,-167],[1221,781,405,114,-321,-167],[1628,781,405,114,-321,-167],[2035,781,405,114,-321,-167],[2442,781,405,114,-321,-167],[2849,781,405,114,-321,-167]]},"spin":{"size":[4018,2042],"scale":0.56,"frames":[[0,0,235,353,-210,-626],[237,0,259,353,-205,-624],[498,0,285,356,-208,-629],[785,0,331,360,-215,-632],[1118,0,374,361,-205,-636],[1494,0,401,358,-226,-632],[1897,0,422,339,-269,-598],[2321,0,369,339,-202,-600],[2692,0,357,350,-181,-619],[3051,0,358,350,-182,-619],[3411,0,361,339,-187,-601],[0,363,362,341,-190,-605],[364,363,293,392,-220,-694],[659,363,285,415,-221,-737],[946,363,274,473,-298,-840],[1222,363,370,476,-437,-848],[1594,363,422,321,-583,-567],[2018,363,282,342,-360,-588],[2302,363,300,347,-208,-600],[2604,363,374,358,-215,-636],[2980,363,273,415,-230,-737],[3255,363,297,455,-319,-812],[3554,363,434,325,-537,-578],[0,841,415,322,-558,-574],[417,841,288,341,-367,-587],[707,841,262,344,-212,-596],[971,841,360,342,-223,-606],[1333,841,362,339,-208,-603],[1697,841,279,369,-228,-657],[1978,841,274,390,-288,-694],[2254,841,380,394,-437,-704],[2636,841,424,315,-558,-562],[3062,841,288,335,-359,-587],[3352,841,301,354,-223,-609],[3655,841,363,338,-223,-601],[0,1237,284,361,-300,-645],[286,1237,551,331,-744,-592],[839,1237,430,317,-573,-564],[1271,1237,185,338,-154,-595],[1458,1237,369,344,-220,-611],[1829,1237,301,335,-213,-596],[2132,1237,283,365,-295,-652],[2417,1237,548,401,-734,-717],[2967,1237,425,317,-561,-565],[3394,1237,256,338,-300,-587],[3652,1237,296,344,-223,-609],[0,1640,371,339,-225,-603],[373,1640,268,341,-277,-609],[643,1640,558,400,-746,-714]]},"stun":{"size":[4044,1322],"scale":0.56,"frames":[[0,0,223,332,-235,-588],[225,0,223,333,-235,-590],[450,0,221,334,-235,-592],[673,0,218,335,-235,-594],[893,0,212,335,-235,-594],[1107,0,208,339,-235,-600],[1317,0,201,341,-234,-604],[1520,0,195,345,-234,-607],[1717,0,190,352,-234,-607],[1909,0,187,352,-228,-601],[2098,0,185,350,-220,-597],[2285,0,189,342,-213,-583],[2476,0,193,333,-211,-570],[2671,0,205,323,-211,-559],[2878,0,219,311,-211,-550],[3099,0,232,309,-211,-545],[3333,0,236,306,-211,-541],[3571,0,238,306,-211,-541],[3811,0,233,307,-211,-542],[0,354,227,309,-211,-547],[229,354,221,311,-211,-550],[452,354,218,313,-212,-554],[672,354,213,314,-212,-556],[887,354,211,318,-212,-559],[1100,354,213,321,-212,-561],[1315,354,217,320,-212,-558],[1534,354,221,316,-212,-555],[1757,354,229,311,-212,-550],[1988,354,233,308,-212,-545],[2223,354,235,305,-212,-540],[2460,354,233,305,-212,-538],[2695,354,228,306,-212,-541],[2925,354,223,309,-213,-545],[3150,354,218,311,-213,-549],[3370,354,211,313,-212,-555],[3583,354,208,317,-212,-561],[3793,354,207,321,-212,-564],[0,677,210,324,-213,-566],[212,677,212,324,-212,-566],[426,677,218,324,-212,-566],[646,677,221,319,-212,-561],[869,677,228,315,-212,-555],[1099,677,232,311,-212,-551],[1333,677,233,310,-212,-548],[1568,677,233,308,-212,-545],[1803,677,229,309,-212,-545],[2034,677,223,311,-212,-550],[2259,677,219,315,-212,-557],[2480,677,212,318,-212,-563],[2694,677,208,320,-212,-568],[2904,677,207,322,-212,-570],[3113,677,208,323,-212,-570],[3323,677,210,323,-212,-568],[3535,677,215,319,-212,-562],[3752,677,221,317,-212,-558],[0,1003,227,315,-212,-554],[229,1003,231,311,-212,-548],[462,1003,233,309,-212,-547],[697,1003,233,311,-212,-550],[932,1003,229,314,-212,-556],[1163,1003,224,317,-212,-562]]},"hurt":{"size":[4040,1144],"scale":0.56,"frames":[[0,0,236,350,-211,-622],[238,0,229,350,-211,-622],[469,0,219,349,-211,-621],[690,0,211,352,-213,-625],[903,0,209,356,-224,-632],[1114,0,213,360,-241,-638],[1329,0,221,363,-265,-645],[1552,0,222,368,-276,-652],[1776,0,217,370,-278,-656],[1995,0,209,373,-262,-660],[2206,0,197,375,-234,-662],[2405,0,192,380,-219,-662],[2599,0,191,379,-213,-657],[2792,0,195,373,-218,-645],[2989,0,205,367,-231,-635],[3196,0,216,362,-249,-625],[3414,0,227,358,-263,-619],[3643,0,242,356,-279,-615],[0,382,260,356,-295,-614],[262,382,280,358,-307,-619],[544,382,293,359,-309,-620],[839,382,305,354,-298,-611],[1146,382,306,346,-266,-597],[1454,382,321,339,-275,-585],[1777,382,320,339,-282,-584],[2099,382,307,342,-284,-590],[2408,382,291,348,-283,-601],[2701,382,273,354,-279,-611],[2976,382,251,362,-273,-621],[3229,382,225,369,-264,-631],[3456,382,200,370,-254,-638],[3658,382,186,372,-242,-646],[3846,382,194,374,-222,-654],[0,758,210,381,-218,-661],[212,758,227,384,-215,-664],[441,758,232,384,-202,-665],[675,758,230,384,-190,-665],[907,758,234,381,-182,-660],[1143,758,249,382,-178,-662],[1394,758,270,380,-177,-657],[1666,758,278,375,-168,-649],[1946,758,269,366,-154,-632],[2217,758,254,359,-150,-620],[2473,758,242,355,-150,-613],[2717,758,230,356,-150,-615],[2949,758,218,360,-150,-622],[3169,758,209,366,-150,-633]]}};
 const chainAtlas = {};
 for (const [name, data] of Object.entries(CHAIN_ATLAS_DATA)) {
     const img = new Image();
-    img.src = `assets/characters/combat/chain-goth/chain-${name}.webp?v=9210`;
+    img.src = `assets/characters/combat/chain-goth/chain-${name}.webp?v=9301`;
     chainAtlas[name] = { img, frames: data.frames, scale: data.scale };
 }
 const CHAIN_RENDER_SCALE = 0.56;         // size in the arena (original pixels -> screen pixels)
@@ -255,6 +255,24 @@ const CHAIN_STAND_OFF = 235;             // how far from Olly she likes to stand
 const CHAIN_CHASE_SPEED = 170;           // quicker than the Zombie Goth (135)
 const CHAIN_RECOVER_MS = 520;
 // Death is a simple topple + fade until the dedicated death art is added.
+// Chain spin (second attack): a long, red-flag telegraph, then a spin that hits twice. Dodge works, jumping does NOT.
+const CHAIN_SPIN_WINDUP_COUNT = 13, CHAIN_SPIN_WINDUP_MS = 1100;
+const CHAIN_SPIN_FRAME_MS = 33, CHAIN_SPIN_FRAME_COUNT = 36;
+const CHAIN_SPIN_TOTAL_MS = CHAIN_SPIN_FRAME_MS * CHAIN_SPIN_FRAME_COUNT;
+const CHAIN_SPIN_HIT_AT_MS = [759, 957];   // the last two flashes of the mace; one dodge timed at the start of the spin avoids both
+const CHAIN_SPIN_DAMAGE = 5, CHAIN_SPIN_RANGE = 330, CHAIN_SPIN_PUSH = 40;
+// After every spin she is dizzy and wide open.
+const CHAIN_STUN_FRAME_MS = 33, CHAIN_STUN_FRAME_COUNT = 61, CHAIN_STUN_MS = CHAIN_STUN_FRAME_MS * CHAIN_STUN_FRAME_COUNT;
+// Hurt reaction: a normal punch plays the first 22 frames, a Heavy Attack plays a longer 41-frame stagger.
+const CHAIN_HURT_NORMAL_FRAMES = 22, CHAIN_HURT_NORMAL_MS = 640, CHAIN_HURT_HEAVY_FRAMES = 41, CHAIN_HURT_HEAVY_MS = 1100;
+const CHAIN_PATTERN = ['swipe', 'swipe', 'spin'];
+// Frames where the mace touches the floor: [x, y] of the contact point, in animator pixels relative to her feet (negative x = toward Olly; measured from the green mace head in your frames).
+// A little cream spark burst is drawn on those frames so the chain feels like it really hits the ground.
+const CHAIN_CONTACTS = {
+    intro: { 13: [21, -30], 26: [29, -30], 33: [-17, -30], 41: [48, -30] },
+    swipe: { 14: [-268, -30] }
+};
+const CHAIN_SPARK_MS = 230;
 const CHAIN_DEATH_FRAME_MS = 38, CHAIN_DEATH_FALL_MS = 31 * 38, CHAIN_DEATH_HOLD_MS = 1500;   // 31 hit-and-fall frames, then she lies still before fading
 
 function drawChainAtlasFrame(c, pack, index, x, floorY, face, renderScale = CHAIN_RENDER_SCALE, alpha = 1, rotation = 0, offsetX = 0) {
@@ -2216,14 +2234,25 @@ export function createLevel1(ui) {
         if (!isAIFight())
             return;
 
+        // Chain Goth cannot be knocked out of her spin, and she shrugs off hits while dizzy (the hits still count).
+        if (isChainFight() && (zombieCombatState === 'spinwind' || zombieCombatState === 'spin' || zombieCombatState === 'stun')) {
+            zombieHitFlashUntil = nowMs + 115;
+            return;
+        }
+
         // Every clear hit still deals its damage, but repeated hits during the
         // same stagger do not endlessly extend the stun animation.
         if (zombieCombatState !== 'hit' || nowMs >= zombieHitStaggerUntil || longHit || heavy) {
             const awayDir = zombieCombatX >= player.x ? 1 : -1;
-            const duration = longHit
+            let duration = longHit
                 ? ZOMBIE_LONG_HURT_TOTAL_MS
                 : (heavy ? Math.max(620, ZOMBIE_HURT_TOTAL_MS + 60) : ZOMBIE_HURT_TOTAL_MS);
-            const strength = longHit ? 42 : (heavy ? 62 : 34);
+            let strength = longHit ? 42 : (heavy ? 62 : 34);
+            if (isChainFight()) {
+                chainHurtHeavy = !!(heavy || longHit);
+                duration = chainHurtHeavy ? CHAIN_HURT_HEAVY_MS : CHAIN_HURT_NORMAL_MS;
+                strength = chainHurtHeavy ? 36 : 18;
+            }
 
             zombieHitLong = !!longHit;
             zombieCombatState = 'hit';
@@ -2244,9 +2273,9 @@ export function createLevel1(ui) {
         }
     }
 
-    function applyZombieDamage(damage, range, pushDistance, nowMs, attackName) {
+    function applyZombieDamage(damage, range, pushDistance, nowMs, attackName, ignoreAir = false) {
         const horizontalDistance = Math.abs(zombieCombatX - player.x);
-        const airborne = jumping || jumpOffset < -20;
+        const airborne = !ignoreAir && (jumping || jumpOffset < -20);
         const dodging = player.invuln > nowMs;
         if (horizontalDistance > range || airborne || dodging) {
             ui.combatStatus.textContent = `↪ ${attackName} missed!`;
@@ -2317,6 +2346,11 @@ export function createLevel1(ui) {
     }
 
     let chainDeathFace = 'left';
+    let chainHurtHeavy = false;
+    let chainPatternStep = 0;
+    let chainSparks = [];
+    let chainLastFrameKey = '';
+    let chainSpinHitsDone = 0;
     function getChainCombatFrame(nowMs) {
         const elapsed = Math.max(0, nowMs - zombieCombatStateStart);
         const walkFrames = chainAtlas.walk?.frames?.length || 1;
@@ -2338,6 +2372,24 @@ export function createLevel1(ui) {
             const p = Math.min(.999, elapsed / CHAIN_SWIPE_WINDUP_MS);
             return { pack: chainAtlas.swipe, index: Math.floor(p * CHAIN_SWIPE_WINDUP_COUNT), scale: CHAIN_RENDER_SCALE };
         }
+        if (zombieCombatState === 'spinwind') {
+            const p = Math.min(.999, elapsed / CHAIN_SPIN_WINDUP_MS);
+            return { pack: chainAtlas.spin, index: Math.floor(p * CHAIN_SPIN_WINDUP_COUNT), scale: CHAIN_RENDER_SCALE };
+        }
+        if (zombieCombatState === 'spin') {
+            const i = Math.min(CHAIN_SPIN_FRAME_COUNT - 1, Math.floor(elapsed / CHAIN_SPIN_FRAME_MS));
+            return { pack: chainAtlas.spin, index: CHAIN_SPIN_WINDUP_COUNT + i, scale: CHAIN_RENDER_SCALE };
+        }
+        if (zombieCombatState === 'stun') {
+            const i = Math.min(CHAIN_STUN_FRAME_COUNT - 1, Math.floor(elapsed / CHAIN_STUN_FRAME_MS));
+            return { pack: chainAtlas.stun, index: i, scale: CHAIN_RENDER_SCALE };
+        }
+        if (zombieCombatState === 'hit') {
+            const total = Math.max(1, zombieHitStaggerUntil - zombieHitReactionStart);
+            const count = chainHurtHeavy ? CHAIN_HURT_HEAVY_FRAMES : CHAIN_HURT_NORMAL_FRAMES;
+            const p = Math.max(0, Math.min(.999, (nowMs - zombieHitReactionStart) / total));
+            return { pack: chainAtlas.hurt, index: Math.floor(p * count), scale: CHAIN_RENDER_SCALE };
+        }
         if (zombieCombatState === 'swipe') {
             let acc = 0;
             let index = CHAIN_SWIPE_STRIKE_FIRST + CHAIN_SWIPE_STRIKE_MS.length - 1;
@@ -2355,7 +2407,7 @@ export function createLevel1(ui) {
             const t = Math.max(0, nowMs - zombieCombatStateStart);
             return { pack: chainAtlas.death, index: Math.min(n - 1, Math.floor(t / CHAIN_DEATH_FRAME_MS)), scale: CHAIN_RENDER_SCALE };
         }
-        // ready and hit use the neutral standing pose.
+        // ready uses the neutral standing pose.
         return { pack: chainAtlas.swipe, index: 0, scale: CHAIN_RENDER_SCALE };
     }
 
@@ -2372,7 +2424,8 @@ export function createLevel1(ui) {
             const p = Math.max(0, Math.min(1, (nowMs - zombieHitReactionStart) / total));
             const ease = 1 - Math.pow(1 - p, 2);
             offsetX = zombieHitDirection * zombieHitStrength * (1 - ease);
-            rotation = zombieHitDirection * -0.13 * (1 - ease);
+            alpha = nowMs < zombieHitFlashUntil ? .72 : 1;
+        } else if (zombieCombatState === 'spinwind' || zombieCombatState === 'spin' || zombieCombatState === 'stun') {
             alpha = nowMs < zombieHitFlashUntil ? .72 : 1;
         } else if (zombieCombatState === 'death') {
             const t = Math.max(0, nowMs - zombieCombatStateStart);
@@ -2391,6 +2444,38 @@ export function createLevel1(ui) {
         }
 
         drawChainAtlasFrame(c, frame.pack, frame.index, enemyX, CHAIN_FLOOR_Y, face, frame.scale, alpha, rotation, offsetX);
+
+        // Ground-contact sparks (see CHAIN_CONTACTS).
+        const packName = frame.pack === chainAtlas.intro ? 'intro' : (frame.pack === chainAtlas.swipe ? 'swipe' : '');
+        const frameKey = packName + ':' + frame.index;
+        if (packName && frameKey !== chainLastFrameKey && CHAIN_CONTACTS[packName]?.[frame.index]) {
+            const pt = CHAIN_CONTACTS[packName][frame.index];
+            const dir = face === 'left' ? 1 : -1;
+            chainSparks.push({ t: nowMs, x: enemyX + offsetX + dir * pt[0] * frame.scale, y: CHAIN_FLOOR_Y + pt[1] * frame.scale });
+        }
+        chainLastFrameKey = frameKey;
+        chainSparks = chainSparks.filter(sp => nowMs - sp.t < CHAIN_SPARK_MS);
+        for (const sp of chainSparks) {
+            const p = (nowMs - sp.t) / CHAIN_SPARK_MS;
+            c.save();
+            c.globalAlpha = Math.max(0, 1 - p);
+            c.lineCap = 'round';
+            for (let i = 0; i < 9; i++) {
+                const a = -Math.PI * (0.08 + 0.84 * (i / 8)) + Math.sin(i * 12.9) * .12;   // fan upward from the floor
+                const r1 = 6 + p * 14, r2 = 16 + p * 46 + (i % 3) * 7;
+                c.strokeStyle = i % 2 ? '#fff0b8' : '#ffc95e';
+                c.lineWidth = i % 3 === 0 ? 4 : 2.5;
+                c.beginPath();
+                c.moveTo(sp.x + Math.cos(a) * r1, sp.y + Math.sin(a) * r1 * .8);
+                c.lineTo(sp.x + Math.cos(a) * r2, sp.y + Math.sin(a) * r2 * .8);
+                c.stroke();
+            }
+            c.fillStyle = '#fffbe6';
+            c.beginPath();
+            c.arc(sp.x, sp.y, Math.max(0, 9 * (1 - p)), 0, Math.PI * 2);
+            c.fill();
+            c.restore();
+        }
 
         // Impact sparks, same as the Zombie hit reaction.
         if (zombieCombatState === 'hit') {
@@ -2431,6 +2516,17 @@ export function createLevel1(ui) {
     }
 
     function chooseChainAttack(nowMs) {
+        const next = CHAIN_PATTERN[chainPatternStep % CHAIN_PATTERN.length];
+        chainPatternStep++;
+        if (next === 'spin') {
+            zombieCombatAttackType = 'spin';
+            zombieCombatAttackHit = false;
+            zombieCombatState = 'spinwind';
+            zombieCombatStateStart = nowMs;
+            enemyAttackPhase = 'windup';
+            ui.combatStatus.textContent = 'The Chain Goth winds up a spin. DODGE it. Jumping will not save you!';
+            return;
+        }
         zombieCombatAttackType = 'swipe';
         zombieCombatAttackHit = false;
         zombieCombatState = 'windup';
@@ -2526,6 +2622,44 @@ export function createLevel1(ui) {
                 zombieCombatStateStart = nowMs;
                 zombieRecoveryDuration = CHAIN_RECOVER_MS;
                 enemyAttackPhase = 'recover';
+            }
+            return;
+        }
+
+        if (zombieCombatState === 'spinwind') {
+            if (nowMs - zombieCombatStateStart >= CHAIN_SPIN_WINDUP_MS) {
+                zombieCombatState = 'spin';
+                zombieCombatStateStart = nowMs;
+                chainSpinHitsDone = 0;
+                enemyAttackPhase = 'active';
+            }
+            return;
+        }
+
+        if (zombieCombatState === 'spin') {
+            const elapsed = nowMs - zombieCombatStateStart;
+            // Two passes of the mace. Dodging avoids them; jumping does not (ignoreAir).
+            while (chainSpinHitsDone < CHAIN_SPIN_HIT_AT_MS.length && elapsed >= CHAIN_SPIN_HIT_AT_MS[chainSpinHitsDone]) {
+                chainSpinHitsDone++;
+                applyZombieDamage(CHAIN_SPIN_DAMAGE, CHAIN_SPIN_RANGE, CHAIN_SPIN_PUSH, nowMs, 'CHAIN SPIN', true);
+            }
+            if (elapsed >= CHAIN_SPIN_TOTAL_MS) {
+                zombieCombatState = 'stun';
+                zombieCombatStateStart = nowMs;
+                enemyAttackPhase = 'stun';
+                ui.combatStatus.textContent = 'The Chain Goth is dizzy! Hit her now!';
+            }
+            return;
+        }
+
+        if (zombieCombatState === 'stun') {
+            if (nowMs - zombieCombatStateStart >= CHAIN_STUN_MS) {
+                zombieCombatState = 'chase';
+                zombieCombatStateStart = nowMs;
+                zombieCombatNextDecision = nowMs + 300;
+                zombieCombatWalkIndex = 0;
+                enemyAttackPhase = null;
+                ui.combatStatus.textContent = 'The Chain Goth shakes it off.';
             }
             return;
         }
@@ -2626,7 +2760,7 @@ export function createLevel1(ui) {
         if (!isBoss && (enemyType === 'shambler' || enemyType === 'chain') && enemyAttackPhase === 'windup') {
             cctx.save();
             const windupMs = nowMs - zombieCombatStateStart;
-            const windupTotal = enemyType === 'chain' ? CHAIN_SWIPE_WINDUP_MS : 420;
+            const windupTotal = enemyType === 'chain' ? (zombieCombatAttackType === 'spin' ? CHAIN_SPIN_WINDUP_MS : CHAIN_SWIPE_WINDUP_MS) : 420;
             const progress = Math.max(0, Math.min(1, windupMs / windupTotal));
             const pulse = 1 + Math.sin(nowMs / 80) * .035;
             const shake = Math.sin(nowMs / 34) * 2.5 * progress;
@@ -2638,8 +2772,8 @@ export function createLevel1(ui) {
             cctx.translate(cx, cy);
             cctx.scale(pulse, pulse);
             cctx.fillStyle = 'rgba(25,13,24,.94)';
-            cctx.strokeStyle = zombieCombatAttackType === 'heavyKick'
-                ? 'rgba(229,104,168,.96)'
+            cctx.strokeStyle = (zombieCombatAttackType === 'heavyKick' || zombieCombatAttackType === 'spin')
+                ? (zombieCombatAttackType === 'spin' ? 'rgba(236,64,72,.98)' : 'rgba(229,104,168,.96)')
                 : 'rgba(243,191,211,.96)';
             cctx.lineWidth = 3;
             cctx.beginPath();
@@ -2656,7 +2790,7 @@ export function createLevel1(ui) {
             cctx.font = '800 13px system-ui';
             cctx.fillText(
                 enemyType === 'chain'
-                    ? 'CHAIN SWIPE  •  JUMP / DODGE'
+                    ? (zombieCombatAttackType === 'spin' ? 'CHAIN SPIN  •  DODGE ONLY  •  CAN\'T JUMP IT' : 'CHAIN SWIPE  •  JUMP / DODGE')
                     : (zombieCombatAttackType === 'heavyKick'
                         ? 'HEAVY ATTACK  •  MOVE / DODGE / JUMP'
                         : 'CLAW SWIPE  •  MOVE / DODGE / JUMP'),
@@ -2748,6 +2882,11 @@ export function createLevel1(ui) {
             zombieCombatStateStart = introStart;
             zombieCombatNextDecision = Infinity;
             enemyAttackPhase = 'intro';
+            chainPatternStep = 0;
+            chainSpinHitsDone = 0;
+            chainHurtHeavy = false;
+            chainSparks = [];
+            chainLastFrameKey = '';
         }
         ui.combatName.textContent = bossFight ? 'THE CLASSIC GOTH • QUEEN' : target?.name || 'ZOMBIE GOTH';
         ui.enemyHp.style.width = '100%';
