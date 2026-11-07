@@ -1,18 +1,32 @@
-GOODBYE GOTH V9.6 - Chain Goth balance + HUD sides
+GOODBYE GOTH V9.7 - old HP bar removed + sound system + first sound effects
 
-Upload to Testing5 (replace, same paths):
+Upload to Testing5 (same paths, replace where a file exists):
+  js/audio.js                       (NEW)
+  js/game.js
   js/levels/level1.js
-  css/screen-polish.css
+  assets/audio/sfx/  (7 NEW files: punch-1, punch-2, goth-hurt-1..4, goth-pain .mp3)
 
 WHAT CHANGED
-1. Chain Goth HP 50 -> 80 (8 punches instead of 5). Easy to tune: the two "hp: 80 / maxHp: 80" lines on the Chain Goth entry.
-2. Olly's punch reach vs Chain Goth is now 280px (was 205). She stands ~250px away, so you no longer have to stand on her.
-   Zombie Goth reach is unchanged.
-3. HUD sides swapped during fights: Olly's HP + Inventory on the LEFT, enemy plate on the RIGHT.
+1. The old Olly HP panel that was drawn on the fight canvas (hiding under the new HUD) is removed.
+2. New audio system. Plays sound effects and music; a missing file is just silent, nothing breaks.
+3. Your sounds are trimmed/volume-matched and wired in:
+   - Olly's punch lands  -> punch-1 / punch-2 (alternating)
+   - Heavy attack lands  -> punch-2 + goth-pain
+   - Goth hit reaction   -> one of 4 random goth-hurt sounds
+   - Music: map + story play assets/audio/music/map.mp3, fights play assets/audio/music/fight.mp3 (files not added yet = silent)
+   Volumes default to music 35%, effects 80% (saved in the browser; a settings screen can change them later).
+   Browsers only allow sound after a first click, so music starts on the first click/tap.
+
+MUSIC - WHERE TO PUT IT
+  assets/audio/music/map.mp3     (map + story, loops)
+  assets/audio/music/fight.mp3   (fights, loops)
+Keep each to a 2-4 minute loop, ~3MB (GitHub web upload limit is 25MB per file). A 3-hour file is far too big;
+cut a section out first (e.g. mp3cut.net or Audacity), then upload.
 
 TESTING CHECKLIST
-[ ] Punch Chain Goth from her normal stand-off distance - it should land
-[ ] Fight now takes about 8 hits (2-3 combos + the 5s cooldown), still stunning her after 3 quick hits
-[ ] Olly HP + Inventory top-left, enemy plate with stun bar top-right
-[ ] Zombie Goth reach feels the same as before
-Tested: punch reach in a headless browser. The HP swap and difficulty feel were not played in-game.
+[ ] Fight: only ONE HP bar for Olly (top-left), enemy plate top-right
+[ ] Punch hits make a punch sound; the Goth makes a hurt noise
+[ ] Heavy attack: bigger hit sound
+[ ] No console errors if music files are missing
+[ ] After adding music: map music plays, switches to fight music in a fight and back after
+Tested: page loads and the fight HUD renders in a headless browser. Sounds could not be heard or timed by me - please check how they feel.

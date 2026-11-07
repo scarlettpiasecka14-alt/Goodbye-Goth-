@@ -1,5 +1,6 @@
 import { StoryController } from './story.js';
 import { createLevel1 } from './levels/level1.js';
+import { playMusic } from './audio.js';
 
 const root = document.getElementById('game-root');
 
@@ -305,6 +306,7 @@ function mountLevel1(loadSaved=false){
     puzzle:document.getElementById('puzzle'), puzzleFeedback:document.getElementById('puzzle-feedback'), bossIntro:document.getElementById('boss-intro'), bossStart:document.getElementById('boss-start'), win:document.getElementById('win'), replay:document.getElementById('replay')
   };
 
+  playMusic('map');   // map + story music (assets/audio/music/map.mp3); starts after the first click
   const level = createLevel1(ui);
   ui.encounterReady.addEventListener('click',()=>level.confirmEncounter());
   ui.encounterExplore.addEventListener('click',()=>level.closeEncounter());

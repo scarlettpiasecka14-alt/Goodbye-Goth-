@@ -1,4 +1,6 @@
 /* Goodbye Goth V9.4 - Chain Goth fight (AI + all seven animations: intro, walk, swipe, spin, stun, hurt, death) on top of V9.0 map cleanup and the v8.11 Zombie Goth AI. */
+import { playSfx, playRandomSfx, playMusic, preloadSfx } from '../audio.js';
+const GOTH_HURT_SFX = ['goth-hurt-1', 'goth-hurt-2', 'goth-hurt-3', 'goth-hurt-4'];
 const WORLD_W = 1536,
     WORLD_H = 1024;
 const SAVE_KEY = 'goodbyeGothSave_v6';
@@ -2235,6 +2237,7 @@ export function createLevel1(ui) {
     function triggerZombieHitReaction(nowMs, heavy = false, longHit = false) {
         if (!isAIFight())
             return;
+        if (heavy) playSfx('goth-pain', .9); else playRandomSfx(GOTH_HURT_SFX, .7);
 
         // Chain Goth cannot be knocked out of her spin, and she shrugs off hits while dizzy (the hits still count).
         if (isChainFight()) {
@@ -2845,25 +2848,7 @@ export function createLevel1(ui) {
         drawZombieCombat(cctx, enemyX, enemyY, nowMs);
         drawZombieCountdown(cctx, nowMs);
 
-        // Player HP display stays inside combat so the player can always see it.
-        cctx.save();
-        cctx.fillStyle = 'rgba(18,12,22,.88)';
-        cctx.strokeStyle = 'rgba(239,183,201,.55)';
-        cctx.lineWidth = 1.5;
-        cctx.beginPath();
-        cctx.roundRect(24, 24, 300, 68, 12);
-        cctx.fill();
-        cctx.stroke();
-        cctx.fillStyle = '#f6eaf0';
-        cctx.font = '900 18px Georgia';
-        cctx.fillText('OLLY', 40, 49);
-        cctx.font = '700 16px system-ui';
-        cctx.fillText(`${hp} / ${maxHp} HP`, 220, 49);
-        cctx.fillStyle = 'rgba(255,255,255,.16)';
-        cctx.fillRect(40, 60, 264, 14);
-        cctx.fillStyle = '#e787ad';
-        cctx.fillRect(40, 60, 264 * Math.max(0, Math.min(1, hp / Math.max(1, maxHp))), 14);
-        cctx.restore();
+        // (Olly's HP now lives in the HTML HUD top-left, so the old canvas panel is gone.)
 
         // Readable but not boring attack telegraph. It sits high enough to avoid
         // covering either fighter and pulses only during the wind-up.
@@ -2977,6 +2962,8 @@ export function createLevel1(ui) {
     }
 
     function startCombat(bossFight) {
+        playMusic('fight');
+        preloadSfx(['punch-1', 'punch-2', 'goth-pain', ...GOTH_HURT_SFX]);
         isBoss = bossFight;
         mode = 'combat';
         combatMax = bossFight ? 100 : (target?.maxHp || 50);
@@ -3073,6 +3060,7 @@ export function createLevel1(ui) {
             ui.enemyHp.style.width = (combatHp / combatMax * 100) + '%';
             ui.enemyHpText.textContent = `${combatHp} / ${combatMax}`;
             comboCount++;
+            playSfx(comboCount % 2 ? 'punch-1' : 'punch-2');
             ui.combatStatus.textContent = `👊 HIT! ${damage} damage.`;
             if (combatHp <= 0) {
                 if (target?.type === 'shambler')
@@ -3155,6 +3143,7 @@ export function createLevel1(ui) {
             combatHp = Math.max(0, combatHp - damage);
             ui.enemyHp.style.width = (combatHp / combatMax * 100) + '%';
             ui.enemyHpText.textContent = `${combatHp} / ${combatMax}`;
+            playSfx('punch-2', 1);
             ui.combatStatus.textContent = `💥 HEAVY HIT! ${damage} damage. Heavy attack on cooldown for 15s.`;
             if (combatHp <= 0) {
                 if (target?.type === 'shambler')
@@ -3263,6 +3252,7 @@ export function createLevel1(ui) {
         enemyTimer = null;
         cancelAnimationFrame(combatRaf);
         ui.combat.classList.add('hidden');
+        playMusic('map');
         mode = 'map';
         if (won) {
             if (isBoss) {
