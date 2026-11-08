@@ -9,7 +9,7 @@ try { Object.assign(vol, JSON.parse(localStorage.getItem(VOL_KEY) || '{}')); } c
 const sfxCache = {};
 function getSfx(name) {
     if (!sfxCache[name]) {
-        const a = new Audio(`assets/audio/sfx/${name}.mp3?v=9700`);
+        const a = new Audio(`assets/audio/sfx/${name}.mp3?v=9900`);
         a.preload = 'auto';
         sfxCache[name] = a;
     }
@@ -27,7 +27,14 @@ export function playSfx(name, gain = 1) {
 export function playRandomSfx(names, gain = 1) { playSfx(names[Math.floor(Math.random() * names.length)], gain); }
 export function preloadSfx(names) { names.forEach(getSfx); }
 
-let musicEl = null, musicName = '', wantMusic = '', fadeTimer = null;
+/* Music "pools": each name plays one file (looping) or a playlist that moves to the next track when one ends.
+   Files live in assets/audio/music/. Put the title-screen song at assets/audio/music/menu.mp3. */
+const MUSIC = {
+    menu: ['menu.mp3'],
+    map: ['BackgroundMusicTrack1.mp3', 'BackgroundTrack2.mp3', 'BackgroundTrack3.mp3', 'BackgroundTrack4.mp3'],
+    fight: ['fight.mp3']
+};
+let musicEl = null, musicName = '', wantMusic = '', fadeTimer = null, musicToken = 0;
 function musicTarget() { return Math.max(0, Math.min(1, vol.master * vol.music)); }
 function fadeTo(el, to, ms, done) {
     clearInterval(fadeTimer);
@@ -37,21 +44,41 @@ function fadeTo(el, to, ms, done) {
         if (i >= steps) { clearInterval(fadeTimer); if (done) done(); }
     }, 50);
 }
-/* playMusic('map' | 'fight' | '') - '' stops the music. Browsers only allow sound after a click/tap, so this retries on the next one. */
+function startTrack(name, token, list, i) {
+    if (token !== musicToken) return;
+    const el = new Audio(`assets/audio/music/${list[i]}`);
+    el.loop = list.length === 1; el.volume = 0; el.preload = 'auto';
+    el.addEventListener('ended', () => { if (token === musicToken && list.length > 1) { musicEl = null; startTrack(name, token, list, (i + 1) % list.length); } });
+    el.addEventListener('error', () => { if (token === musicToken && list.length > 1) startTrack(name, token, list, (i + 1) % list.length); });
+    el.play().then(() => { if (token !== musicToken) { el.pause(); return; } musicEl = el; musicName = name; fadeTo(el, musicTarget(), 900); }).catch(() => {});
+}
+/* playMusic('menu' | 'map' | 'fight' | '') - '' stops the music. Browsers only allow sound after a click/tap, so this retries on the next one. */
 export function playMusic(name) {
     wantMusic = name;
     if (name === musicName && musicEl && !musicEl.paused) return;
-    const start = () => {
-        if (!name) { musicName = ''; return; }
-        const el = new Audio(`assets/audio/music/${name}.mp3?v=9700`);
-        el.loop = true; el.volume = 0;
-        el.play().then(() => { musicEl = el; musicName = name; fadeTo(el, musicTarget(), 900); })
-            .catch(() => {});
+    const token = ++musicToken;
+    const begin = () => {
+        if (token !== musicToken) return;
+        const list = MUSIC[name];
+        if (!name || !list) { musicName = ''; return; }
+        const first = list.length > 1 ? Math.floor(Math.random() * list.length) : 0;
+        startTrack(name, token, list, first);
     };
-    if (musicEl && musicEl.src) {
+    if (musicEl) {
         const old = musicEl; musicEl = null; musicName = '';
-        fadeTo(old, 0, 500, () => { old.pause(); start(); });
-    } else start();
+        fadeTo(old, 0, 500, () => { old.pause(); begin(); });
+    } else begin();
+}
+// Looping effects (footsteps, typing): start/stop by name.
+const loops = {};
+export function setLoopSfx(name, on, gain = 1) {
+    try {
+        let a = loops[name];
+        if (!a) { a = loops[name] = new Audio(`assets/audio/sfx/${name}.mp3`); a.loop = true; }
+        a.volume = Math.max(0, Math.min(1, vol.master * vol.sfx * gain));
+        if (on && a.volume > 0) { if (a.paused) a.play().catch(() => {}); }
+        else if (!a.paused) { a.pause(); a.currentTime = 0; }
+    } catch (e) {}
 }
 export function setVolume(kind, v) {
     vol[kind] = Math.max(0, Math.min(1, v));

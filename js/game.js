@@ -2,6 +2,8 @@ import { StoryController } from './story.js';
 import { createLevel1 } from './levels/level1.js';
 import { playMusic } from './audio.js';
 import { initSettings, openSettings } from './settings.js';
+import { actionForKey } from './controls.js';
+import { initCheats, registerCheats } from './cheats.js';
 
 const root = document.getElementById('game-root');
 
@@ -57,6 +59,7 @@ function showTitle(){
     <section id="title-screen" class="panel title-screen perfect-title-screen" aria-label="Goodbye Goth title screen">
       <div class="perfect-title-wrap">
         <img class="perfect-title-art" src="assets/story/title-screen-perfect.png" alt="Goodbye Goth title screen">
+        <button id="title-art-new" class="title-art-hit" type="button" aria-label="New game"></button>
         <div class="title-menu" role="menu" aria-label="Main menu">
           <button id="title-new" class="title-menu-btn primary-title-btn" type="button">NEW GAME</button>
           <button id="title-load" class="title-menu-btn" type="button">LOAD GAME</button>
@@ -66,7 +69,10 @@ function showTitle(){
       </div>
     </section>`;
 
-  document.getElementById('title-new').addEventListener('click', startNewGame, { once:true });
+  let started = false;
+  const begin = () => { if(started) return; started = true; startNewGame(); };
+  document.getElementById('title-new').addEventListener('click', begin);
+  document.getElementById('title-art-new').addEventListener('click', begin);
   document.getElementById('title-load').addEventListener('click', loadSavedGame, { once:true });
   document.getElementById('title-settings').addEventListener('click', openSettings);
   document.getElementById('title-quit').addEventListener('click', quitGame, { once:true });
@@ -78,6 +84,7 @@ function showIntro(){
 }
 
 function showGothAbyss() {
+  playMusic('');   // the cutscene has its own sound
   root.innerHTML = `
     <section class="abyss-video-screen" id="abyss-video-screen" aria-label="Goth Abyss cutscene">
       <video
@@ -346,32 +353,37 @@ function mountLevel1(loadSaved=false){
   ui.inventoryButton?.addEventListener('click',()=>toggleInventory(true));
   ui.inventoryClose?.addEventListener('click',()=>toggleInventory(false));
 
+  const MOVE_KEY = { up:'w', down:'s', left:'a', right:'d' };
   window.addEventListener('keydown',e=>{
-    const k=e.key.toLowerCase();
-    if(k==='y' && !e.repeat){ e.preventDefault(); toggleInventory(); return; }
+    if(e.ctrlKey || e.metaKey || e.altKey) return;
+    const act = actionForKey(e.key);
+    if(!act) return;
+    if(act==='inventory' && !e.repeat){ e.preventDefault(); toggleInventory(); return; }
     if(!ui.inventory?.classList.contains('hidden')) return;
-    if(k==='r' && !ui.combat.classList.contains('hidden')){
+    const inFight = !ui.combat.classList.contains('hidden');
+    if(act==='dodge' && inFight){
       e.preventDefault();
       if(!e.repeat) level.combatDodge?.();
       return;
     }
-    if(k==='z' && !ui.combat.classList.contains('hidden')){
+    if(act==='heavy' && inFight){
       e.preventDefault();
       if(!e.repeat) level.combatHeavyAttack?.();
       return;
     }
-    if(['arrowup','arrowdown','arrowleft','arrowright',' ','w','a','s','d','x'].includes(k))e.preventDefault();
-    if(['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d'].includes(k))level.setMoveKey?.(k,true);
-    if(k===' ')level.primaryAction();
-    if(k==='x'){
+    if(MOVE_KEY[act]){ e.preventDefault(); level.setMoveKey?.(MOVE_KEY[act],true); return; }
+    if(act==='jump'){ e.preventDefault(); if(!e.repeat) level.primaryAction(); return; }
+    if(act==='save'){
+      e.preventDefault();
       const ok=level.saveGame();
       if(ui.saveStatus) ui.saveStatus.textContent=ok?'Saved ✓':'Save failed';
     }
   });
   window.addEventListener('keyup',e=>{
-    const k=e.key.toLowerCase();
-    if(['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d'].includes(k))level.setMoveKey?.(k,false);
+    const act = actionForKey(e.key);
+    if(MOVE_KEY[act]) level.setMoveKey?.(MOVE_KEY[act],false);
   });
+  registerCheats(level.cheat);
   level.start();
   if(loadSaved){
     requestAnimationFrame(() => {
@@ -382,4 +394,6 @@ function mountLevel1(loadSaved=false){
 }
 
 initSettings();
+initCheats();
+playMusic('menu');   // title song: assets/audio/music/menu.mp3 (starts after the first click)
 showTitle();

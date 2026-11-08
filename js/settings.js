@@ -2,6 +2,7 @@
    Everything is built here and lives on <body>, so it survives the game swapping screens.
    Opened from the title menu (SETTINGS) and the small gear button; closes with Esc or CLOSE. */
 import { getVolumes, setVolume } from './audio.js';
+import { ACTIONS, DEFAULTS, getBindings, swapBindings, setBinding, resetBindings, keyLabel, isDefault } from './controls.js';
 
 const BRIGHT_KEY = 'goodbyeGothBrightness_v1';
 let brightness = 100;
@@ -31,6 +32,16 @@ const CSS = `
 .gg-keys{display:grid;grid-template-columns:auto 1fr;gap:5px 16px;font-size:14px;margin:0}
 .gg-keys dt{font-family:system-ui,sans-serif;font-weight:700;font-size:12px;letter-spacing:.06em;color:#efb7c9;white-space:nowrap}
 .gg-keys dd{margin:0}
+.gg-tabs{display:flex;gap:8px;margin:0 0 10px}
+.gg-tab{flex:1;padding:8px 10px;border-radius:10px;border:1px solid rgba(239,183,201,.4);background:#1f1426;color:#f6eaf0;font:700 13px Georgia,serif;letter-spacing:.1em;cursor:pointer}
+.gg-tab[aria-selected=true]{background:#7a2f55;border-color:#efb7c9}
+.gg-slots{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}
+.gg-slot{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px dashed rgba(239,183,201,.35);border-radius:10px;background:#1b1221}
+.gg-slot.over{border-color:#ffe27a;background:#2c1d33}
+.gg-slot.listening{border-color:#ffe27a;box-shadow:0 0 0 2px rgba(255,226,122,.35)}
+.gg-keycap{min-width:46px;text-align:center;padding:5px 8px;border-radius:7px;border:1px solid #efb7c9;background:#2a1a30;color:#fff;font:700 12px system-ui,sans-serif;cursor:pointer}
+.gg-chip{flex:1;padding:6px 8px;border-radius:8px;background:#7a2f55;font:700 12px system-ui,sans-serif;cursor:grab;user-select:none}
+.gg-chip:active{cursor:grabbing}
 .gg-note{font-size:12px;opacity:.7;margin:6px 0 0;font-family:system-ui,sans-serif}
 `;
 
@@ -56,6 +67,41 @@ function refreshSoundBtn() {
 export function openSettings() { if (!overlay) initSettings(); overlay.classList.add('open'); refreshSoundBtn(); overlay.querySelector('#gg-close').focus(); }
 export function closeSettings() { overlay?.classList.remove('open'); }
 
+function renderControls() {
+    const b = getBindings();
+    const def = overlay.querySelector('#gg-controls-default');
+    const rows = ACTIONS.map(a => `<dt>${keyLabel(b[a.id])}</dt><dd>${a.label}</dd>`).join('');
+    def.innerHTML = `<dl class="gg-keys">${rows}<dt>LEFT CLICK</dt><dd>Attack</dd><dt>RIGHT CLICK</dt><dd>Dodge roll</dd><dt>ARROW KEYS</dt><dd>Also move</dd></dl>` +
+        (isDefault() ? '' : '<p class="gg-note">These are your customised keys. Press RESET TO DEFAULT in Customise to go back.</p>');
+    const slots = overlay.querySelector('#gg-slots'); slots.innerHTML = '';
+    for (const a of ACTIONS) {
+        const slot = document.createElement('div'); slot.className = 'gg-slot'; slot.dataset.action = a.id;
+        const cap = document.createElement('button'); cap.type = 'button'; cap.className = 'gg-keycap'; cap.textContent = keyLabel(b[a.id]); cap.title = 'Click, then press a key';
+        const chip = document.createElement('div'); chip.className = 'gg-chip'; chip.textContent = a.label; chip.draggable = true;
+        chip.addEventListener('dragstart', ev => { ev.dataTransfer.setData('text/plain', a.id); ev.dataTransfer.effectAllowed = 'move'; });
+        slot.addEventListener('dragover', ev => { ev.preventDefault(); slot.classList.add('over'); });
+        slot.addEventListener('dragleave', () => slot.classList.remove('over'));
+        slot.addEventListener('drop', ev => { ev.preventDefault(); slot.classList.remove('over'); const from = ev.dataTransfer.getData('text/plain'); if (from) { swapBindings(from, a.id); renderControls(); } });
+        cap.addEventListener('click', () => {
+            slot.classList.add('listening'); cap.textContent = 'press…';
+            const onKey = ev => {
+                ev.preventDefault(); ev.stopPropagation(); window.removeEventListener('keydown', onKey, true);
+                if (ev.key !== 'Escape') setBinding(a.id, ev.key);
+                renderControls();
+            };
+            window.addEventListener('keydown', onKey, true);
+        });
+        slot.append(cap, chip); slots.appendChild(slot);
+    }
+}
+function showControlsTab(custom) {
+    overlay.querySelector('#gg-controls-default').hidden = custom;
+    overlay.querySelector('#gg-controls-custom').hidden = !custom;
+    overlay.querySelector('#gg-tab-default').setAttribute('aria-selected', String(!custom));
+    overlay.querySelector('#gg-tab-custom').setAttribute('aria-selected', String(custom));
+    renderControls();
+}
+
 export function initSettings() {
     if (overlay) return;
     const style = document.createElement('style'); style.textContent = CSS; document.head.appendChild(style);
@@ -79,11 +125,16 @@ export function initSettings() {
         <div class="gg-row"><label for="gg-bright">Brightness</label><input id="gg-bright" type="range" min="50" max="130" step="5"><output id="gg-bright-out"></output></div>
         <div class="gg-btns"><button id="gg-full" class="gg-btn" type="button">⛶ FULLSCREEN</button></div>
         <h2>CONTROLS</h2>
-        <dl class="gg-keys">
-          <dt>WASD / ARROWS</dt><dd>Move</dd><dt>SPACE</dt><dd>Jump</dd><dt>LEFT CLICK</dt><dd>Attack / interact</dd>
-          <dt>RIGHT CLICK</dt><dd>Roll (dodge)</dd><dt>ENTER</dt><dd>Interact</dd><dt>Y</dt><dd>Open inventory</dd><dt>X</dt><dd>Save game</dd>
-        </dl>
-        <p class="gg-note">Controller support and changing keys are planned.</p>
+        <div class="gg-tabs" role="tablist">
+          <button class="gg-tab" id="gg-tab-default" role="tab" type="button">DEFAULT</button>
+          <button class="gg-tab" id="gg-tab-custom" role="tab" type="button">CUSTOMISE</button>
+        </div>
+        <div id="gg-controls-default"></div>
+        <div id="gg-controls-custom" hidden>
+          <div class="gg-slots" id="gg-slots"></div>
+          <p class="gg-note">Drag an action onto another box to swap keys, or click a key and press the one you want. Arrow keys always move, left click attacks, right click dodges.</p>
+          <div class="gg-btns"><button id="gg-reset-keys" class="gg-btn" type="button">RESET TO DEFAULT</button></div>
+        </div>
         <div class="gg-btns" style="margin-top:18px"><button id="gg-close" class="gg-btn primary" type="button">CLOSE</button></div>
       </div>`;
     document.body.appendChild(overlay);
@@ -109,4 +160,8 @@ export function initSettings() {
         try { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen(); } catch (e) {}
     });
     overlay.querySelector('#gg-close').addEventListener('click', closeSettings);
+    overlay.querySelector('#gg-tab-default').addEventListener('click', () => showControlsTab(false));
+    overlay.querySelector('#gg-tab-custom').addEventListener('click', () => showControlsTab(true));
+    overlay.querySelector('#gg-reset-keys').addEventListener('click', () => { resetBindings(); renderControls(); });
+    showControlsTab(false);
 }

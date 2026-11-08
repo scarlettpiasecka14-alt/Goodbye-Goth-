@@ -556,3 +556,22 @@
   border: 1px solid rgba(239, 183, 201, .28) !important;
   backdrop-filter: blur(4px) !important;
 }
+
+/* V9.9 title menu: sits at the right side so it no longer covers the tagline. */
+.perfect-title-wrap .title-menu {
+  left: auto !important;
+  right: 3.5% !important;
+  bottom: 7% !important;
+  transform: none !important;
+  width: min(250px, 22vw) !important;
+}
+@media (max-width: 700px) {
+  .perfect-title-wrap .title-menu { right: 2% !important; bottom: 3% !important; width: min(200px, 34vw) !important; }
+}
+/* The NEW GAME button painted into the title art is clickable too. */
+.perfect-title-wrap { position: relative; }
+.title-art-hit {
+  position: absolute; left: 36.3%; top: 80.9%; width: 27.5%; height: 9.2%;
+  background: transparent; border: 0; border-radius: 14px; cursor: pointer; z-index: 15;
+}
+.title-art-hit:hover, .title-art-hit:focus-visible { box-shadow: 0 0 0 3px rgba(239,183,201,.55), 0 0 26px rgba(231,135,173,.5); outline: none; }

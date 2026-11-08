@@ -1,6 +1,29 @@
 /* Goodbye Goth V9.4 - Chain Goth fight (AI + all seven animations: intro, walk, swipe, spin, stun, hurt, death) on top of V9.0 map cleanup and the v8.11 Zombie Goth AI. */
-import { playSfx, playRandomSfx, playMusic, preloadSfx } from '../audio.js';
+import { playSfx, playRandomSfx, playMusic, preloadSfx, setLoopSfx } from '../audio.js';
 const GOTH_HURT_SFX = ['goth-hurt-1', 'goth-hurt-2', 'goth-hurt-3', 'goth-hurt-4'];
+// Floor warning rings. pink = attack incoming (jump or dodge), yellow = must JUMP it, red = must DODGE it (jumping won't help).
+const RING_FLOOR_OFFSET = 62;   // how far below Olly's ground line the Zombie Goth's ring sits
+const ATTACK_RING_RGB = { pink: '236,110,170', yellow: '255,208,64', red: '255,66,86' };
+function drawAttackRing(c, x, floorY, radius, kind, progress, active, nowMs) {
+    const rgb = ATTACK_RING_RGB[kind] || ATTACK_RING_RGB.pink;
+    const p = Math.max(0, Math.min(1, progress));
+    const pulse = .5 + .5 * Math.sin(nowMs / (active ? 60 : 110 - p * 50));
+    c.save();
+    c.translate(x, floorY);
+    c.scale(1, .2);
+    c.beginPath();
+    c.arc(0, 0, radius, 0, Math.PI * 2);
+    c.fillStyle = `rgba(${rgb},${(.06 + .16 * p) * (.6 + .4 * pulse)})`;
+    c.fill();
+    c.lineWidth = 7 + pulse * 5;
+    c.strokeStyle = `rgba(${rgb},${.45 + .45 * p})`;
+    c.stroke();
+    if (!active) {   // inner ring shrinks toward the edge as the hit gets closer
+        c.beginPath(); c.arc(0, 0, radius * (1 - p) , 0, Math.PI * 2);
+        c.lineWidth = 4; c.strokeStyle = `rgba(${rgb},${.3 + .4 * p})`; c.stroke();
+    }
+    c.restore();
+}
 const WORLD_W = 1536,
     WORLD_H = 1024;
 const SAVE_KEY = 'goodbyeGothSave_v6';
@@ -253,7 +276,7 @@ const CHAIN_SWIPE_STRIKE_FIRST = 10;
 const CHAIN_SWIPE_STRIKE_MS = [34, 34, 34, 34, 34, 34, 34, 34, 34, 34];   // ten frames, fast and fluid
 const CHAIN_SWIPE_TOTAL_MS = CHAIN_SWIPE_STRIKE_MS.reduce((a, b) => a + b, 0);
 const CHAIN_SWIPE_HIT_AT_MS = 136;       // the moment the mace sweeps across the floor in front of her
-const CHAIN_SWIPE_DAMAGE = 5, CHAIN_SWIPE_RANGE = 250, CHAIN_SWIPE_PUSH = 34;
+const CHAIN_SWIPE_DAMAGE = 10, CHAIN_SWIPE_RANGE = 250, CHAIN_SWIPE_PUSH = 34;
 const CHAIN_STAND_OFF = 250;             // how far from Olly she likes to stand
 const CHAIN_CHASE_SPEED = 170;           // quicker than the Zombie Goth (135)
 const CHAIN_RECOVER_MS = 520;
@@ -263,7 +286,8 @@ const CHAIN_SPIN_WINDUP_COUNT = 10, CHAIN_SPIN_WINDUP_MS = 1100;   // the wind-u
 const CHAIN_SPIN_FRAME_MS = 33, CHAIN_SPIN_FRAME_COUNT = 36;
 const CHAIN_SPIN_TOTAL_MS = CHAIN_SPIN_FRAME_MS * CHAIN_SPIN_FRAME_COUNT;
 const CHAIN_SPIN_HIT_AT_MS = [759, 957];   // the last two flashes of the mace; one dodge timed at the start of the spin avoids both
-const CHAIN_SPIN_DAMAGE = 5, CHAIN_SPIN_RANGE = 330, CHAIN_SPIN_PUSH = 40;
+const CHAIN_SPIN_DAMAGE = 15, CHAIN_SPIN_HIT_DAMAGE = [8, 7],   // spin = 15 total across its two passes
+      CHAIN_SPIN_UNUSED = 0, CHAIN_SPIN_RANGE = 330, CHAIN_SPIN_PUSH = 40;
 // Stun is EARNED: three hits in a row (a Heavy Attack counts as two) leave her dizzy, and Olly gets his punches back to punish it.
 const CHAIN_STUN_HITS = 3, CHAIN_STUN_HIT_WINDOW_MS = 4000;
 const CHAIN_STUN_FRAME_MS = 33, CHAIN_STUN_FRAME_COUNT = 61, CHAIN_STUN_MS = CHAIN_STUN_FRAME_MS * CHAIN_STUN_FRAME_COUNT;
@@ -961,8 +985,8 @@ export function createLevel1(ui) {
         y: 505,
         type: 'chain',
         name: 'CHAIN GOTH',
-        hp: 80,
-        maxHp: 80,
+        hp: 100,
+        maxHp: 100,
         dead: false,
         pattern: 'Whip • Chain Slam'
     }
@@ -1408,6 +1432,7 @@ export function createLevel1(ui) {
         if (mode !== 'map' || !keyCollected || gateOpened) return;
 
         mode = 'cutscene2';
+        playMusic('');   // the cutscene has its own sound
         const overlay = document.createElement('div');
         overlay.id = 'level1-cutscene2-overlay';
         overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:#09070d;display:flex;align-items:center;justify-content:center;overflow:auto;padding:24px;box-sizing:border-box;';
@@ -1458,6 +1483,7 @@ export function createLevel1(ui) {
             overlay.remove();
             gateOpened = true;
             mode = 'map';
+            playMusic('map');
             stats();
             ui.dialogue.textContent = '🔓 The gate opens. Whatever is beyond it is no longer your problem for the moment...';
         };
@@ -2143,7 +2169,7 @@ export function createLevel1(ui) {
         }
 
         if (zombieCombatState === 'windup') {
-            const windup = 420;
+            const windup = zombieCombatAttackType === 'heavyKick' ? 800 : 620;   // long enough to read the warning ring
             if (nowMs - zombieCombatStateStart >= windup) {
                 zombieCombatState = zombieCombatAttackType;
                 zombieCombatStateStart = nowMs;
@@ -2175,13 +2201,13 @@ export function createLevel1(ui) {
                     }
 
                     const catchDistance = Math.abs(player.x - zombieCombatX);
-                    const canCatch = !jumping && jumpOffset > -18 && nowMs >= dodgeUntil;
+                    const canCatch = nowMs >= dodgeUntil;   // red attack: jumping does not avoid the bite, only dodging does
                     if (canCatch && catchDistance <= 155) {
                         zombieBiteCaughtAt = nowMs || 1;
                         zombieBiteHoldX = player.x;
                         zombieBiteHoldUntil = nowMs + 1000;
                         zombieCombatAttackHit = true;
-                        applyZombieDamage(10, 220, 0, nowMs, 'HEAVY ATTACK');
+                        applyZombieDamage(10, 220, 0, nowMs, 'HEAVY ATTACK', true);
                         // Keep the hold anchor aligned if arena-edge handling nudges Olly inward.
                         zombieBiteHoldX = player.x;
                     }
@@ -2293,12 +2319,17 @@ export function createLevel1(ui) {
         }
     }
 
+    let cheatGod = false;
     function applyZombieDamage(damage, range, pushDistance, nowMs, attackName, ignoreAir = false) {
         const horizontalDistance = Math.abs(zombieCombatX - player.x);
         const airborne = !ignoreAir && (jumping || jumpOffset < -20);
         const dodging = player.invuln > nowMs;
         if (horizontalDistance > range || airborne || dodging) {
             ui.combatStatus.textContent = `↪ ${attackName} missed!`;
+            return;
+        }
+        if (cheatGod) {
+            ui.combatStatus.textContent = `🛡 ${attackName} blocked (cheat: no damage).`;
             return;
         }
 
@@ -2486,22 +2517,14 @@ export function createLevel1(ui) {
             c.restore();
         }
 
-        // Red warning ring on the floor while she winds up and performs the spin: stay inside it and you must dodge.
+        // Warning rings on the floor: red = spin (dodge only), pink = swipe (jump or dodge).
         if (zombieCombatState === 'spinwind' || zombieCombatState === 'spin') {
             const t = nowMs - zombieCombatStateStart;
-            const p = zombieCombatState === 'spinwind' ? Math.min(1, t / CHAIN_SPIN_WINDUP_MS) : 1;
-            const pulse = .5 + .5 * Math.sin(nowMs / (zombieCombatState === 'spinwind' ? 110 - p * 50 : 60));
-            c.save();
-            c.translate(enemyX, CHAIN_FLOOR_Y + 8);
-            c.scale(1, .2);
-            c.beginPath();
-            c.arc(0, 0, CHAIN_SPIN_RANGE, 0, Math.PI * 2);
-            c.fillStyle = `rgba(230,40,60,${(.06 + .16 * p) * (.6 + .4 * pulse)})`;
-            c.fill();
-            c.lineWidth = 7 + pulse * 5;
-            c.strokeStyle = `rgba(255,70,90,${.45 + .45 * p})`;
-            c.stroke();
-            c.restore();
+            drawAttackRing(c, enemyX, CHAIN_FLOOR_Y + 8, CHAIN_SPIN_RANGE, 'red', zombieCombatState === 'spinwind' ? Math.min(1, t / CHAIN_SPIN_WINDUP_MS) : 1, zombieCombatState === 'spin', nowMs);
+        } else if (zombieCombatState === 'windup' && zombieCombatAttackType === 'swipe') {
+            drawAttackRing(c, enemyX, CHAIN_FLOOR_Y + 8, CHAIN_SWIPE_RANGE, 'pink', Math.min(1, (nowMs - zombieCombatStateStart) / CHAIN_SWIPE_WINDUP_MS), false, nowMs);
+        } else if (zombieCombatState === 'swipe') {
+            drawAttackRing(c, enemyX, CHAIN_FLOOR_Y + 8, CHAIN_SWIPE_RANGE, 'pink', 1, true, nowMs);
         }
 
         drawChainAtlasFrame(c, frame.pack, frame.index, enemyX, CHAIN_FLOOR_Y, face, frame.scale, alpha, rotation, offsetX);
@@ -2753,7 +2776,7 @@ export function createLevel1(ui) {
             // Two passes of the mace. Dodging avoids them; jumping does not (ignoreAir).
             while (chainSpinHitsDone < CHAIN_SPIN_HIT_AT_MS.length && elapsed >= CHAIN_SPIN_HIT_AT_MS[chainSpinHitsDone]) {
                 chainSpinHitsDone++;
-                applyZombieDamage(CHAIN_SPIN_DAMAGE, CHAIN_SPIN_RANGE, CHAIN_SPIN_PUSH, nowMs, 'CHAIN SPIN', true);
+                applyZombieDamage(CHAIN_SPIN_HIT_DAMAGE[chainSpinHitsDone - 1] || 7, CHAIN_SPIN_RANGE, CHAIN_SPIN_PUSH, nowMs, 'CHAIN SPIN', true);
             }
             if (elapsed >= CHAIN_SPIN_TOTAL_MS) {
                 zombieCombatState = 'recover';
@@ -2845,6 +2868,14 @@ export function createLevel1(ui) {
         const anim = getCombatAnimationFrame(nowMs);
         const renderHurt = playerHurtUntil > nowMs;
         drawOllyWorldCombat(cctx, player.x, player.y, anim, nowMs / 1000, renderHurt, jumpOffset);
+        if (!isBoss && target?.type === 'shambler' && !zombieIntroActive) {
+            const heavyRing = zombieCombatAttackType === 'heavyKick';
+            const ringKind = heavyRing ? 'red' : 'pink', ringR = heavyRing ? 200 : 140, ringY = COMBAT_GROUND_Y + RING_FLOOR_OFFSET;
+            if (zombieCombatState === 'windup')
+                drawAttackRing(cctx, enemyX, ringY, ringR, ringKind, (nowMs - zombieCombatStateStart) / (heavyRing ? 800 : 620), false, nowMs);
+            else if (zombieCombatState === 'claw' || zombieCombatState === 'heavyKick')
+                drawAttackRing(cctx, enemyX, ringY, ringR, ringKind, 1, true, nowMs);
+        }
         drawZombieCombat(cctx, enemyX, enemyY, nowMs);
         drawZombieCountdown(cctx, nowMs);
 
@@ -2852,48 +2883,7 @@ export function createLevel1(ui) {
 
         // Readable but not boring attack telegraph. It sits high enough to avoid
         // covering either fighter and pulses only during the wind-up.
-        if (!isBoss && (enemyType === 'shambler' || enemyType === 'chain') && enemyAttackPhase === 'windup') {
-            cctx.save();
-            const windupMs = nowMs - zombieCombatStateStart;
-            const windupTotal = enemyType === 'chain' ? (zombieCombatAttackType === 'spin' ? CHAIN_SPIN_WINDUP_MS : CHAIN_SWIPE_WINDUP_MS) : 420;
-            const progress = Math.max(0, Math.min(1, windupMs / windupTotal));
-            const pulse = 1 + Math.sin(nowMs / 80) * .035;
-            const shake = Math.sin(nowMs / 34) * 2.5 * progress;
-            const boxW = 420 + progress * 20;
-            const boxH = 62;
-            const cx = COMBAT_W / 2 + shake;
-            const cy = 118;
-
-            cctx.translate(cx, cy);
-            cctx.scale(pulse, pulse);
-            cctx.fillStyle = 'rgba(25,13,24,.94)';
-            cctx.strokeStyle = (zombieCombatAttackType === 'heavyKick' || zombieCombatAttackType === 'spin')
-                ? (zombieCombatAttackType === 'spin' ? 'rgba(236,64,72,.98)' : 'rgba(229,104,168,.96)')
-                : 'rgba(243,191,211,.96)';
-            cctx.lineWidth = 3;
-            cctx.beginPath();
-            cctx.roundRect(-boxW / 2, -boxH / 2, boxW, boxH, 16);
-            cctx.fill();
-            cctx.stroke();
-
-            cctx.fillStyle = '#f6e6ee';
-            cctx.font = '900 27px system-ui';
-            cctx.textAlign = 'center';
-            cctx.fillText('! ATTACK INCOMING !', 0, -2);
-
-            cctx.fillStyle = '#e8a9c4';
-            cctx.font = '800 13px system-ui';
-            cctx.fillText(
-                enemyType === 'chain'
-                    ? (zombieCombatAttackType === 'spin' ? 'CHAIN SPIN  •  DODGE ONLY  •  CAN\'T JUMP IT' : 'CHAIN SWIPE  •  JUMP / DODGE')
-                    : (zombieCombatAttackType === 'heavyKick'
-                        ? 'HEAVY ATTACK  •  MOVE / DODGE / JUMP'
-                        : 'CLAW SWIPE  •  MOVE / DODGE / JUMP'),
-                0,
-                22
-            );
-            cctx.restore();
-        }
+        // (The old "ATTACK INCOMING" banner is replaced by the floor rings.)
 
         if (nowMs < attackCooldownUntil) {
             const seconds = Math.max(0, (attackCooldownUntil - nowMs) / 1000);
@@ -3011,6 +3001,7 @@ export function createLevel1(ui) {
             const dt = Math.min(.033, (t - combatLastFrame) / 1000 || 0);
             combatLastFrame = t;
             updateCombatMovement(dt);
+            setLoopSfx('footsteps', (held.left !== held.right) && !jumping && !zombieIntroActive && !playerDeathTriggered && t >= dodgeUntil, .8);
             updateZombieAI(dt, t);
             updateChainAI(dt, t);
             resolveCombatBodyCollision(t);
@@ -3532,6 +3523,7 @@ export function createLevel1(ui) {
             now = t;
             if (mode === 'map')
                 updateMovement(dt);
+            setLoopSfx('footsteps', mode === 'map' && (held.up || held.down || held.left || held.right) && !ui.inventory?.matches?.(':not(.hidden)'), .8);
             drawWorld(t, dt);
             if (walkPulse > 0)
                 walkPulse = 0;
@@ -3548,7 +3540,25 @@ export function createLevel1(ui) {
             checkTriggers()
     }
 
+    const cheat = {
+        isGod: () => cheatGod,
+        setGod: v => { cheatGod = !!v; },
+        refillHp: () => { hp = maxHp; stats(); },
+        unlockHeavy: () => { heavyUnlocked = true; stats(); },
+        winFight: () => {
+            if (mode !== 'combat' || playerDeathTriggered) return;
+            const nowMs = performance.now();
+            combatHp = 0;
+            ui.enemyHp.style.width = '0%';
+            ui.enemyHpText.textContent = `0 / ${combatMax}`;
+            if (target?.type === 'shambler') triggerZombieDeath(nowMs);
+            else if (isChainFight()) triggerChainDeath(nowMs);
+            else setTimeout(() => endCombat(true), 180);
+        }
+    };
+
     return {
+        cheat,
         start,
         move,
         setMoveKey,

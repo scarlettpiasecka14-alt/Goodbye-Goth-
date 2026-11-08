@@ -1,3 +1,5 @@
+import { playSfx, setLoopSfx } from './audio.js';
+
 export class StoryController {
   constructor(root, onComplete){
     this.root = root;
@@ -52,6 +54,7 @@ export class StoryController {
       this.typingTimer = null;
     }
     this.isTyping = false;
+    setLoopSfx('typing', false);
   }
 
   render(){
@@ -104,6 +107,7 @@ export class StoryController {
       nextBtn.focus();
     };
 
+    setLoopSfx('typing', true, .7);   // typing sound plays while the line is being written
     this.typingTimer = setInterval(() => {
       index += 1;
       textEl.textContent = s.text.slice(0,index);
@@ -115,6 +119,7 @@ export class StoryController {
         finishTyping();
         return;
       }
+      if(s.type === 'text-note') playSfx('click');   // clicking the note
       this.step += 1;
       if(this.step >= this.steps.length) this.onComplete();
       else this.render();
