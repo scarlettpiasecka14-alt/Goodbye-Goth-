@@ -1445,8 +1445,8 @@ export function createLevel1(ui) {
         let finished = false;
         let attemptedFallback = false;
         const sources = [
-            'assets/video/cutscene2/cutscene2.mp4?v=6529',
-            'assets/video/cutscene2/cutscene2.mov?v=6529'
+            'assets/video/cutscene2/cutscene2.mp4?v=9800',
+            'assets/video/cutscene2/cutscene2.mov?v=9800'
         ];
 
         const finish = () => {

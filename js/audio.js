@@ -3,7 +3,7 @@
    assets/audio/music/fight.mp3 (fights). A missing file is simply silent, so nothing breaks while files are still being added.
    Volumes are saved in the browser (a settings screen can use setVolume later). */
 const VOL_KEY = 'goodbyeGothVolume_v1';
-const vol = { master: 1, music: 0.35, sfx: 0.8 };
+const vol = { master: 0, music: 0.35, sfx: 0.8 };   // master 0 = sound OFF until the player turns it on in Settings
 try { Object.assign(vol, JSON.parse(localStorage.getItem(VOL_KEY) || '{}')); } catch (e) {}
 
 const sfxCache = {};
@@ -20,6 +20,7 @@ export function playSfx(name, gain = 1) {
         const base = getSfx(name);
         const a = base.cloneNode();                 // lets the same sound overlap itself
         a.volume = Math.max(0, Math.min(1, vol.master * vol.sfx * gain));
+        if (a.volume <= 0) return;
         a.play().catch(() => {});
     } catch (e) {}
 }
@@ -55,7 +56,7 @@ export function playMusic(name) {
 export function setVolume(kind, v) {
     vol[kind] = Math.max(0, Math.min(1, v));
     try { localStorage.setItem(VOL_KEY, JSON.stringify(vol)); } catch (e) {}
-    if (musicEl) musicEl.volume = musicTarget();
+    if (musicEl) { clearInterval(fadeTimer); musicEl.volume = musicTarget(); }
 }
 export function getVolumes() { return { ...vol }; }
 // First click/key of the session: start whatever music we were waiting to play.

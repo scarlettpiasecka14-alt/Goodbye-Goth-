@@ -1,6 +1,7 @@
 import { StoryController } from './story.js';
 import { createLevel1 } from './levels/level1.js';
 import { playMusic } from './audio.js';
+import { initSettings, openSettings } from './settings.js';
 
 const root = document.getElementById('game-root');
 
@@ -59,6 +60,7 @@ function showTitle(){
         <div class="title-menu" role="menu" aria-label="Main menu">
           <button id="title-new" class="title-menu-btn primary-title-btn" type="button">NEW GAME</button>
           <button id="title-load" class="title-menu-btn" type="button">LOAD GAME</button>
+          <button id="title-settings" class="title-menu-btn" type="button">SETTINGS</button>
           <button id="title-quit" class="title-menu-btn" type="button">QUIT</button>
         </div>
       </div>
@@ -66,6 +68,7 @@ function showTitle(){
 
   document.getElementById('title-new').addEventListener('click', startNewGame, { once:true });
   document.getElementById('title-load').addEventListener('click', loadSavedGame, { once:true });
+  document.getElementById('title-settings').addEventListener('click', openSettings);
   document.getElementById('title-quit').addEventListener('click', quitGame, { once:true });
 }
 
@@ -306,6 +309,7 @@ function mountLevel1(loadSaved=false){
     puzzle:document.getElementById('puzzle'), puzzleFeedback:document.getElementById('puzzle-feedback'), bossIntro:document.getElementById('boss-intro'), bossStart:document.getElementById('boss-start'), win:document.getElementById('win'), replay:document.getElementById('replay')
   };
 
+  initSettings();
   playMusic('map');   // map + story music (assets/audio/music/map.mp3); starts after the first click
   const level = createLevel1(ui);
   ui.encounterReady.addEventListener('click',()=>level.confirmEncounter());
@@ -377,4 +381,5 @@ function mountLevel1(loadSaved=false){
   }
 }
 
+initSettings();
 showTitle();
