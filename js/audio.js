@@ -10,6 +10,8 @@ try { Object.assign(vol, JSON.parse(localStorage.getItem(VOL_KEY) || '{}')); } c
    (the old <audio> clones lagged behind the punch). Until a file has finished decoding, the old method is the fallback. */
 let ctx = null, sfxGain = null;
 const buffers = {}, loading = {};
+// Long loops are streamed like music (decoding a 10-minute file into memory would be ~225MB). name -> file in assets/audio/sfx/
+const STREAM = { ambience: 'Ambiance' };
 function getCtx() {
     if (ctx) return ctx;
     try {
@@ -21,7 +23,7 @@ function getCtx() {
 }
 function wake() { if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {}); }
 function loadBuffer(name) {
-    if (buffers[name] || loading[name]) return;
+    if (STREAM[name] || buffers[name] || loading[name]) return;
     const c = getCtx(); if (!c) return;
     loading[name] = fetch(`assets/audio/sfx/${name}.mp3?v=9910`)
         .then(r => { if (!r.ok) throw new Error('missing'); return r.arrayBuffer(); })
@@ -55,7 +57,7 @@ export function preloadSfx(names) { names.forEach(loadBuffer); }
 /* Music "pools": each name plays one file (looping) or a playlist that moves to the next track when one ends.
    Files live in assets/audio/music/. Put the title-screen song at assets/audio/music/menu.mp3. */
 const MUSIC = {
-    menu: ['menu.mp3'],
+    menu: ['Menu.mp3'],
     map: ['BackgroundMusicTrack1.mp3', 'BackgroundTrack2.mp3', 'BackgroundTrack3.mp3', 'BackgroundTrack4.mp3'],
     fight: ['fight.mp3']
 };
@@ -103,7 +105,7 @@ export function setLoopSfx(name, on, gain = 1) {
         if (!L) L = loops[name] = { src: null, g: null, fb: null, want: false, gain: 1 };
         L.want = !!on; L.gain = gain;
         const c = getCtx();
-        if (c && buffers[name]) {
+        if (c && buffers[name] && !STREAM[name]) {
             if (L.fb && !L.fb.paused) { L.fb.pause(); }
             if (on && v > 0) {
                 wake();
@@ -115,7 +117,7 @@ export function setLoopSfx(name, on, gain = 1) {
             } else if (L.src) { try { L.src.stop(); } catch (e) {} L.src.disconnect(); L.src = null; }
         } else {
             loadBuffer(name);   // use the plain <audio> element until the fast version is ready
-            if (!L.fb) { L.fb = new Audio(`assets/audio/sfx/${name}.mp3`); L.fb.loop = true; }
+            if (!L.fb) { L.fb = new Audio(`assets/audio/sfx/${STREAM[name] || name}.mp3`); L.fb.loop = true; }
             L.fb.volume = v;
             if (on && v > 0) { if (L.fb.paused) L.fb.play().catch(() => {}); }
             else if (!L.fb.paused) { L.fb.pause(); L.fb.currentTime = 0; }
