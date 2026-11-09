@@ -1,10 +1,55 @@
 /* Goodbye Goth V9.4 - Chain Goth fight (AI + all seven animations: intro, walk, swipe, spin, stun, hurt, death) on top of V9.0 map cleanup and the v8.11 Zombie Goth AI. */
 import { playSfx, playRandomSfx, playMusic, preloadSfx, setLoopSfx } from '../audio.js';
+// Game clock: normal time, but it stands still while a tutorial pop-up is open (so nothing happens behind it).
+let pausedTotal = 0, pausedAt = 0;
+const gnow = () => (pausedAt || performance.now()) - pausedTotal;
 const GOTH_HURT_SFX = ['goth-hurt-1', 'goth-hurt-2', 'goth-hurt-3', 'goth-hurt-4'];
 // Floor warning rings. pink = attack incoming (jump or dodge), yellow = must JUMP it, red = must DODGE it (jumping won't help).
 const BITE_WINDUP_MS = 1150;   // red bite warning: long enough to see the ring and dodge
 const RING_FLOOR_OFFSET = 62;   // how far below Olly's ground line the Zombie Goth's ring sits
 const ATTACK_RING_RGB = { pink: '236,110,170', yellow: '255,208,64', red: '255,66,86' };
+// ---- Ring tutorial pop-ups: shown the first time each ring colour appears, then remembered. Images: assets/tutorial/ring-<colour>.webp
+const RING_TUTORIAL = {
+    pink: { title: 'PINK RING', text: 'A pink ring shows an incoming attack that can be avoided by jumping over the enemy.' },
+    red: { title: 'RED RING', text: 'A red ring shows an incoming attack that can only be avoided by dodging.' },
+    yellow: { title: 'YELLOW RING', text: 'A yellow ring shows an incoming attack that can only be avoided by jumping over the enemy.' }
+};
+const TUTORIAL_KEY = 'goodbyeGothRingTutorial_v1';
+function ringTutorialSeen(kind) { try { return !!(JSON.parse(localStorage.getItem(TUTORIAL_KEY) || '{}'))[kind]; } catch (e) { return false; } }
+function markRingTutorialSeen(kind) { try { const o = JSON.parse(localStorage.getItem(TUTORIAL_KEY) || '{}'); o[kind] = 1; localStorage.setItem(TUTORIAL_KEY, JSON.stringify(o)); } catch (e) {} }
+export function resetRingTutorials() { try { localStorage.removeItem(TUTORIAL_KEY); } catch (e) {} }
+function showRingTutorial(kind, onClose) {
+    const info = RING_TUTORIAL[kind];
+    if (!info || pausedAt) return false;
+    markRingTutorialSeen(kind);
+    pausedAt = performance.now();
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:10040;background:rgba(6,3,10,.72);display:flex;align-items:center;justify-content:center;padding:18px;';
+    const card = document.createElement('div');
+    card.style.cssText = 'max-width:min(900px,94vw);max-height:94vh;display:flex;flex-direction:column;align-items:center;gap:12px;padding:16px 18px;border:1px solid rgba(239,135,170,.55);border-radius:16px;background:#1a0f1c;box-shadow:0 0 40px rgba(239,90,130,.25);text-align:center;font-family:Georgia,serif;color:#fbeef4;';
+    const img = document.createElement('img');
+    img.src = `assets/tutorial/ring-${kind}.webp?v=9150`; img.alt = '';
+    img.style.cssText = 'max-width:100%;max-height:56vh;border-radius:10px;border:1px solid rgba(255,255,255,.12);object-fit:contain;';
+    img.onerror = () => img.remove();
+    const h = document.createElement('div'); h.textContent = info.title; h.style.cssText = 'font:900 18px Georgia,serif;letter-spacing:.2em;color:#ef87aa;';
+    const t = document.createElement('div'); t.textContent = info.text; t.style.cssText = 'font:500 italic 19px/1.45 Georgia,serif;max-width:680px;';
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = 'GOT IT  ▸';
+    b.style.cssText = 'padding:9px 26px;border-radius:10px;border:1px solid rgba(239,135,170,.7);background:#3a1a30;color:#fff;font:800 14px Georgia,serif;letter-spacing:.14em;cursor:pointer;';
+    card.append(img, h, t, b); overlay.appendChild(card); document.body.appendChild(overlay);
+    let closed = false;
+    const close = () => {
+        if (closed) return; closed = true;
+        window.removeEventListener('keydown', onKey, true);
+        overlay.remove();
+        pausedTotal += performance.now() - pausedAt; pausedAt = 0;
+        if (onClose) onClose();
+    };
+    const onKey = e => { e.stopPropagation(); e.preventDefault(); if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') close(); };
+    window.addEventListener('keydown', onKey, true);
+    b.addEventListener('click', e => { e.stopPropagation(); close(); });
+    setTimeout(() => b.focus({ preventScroll: true }), 50);
+    return true;
+}
 function drawAttackRing(c, x, floorY, radius, kind, progress, active, nowMs) {
     const rgb = ATTACK_RING_RGB[kind] || ATTACK_RING_RGB.pink;
     const p = Math.max(0, Math.min(1, progress));
@@ -279,7 +324,7 @@ const CHAIN_SWIPE_STRIKE_FIRST = 10;
 const CHAIN_SWIPE_STRIKE_MS = [34, 34, 34, 34, 34, 34, 34, 34, 34, 34];   // ten frames, fast and fluid
 const CHAIN_SWIPE_TOTAL_MS = CHAIN_SWIPE_STRIKE_MS.reduce((a, b) => a + b, 0);
 const CHAIN_SWIPE_HIT_AT_MS = 136;       // the moment the mace sweeps across the floor in front of her
-const CHAIN_SWIPE_DAMAGE = 10, CHAIN_SWIPE_RANGE = 250, CHAIN_SWIPE_PUSH = 34;
+const CHAIN_SWIPE_DAMAGE = 10, CHAIN_SWIPE_RANGE = 360, CHAIN_SWIPE_PUSH = 34;
 const CHAIN_STAND_OFF = 250;             // how far from Olly she likes to stand
 const CHAIN_CHASE_SPEED = 170;           // quicker than the Zombie Goth (135)
 const CHAIN_RECOVER_MS = 520;
@@ -862,7 +907,7 @@ export function createLevel1(ui) {
             const dy = (py - p.y) / touchRy;
             if (dx * dx + dy * dy <= 1) touched.add(i);
         }
-        const nowT = performance.now();
+        const nowT = gnow();
         touched.forEach(i => beginFogPatchClear(i, nowT));
     }
 
@@ -1263,7 +1308,7 @@ export function createLevel1(ui) {
         ctx.clearRect(0, 0, ui.canvas.width, ui.canvas.height);
         ctx.save();
         ctx.scale(sx, sy);
-        const zoom = 1.30;
+        const zoom = 1.42;
         const playerX = x,
             playerY = y,
             viewW = vw / zoom,
@@ -1326,7 +1371,7 @@ export function createLevel1(ui) {
         const rect = ui.canvas.getBoundingClientRect(),
             vw = ui.canvas.clientWidth || 1000,
             vh = ui.canvas.clientHeight || 600;
-        const zoom = 1.30;
+        const zoom = 1.42;
         const sx = (e.clientX - rect.left) * (vw / rect.width),
             sy = (e.clientY - rect.top) * (vh / rect.height),
             viewW = vw / zoom,
@@ -1608,7 +1653,7 @@ export function createLevel1(ui) {
         zombieCombatX = COMBAT_W - 320;
         zombieCombatPrevX = zombieCombatX;
         zombieCombatState = 'ready';
-        zombieCombatStateStart = performance.now();
+        zombieCombatStateStart = gnow();
         zombieCombatAttackType = 'claw';
         zombieAttackCycle = 0;
         zombieCombatAttackHit = false;
@@ -1616,7 +1661,7 @@ export function createLevel1(ui) {
         zombieBiteHoldUntil = 0;
         zombieBiteHoldX = 0;
         zombieRecoveryDuration = 520;
-        zombieCombatNextDecision = performance.now() + 450;
+        zombieCombatNextDecision = gnow() + 450;
         zombieCombatWalkIndex = 0;
         zombieHitStaggerUntil = 0;
         zombieHitReactionStart = 0;
@@ -1665,7 +1710,7 @@ export function createLevel1(ui) {
         const speed = 430;
         const playerMinX = 140;
         const playerMaxX = COMBAT_W - 140;
-        const nowMs = performance.now();
+        const nowMs = gnow();
         if (nowMs < zombieBiteHoldUntil) {
             player.x = zombieBiteHoldX;
             player.y = COMBAT_GROUND_Y;
@@ -1753,14 +1798,15 @@ export function createLevel1(ui) {
     }
 
     function jump() {
-        const nowMs = performance.now();
+        if (pausedAt) return;
+        const nowMs = gnow();
         if (mode !== 'combat' || zombieIntroActive || playerDeathTriggered || jumping || heavyAttackAnimUntil > nowMs || nowMs < zombieBiteHoldUntil)
             return;
         jumping = true;
         playSfx('olly-jump', .45);   // soft take-off whoosh (the thud plays on landing)
         jumpT = 0;
         combatAnimationState = 'jump';
-        combatAnimationStart = performance.now();
+        combatAnimationStart = gnow();
         combatAnimationUntil = combatAnimationStart + 510; // v6.5.16d
         ui.combatStatus.textContent = '🦘 You jump.';
     }
@@ -2113,6 +2159,7 @@ export function createLevel1(ui) {
         zombieCombatState = 'windup';
         zombieCombatStateStart = nowMs;
         enemyAttackPhase = 'windup';
+        queueRingTutorial(isHeavy ? 'red' : 'pink');
         ui.combatStatus.textContent = isHeavy
             ? '⚠️ The Zombie Goth is charging a HEAVY ATTACK.'
             : 'The Zombie Goth draws back her claws.';
@@ -2280,7 +2327,8 @@ export function createLevel1(ui) {
     function triggerZombieHitReaction(nowMs, heavy = false, longHit = false) {
         if (!isAIFight())
             return;
-        if (heavy) playSfx('goth-pain', .9); else playRandomSfx(GOTH_HURT_SFX, .7);
+        const hurtRate = isChainFight() ? .82 : 1;   // Chain Goth reuses the zombie groans, pitched lower, until she has her own
+        if (heavy) playSfx('goth-pain', .9, hurtRate); else playSfx(GOTH_HURT_SFX[Math.floor(Math.random() * GOTH_HURT_SFX.length)], .7, hurtRate);
 
         // Chain Goth cannot be knocked out of her spin, and she shrugs off hits while dizzy (the hits still count).
         if (isChainFight()) {
@@ -2337,10 +2385,10 @@ export function createLevel1(ui) {
     }
 
     let cheatGod = false;
-    function applyZombieDamage(damage, range, pushDistance, nowMs, attackName, ignoreAir = false) {
+    function applyZombieDamage(damage, range, pushDistance, nowMs, attackName, ignoreAir = false, ignoreDodge = false) {
         const horizontalDistance = Math.abs(zombieCombatX - player.x);
         const airborne = !ignoreAir && (jumping || jumpOffset < -20);
-        const dodging = player.invuln > nowMs;
+        const dodging = !ignoreDodge && player.invuln > nowMs;
         if (horizontalDistance > range || airborne || dodging) {
             ui.combatStatus.textContent = `↪ ${attackName} missed!`;
             return;
@@ -2566,14 +2614,14 @@ export function createLevel1(ui) {
             c.restore();
         }
 
-        // Warning rings on the floor: red = spin (dodge only), pink = swipe (jump or dodge).
+        // Warning rings on the floor: red = spin (dodge only), yellow = swipe (jump OVER her only).
         if (zombieCombatState === 'spinwind' || zombieCombatState === 'spin') {
             const t = nowMs - zombieCombatStateStart;
             drawAttackRing(c, enemyX, CHAIN_FLOOR_Y + 8, CHAIN_SPIN_RANGE, 'red', zombieCombatState === 'spinwind' ? Math.min(1, t / CHAIN_SPIN_WINDUP_MS) : 1, zombieCombatState === 'spin', nowMs);
         } else if (zombieCombatState === 'windup' && zombieCombatAttackType === 'swipe') {
-            drawAttackRing(c, enemyX, CHAIN_FLOOR_Y + 8, CHAIN_SWIPE_RANGE, 'pink', Math.min(1, (nowMs - zombieCombatStateStart) / CHAIN_SWIPE_WINDUP_MS), false, nowMs);
+            drawAttackRing(c, enemyX, CHAIN_FLOOR_Y + 8, CHAIN_SWIPE_RANGE, 'yellow', Math.min(1, (nowMs - zombieCombatStateStart) / CHAIN_SWIPE_WINDUP_MS), false, nowMs);
         } else if (zombieCombatState === 'swipe') {
-            drawAttackRing(c, enemyX, CHAIN_FLOOR_Y + 8, CHAIN_SWIPE_RANGE, 'pink', 1, true, nowMs);
+            drawAttackRing(c, enemyX, CHAIN_FLOOR_Y + 8, CHAIN_SWIPE_RANGE, 'yellow', 1, true, nowMs);
         }
 
         drawChainAtlasFrame(c, frame.pack, frame.index, enemyX, CHAIN_FLOOR_Y, face, frame.scale, alpha, rotation, offsetX);
@@ -2676,8 +2724,9 @@ export function createLevel1(ui) {
         if (!isChainFight() || zombieDeathStarted)
             return;
         zombieDeathStarted = true;
-        playSfx('zombie-death', .9);
-        playSfx('chain-clatter', 1);   // her chain falls and clatters
+        playSfx('zombie-death', .9, .85);   // her groan, pitched lower (no grunts of her own yet)
+        playSfx('chain-drop', 1);
+        setTimeout(() => playSfx('chain-clatter', .9), 500);   // her chain falls and clatters
         zombieDeathEndAt = nowMs + CHAIN_DEATH_FALL_MS + CHAIN_DEATH_HOLD_MS;
         zombieCombatState = 'death';
         zombieCombatStateStart = nowMs;
@@ -2710,6 +2759,8 @@ export function createLevel1(ui) {
             zombieCombatState = 'spinwind';
             zombieCombatStateStart = nowMs;
             enemyAttackPhase = 'windup';
+            playSfx('chain-rattle', .8);
+            queueRingTutorial('red');
             ui.combatStatus.textContent = 'The Chain Goth winds up a spin. DODGE it. Jumping will not save you!';
             return;
         }
@@ -2718,7 +2769,10 @@ export function createLevel1(ui) {
         zombieCombatState = 'windup';
         zombieCombatStateStart = nowMs;
         enemyAttackPhase = 'windup';
-        ui.combatStatus.textContent = 'The Chain Goth whips her chain back. Jump or dodge!';
+        playSfx('chain-rattle', .7);
+        chainSwipeAim = player.x >= zombieCombatX ? 1 : -1;   // the side she is aiming at
+        queueRingTutorial('yellow');
+        ui.combatStatus.textContent = 'The Chain Goth whips her chain back. JUMP OVER HER!';
     }
 
     function updateChainAI(dt, nowMs) {
@@ -2801,7 +2855,12 @@ export function createLevel1(ui) {
             // The sweep is low along the floor in front of her: jumping or dodging avoids it.
             if (!zombieCombatAttackHit && elapsed >= CHAIN_SWIPE_HIT_AT_MS) {
                 zombieCombatAttackHit = true;
-                applyZombieDamage(CHAIN_SWIPE_DAMAGE, CHAIN_SWIPE_RANGE, CHAIN_SWIPE_PUSH, nowMs, 'CHAIN SWIPE');
+                playSfx('chain-impact', .9);
+                // Yellow swipe: only getting BEHIND her (jumping over) avoids it. Jumping on the spot, jumping back or dodging do not.
+                if ((player.x - zombieCombatX) * chainSwipeAim < 0)
+                    ui.combatStatus.textContent = '↪ You jumped clean over the swipe!';
+                else
+                    applyZombieDamage(CHAIN_SWIPE_DAMAGE, CHAIN_SWIPE_RANGE, CHAIN_SWIPE_PUSH, nowMs, 'CHAIN SWIPE', true, true);
             }
             if (elapsed >= CHAIN_SWIPE_TOTAL_MS + 60) {
                 zombieCombatState = 'recover';
@@ -2816,6 +2875,7 @@ export function createLevel1(ui) {
             if (nowMs - zombieCombatStateStart >= CHAIN_SPIN_WINDUP_MS) {
                 zombieCombatState = 'spin';
                 zombieCombatStateStart = nowMs;
+                playSfx('chain-spin', .85);
                 chainSpinHitsDone = 0;
                 enemyAttackPhase = 'active';
             }
@@ -2827,6 +2887,7 @@ export function createLevel1(ui) {
             // Two passes of the mace. Dodging avoids them; jumping does not (ignoreAir).
             while (chainSpinHitsDone < CHAIN_SPIN_HIT_AT_MS.length && elapsed >= CHAIN_SPIN_HIT_AT_MS[chainSpinHitsDone]) {
                 chainSpinHitsDone++;
+                playSfx('chain-impact-spin', .85);
                 applyZombieDamage(CHAIN_SPIN_HIT_DAMAGE[chainSpinHitsDone - 1] || 7, CHAIN_SPIN_RANGE, CHAIN_SPIN_PUSH, nowMs, 'CHAIN SPIN', true);
             }
             if (elapsed >= CHAIN_SPIN_TOTAL_MS) {
@@ -2869,10 +2930,12 @@ export function createLevel1(ui) {
         }
     }
 
+    let lastCountPhase = -1;
     function drawZombieCountdown(c, nowMs) {
-        if (!zombieIntroActive) return;
+        if (!zombieIntroActive) { lastCountPhase = -1; return; }
         const elapsed = Math.max(0, nowMs - zombieIntroStart);
         const phase = Math.min(3, Math.floor(elapsed / ZOMBIE_COUNTDOWN_PHASE_MS));
+        if (phase !== lastCountPhase) { lastCountPhase = phase; playSfx(phase === 3 ? 'fight-shout' : 'countdown-tick', .9); }   // one tick per number, a shout on FIGHT
         const phaseT = (elapsed % ZOMBIE_COUNTDOWN_PHASE_MS) / ZOMBIE_COUNTDOWN_PHASE_MS;
         const img = phase === 0 ? zombieCountdownFrames[3]
             : phase === 1 ? zombieCountdownFrames[2]
@@ -2902,7 +2965,7 @@ export function createLevel1(ui) {
 
         const enemyX = isBoss ? COMBAT_W - 320 : zombieCombatX;
         const enemyY = COMBAT_GROUND_Y;
-        const nowMs = performance.now();
+        const nowMs = gnow();
         const enemyType = target?.type || (isBoss ? 'chain' : 'shambler');
 
         if (combatAnimationUntil && nowMs >= combatAnimationUntil && combatAnimationState !== 'idle') {
@@ -2936,33 +2999,23 @@ export function createLevel1(ui) {
         // covering either fighter and pulses only during the wind-up.
         // (The old "ATTACK INCOMING" banner is replaced by the floor rings.)
 
-        // Combo meter: 3 pips fill as Olly punches; on the 3rd he is out of breath for 5s. Drawn above the message bar so it is actually visible.
-        {
-            const cx = COMBAT_W / 2, cy = COMBAT_H - 128;
-            cctx.save();
-            cctx.textAlign = 'center';
-            if (nowMs < attackCooldownUntil) {
-                const left = Math.max(0, attackCooldownUntil - nowMs), frac = left / 5000;
-                cctx.fillStyle = 'rgba(30,8,20,.82)';
-                cctx.strokeStyle = 'rgba(239,90,130,.95)'; cctx.lineWidth = 3;
-                cctx.beginPath(); cctx.roundRect(cx - 190, cy - 34, 380, 64, 14); cctx.fill(); cctx.stroke();
-                cctx.fillStyle = '#ffd0de'; cctx.font = '900 22px system-ui';
-                cctx.fillText(`OUT OF BREATH  ${(left / 1000).toFixed(1)}s`, cx, cy - 6);
-                cctx.fillStyle = 'rgba(255,255,255,.18)'; cctx.fillRect(cx - 160, cy + 8, 320, 9);
-                cctx.fillStyle = '#ef5a82'; cctx.fillRect(cx - 160, cy + 8, 320 * frac, 9);
-            } else {
-                for (let i = 0; i < 3; i++) {
-                    const px = cx + (i - 1) * 44;
-                    cctx.beginPath(); cctx.arc(px, cy, 14, 0, Math.PI * 2);
-                    cctx.fillStyle = i < comboCount ? '#ef5a82' : 'rgba(20,10,20,.65)'; cctx.fill();
-                    cctx.lineWidth = 3; cctx.strokeStyle = 'rgba(255,214,228,.9)'; cctx.stroke();
-                }
-                cctx.fillStyle = '#f3dce6'; cctx.font = '800 15px system-ui';
-                cctx.shadowColor = 'rgba(0,0,0,.9)'; cctx.shadowBlur = 6;
-                cctx.fillText('3 PUNCHES, THEN 5s COOLDOWN', cx, cy + 38);
-            }
-            cctx.restore();
-        }
+        updateComboHud(nowMs);
+    }
+
+    // Olly's punch meter lives in his HUD (next to HP): 3 pips fill, then a 5s cooldown.
+    let comboHudKey = '';
+    function updateComboHud(nowMs) {
+        const el = document.getElementById('combo-hud');
+        if (!el) return;
+        const cooling = nowMs < attackCooldownUntil;
+        const secs = cooling ? Math.ceil((attackCooldownUntil - nowMs) / 100) / 10 : 0;
+        const key = (cooling ? 'c' + secs : 'n' + comboCount) + (mode === 'combat' ? 'm' : 'x');
+        if (key === comboHudKey) return;
+        comboHudKey = key;
+        el.style.display = mode === 'combat' ? 'flex' : 'none';
+        el.classList.toggle('tired', cooling);
+        el.querySelectorAll('.combo-pips i').forEach((pip, i) => pip.classList.toggle('on', !cooling && i < comboCount));
+        el.querySelector('#combo-text').textContent = cooling ? `Resting ${secs.toFixed(1)}s` : 'Combo';
     }
 
     function drawOllyWorldCombat(c, px, py, anim, t, hurt, offsetY=0) {
@@ -2971,15 +3024,15 @@ export function createLevel1(ui) {
 
         let drawX = px;
         if (anim?.state === 'ko') {
-            const elapsed = nowForReaction(performance.now(), combatAnimationStart);
+            const elapsed = nowForReaction(gnow(), combatAnimationStart);
             const p = Math.max(0, Math.min(1, elapsed / OLLY_KO_TOTAL_MS));
             drawX += playerHurtDirection * 18 * Math.min(1, p * 1.4);
             c.translate(drawX, visualY);
         } else if (hurt) {
-            const elapsed = nowForReaction(performance.now(), playerHurtStart);
+            const elapsed = nowForReaction(gnow(), playerHurtStart);
             const p = Math.max(0, Math.min(1, elapsed / OLLY_HURT_TOTAL_MS));
             const recoil = playerHurtDirection * 16 * (1 - p);
-            const shake = Math.sin(performance.now() / 28) * 3.5 * (1 - p);
+            const shake = Math.sin(gnow() / 28) * 3.5 * (1 - p);
             drawX += recoil + shake;
             c.translate(drawX, visualY);
         } else {
@@ -3018,14 +3071,14 @@ export function createLevel1(ui) {
 
     function startCombat(bossFight) {
         playMusic('fight');
-        preloadSfx(['punch-1', 'punch-2', 'punch-3', 'goth-pain', ...GOTH_HURT_SFX, 'olly-hurt', 'olly-hurt-heavy', 'olly-attack', 'olly-heavy-attack', 'olly-jump', 'olly-land', 'olly-dodge-grunt', 'chain-clatter', 'zombie-death', 'pickup', 'interact']);
+        preloadSfx(['punch-1', 'punch-2', 'punch-3', 'goth-pain', ...GOTH_HURT_SFX, 'olly-hurt', 'olly-hurt-heavy', 'olly-attack', 'olly-heavy-attack', 'olly-jump', 'olly-land', 'olly-dodge-grunt', 'chain-clatter', 'chain-drop', 'chain-rattle', 'chain-spin', 'chain-impact', 'chain-impact-spin', 'breath-recovery', 'countdown-tick', 'fight-shout', 'zombie-death', 'pickup', 'interact']);
         isBoss = bossFight;
         mode = 'combat';
         combatMax = bossFight ? 100 : (target?.maxHp || 50);
         combatHp = combatMax;
         resetCombatVisual();
         if (!bossFight && (target?.type === 'shambler' || target?.type === 'chain')) {
-            const introStart = performance.now();
+            const introStart = gnow();
             zombieCombatX = COMBAT_W - 320;
             zombieIntroActive = true;
             zombieIntroStart = introStart;
@@ -3059,13 +3112,19 @@ export function createLevel1(ui) {
         clearInterval(enemyTimer);
         enemyTimer = null;
         cancelAnimationFrame(combatRaf);
-        combatLastFrame = performance.now();
-        const loop = (t) => {
+        combatLastFrame = gnow();
+        const loop = () => {
             if (mode !== 'combat')
                 return;
+            const t = gnow();
+            if (pendingTutorial && t >= pendingTutorial.at) {
+                const kind = pendingTutorial.kind; pendingTutorial = null;
+                if (!playerDeathTriggered && !zombieDeathStarted) showRingTutorial(kind, () => { held.up = held.down = held.left = held.right = false; });
+            }
             const dt = Math.min(.033, (t - combatLastFrame) / 1000 || 0);
             combatLastFrame = t;
             updateCombatMovement(dt);
+            setLoopSfx('chain-drag', isChainFight() && zombieCombatState === 'chase' && !zombieIntroActive && !zombieDeathStarted && !playerDeathTriggered, .5);
             setLoopSfx('footsteps', (held.left !== held.right) && !jumping && !zombieIntroActive && !playerDeathTriggered && t >= dodgeUntil, .8);
             updateZombieAI(dt, t);
             updateChainAI(dt, t);
@@ -3077,11 +3136,17 @@ export function createLevel1(ui) {
         combatRaf = requestAnimationFrame(loop);
     }
     let lastGruntAt = 0;
+    let pendingTutorial = null, chainSwipeAim = 1;
+    function queueRingTutorial(kind) {   // the ring is drawn first, then the pop-up appears a moment later
+        if (pendingTutorial || pausedAt || ringTutorialSeen(kind)) return;
+        pendingTutorial = { kind, at: gnow() + 380 };
+    }
     function combatAttack() {
+        if (pausedAt) return;
         if (mode !== 'combat' || zombieIntroActive || playerDeathTriggered)
             return;
 
-        const nowMs = performance.now();
+        const nowMs = gnow();
         if (nowMs < attackCooldownUntil) {
             const seconds = Math.ceil((attackCooldownUntil - nowMs) / 1000);
             ui.combatStatus.textContent = `⏳ Combo recovering. ${seconds}s.`;
@@ -3139,11 +3204,13 @@ export function createLevel1(ui) {
         if (comboCount >= 3) {
             comboCount = 3;
             attackCooldownUntil = nowMs + 5000;
+            playSfx('breath-recovery', .85);
             ui.combatStatus.textContent += ' ⚠️ Combo complete. 5s cooldown!';
         }
     }
 
     function combatHeavyAttack() {
+        if (pausedAt) return;
         if (mode !== 'combat' || zombieIntroActive || playerDeathTriggered)
             return;
 
@@ -3155,7 +3222,7 @@ export function createLevel1(ui) {
             return;
         }
 
-        const nowMs = performance.now();
+        const nowMs = gnow();
         if (nowMs < heavyAttackCooldownUntil) {
             const seconds = Math.ceil((heavyAttackCooldownUntil - nowMs) / 1000);
             ui.combatStatus.textContent = `💥 Heavy attack recovering. ${seconds}s.`;
@@ -3220,9 +3287,10 @@ export function createLevel1(ui) {
         }
     }
     function combatDodge() {
+        if (pausedAt) return;
         if (mode !== 'combat' || zombieIntroActive || playerDeathTriggered)
             return;
-        const nowMs = performance.now();
+        const nowMs = gnow();
         if (nowMs < zombieBiteHoldUntil) return;
         if (nowMs < dodgeUntil) {
             ui.combatStatus.textContent = '↪ Dodge is still recovering.';
@@ -3316,6 +3384,7 @@ export function createLevel1(ui) {
     }
 
     function endCombat(won) {
+        setLoopSfx('chain-drag', false);
         clearInterval(enemyTimer);
         enemyTimer = null;
         cancelAnimationFrame(combatRaf);
@@ -3404,7 +3473,7 @@ export function createLevel1(ui) {
         relationshipRound = 0;
         relationshipStep = 0;
         relationshipDuration = 2600;
-        relationshipStart = performance.now();
+        relationshipStart = gnow();
         ui.relationship.classList.remove('hidden');
         const relationshipImage = ui.relationship.querySelector('.relationship-image');
         matchArtworkLetterboxing(relationshipImage);
@@ -3447,7 +3516,7 @@ export function createLevel1(ui) {
                 line = '“WOULD YOU?”';
             ui.wouldDisplay.textContent = line;
             if (pct >= 1) {
-                relationshipStart = performance.now();
+                relationshipStart = gnow();
                 ui.wouldFeedback.textContent = 'Too late. The princess has already escaped the sentence. She rambles again. Round ' + (relationshipStep + 1) + ' of 5.';
             }
             relationshipRAF = requestAnimationFrame(tick);
@@ -3457,7 +3526,7 @@ export function createLevel1(ui) {
     function completeRelationship() {
         if (mode !== 'relationship')
             return;
-        const elapsed = performance.now() - relationshipStart;
+        const elapsed = gnow() - relationshipStart;
         const pct = elapsed / relationshipDuration;
         const zoneStart = Math.min(.80 + relationshipRound * .025, .90);
         const zoneEnd = zoneStart + Math.max(.055, .105 - relationshipRound * .012);
@@ -3473,7 +3542,7 @@ export function createLevel1(ui) {
             } else {
                 relationshipRound++;
                 relationshipDuration = [2600, 2250, 1950, 1650, 1400][relationshipRound] || 1200;
-                relationshipStart = performance.now();
+                relationshipStart = gnow();
                 ui.wouldFeedback.textContent = '✅ PERFECT. She has started another ramble. Round ' + (relationshipStep + 1) + ' of 5. Less time this time, because apparently love needed a difficulty curve.';
             }
         } else {
@@ -3625,7 +3694,7 @@ export function createLevel1(ui) {
         unlockHeavy: () => { heavyUnlocked = true; stats(); },
         winFight: () => {
             if (mode !== 'combat' || playerDeathTriggered) return;
-            const nowMs = performance.now();
+            const nowMs = gnow();
             combatHp = 0;
             ui.enemyHp.style.width = '0%';
             ui.enemyHpText.textContent = `0 / ${combatMax}`;

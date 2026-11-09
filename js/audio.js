@@ -38,14 +38,14 @@ function fallbackPlay(name, v) {
         const a = fallbackCache[name].cloneNode(); a.volume = v; a.play().catch(() => {});
     } catch (e) {}
 }
-export function playSfx(name, gain = 1) {
+export function playSfx(name, gain = 1, rate = 1) {
     const v = Math.max(0, Math.min(1, vol.master * vol.sfx * gain));
     if (v <= 0) return;
     const c = getCtx();
     if (c && buffers[name]) {
         wake();
         const src = c.createBufferSource(), g = c.createGain();
-        src.buffer = buffers[name]; g.gain.value = v;
+        src.buffer = buffers[name]; src.playbackRate.value = rate; g.gain.value = v;
         src.connect(g); g.connect(sfxGain); src.start(0);
     } else { loadBuffer(name); fallbackPlay(name, v); }
 }
@@ -135,6 +135,14 @@ export function setVolume(kind, v) {
 }
 export function getVolumes() { return { ...vol }; }
 // First click/key of the session: start whatever music we were waiting to play.
-const unlock = () => { getCtx(); wake(); if (wantMusic && !musicName) playMusic(wantMusic); };
+let unlocked = false;
+const unlock = () => {
+    getCtx(); wake();
+    // (Re)start the wanted song if nothing is actually playing - e.g. after the page was reloaded, restored from the back button, or Safari paused it.
+    if (wantMusic && (!musicEl || musicEl.paused)) playMusic(wantMusic);
+    unlocked = true;
+};
+window.addEventListener('pageshow', () => { if (wantMusic && (!musicEl || musicEl.paused)) playMusic(wantMusic); });
+export function audioNeedsClick() { return vol.master > 0 && !unlocked; }
 window.addEventListener('pointerdown', unlock, { once: false });
 window.addEventListener('keydown', unlock, { once: false });

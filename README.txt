@@ -1,37 +1,32 @@
-GOODBYE GOTH - V9.13  (Testing5 is currently at V9.12 - confirmed)
+GOODBYE GOTH - V9.15  (includes everything in V9.14 - Testing5 is still at V9.13, so upload THIS one and skip V9.14)
 
 UPLOAD each file to the SAME path on GitHub (branch Testing5):
   css/screen-polish.css
+  js/audio.js
   js/game.js
-  js/settings.js
   js/levels/level1.js
-  assets/audio/sfx/olly-jump.mp3        REPLACES old one (now just the whoosh)
-  assets/audio/sfx/olly-land.mp3        NEW (the thud, cut from your jump file)
-  assets/audio/sfx/olly-dodge-grunt.mp3 NEW
-  assets/audio/sfx/pickup.mp3           NEW
-  assets/audio/sfx/chain-clatter.mp3    NEW
-  assets/video/cutscene3/README.txt     NEW (marks where the cutscene goes)
+  assets/tutorial/ring-pink.webp      NEW  (your zombie claw image)
+  assets/tutorial/ring-red.webp       NEW  (your crawling bite image)
+  assets/tutorial/ring-yellow.webp    NEW  (your Chain Goth image)
+  assets/audio/sfx/countdown-tick.mp3, breath-recovery.mp3, chain-spin.mp3, interact.mp3, chain-impact-spin.mp3,
+  chain-drop.mp3, chain-impact.mp3, fight-shout.mp3, chain-rattle.mp3, chain-drag.mp3     NEW (from V9.14)
 
-YOUR CUTSCENE GOES HERE:  assets/video/cutscene3/olly-taken.mp4   (a .mov with the same name is tried if no .mp4)
-It plays after Olly has fallen and before the KNOCKED OUT pop-up, for both Goths. Has a small SKIP button. If the file is missing it is silently skipped.
+WHAT'S NEW IN V9.15
+1. RING TUTORIAL POP-UPS. The first time each ring appears in a fight, the ring is drawn, then ~0.4s later the game freezes (the whole fight clock stops, so nothing happens behind it) and a pop-up shows your image, the colour name and your wording:
+   pink   - first Zombie Goth claw      "...avoided by jumping over the enemy."
+   red    - first Zombie bite (or Chain Goth spin if you've not seen red yet)   "...can only be avoided by dodging."
+   yellow - first Chain Goth swipe      "...can only be avoided by jumping over the enemy."
+   Click GOT IT (or Enter / Space / Esc) to carry on. Each one is shown once, then remembered in the browser. To see them again, clear the site's data (or ask me to add a reset button to the cheat panel).
+2. CHAIN GOTH SWIPE = YELLOW, JUMP-OVER ONLY. She aims at the side Olly is on. When the chain lands, Olly is only safe if he is BEHIND her (jumped over). Jumping on the spot, jumping backwards, or dodging all still get hit. The ring is now yellow and bigger (reach 360). The spin stays red (dodge only).
+3. Combo cooldown is 5 seconds in the code and the HUD counts down from 5.0 ("3.2s" was just an example I wrote in my notes).
+4. Music still cannot auto-start without a click - see my message. The hint on the title screen stays.
 
-WHAT CHANGED
-- Jump sound: split into a soft whoosh at take-off and the thud at the moment he lands (the thud used to sit ~1.2s after the whoosh).
-- Dodge: whoosh + Olly grunt on top (there was no dodge sound in the code before, so I added both).
-- 3-punch cooldown: it WAS in the code, but (a) a missed punch reset the counter, so mixing in misses avoided it, and (b) the counter text was hidden under the message bar. Now every swing counts, a 1.5s pause resets, and a big meter shows 3 pips then "OUT OF BREATH 5.0s" with a bar.
-- Controls screen now lists O = Settings. The gear is back, small, bottom-left (also still opens with O).
-- Removed the key-hint line under the map and the 2/2 / Solved / Answered pills. The message box at the bottom is bigger with larger, bolder text.
-- Key pickup plays pickup.mp3. Chain Goth's death plays the zombie death sound AND chain-clatter together.
+TEST CHECKLIST (clear site data first if you've already seen a ring)
+[ ] Zombie fight: pink ring appears, then pop-up with pink image; fight is frozen until GOT IT; carry on and she attacks normally
+[ ] Later in the fight: bite ring -> red pop-up. Neither shows again in the next fight
+[ ] Chain fight: swipe wind-up -> yellow pop-up
+[ ] Chain swipe: stand in front (jump on the spot / jump back / dodge) = hit; jump OVER her and land behind = "You jumped clean over the swipe!"
+[ ] Chain spin: still red, dodge to avoid; jumping doesn't help
+[ ] Pressing keys while a pop-up is open does nothing in the fight; after closing, Olly doesn't keep walking
 
-TEST CHECKLIST
-[ ] Controls screen shows O - Settings; gear bottom-left opens settings and does not cover the message box
-[ ] Map: no pills at top, no hint line, bigger message box text
-[ ] Jump: soft whoosh on take-off, thud as he lands
-[ ] Dodge (R): whoosh + grunt, not drowned out by jumping
-[ ] Punch 3 times (hit OR miss): meter shows OUT OF BREATH 5.0s and punches are blocked until it ends
-[ ] Pick up the key: pickup sound
-[ ] Kill Chain Goth: death sound + chain clatter together
-[ ] Get knocked out: (no cutscene file yet = straight to the pop-up). Add olly-taken.mp4 then it should play first.
-
-HONEST NOTES: I checked in a headless browser that the map has no pills/hint, the new meter draws, and the knock-out pop-up still appears with no video. I could not listen, so jump/land sync and volume balance are untested; I never saw your cutscene play (no file yet), so its fit/size is untested.
-STILL OPEN: fight music, 3-2-1 sound, Chain Goth sounds, and the ring tutorial pop-ups (tell me the image file names/size once you've made them).
+HONEST NOTES: I tested in a headless browser that the yellow pop-up appears, the fight is frozen while open (state didn't change for 2.5s), closes with Enter, that standing in front took the 10 damage, and a jump-over test didn't take damage. I did NOT see the pink and red pop-ups run (same code, different image) and I could not measure the cooldown with a stopwatch in my test setup. Nothing was tested in Safari or by ear.

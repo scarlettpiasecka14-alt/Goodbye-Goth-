@@ -1,6 +1,6 @@
 import { StoryController } from './story.js';
 import { createLevel1 } from './levels/level1.js';
-import { playMusic, setLoopSfx, playSfx } from './audio.js';
+import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js';
 import { initSettings, openSettings } from './settings.js';
 import { actionForKey } from './controls.js';
 import { initCheats, registerCheats } from './cheats.js';
@@ -206,6 +206,7 @@ function mountLevel1(loadSaved=false){
         <div class="player-hud-bar"><div id="player-hp-fill" class="player-hp-fill"></div></div>
         <div id="player-hp-text" class="player-hp-text">100 / 100 HP</div>
         <button id="inventory-button" type="button" style="width:100%;margin-top:7px;min-height:34px;padding:6px 10px;font-size:12px;">🎒 INVENTORY <span id="inventory-count">0/10</span></button>
+        <div id="combo-hud" class="combo-hud" style="display:none" aria-label="Punch combo"><span class="combo-pips"><i></i><i></i><i></i></span><span id="combo-text" class="combo-text"></span></div>
       </div>
       <div class="game-layout">
         <div class="play-column">
@@ -403,5 +404,15 @@ document.addEventListener('click', e => {
 }, true);
 initSettings();
 initCheats();
+// Browsers will not play sound until the page has been clicked once. If Sound is remembered as ON, say so on the title screen.
+if (audioNeedsClick()) {
+  const hint = document.createElement('div');
+  hint.textContent = '🔊 CLICK ANYWHERE TO START THE MUSIC';
+  hint.style.cssText = 'position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:800;padding:6px 14px;border-radius:999px;background:rgba(20,12,24,.7);color:#e9c9d8;font:700 12px Georgia,serif;letter-spacing:.18em;pointer-events:none;animation:ggPulse 1.6s ease-in-out infinite';
+  const st = document.createElement('style'); st.textContent = '@keyframes ggPulse{0%,100%{opacity:.45}50%{opacity:1}}';
+  document.head.appendChild(st); document.body.appendChild(hint);
+  window.addEventListener('pointerdown', () => hint.remove(), { once: true });
+  window.addEventListener('keydown', () => hint.remove(), { once: true });
+}
 playMusic('menu');   // title song: assets/audio/music/menu.mp3 (starts after the first click)
 showTitle();
