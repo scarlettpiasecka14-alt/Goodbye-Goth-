@@ -1,8 +1,8 @@
 /* Goodbye Goth - settings screen (sound, brightness, fullscreen, controls list).
    Everything is built here and lives on <body>, so it survives the game swapping screens.
    Opened from the title menu (SETTINGS) or by pressing O anywhere outside a fight; closes with O, Esc or CLOSE. */
-import { getVolumes, setVolume } from './audio.js?v=9160';
-import { ACTIONS, DEFAULTS, getBindings, swapBindings, setBinding, resetBindings, keyLabel, isDefault } from './controls.js?v=9160';
+import { getVolumes, setVolume } from './audio.js?v=9170';
+import { ACTIONS, DEFAULTS, getBindings, swapBindings, setBinding, resetBindings, keyLabel, isDefault } from './controls.js?v=9170';
 
 const BRIGHT_KEY = 'goodbyeGothBrightness_v1';
 let brightness = 100;
@@ -67,7 +67,7 @@ function renderControls() {
     const b = getBindings();
     const def = overlay.querySelector('#gg-controls-default');
     const rows = ACTIONS.map(a => `<dt>${keyLabel(b[a.id])}</dt><dd>${a.label}</dd>`).join('');
-    def.innerHTML = `<dl class="gg-keys">${rows}<dt>LEFT CLICK</dt><dd>Attack</dd><dt>RIGHT CLICK</dt><dd>Dodge roll</dd><dt>ARROW KEYS</dt><dd>Also move</dd></dl>` +
+    def.innerHTML = `<dl class="gg-keys">${rows}<dt>LEFT CLICK</dt><dd>Attack</dd><dt>RIGHT CLICK</dt><dd>Dodge</dd><dt>ARROW KEYS</dt><dd>Also move</dd></dl>` +
         (isDefault() ? '' : '<p class="gg-note">These are your customised keys. Press RESET TO DEFAULT in Customise to go back.</p>');
     const slots = overlay.querySelector('#gg-slots'); slots.innerHTML = '';
     for (const a of ACTIONS) {

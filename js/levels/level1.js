@@ -1,5 +1,5 @@
 /* Goodbye Goth V9.4 - Chain Goth fight (AI + all seven animations: intro, walk, swipe, spin, stun, hurt, death) on top of V9.0 map cleanup and the v8.11 Zombie Goth AI. */
-import { playSfx, playRandomSfx, playMusic, preloadSfx, setLoopSfx } from '../audio.js?v=9160';
+import { playSfx, playRandomSfx, playMusic, preloadSfx, setLoopSfx } from '../audio.js?v=9170';
 // Game clock: normal time, but it stands still while a tutorial pop-up is open (so nothing happens behind it).
 let pausedTotal = 0, pausedAt = 0;
 const gnow = () => (pausedAt || performance.now()) - pausedTotal;
@@ -327,7 +327,7 @@ const CHAIN_SWIPE_STRIKE_FIRST = 10;
 const CHAIN_SWIPE_STRIKE_MS = [34, 34, 34, 34, 34, 34, 34, 34, 34, 34];   // ten frames, fast and fluid
 const CHAIN_SWIPE_TOTAL_MS = CHAIN_SWIPE_STRIKE_MS.reduce((a, b) => a + b, 0);
 const CHAIN_SWIPE_HIT_AT_MS = 136;       // the moment the mace sweeps across the floor in front of her
-const CHAIN_SWIPE_DAMAGE = 10, CHAIN_SWIPE_RANGE = 360, CHAIN_SWIPE_PUSH = 34;
+const CHAIN_SWIPE_DAMAGE = 10, CHAIN_SWIPE_RANGE = 300, CHAIN_SWIPE_PUSH = 34;
 const CHAIN_STAND_OFF = 250;             // how far from Olly she likes to stand
 const CHAIN_CHASE_SPEED = 170;           // quicker than the Zombie Goth (135)
 const CHAIN_RECOVER_MS = 520;
@@ -338,7 +338,7 @@ const CHAIN_SPIN_FRAME_MS = 33, CHAIN_SPIN_FRAME_COUNT = 36;
 const CHAIN_SPIN_TOTAL_MS = CHAIN_SPIN_FRAME_MS * CHAIN_SPIN_FRAME_COUNT;
 const CHAIN_SPIN_HIT_AT_MS = [759, 957];   // the last two flashes of the mace; one dodge timed at the start of the spin avoids both
 const CHAIN_SPIN_DAMAGE = 15, CHAIN_SPIN_HIT_DAMAGE = [8, 7],   // spin = 15 total across its two passes
-      CHAIN_SPIN_UNUSED = 0, CHAIN_SPIN_RANGE = 330, CHAIN_SPIN_PUSH = 40;
+      CHAIN_SPIN_UNUSED = 0, CHAIN_SPIN_RANGE = 400, CHAIN_SPIN_PUSH = 40;
 // Stun is EARNED: three hits in a row (a Heavy Attack counts as two) leave her dizzy, and Olly gets his punches back to punish it.
 const CHAIN_STUN_HITS = 3, CHAIN_STUN_HIT_WINDOW_MS = 4000;
 const CHAIN_STUN_FRAME_MS = 33, CHAIN_STUN_FRAME_COUNT = 61, CHAIN_STUN_MS = CHAIN_STUN_FRAME_MS * CHAIN_STUN_FRAME_COUNT;
@@ -1530,8 +1530,8 @@ export function createLevel1(ui) {
         let finished = false;
         let attemptedFallback = false;
         const sources = [
-            'assets/video/cutscene2/cutscene2.mp4?v=9800',
-            'assets/video/cutscene2/cutscene2.mov?v=9800'
+            'assets/video/cutscene2/cutscene2.mp4?v=9170',
+            'assets/video/cutscene2/cutscene2.mov?v=9170'
         ];
 
         const finish = () => {
@@ -2463,7 +2463,7 @@ export function createLevel1(ui) {
             try { video.pause(); video.removeAttribute('src'); video.load(); } catch (e) {}
             overlay.remove(); done();
         };
-        const sources = ['assets/video/cutscene3/ollytaken.mp4?v=9160', 'assets/video/cutscene3/olly-taken.mp4?v=9160', 'assets/video/cutscene3/ollytaken.mov?v=9160', 'assets/video/cutscene3/olly-taken.mov?v=9160'];
+        const sources = ['assets/video/cutscene3/ollytaken.mp4?v=9170', 'assets/video/cutscene3/olly-taken.mp4?v=9170', 'assets/video/cutscene3/ollytaken.mov?v=9170', 'assets/video/cutscene3/olly-taken.mov?v=9170'];
         let i = 0;
         const next = () => { if (i >= sources.length) { finish(); return; } video.src = sources[i++]; video.load(); video.play().catch(() => {}); };
         video.addEventListener('error', next);
@@ -2643,11 +2643,11 @@ export function createLevel1(ui) {
         // Warning rings on the floor: red = spin (dodge only), yellow = swipe (jump OVER her only).
         if (zombieCombatState === 'spinwind' || zombieCombatState === 'spin') {
             const t = nowMs - zombieCombatStateStart;
-            drawAttackRing(c, enemyX, CHAIN_FLOOR_Y + 8, CHAIN_SPIN_RANGE, 'red', zombieCombatState === 'spinwind' ? Math.min(1, t / CHAIN_SPIN_WINDUP_MS) : 1, zombieCombatState === 'spin', nowMs);
+            drawAttackRing(c, enemyX, CHAIN_FLOOR_Y + 8, CHAIN_SPIN_RANGE, 'yellow', zombieCombatState === 'spinwind' ? Math.min(1, t / CHAIN_SPIN_WINDUP_MS) : 1, zombieCombatState === 'spin', nowMs);
         } else if (zombieCombatState === 'windup' && zombieCombatAttackType === 'swipe') {
-            drawAttackRing(c, enemyX, CHAIN_FLOOR_Y + 8, CHAIN_SWIPE_RANGE, 'yellow', Math.min(1, (nowMs - zombieCombatStateStart) / CHAIN_SWIPE_WINDUP_MS), false, nowMs);
+            drawAttackRing(c, enemyX, CHAIN_FLOOR_Y + 8, CHAIN_SWIPE_RANGE, 'red', Math.min(1, (nowMs - zombieCombatStateStart) / CHAIN_SWIPE_WINDUP_MS), false, nowMs);
         } else if (zombieCombatState === 'swipe') {
-            drawAttackRing(c, enemyX, CHAIN_FLOOR_Y + 8, CHAIN_SWIPE_RANGE, 'yellow', 1, true, nowMs);
+            drawAttackRing(c, enemyX, CHAIN_FLOOR_Y + 8, CHAIN_SWIPE_RANGE, 'red', 1, true, nowMs);
         }
 
         drawChainAtlasFrame(c, frame.pack, frame.index, enemyX, CHAIN_FLOOR_Y, face, frame.scale, alpha, rotation, offsetX);
@@ -2786,8 +2786,9 @@ export function createLevel1(ui) {
             zombieCombatStateStart = nowMs;
             enemyAttackPhase = 'windup';
             playSfx('chain-rattle', .8);
-            queueRingTutorial('red');
-            ui.combatStatus.textContent = 'The Chain Goth winds up a spin. DODGE it. Jumping will not save you!';
+            chainSwipeAim = player.x >= zombieCombatX ? 1 : -1;   // the side she is aiming at
+            queueRingTutorial('yellow');
+            ui.combatStatus.textContent = 'The chain is too long to dodge. JUMP OVER HER!';
             return;
         }
         zombieCombatAttackType = 'swipe';
@@ -2797,8 +2798,8 @@ export function createLevel1(ui) {
         enemyAttackPhase = 'windup';
         playSfx('chain-rattle', .7);
         chainSwipeAim = player.x >= zombieCombatX ? 1 : -1;   // the side she is aiming at
-        queueRingTutorial('yellow');
-        ui.combatStatus.textContent = 'The Chain Goth whips her chain back. JUMP OVER HER!';
+        queueRingTutorial('red');
+        ui.combatStatus.textContent = 'The Chain Goth whips her chain back. DODGE it!';
     }
 
     function updateChainAI(dt, nowMs) {
@@ -2882,11 +2883,8 @@ export function createLevel1(ui) {
             if (!zombieCombatAttackHit && elapsed >= CHAIN_SWIPE_HIT_AT_MS) {
                 zombieCombatAttackHit = true;
                 playSfx('chain-impact', .9);
-                // Yellow swipe: only getting BEHIND her (jumping over) avoids it. Jumping on the spot, jumping back or dodging do not.
-                if ((player.x - zombieCombatX) * chainSwipeAim < 0)
-                    ui.combatStatus.textContent = '↪ You jumped clean over the swipe!';
-                else
-                    applyZombieDamage(CHAIN_SWIPE_DAMAGE, CHAIN_SWIPE_RANGE, CHAIN_SWIPE_PUSH, nowMs, 'CHAIN SWIPE', true, true);
+                // Red swipe (short reach): only a dodge avoids it. Jumping (even over her) does not.
+                applyZombieDamage(CHAIN_SWIPE_DAMAGE, CHAIN_SWIPE_RANGE, CHAIN_SWIPE_PUSH, nowMs, 'CHAIN SWIPE', true, false);
             }
             if (elapsed >= CHAIN_SWIPE_TOTAL_MS + 60) {
                 zombieCombatState = 'recover';
@@ -2914,7 +2912,11 @@ export function createLevel1(ui) {
             while (chainSpinHitsDone < CHAIN_SPIN_HIT_AT_MS.length && elapsed >= CHAIN_SPIN_HIT_AT_MS[chainSpinHitsDone]) {
                 chainSpinHitsDone++;
                 playSfx('chain-impact-spin', .85);
-                applyZombieDamage(CHAIN_SPIN_HIT_DAMAGE[chainSpinHitsDone - 1] || 7, CHAIN_SPIN_RANGE, CHAIN_SPIN_PUSH, nowMs, 'CHAIN SPIN', true);
+                // Yellow spin (the chain is far too long to dodge): only getting BEHIND her (jumping over) avoids it.
+                if ((player.x - zombieCombatX) * chainSwipeAim < 0)
+                    ui.combatStatus.textContent = '↪ You jumped clean over the spin!';
+                else
+                    applyZombieDamage(CHAIN_SPIN_HIT_DAMAGE[chainSpinHitsDone - 1] || 7, CHAIN_SPIN_RANGE, CHAIN_SPIN_PUSH, nowMs, 'CHAIN SPIN', true, true);
             }
             if (elapsed >= CHAIN_SPIN_TOTAL_MS) {
                 zombieCombatState = 'recover';

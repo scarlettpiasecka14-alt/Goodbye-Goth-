@@ -8,7 +8,7 @@ export const ACTIONS = [
     { id: 'left', label: 'Move left' },
     { id: 'right', label: 'Move right' },
     { id: 'jump', label: 'Jump / interact' },
-    { id: 'dodge', label: 'Dodge roll' },
+    { id: 'dodge', label: 'Dodge' },
     { id: 'heavy', label: 'Heavy attack' },
     { id: 'inventory', label: 'Inventory' },
     { id: 'save', label: 'Save game' }

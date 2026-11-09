@@ -1,9 +1,9 @@
-import { StoryController } from './story.js?v=9160';
-import { createLevel1 } from './levels/level1.js?v=9160';
-import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9160';
-import { initSettings, openSettings } from './settings.js?v=9160';
-import { actionForKey } from './controls.js?v=9160';
-import { initCheats, registerCheats } from './cheats.js?v=9160';
+import { StoryController } from './story.js?v=9170';
+import { createLevel1 } from './levels/level1.js?v=9170';
+import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9170';
+import { initSettings, openSettings } from './settings.js?v=9170';
+import { actionForKey } from './controls.js?v=9170';
+import { initCheats, registerCheats } from './cheats.js?v=9170';
 
 const root = document.getElementById('game-root');
 
@@ -167,7 +167,7 @@ function showControls(){
         <div class="controls-list">
           <div class="control-item"><span class="control-key">WASD / ARROWS</span><span class="control-action">Move</span></div>
           <div class="control-item"><span class="control-key">SPACE</span><span class="control-action">Jump</span></div>
-          <div class="control-item"><span class="control-key">RIGHT CLICK</span><span class="control-action">Roll</span></div>
+          <div class="control-item"><span class="control-key">RIGHT CLICK</span><span class="control-action">Dodge</span></div>
           <div class="control-item"><span class="control-key">LEFT CLICK</span><span class="control-action">Attack</span></div>
           <div class="control-item"><span class="control-key">LEFT CLICK / ENTER</span><span class="control-action">Pick up / interact</span></div>
           <div class="control-item"><span class="control-key">Y</span><span class="control-action">Open inventory</span></div>
