@@ -119,7 +119,6 @@ export class StoryController {
         finishTyping();
         return;
       }
-      if(s.type === 'text-note') playSfx('click');   // clicking the note
       this.step += 1;
       if(this.step >= this.steps.length) this.onComplete();
       else this.render();

@@ -6,26 +6,51 @@ const VOL_KEY = 'goodbyeGothVolume_v1';
 const vol = { master: 0, music: 0.35, sfx: 0.8 };   // master 0 = sound OFF until the player turns it on in Settings
 try { Object.assign(vol, JSON.parse(localStorage.getItem(VOL_KEY) || '{}')); } catch (e) {}
 
-const sfxCache = {};
-function getSfx(name) {
-    if (!sfxCache[name]) {
-        const a = new Audio(`assets/audio/sfx/${name}.mp3?v=9900`);
-        a.preload = 'auto';
-        sfxCache[name] = a;
-    }
-    return sfxCache[name];
-}
-export function playSfx(name, gain = 1) {
+/* Sound effects use the Web Audio API: each file is downloaded + decoded once, then plays with almost no delay
+   (the old <audio> clones lagged behind the punch). Until a file has finished decoding, the old method is the fallback. */
+let ctx = null, sfxGain = null;
+const buffers = {}, loading = {};
+function getCtx() {
+    if (ctx) return ctx;
     try {
-        const base = getSfx(name);
-        const a = base.cloneNode();                 // lets the same sound overlap itself
-        a.volume = Math.max(0, Math.min(1, vol.master * vol.sfx * gain));
-        if (a.volume <= 0) return;
-        a.play().catch(() => {});
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        ctx = new AC(); sfxGain = ctx.createGain(); sfxGain.connect(ctx.destination);
+    } catch (e) { ctx = null; }
+    return ctx;
+}
+function wake() { if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {}); }
+function loadBuffer(name) {
+    if (buffers[name] || loading[name]) return;
+    const c = getCtx(); if (!c) return;
+    loading[name] = fetch(`assets/audio/sfx/${name}.mp3?v=9910`)
+        .then(r => { if (!r.ok) throw new Error('missing'); return r.arrayBuffer(); })
+        .then(ab => new Promise((res, rej) => c.decodeAudioData(ab, res, rej)))
+        .then(buf => { buffers[name] = buf; })
+        .catch(() => {});
+}
+const fallbackCache = {};
+function fallbackPlay(name, v) {
+    try {
+        if (!fallbackCache[name]) { fallbackCache[name] = new Audio(`assets/audio/sfx/${name}.mp3?v=9900`); fallbackCache[name].preload = 'auto'; }
+        const a = fallbackCache[name].cloneNode(); a.volume = v; a.play().catch(() => {});
     } catch (e) {}
 }
+export function playSfx(name, gain = 1) {
+    const v = Math.max(0, Math.min(1, vol.master * vol.sfx * gain));
+    if (v <= 0) return;
+    const c = getCtx();
+    if (c && buffers[name]) {
+        wake();
+        const src = c.createBufferSource(), g = c.createGain();
+        src.buffer = buffers[name]; g.gain.value = v;
+        src.connect(g); g.connect(sfxGain); src.start(0);
+    } else { loadBuffer(name); fallbackPlay(name, v); }
+}
 export function playRandomSfx(names, gain = 1) { playSfx(names[Math.floor(Math.random() * names.length)], gain); }
-export function preloadSfx(names) { names.forEach(getSfx); }
+export function preloadSfx(names) { names.forEach(loadBuffer); }
+// Start downloading the common fight sounds straight away so the first punch is instant.
+['punch-1', 'punch-2', 'goth-hurt-1', 'goth-hurt-2', 'goth-hurt-3', 'goth-hurt-4', 'goth-pain', 'click', 'typing', 'footsteps', 'ambience'].forEach(n => setTimeout(() => loadBuffer(n), 0));
 
 /* Music "pools": each name plays one file (looping) or a playlist that moves to the next track when one ends.
    Files live in assets/audio/music/. Put the title-screen song at assets/audio/music/menu.mp3. */
@@ -53,7 +78,7 @@ function startTrack(name, token, list, i) {
     el.play().then(() => { if (token !== musicToken) { el.pause(); return; } musicEl = el; musicName = name; fadeTo(el, musicTarget(), 900); }).catch(() => {});
 }
 /* playMusic('menu' | 'map' | 'fight' | '') - '' stops the music. Browsers only allow sound after a click/tap, so this retries on the next one. */
-export function playMusic(name) {
+export function playMusic(name, fadeMs = 500) {
     wantMusic = name;
     if (name === musicName && musicEl && !musicEl.paused) return;
     const token = ++musicToken;
@@ -66,27 +91,48 @@ export function playMusic(name) {
     };
     if (musicEl) {
         const old = musicEl; musicEl = null; musicName = '';
-        fadeTo(old, 0, 500, () => { old.pause(); begin(); });
+        fadeTo(old, 0, fadeMs, () => { old.pause(); begin(); });
     } else begin();
 }
-// Looping effects (footsteps, typing): start/stop by name.
+// Looping effects (footsteps, typing, intro ambience): start/stop by name. Safe to call every frame - it only acts on a change.
 const loops = {};
 export function setLoopSfx(name, on, gain = 1) {
     try {
-        let a = loops[name];
-        if (!a) { a = loops[name] = new Audio(`assets/audio/sfx/${name}.mp3`); a.loop = true; }
-        a.volume = Math.max(0, Math.min(1, vol.master * vol.sfx * gain));
-        if (on && a.volume > 0) { if (a.paused) a.play().catch(() => {}); }
-        else if (!a.paused) { a.pause(); a.currentTime = 0; }
+        const v = Math.max(0, Math.min(1, vol.master * vol.sfx * gain));
+        let L = loops[name];
+        if (!L) L = loops[name] = { src: null, g: null, fb: null, want: false, gain: 1 };
+        L.want = !!on; L.gain = gain;
+        const c = getCtx();
+        if (c && buffers[name]) {
+            if (L.fb && !L.fb.paused) { L.fb.pause(); }
+            if (on && v > 0) {
+                wake();
+                if (!L.src) {
+                    L.src = c.createBufferSource(); L.g = c.createGain(); L.src.buffer = buffers[name]; L.src.loop = true;
+                    L.src.connect(L.g); L.g.connect(sfxGain); L.src.start(0);
+                }
+                L.g.gain.value = v;
+            } else if (L.src) { try { L.src.stop(); } catch (e) {} L.src.disconnect(); L.src = null; }
+        } else {
+            loadBuffer(name);   // use the plain <audio> element until the fast version is ready
+            if (!L.fb) { L.fb = new Audio(`assets/audio/sfx/${name}.mp3`); L.fb.loop = true; }
+            L.fb.volume = v;
+            if (on && v > 0) { if (L.fb.paused) L.fb.play().catch(() => {}); }
+            else if (!L.fb.paused) { L.fb.pause(); L.fb.currentTime = 0; }
+        }
     } catch (e) {}
 }
+// Re-apply loops once their fast buffers have decoded or the volume changes.
+function refreshLoops() { for (const n of Object.keys(loops)) setLoopSfx(n, loops[n].want, loops[n].gain); }
+setInterval(refreshLoops, 1500);
 export function setVolume(kind, v) {
     vol[kind] = Math.max(0, Math.min(1, v));
     try { localStorage.setItem(VOL_KEY, JSON.stringify(vol)); } catch (e) {}
     if (musicEl) { clearInterval(fadeTimer); musicEl.volume = musicTarget(); }
+    refreshLoops();
 }
 export function getVolumes() { return { ...vol }; }
 // First click/key of the session: start whatever music we were waiting to play.
-const unlock = () => { if (wantMusic && !musicName) playMusic(wantMusic); };
+const unlock = () => { getCtx(); wake(); if (wantMusic && !musicName) playMusic(wantMusic); };
 window.addEventListener('pointerdown', unlock, { once: false });
 window.addEventListener('keydown', unlock, { once: false });

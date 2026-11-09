@@ -1,6 +1,6 @@
 /* Goodbye Goth - settings screen (sound, brightness, fullscreen, controls list).
    Everything is built here and lives on <body>, so it survives the game swapping screens.
-   Opened from the title menu (SETTINGS) and the small gear button; closes with Esc or CLOSE. */
+   Opened from the title menu (SETTINGS) or by pressing O anywhere outside a fight; closes with O, Esc or CLOSE. */
 import { getVolumes, setVolume } from './audio.js';
 import { ACTIONS, DEFAULTS, getBindings, swapBindings, setBinding, resetBindings, keyLabel, isDefault } from './controls.js';
 
@@ -9,10 +9,6 @@ let brightness = 100;
 try { const b = parseInt(localStorage.getItem(BRIGHT_KEY), 10); if (b >= 50 && b <= 130) brightness = b; } catch (e) {}
 
 const CSS = `
-.gg-gear{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:900;width:38px;height:38px;border-radius:50%;
-  border:1px solid rgba(239,183,201,.4);background:rgba(18,12,22,.72);color:#f6eaf0;font-size:20px;line-height:1;cursor:pointer;opacity:.75;
-  display:flex;align-items:center;justify-content:center;padding:0}
-.gg-gear:hover,.gg-gear:focus-visible{opacity:1;background:rgba(64,32,64,.9)}
 .gg-bright{position:fixed;inset:0;z-index:20000;pointer-events:none;opacity:0}
 .gg-settings{position:fixed;inset:0;z-index:10000;display:none;align-items:center;justify-content:center;background:rgba(6,4,10,.82);
   font-family:Georgia,serif;color:#f6eaf0}
@@ -108,9 +104,14 @@ export function initSettings() {
 
     bright = document.createElement('div'); bright.className = 'gg-bright'; document.body.appendChild(bright); applyBrightness();
 
-    const gear = document.createElement('button');
-    gear.className = 'gg-gear'; gear.type = 'button'; gear.title = 'Settings'; gear.setAttribute('aria-label', 'Settings'); gear.textContent = '⚙';
-    gear.addEventListener('click', openSettings); document.body.appendChild(gear);
+    // O opens/closes Settings (not in a fight - the fight keeps running behind it).
+    window.addEventListener('keydown', ev => {
+        if (ev.ctrlKey || ev.metaKey || ev.altKey || ev.repeat) return;
+        if (ev.key !== 'o' && ev.key !== 'O') return;
+        if (overlay.classList.contains('open')) { if (!overlay.querySelector('.gg-slot.listening')) closeSettings(); return; }
+        if (document.querySelector('#combat:not(.hidden)')) return;
+        openSettings();
+    }, true);
 
     overlay = document.createElement('div'); overlay.className = 'gg-settings'; overlay.setAttribute('role', 'dialog'); overlay.setAttribute('aria-label', 'Settings');
     overlay.innerHTML = `

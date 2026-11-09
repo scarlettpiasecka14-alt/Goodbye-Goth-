@@ -575,3 +575,30 @@
   background: transparent; border: 0; border-radius: 14px; cursor: pointer; z-index: 15;
 }
 .title-art-hit:hover, .title-art-hit:focus-visible { box-shadow: 0 0 0 3px rgba(239,183,201,.55), 0 0 26px rgba(231,135,173,.5); outline: none; }
+
+/* V9.10 title menu: floating text in the top-left corner, no box, no button look (Last-of-Us style). */
+.perfect-title-wrap .title-menu {
+  left: 3.2% !important; right: auto !important; top: 4.5% !important; bottom: auto !important; transform: none !important;
+  width: auto !important; padding: 0 !important; gap: 4px !important;
+  background: none !important; border: 0 !important; box-shadow: none !important; backdrop-filter: none !important;
+  display: flex !important; flex-direction: column !important; align-items: flex-start !important;
+}
+.perfect-title-wrap .title-menu-btn {
+  background: none !important; border: 0 !important; box-shadow: none !important; border-radius: 0 !important;
+  padding: 4px 2px !important; width: auto !important; text-align: left !important;
+  font: 400 clamp(14px, 1.7vw, 24px)/1.2 Georgia, serif !important; letter-spacing: .28em !important;
+  color: rgba(246, 234, 240, .62) !important; text-shadow: 0 2px 8px rgba(0,0,0,.85) !important;
+  cursor: pointer; transition: color .15s, text-shadow .15s, letter-spacing .15s;
+}
+.perfect-title-wrap .title-menu-btn:hover, .perfect-title-wrap .title-menu-btn:focus-visible {
+  background: none !important; color: #fff !important; outline: none !important;
+  text-shadow: 0 0 14px rgba(239,135,170,.9), 0 2px 8px rgba(0,0,0,.85) !important;
+}
+@media (max-width: 700px) {
+  .perfect-title-wrap .title-menu { left: 3% !important; right: auto !important; top: 3% !important; bottom: auto !important; width: auto !important; }
+}
+/* Combat canvas keeps its true proportions in full-screen (was stretched to fill). */
+#combat .combat-arena canvas { object-fit: contain !important; }
+/* No live blur over the 60fps fight canvas - it is expensive in Safari. */
+#combat .combat-topline, #combat .combat-note,
+.game-screen:has(#combat:not(.hidden)) .player-hud { backdrop-filter: none !important; }

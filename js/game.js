@@ -1,6 +1,6 @@
 import { StoryController } from './story.js';
 import { createLevel1 } from './levels/level1.js';
-import { playMusic } from './audio.js';
+import { playMusic, setLoopSfx, playSfx } from './audio.js';
 import { initSettings, openSettings } from './settings.js';
 import { actionForKey } from './controls.js';
 import { initCheats, registerCheats } from './cheats.js';
@@ -23,6 +23,7 @@ function loadSavedGame(){
     showTitleMessage('No saved game yet. Start a NEW GAME first.');
     return;
   }
+  setLoopSfx('ambience', false);
   mountLevel1(true);
 }
 
@@ -55,13 +56,13 @@ function showTitleMessage(message){
 }
 
 function showTitle(){
+  setLoopSfx('ambience', false);
   root.innerHTML = `
     <section id="title-screen" class="panel title-screen perfect-title-screen" aria-label="Goodbye Goth title screen">
       <div class="perfect-title-wrap">
         <img class="perfect-title-art" src="assets/story/title-screen-perfect.png" alt="Goodbye Goth title screen">
         <button id="title-art-new" class="title-art-hit" type="button" aria-label="New game"></button>
         <div class="title-menu" role="menu" aria-label="Main menu">
-          <button id="title-new" class="title-menu-btn primary-title-btn" type="button">NEW GAME</button>
           <button id="title-load" class="title-menu-btn" type="button">LOAD GAME</button>
           <button id="title-settings" class="title-menu-btn" type="button">SETTINGS</button>
           <button id="title-quit" class="title-menu-btn" type="button">QUIT</button>
@@ -71,7 +72,6 @@ function showTitle(){
 
   let started = false;
   const begin = () => { if(started) return; started = true; startNewGame(); };
-  document.getElementById('title-new').addEventListener('click', begin);
   document.getElementById('title-art-new').addEventListener('click', begin);
   document.getElementById('title-load').addEventListener('click', loadSavedGame, { once:true });
   document.getElementById('title-settings').addEventListener('click', openSettings);
@@ -79,12 +79,15 @@ function showTitle(){
 }
 
 function showIntro(){
+  playMusic('', 2500);                        // title song fades out slowly as the intro begins
+  setLoopSfx('ambience', true, .4);    // dark ambience under the intro; stops when the cutscene starts
   const story = new StoryController(root, showGothAbyss);
   story.render();
 }
 
 function showGothAbyss() {
   playMusic('');   // the cutscene has its own sound
+  setLoopSfx('ambience', false);
   root.innerHTML = `
     <section class="abyss-video-screen" id="abyss-video-screen" aria-label="Goth Abyss cutscene">
       <video
@@ -393,6 +396,11 @@ function mountLevel1(loadSaved=false){
   }
 }
 
+// One click sound for every menu / story / dialogue button. Map icons, pickups and fights have their own sounds.
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('button, [role="button"]');
+  if (b && !b.disabled && !b.closest('#combat .combat-arena')) playSfx('click');
+}, true);
 initSettings();
 initCheats();
 playMusic('menu');   // title song: assets/audio/music/menu.mp3 (starts after the first click)

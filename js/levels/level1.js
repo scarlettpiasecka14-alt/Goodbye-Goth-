@@ -2,6 +2,7 @@
 import { playSfx, playRandomSfx, playMusic, preloadSfx, setLoopSfx } from '../audio.js';
 const GOTH_HURT_SFX = ['goth-hurt-1', 'goth-hurt-2', 'goth-hurt-3', 'goth-hurt-4'];
 // Floor warning rings. pink = attack incoming (jump or dodge), yellow = must JUMP it, red = must DODGE it (jumping won't help).
+const BITE_WINDUP_MS = 1150;   // red bite warning: long enough to see the ring and dodge
 const RING_FLOOR_OFFSET = 62;   // how far below Olly's ground line the Zombie Goth's ring sits
 const ATTACK_RING_RGB = { pink: '236,110,170', yellow: '255,208,64', red: '255,66,86' };
 function drawAttackRing(c, x, floorY, radius, kind, progress, active, nowMs) {
@@ -13,10 +14,10 @@ function drawAttackRing(c, x, floorY, radius, kind, progress, active, nowMs) {
     c.scale(1, .2);
     c.beginPath();
     c.arc(0, 0, radius, 0, Math.PI * 2);
-    c.fillStyle = `rgba(${rgb},${(.06 + .16 * p) * (.6 + .4 * pulse)})`;
+    c.fillStyle = `rgba(${rgb},${(.12 + .16 * p) * (.6 + .4 * pulse)})`;
     c.fill();
     c.lineWidth = 7 + pulse * 5;
-    c.strokeStyle = `rgba(${rgb},${.45 + .45 * p})`;
+    c.strokeStyle = `rgba(${rgb},${.65 + .3 * p})`;
     c.stroke();
     if (!active) {   // inner ring shrinks toward the edge as the hit gets closer
         c.beginPath(); c.arc(0, 0, radius * (1 - p) , 0, Math.PI * 2);
@@ -261,6 +262,8 @@ for (const [name, data] of Object.entries(CHAIN_ATLAS_DATA)) {
     const img = new Image();
     img.src = `assets/characters/combat/chain-goth/chain-${name}.webp?v=9500`;
     chainAtlas[name] = { img, frames: data.frames, scale: data.scale, bx: data.bx };
+    // Decode the big sheets now, in the background, so the first time she uses a move there is no hitch (Safari decodes lazily).
+    img.decode?.().then(() => { try { const t = document.createElement('canvas'); t.width = t.height = 1; t.getContext('2d').drawImage(img, 0, 0, 1, 1); } catch (e) {} }).catch(() => {});
 }
 const CHAIN_RENDER_SCALE = 0.64;         // size in the arena (original pixels -> screen pixels)
 const CHAIN_WIDTH_STRETCH = 1.05;         // she is drawn 5% wider than the art (set to 1 for the original proportions)
@@ -303,11 +306,19 @@ const CHAIN_CONTACTS = {
 const CHAIN_SPARK_MS = 230;
 const CHAIN_DEATH_FRAME_MS = 38, CHAIN_DEATH_FALL_MS = 31 * 38, CHAIN_DEATH_HOLD_MS = 1500;   // 31 hit-and-fall frames, then she lies still before fading
 
+let chainLastGood = null;
 function drawChainAtlasFrame(c, pack, index, x, floorY, face, renderScale = CHAIN_RENDER_SCALE, alpha = 1, rotation = 0, offsetX = 0) {
-    const img = pack?.img;
-    const f = pack?.frames?.[index];
-    if (!img || !img.complete || !img.naturalWidth || !f)
-        return;
+    // Never let her vanish: a bad index is clamped, and if an atlas is not ready we show the last frame that did draw.
+    let usePack = pack, useIndex = index;
+    const n = usePack?.frames?.length || 0;
+    if (n) useIndex = Number.isFinite(useIndex) ? Math.max(0, Math.min(n - 1, Math.floor(useIndex))) : 0;
+    if (!usePack?.img || !usePack.img.complete || !usePack.img.naturalWidth || !usePack.frames?.[useIndex]) {
+        if (!chainLastGood) return;
+        usePack = chainLastGood.pack; useIndex = chainLastGood.index;
+    } else chainLastGood = { pack: usePack, index: useIndex };
+    pack = usePack; index = useIndex;
+    const img = pack.img;
+    const f = pack.frames[index];
     const rs = renderScale;
     const k = rs / pack.scale;          // 1 when drawn at the pack's own size = no resampling = crisp
     const snap = Math.abs(k - 1) < 0.001;
@@ -1342,6 +1353,7 @@ export function createLevel1(ui) {
         const data = ENCOUNTER_DATA[kind];
         if (!data)
             return;
+        playSfx('interact');   // clicking a map icon (assets/audio/sfx/interact.mp3)
         pendingInteraction = {
             kind,
             enemy
@@ -1559,6 +1571,7 @@ export function createLevel1(ui) {
         }
         if (objectivesComplete() && !keyCollected && near(key.x, key.y, 55)) {
             keyCollected = true;
+            playSfx('pickup');   // assets/audio/sfx/pickup.mp3
             inventory.key = 1;
             refreshInventoryUI();
             ui.dialogue.textContent = '🔑 A little brass key drops onto the cobblestones. Finally, a sensible piece of game design.';
@@ -1664,7 +1677,8 @@ export function createLevel1(ui) {
         let dx = (held.right ? 1 : 0) - (held.left ? 1 : 0);
 
         if (dx && !(heavyAttackAnimUntil > nowMs)) {
-            const nextX = Math.max(playerMinX, Math.min(playerMaxX, player.x + dx * speed * dt));
+            const airborne = jumping || jumpOffset < -8;
+            const nextX = Math.max(playerMinX, Math.min(playerMaxX, player.x + dx * (airborne ? 720 : speed) * dt));   // faster in the air so a jump can clear Chain Goth
             const grounded = !jumping && jumpOffset > -8 && nowMs >= dodgeUntil;
             const gap = 92;
 
@@ -1742,6 +1756,7 @@ export function createLevel1(ui) {
         if (mode !== 'combat' || zombieIntroActive || playerDeathTriggered || jumping || heavyAttackAnimUntil > nowMs || nowMs < zombieBiteHoldUntil)
             return;
         jumping = true;
+        playSfx('olly-jump', .9);
         jumpT = 0;
         combatAnimationState = 'jump';
         combatAnimationStart = performance.now();
@@ -2072,6 +2087,7 @@ export function createLevel1(ui) {
             return;
 
         zombieDeathStarted = true;
+        playSfx('zombie-death', .9);
         zombieDeathEndAt = nowMs + ZOMBIE_DEATH_TOTAL_MS + ZOMBIE_DEATH_HOLD_MS;
         zombieCombatState = 'death';
         zombieCombatStateStart = nowMs;
@@ -2169,7 +2185,7 @@ export function createLevel1(ui) {
         }
 
         if (zombieCombatState === 'windup') {
-            const windup = zombieCombatAttackType === 'heavyKick' ? 800 : 620;   // long enough to read the warning ring
+            const windup = zombieCombatAttackType === 'heavyKick' ? BITE_WINDUP_MS : 620;   // long enough to read the warning ring
             if (nowMs - zombieCombatStateStart >= windup) {
                 zombieCombatState = zombieCombatAttackType;
                 zombieCombatStateStart = nowMs;
@@ -2193,7 +2209,7 @@ export function createLevel1(ui) {
                     const trackingGap = 112;
                     const desiredX = player.x - trackingDirection * trackingGap;
                     const targetX = Math.max(170, Math.min(COMBAT_W - 170, desiredX));
-                    const crawlStep = Math.min(Math.abs(targetX - zombieCombatX), 450 * dt);
+                    const crawlStep = Math.min(Math.abs(targetX - zombieCombatX), 360 * dt);
                     if (crawlStep > 0.5) {
                         zombieCombatX += (targetX >= zombieCombatX ? 1 : -1) * crawlStep;
                         zombieCombatX = Math.max(170, Math.min(COMBAT_W - 170, zombieCombatX));
@@ -2335,6 +2351,7 @@ export function createLevel1(ui) {
 
         hp = Math.max(0, hp - damage);
         stats();
+        playSfx(/HEAVY|SPIN/.test(attackName) || damage >= 15 ? 'olly-hurt-heavy' : 'olly-hurt', .9);
 
         const awayDir = player.x < zombieCombatX ? -1 : 1;
         playerHurtUntil = nowMs + OLLY_HURT_TOTAL_MS;
@@ -2407,6 +2424,7 @@ export function createLevel1(ui) {
     let chainLastIndex = -1;
     let chainSpinHitsDone = 0;
     // God-of-War style stun meter in the enemy plate: fills with each hit, fades if you stop, goes gold and drains while she is stunned.
+    let stunMeterW = '', stunMeterFull = null;
     function updateChainStunMeter(nowMs) {
         let pct = 0, full = false;
         if (zombieCombatState === 'stun') {
@@ -2417,9 +2435,10 @@ export function createLevel1(ui) {
             const keep = Math.max(0, Math.min(1, (CHAIN_STUN_HIT_WINDOW_MS - since) / 800));
             pct = Math.min(1, chainStunHits / CHAIN_STUN_HITS) * keep;
         }
-        ui.enemyStun.style.width = (pct * 100).toFixed(1) + '%';
-        ui.enemyStunWrap.classList.toggle('full', full);
-        ui.enemyStunLabel.textContent = full ? 'STUNNED!' : 'STUN';
+        // Only touch the page when something actually changed (writing to the DOM 60 times a second made Safari stutter).
+        const w = (pct * 100).toFixed(0) + '%';
+        if (w !== stunMeterW) { stunMeterW = w; ui.enemyStun.style.width = w; }
+        if (full !== stunMeterFull) { stunMeterFull = full; ui.enemyStunWrap.classList.toggle('full', full); ui.enemyStunLabel.textContent = full ? 'STUNNED!' : 'STUN'; }
     }
     function getChainCombatFrame(nowMs) {
         const elapsed = Math.max(0, nowMs - zombieCombatStateStart);
@@ -2627,6 +2646,7 @@ export function createLevel1(ui) {
         if (!isChainFight() || zombieDeathStarted)
             return;
         zombieDeathStarted = true;
+        playSfx('zombie-death', .9);   // placeholder until Chain Goth has her own death sound
         zombieDeathEndAt = nowMs + CHAIN_DEATH_FALL_MS + CHAIN_DEATH_HOLD_MS;
         zombieCombatState = 'death';
         zombieCombatStateStart = nowMs;
@@ -2872,7 +2892,7 @@ export function createLevel1(ui) {
             const heavyRing = zombieCombatAttackType === 'heavyKick';
             const ringKind = heavyRing ? 'red' : 'pink', ringR = heavyRing ? 200 : 140, ringY = COMBAT_GROUND_Y + RING_FLOOR_OFFSET;
             if (zombieCombatState === 'windup')
-                drawAttackRing(cctx, enemyX, ringY, ringR, ringKind, (nowMs - zombieCombatStateStart) / (heavyRing ? 800 : 620), false, nowMs);
+                drawAttackRing(cctx, enemyX, ringY, ringR, ringKind, (nowMs - zombieCombatStateStart) / (heavyRing ? BITE_WINDUP_MS : 620), false, nowMs);
             else if (zombieCombatState === 'claw' || zombieCombatState === 'heavyKick')
                 drawAttackRing(cctx, enemyX, ringY, ringR, ringKind, 1, true, nowMs);
         }
@@ -2953,7 +2973,7 @@ export function createLevel1(ui) {
 
     function startCombat(bossFight) {
         playMusic('fight');
-        preloadSfx(['punch-1', 'punch-2', 'goth-pain', ...GOTH_HURT_SFX]);
+        preloadSfx(['punch-1', 'punch-2', 'punch-3', 'goth-pain', ...GOTH_HURT_SFX, 'olly-hurt', 'olly-hurt-heavy', 'olly-attack', 'olly-heavy-attack', 'olly-jump', 'zombie-death', 'pickup', 'interact']);
         isBoss = bossFight;
         mode = 'combat';
         combatMax = bossFight ? 100 : (target?.maxHp || 50);
@@ -2982,7 +3002,7 @@ export function createLevel1(ui) {
         ui.combatName.textContent = bossFight ? 'THE CLASSIC GOTH • QUEEN' : target?.name || 'ZOMBIE GOTH';
         ui.enemyHp.style.width = '100%';
         ui.enemyStunWrap.classList.toggle('hidden', target?.type !== 'chain');
-        ui.enemyStun.style.width = '0%';
+        ui.enemyStun.style.width = '0%'; stunMeterW = ''; stunMeterFull = null;
         ui.enemyStunWrap.classList.remove('full');
         ui.enemyStunLabel.textContent = 'STUN';
         ui.enemyHpText.textContent = `${combatHp} / ${combatMax}`;
@@ -3011,6 +3031,7 @@ export function createLevel1(ui) {
         };
         combatRaf = requestAnimationFrame(loop);
     }
+    let lastGruntAt = 0;
     function combatAttack() {
         if (mode !== 'combat' || zombieIntroActive || playerDeathTriggered)
             return;
@@ -3034,6 +3055,7 @@ export function createLevel1(ui) {
 
         combatFacing = dx < 0 ? 'left' : 'right';
         lastAttackAt = nowMs;
+        if (nowMs - lastGruntAt > 1500) { lastGruntAt = nowMs; playSfx('olly-attack', .8); }   // effort grunt, not on every punch
         attackAnimUntil = nowMs + 334;
         combatAnimationState = 'punch';
         combatAnimationStart = nowMs;
@@ -3051,7 +3073,7 @@ export function createLevel1(ui) {
             ui.enemyHp.style.width = (combatHp / combatMax * 100) + '%';
             ui.enemyHpText.textContent = `${combatHp} / ${combatMax}`;
             comboCount++;
-            playSfx(comboCount % 2 ? 'punch-1' : 'punch-2');
+            playRandomSfx(['punch-1', 'punch-2', 'punch-3']);
             ui.combatStatus.textContent = `👊 HIT! ${damage} damage.`;
             if (combatHp <= 0) {
                 if (target?.type === 'shambler')
@@ -3103,6 +3125,7 @@ export function createLevel1(ui) {
         combatFacing = dx < 0 ? 'left' : 'right';
 
         heavyAttackCooldownUntil = nowMs + 15000;
+        playSfx('olly-heavy-attack', 1);
         heavyAttackAnimUntil = nowMs + 620;
         combatAnimationState = 'heavy';
         combatAnimationStart = nowMs;
@@ -3162,10 +3185,16 @@ export function createLevel1(ui) {
 
         const enemyX = isBoss ? COMBAT_W - 320 : zombieCombatX,
             playerMinX = 140,
-            playerMaxX = COMBAT_W - 140,
-            direction = combatFacing === 'right' ? -1 : 1;
+            playerMaxX = COMBAT_W - 140;
+        // Always dodge AWAY from the enemy (backwards), whichever way Olly happens to be facing or walking.
+        // If his back is to the wall there is no room, so he rolls THROUGH her to the other side instead.
+        let direction = player.x <= enemyX ? -1 : 1;
+        const room = direction < 0 ? player.x - playerMinX : playerMaxX - player.x;
+        let distance = 180;
+        if (room < 110 && Math.abs(enemyX - player.x) <= 340) { direction = -direction; distance = Math.abs(enemyX - player.x) + 170; }   // cornered next to her: roll through to the other side
         combatDodgeDirection = direction;
-        player.x = Math.max(playerMinX, Math.min(playerMaxX, player.x + direction * 180));
+        player.x = Math.max(playerMinX, Math.min(playerMaxX, player.x + direction * distance));
+        combatFacing = enemyX >= player.x ? 'right' : 'left';   // keep facing her
         player.y = COMBAT_GROUND_Y;
         player.invuln = nowMs + 600;
         dodgeUntil = nowMs + 600;
@@ -3523,6 +3552,7 @@ export function createLevel1(ui) {
             now = t;
             if (mode === 'map')
                 updateMovement(dt);
+            setLoopSfx('ambience', mode === 'map', .3);
             setLoopSfx('footsteps', mode === 'map' && (held.up || held.down || held.left || held.right) && !ui.inventory?.matches?.(':not(.hidden)'), .8);
             drawWorld(t, dt);
             if (walkPulse > 0)
