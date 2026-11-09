@@ -1,6 +1,6 @@
 /* Goodbye Goth - tiny audio system (sound effects + music).
    Sounds live in assets/audio/sfx/<name>.mp3. Music lives in assets/audio/music/map.mp3 (map + story) and
-   assets/audio/music/fight.mp3 (fights). A missing file is simply silent, so nothing breaks while files are still being added.
+   assets/audio/music/FightMusic1.mp3 and FightMusic2.mp3 (fights). A missing file is simply silent, so nothing breaks while files are still being added.
    Volumes are saved in the browser (a settings screen can use setVolume later). */
 const VOL_KEY = 'goodbyeGothVolume_v1';
 const vol = { master: 0, music: 0.35, sfx: 0.8 };   // master 0 = sound OFF until the player turns it on in Settings
@@ -59,7 +59,7 @@ export function preloadSfx(names) { names.forEach(loadBuffer); }
 const MUSIC = {
     menu: ['Menu.mp3'],
     map: ['BackgroundMusicTrack1.mp3', 'BackgroundTrack2.mp3', 'BackgroundTrack3.mp3', 'BackgroundTrack4.mp3'],
-    fight: ['fight.mp3']
+    fight: ['FightMusic1.mp3', 'FightMusic2.mp3']
 };
 let musicEl = null, musicName = '', wantMusic = '', fadeTimer = null, musicToken = 0;
 function musicTarget() { return Math.max(0, Math.min(1, vol.master * vol.music)); }

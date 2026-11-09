@@ -623,3 +623,15 @@
 .combo-hud.tired .combo-pips i { background: rgba(239,90,130,.25); animation: comboPulse .7s ease-in-out infinite; }
 .combo-text { font: 700 10px system-ui, sans-serif; letter-spacing: .08em; color: #f3dce6; text-transform: uppercase; }
 @keyframes comboPulse { 0%,100% { opacity: .4 } 50% { opacity: 1 } }
+
+/* V9.16: painted buttons feel like real buttons (hover glow, press, smooth leave). */
+.title-screen { transition: opacity .4s ease; }
+.title-screen.title-leaving { opacity: 0; }
+.title-screen.title-leaving .title-art-hit { box-shadow: 0 0 0 4px rgba(255,214,228,.95), 0 0 46px rgba(255,120,170,.95); transform: scale(1.03); }
+.title-art-hit { transition: transform .12s ease, box-shadow .12s ease; }
+.title-art-hit:active { transform: scale(.97); }
+.cartoon-story-panel { position: relative; }
+.art-hit { position: absolute; border-radius: 16px; pointer-events: none; transition: box-shadow .15s ease, transform .12s ease; }
+.art-hit-begin { left: 28.6%; top: 80.5%; width: 43.2%; height: 12.5%; }
+.cartoon-story-panel:hover .art-hit-begin { box-shadow: 0 0 0 3px rgba(255,220,232,.8), 0 0 34px rgba(255,110,160,.75); }
+.cartoon-story-panel:active .art-hit-begin { transform: scale(.97); box-shadow: 0 0 0 4px rgba(255,255,255,.95), 0 0 44px rgba(255,110,160,.95); }

@@ -1,9 +1,9 @@
-import { StoryController } from './story.js';
-import { createLevel1 } from './levels/level1.js';
-import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js';
-import { initSettings, openSettings } from './settings.js';
-import { actionForKey } from './controls.js';
-import { initCheats, registerCheats } from './cheats.js';
+import { StoryController } from './story.js?v=9160';
+import { createLevel1 } from './levels/level1.js?v=9160';
+import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9160';
+import { initSettings, openSettings } from './settings.js?v=9160';
+import { actionForKey } from './controls.js?v=9160';
+import { initCheats, registerCheats } from './cheats.js?v=9160';
 
 const root = document.getElementById('game-root');
 
@@ -71,7 +71,7 @@ function showTitle(){
     </section>`;
 
   let started = false;
-  const begin = () => { if(started) return; started = true; startNewGame(); };
+  const begin = () => { if(started) return; started = true; document.getElementById('title-screen')?.classList.add('title-leaving'); setTimeout(startNewGame, 420); };   // glow + fade instead of an abrupt vanish
   document.getElementById('title-art-new').addEventListener('click', begin);
   document.getElementById('title-load').addEventListener('click', loadSavedGame, { once:true });
   document.getElementById('title-settings').addEventListener('click', openSettings);

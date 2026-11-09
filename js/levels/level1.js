@@ -1,5 +1,5 @@
 /* Goodbye Goth V9.4 - Chain Goth fight (AI + all seven animations: intro, walk, swipe, spin, stun, hurt, death) on top of V9.0 map cleanup and the v8.11 Zombie Goth AI. */
-import { playSfx, playRandomSfx, playMusic, preloadSfx, setLoopSfx } from '../audio.js';
+import { playSfx, playRandomSfx, playMusic, preloadSfx, setLoopSfx } from '../audio.js?v=9160';
 // Game clock: normal time, but it stands still while a tutorial pop-up is open (so nothing happens behind it).
 let pausedTotal = 0, pausedAt = 0;
 const gnow = () => (pausedAt || performance.now()) - pausedTotal;
@@ -17,12 +17,13 @@ const RING_TUTORIAL = {
 const TUTORIAL_KEY = 'goodbyeGothRingTutorial_v1';
 function ringTutorialSeen(kind) { try { return !!(JSON.parse(localStorage.getItem(TUTORIAL_KEY) || '{}'))[kind]; } catch (e) { return false; } }
 function markRingTutorialSeen(kind) { try { const o = JSON.parse(localStorage.getItem(TUTORIAL_KEY) || '{}'); o[kind] = 1; localStorage.setItem(TUTORIAL_KEY, JSON.stringify(o)); } catch (e) {} }
+let tutorialHold = false, tutorialHoldStart = 0;   // true while the fight is frozen waiting to show a ring pop-up
 export function resetRingTutorials() { try { localStorage.removeItem(TUTORIAL_KEY); } catch (e) {} }
 function showRingTutorial(kind, onClose) {
     const info = RING_TUTORIAL[kind];
-    if (!info || pausedAt) return false;
+    if (!info || (pausedAt && !tutorialHold)) return false;
     markRingTutorialSeen(kind);
-    pausedAt = performance.now();
+    if (!pausedAt) pausedAt = performance.now();
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;z-index:10040;background:rgba(6,3,10,.72);display:flex;align-items:center;justify-content:center;padding:18px;';
     const card = document.createElement('div');
@@ -41,7 +42,7 @@ function showRingTutorial(kind, onClose) {
         if (closed) return; closed = true;
         window.removeEventListener('keydown', onKey, true);
         overlay.remove();
-        pausedTotal += performance.now() - pausedAt; pausedAt = 0;
+        pausedTotal += performance.now() - pausedAt; pausedAt = 0; tutorialHold = false;
         if (onClose) onClose();
     };
     const onKey = e => { e.stopPropagation(); e.preventDefault(); if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') close(); };
@@ -53,7 +54,8 @@ function showRingTutorial(kind, onClose) {
 function drawAttackRing(c, x, floorY, radius, kind, progress, active, nowMs) {
     const rgb = ATTACK_RING_RGB[kind] || ATTACK_RING_RGB.pink;
     const p = Math.max(0, Math.min(1, progress));
-    const pulse = .5 + .5 * Math.sin(nowMs / (active ? 60 : 110 - p * 50));
+    const T = tutorialHold ? Math.min(performance.now(), tutorialHoldStart + 1000) : nowMs;   // ring pulses for 1s, then holds still
+    const pulse = .5 + .5 * Math.sin(T / (active ? 60 : 110 - p * 50));
     c.save();
     c.translate(x, floorY);
     c.scale(1, .2);
@@ -291,7 +293,8 @@ const ZOMBIE_LONG_HURT_TOTAL_MS = ZOMBIE_LONG_HURT_FRAME_MS.reduce((a, b) => a +
 // v8.7: slow the visible collapse by ~15%, then hold the final grounded pose for 5 seconds.
 const ZOMBIE_DEATH_FRAME_MS = [110, 100, 110, 120, 130, 145, 170, 700];
 const ZOMBIE_DEATH_TOTAL_MS = ZOMBIE_DEATH_FRAME_MS.reduce((a, b) => a + b, 0);
-const ZOMBIE_DEATH_HOLD_MS = 5000;
+const ZOMBIE_DEATH_HOLD_FIXED = Math.max(300, 3000 - ZOMBIE_DEATH_TOTAL_MS);
+const ZOMBIE_DEATH_HOLD_MS = 3000;   // placeholder, recomputed below so animation + hold = 3s
 // v8.7: the supplied death PNGs have different transparent margins. These offsets
 // keep the visible bottom of each frame on the combat floor instead of floating.
 const ZOMBIE_DEATH_FLOOR_OFFSETS = [69, 67, 66, 71, 66, 58, 41, 41];
@@ -349,7 +352,7 @@ const CHAIN_CONTACTS = {
     swipe: { 14: [-325, -30] }
 };
 const CHAIN_SPARK_MS = 230;
-const CHAIN_DEATH_FRAME_MS = 38, CHAIN_DEATH_FALL_MS = 31 * 38, CHAIN_DEATH_HOLD_MS = 1500;   // 31 hit-and-fall frames, then she lies still before fading
+const CHAIN_DEATH_FRAME_MS = 38, CHAIN_DEATH_FALL_MS = 31 * 38, CHAIN_DEATH_HOLD_MS = 3000 - 31 * 38;   // 31 hit-and-fall frames, then she lies still before fading
 
 let chainLastGood = null;
 function drawChainAtlasFrame(c, pack, index, x, floorY, face, renderScale = CHAIN_RENDER_SCALE, alpha = 1, rotation = 0, offsetX = 0) {
@@ -1398,7 +1401,7 @@ export function createLevel1(ui) {
         const data = ENCOUNTER_DATA[kind];
         if (!data)
             return;
-        playSfx('interact');   // clicking a map icon (assets/audio/sfx/interact.mp3)
+        playSfx('click');   // clicking a map icon (assets/audio/sfx/interact.mp3)
         pendingInteraction = {
             kind,
             enemy
@@ -1678,6 +1681,7 @@ export function createLevel1(ui) {
         playerHurtStart = 0;
         playerHurtDirection = 1;
         playerDeathTriggered = false;
+        enemyLeaving = null;
         comboCount = 0;
         attackCooldownUntil = 0;
         heavyAttackCooldownUntil = 0;
@@ -1881,7 +1885,7 @@ export function createLevel1(ui) {
                 progress: elapsed / OLLY_KO_TOTAL_MS,
                 frameIndex: index,
                 drawDir: combatFacing,
-                targetWidth: 360,
+                kScale: 300 / 647,   // one scale for every KO frame, matched to the 300px idle height, so he no longer swells as he falls
                 duration: OLLY_KO_TOTAL_MS
             };
         } else if (jumping || state === 'jump') {
@@ -2027,7 +2031,14 @@ export function createLevel1(ui) {
             index = Math.floor(elapsed / frameMs) % frames.length;
         }
 
-        return { img: frames[index], targetHeight, frameIndex: index };
+        // One fixed scale per animation set (never per frame) so she stays the same size within and between animations.
+        // Scales were matched by the size of her hair bow across the walk, crouch, claw and bite art.
+        let scale = 0;
+        if (zombieCombatState === 'chase' || zombieCombatState === 'recover') scale = .4595;
+        else if (zombieCombatState === 'claw') scale = .62;
+        else if (zombieCombatState === 'heavyKick') scale = .62;
+        else if (zombieCombatState === 'ready' || zombieCombatState === 'windup') scale = .235;
+        return { img: frames[index], targetHeight, frameIndex: index, scale };
     }
 
     function drawCombatImage(c, img, x, groundY, targetHeight, face, maxWidth = 270, alpha = 1, offsetX = 0, rotation = 0, sourceFacing = 'right', offsetY = 0) {
@@ -2082,7 +2093,11 @@ export function createLevel1(ui) {
             alpha = nowMs < zombieHitFlashUntil ? .72 : 1;
         }
 
-        const face = player.x < enemyX ? 'left' : 'right';
+        if (zombieCombatState === 'windup' && !enemyLeaving) {   // she coils and trembles harder as the attack nears, instead of freezing
+            const wp = Math.max(0, Math.min(1, (nowMs - zombieCombatStateStart) / (zombieCombatAttackType === 'heavyKick' ? BITE_WINDUP_MS : 620)));
+            offsetX += Math.sin(nowMs / 26) * (1.5 + 4.5 * wp);
+        }
+        const face = enemyLeaving ? (enemyLeaving.dir < 0 ? 'left' : 'right') : (player.x < enemyX ? 'left' : 'right');
         const walking = zombieCombatState === 'chase';
         const dying = zombieCombatState === 'death';
         // v8.6: attack/death/pre-post assets are authored facing LEFT.
@@ -2098,8 +2113,8 @@ export function createLevel1(ui) {
         // attack a width cap matching Zombie Goth's normal combat footprint so
         // the horizontal artwork does not become enormous on screen.
         // Increased by a further 10% so the bite-contact pose reads clearly.
-        const renderMaxWidth = zombieCombatState === 'heavyKick' ? 341.55 : 1400;
-        const renderHeight = Math.round(frame.targetHeight);
+        const renderMaxWidth = 1400;
+        const renderHeight = (frame.scale && frame.img && frame.img.naturalHeight) ? Math.round(frame.img.naturalHeight * frame.scale) : Math.round(frame.targetHeight);
         const deathFloorOffset = dying ? (ZOMBIE_DEATH_FLOOR_OFFSETS[frame.frameIndex] || 0) : 0;
         drawCombatImage(c, frame.img, enemyX, renderGroundY, renderHeight, face, renderMaxWidth, alpha, offsetX, rotation, sourceFacing, deathFloorOffset);
 
@@ -2135,7 +2150,7 @@ export function createLevel1(ui) {
 
         zombieDeathStarted = true;
         playSfx('zombie-death', .9);
-        zombieDeathEndAt = nowMs + ZOMBIE_DEATH_TOTAL_MS + ZOMBIE_DEATH_HOLD_MS;
+        zombieDeathEndAt = nowMs + ZOMBIE_DEATH_TOTAL_MS + ZOMBIE_DEATH_HOLD_FIXED;
         zombieCombatState = 'death';
         zombieCombatStateStart = nowMs;
         zombieCombatAttackHit = true;
@@ -2448,7 +2463,7 @@ export function createLevel1(ui) {
             try { video.pause(); video.removeAttribute('src'); video.load(); } catch (e) {}
             overlay.remove(); done();
         };
-        const sources = ['assets/video/cutscene3/olly-taken.mp4?v=9120', 'assets/video/cutscene3/olly-taken.mov?v=9120'];
+        const sources = ['assets/video/cutscene3/ollytaken.mp4?v=9160', 'assets/video/cutscene3/olly-taken.mp4?v=9160', 'assets/video/cutscene3/ollytaken.mov?v=9160', 'assets/video/cutscene3/olly-taken.mov?v=9160'];
         let i = 0;
         const next = () => { if (i >= sources.length) { finish(); return; } video.src = sources[i++]; video.load(); video.play().catch(() => {}); };
         video.addEventListener('error', next);
@@ -2474,7 +2489,18 @@ export function createLevel1(ui) {
         heavyAttackAnimUntil = 0;
         enemyAttackPhase = null;
         ui.combatStatus.textContent = '💫 OLLY HAS BEEN KNOCKED OUT.';
-        setTimeout(() => playTakenCutscene(() => endCombat(false)), OLLY_KO_TOTAL_MS + 280);
+        // The winner groans and strolls off the other way for 3 seconds before the 'taken' cutscene.
+        if (isAIFight()) {
+            const dir = zombieCombatX >= player.x ? 1 : -1;
+            enemyLeaving = { dir };
+            zombieCombatState = 'chase';
+            zombieCombatStateStart = nowMs;
+            zombieCombatWalkIndex = 0;
+            zombieCombatAttackHit = true;
+            if (isChainFight()) { playSfx(GOTH_HURT_SFX[0], .85, .82); playSfx('chain-rattle', .7); }
+            else playSfx(GOTH_HURT_SFX[Math.floor(Math.random() * GOTH_HURT_SFX.length)], .85);
+        }
+        setTimeout(() => playTakenCutscene(() => endCombat(false)), Math.max(OLLY_KO_TOTAL_MS + 280, 3000));
     }
 
     // ------------------------------------------------------------------
@@ -2581,7 +2607,7 @@ export function createLevel1(ui) {
 
     function drawChainCombat(c, enemyX, enemyY, nowMs) {
         const frame = getChainCombatFrame(nowMs);
-        if (zombieCombatState !== 'death') chainDeathFace = player.x < enemyX ? 'left' : 'right';
+        if (zombieCombatState !== 'death') chainDeathFace = enemyLeaving ? (enemyLeaving.dir < 0 ? 'left' : 'right') : (player.x < enemyX ? 'left' : 'right');
         const face = chainDeathFace;
         let offsetX = 0;
         const hurtBx = frame.pack === chainAtlas.hurt ? (chainAtlas.hurt.bx?.[frame.index] || 0) : 0;
@@ -3047,7 +3073,10 @@ export function createLevel1(ui) {
         if (img && img.complete && img.naturalWidth) {
             const dir = anim.drawDir || combatFacing;
             let finalW, finalH;
-            if (anim.targetWidth) {
+            if (anim.kScale) {
+                finalW = img.naturalWidth * anim.kScale;
+                finalH = img.naturalHeight * anim.kScale;
+            } else if (anim.targetWidth) {
                 const naturalScale = anim.targetWidth / img.naturalWidth;
                 finalW = anim.targetWidth;
                 finalH = img.naturalHeight * naturalScale;
@@ -3117,14 +3146,19 @@ export function createLevel1(ui) {
             if (mode !== 'combat')
                 return;
             const t = gnow();
-            if (pendingTutorial && t >= pendingTutorial.at) {
+            if (pendingTutorial && performance.now() >= pendingTutorial.at) {
                 const kind = pendingTutorial.kind; pendingTutorial = null;
                 if (!playerDeathTriggered && !zombieDeathStarted) showRingTutorial(kind, () => { held.up = held.down = held.left = held.right = false; });
+                else { pausedTotal += performance.now() - pausedAt; pausedAt = 0; tutorialHold = false; }
             }
             const dt = Math.min(.033, (t - combatLastFrame) / 1000 || 0);
             combatLastFrame = t;
             updateCombatMovement(dt);
-            setLoopSfx('chain-drag', isChainFight() && zombieCombatState === 'chase' && !zombieIntroActive && !zombieDeathStarted && !playerDeathTriggered, .5);
+            if (enemyLeaving) {   // walk off-screen after a KO
+                zombieCombatX += enemyLeaving.dir * 150 * dt;
+                zombieCombatWalkIndex += dt * 1000;
+            }
+            setLoopSfx('chain-drag', isChainFight() && zombieCombatState === 'chase' && !zombieIntroActive && !zombieDeathStarted && (!playerDeathTriggered || !!enemyLeaving), .5);
             setLoopSfx('footsteps', (held.left !== held.right) && !jumping && !zombieIntroActive && !playerDeathTriggered && t >= dodgeUntil, .8);
             updateZombieAI(dt, t);
             updateChainAI(dt, t);
@@ -3137,9 +3171,12 @@ export function createLevel1(ui) {
     }
     let lastGruntAt = 0;
     let pendingTutorial = null, chainSwipeAim = 1;
+    let enemyLeaving = null;   // set when an enemy has knocked Olly out and is walking away
     function queueRingTutorial(kind) {   // the ring is drawn first, then the pop-up appears a moment later
-        if (pendingTutorial || pausedAt || ringTutorialSeen(kind)) return;
-        pendingTutorial = { kind, at: gnow() + 380 };
+        if (pendingTutorial || pausedAt || ringTutorialSeen(kind) || playerDeathTriggered || zombieDeathStarted) return;
+        // Step 1: the ring appears and the fight freezes with it on screen for 1s. Step 2: 1s held still. Step 3: the pop-up.
+        pausedAt = performance.now(); tutorialHold = true; tutorialHoldStart = pausedAt;
+        pendingTutorial = { kind, at: pausedAt + 2000 };
     }
     function combatAttack() {
         if (pausedAt) return;
@@ -3498,7 +3535,7 @@ export function createLevel1(ui) {
         const tick = t => {
             if (mode !== 'relationship')
                 return;
-            const elapsed = t - relationshipStart;
+            const elapsed = gnow() - relationshipStart;
             const pct = Math.min(1, elapsed / relationshipDuration);
             const zoneStart = Math.min(.80 + relationshipRound * .025, .90);
             const zoneWidth = Math.max(.055, .105 - relationshipRound * .012);

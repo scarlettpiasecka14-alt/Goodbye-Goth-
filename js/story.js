@@ -1,4 +1,4 @@
-import { playSfx, setLoopSfx } from './audio.js';
+import { playSfx, setLoopSfx } from './audio.js?v=9160';
 
 export class StoryController {
   constructor(root, onComplete){
@@ -137,6 +137,7 @@ export class StoryController {
         <div class="cartoon-story-frame">
           <button id="story-panel-next" class="cartoon-story-panel" type="button" aria-label="Continue story">
             <img class="cartoon-story-image" src="${s.image}" alt="${s.alt}">
+            ${/note/.test(s.image) ? '<span class="art-hit art-hit-begin" aria-hidden="true"></span>' : ''}
           </button>
         </div>
       </section>`;
