@@ -100,7 +100,12 @@ function showControlsTab(custom) {
 
 export function initSettings() {
     if (overlay) return;
-    const style = document.createElement('style'); style.textContent = CSS; document.head.appendChild(style);
+    const style = document.createElement('style'); style.textContent = CSS + `
+.gg-gear{position:fixed;left:6px;bottom:6px;z-index:900;width:34px;height:34px;border-radius:50%;border:1px solid rgba(217,139,168,.5);background:rgba(20,12,24,.78);color:#e9c9d8;font-size:19px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+.gg-gear:hover{background:rgba(60,28,50,.92);color:#fff}`; document.head.appendChild(style);
+    const gear = document.createElement('button');
+    gear.className = 'gg-gear'; gear.type = 'button'; gear.title = 'Settings (O)'; gear.setAttribute('aria-label', 'Settings'); gear.textContent = '⚙';
+    gear.addEventListener('click', () => { gear.blur(); openSettings(); }); document.body.appendChild(gear);
 
     bright = document.createElement('div'); bright.className = 'gg-bright'; document.body.appendChild(bright); applyBrightness();
 

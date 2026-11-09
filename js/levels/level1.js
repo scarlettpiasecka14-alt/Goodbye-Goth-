@@ -1715,6 +1715,7 @@ export function createLevel1(ui) {
             if (jumpT >= 1) {
                 jumpT = 1;
                 jumping = false;
+                playSfx('olly-land', .7);
             }
             jumpOffset = -Math.sin(jumpT * Math.PI) * 68;
         } else {
@@ -1756,7 +1757,7 @@ export function createLevel1(ui) {
         if (mode !== 'combat' || zombieIntroActive || playerDeathTriggered || jumping || heavyAttackAnimUntil > nowMs || nowMs < zombieBiteHoldUntil)
             return;
         jumping = true;
-        playSfx('olly-jump', .9);
+        playSfx('olly-jump', .45);   // soft take-off whoosh (the thud plays on landing)
         jumpT = 0;
         combatAnimationState = 'jump';
         combatAnimationStart = performance.now();
@@ -2380,6 +2381,35 @@ export function createLevel1(ui) {
         }
     }
 
+    // After Olly has fallen, a short cutscene plays (a hand dragging him away) before the KNOCKED OUT pop-up.
+    // File: assets/video/cutscene3/olly-taken.mp4  (a .mov of the same name is tried second). Missing file = skipped silently.
+    function playTakenCutscene(done) {
+        let finished = false;
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:10050;background:#000;display:flex;align-items:center;justify-content:center;';
+        const video = document.createElement('video');
+        video.playsInline = true; video.autoplay = true; video.controls = false; video.preload = 'auto';
+        video.style.cssText = 'width:100%;height:100%;object-fit:contain;background:#000;';
+        overlay.appendChild(video);
+        const skip = document.createElement('button');
+        skip.type = 'button'; skip.textContent = 'SKIP ▸';
+        skip.style.cssText = 'position:absolute;right:22px;bottom:22px;padding:8px 16px;border:1px solid rgba(255,255,255,.35);border-radius:10px;background:rgba(0,0,0,.55);color:#fff;font:700 13px Georgia,serif;cursor:pointer;opacity:.8;';
+        overlay.appendChild(skip);
+        const finish = () => {
+            if (finished) return; finished = true;
+            try { video.pause(); video.removeAttribute('src'); video.load(); } catch (e) {}
+            overlay.remove(); done();
+        };
+        const sources = ['assets/video/cutscene3/olly-taken.mp4?v=9120', 'assets/video/cutscene3/olly-taken.mov?v=9120'];
+        let i = 0;
+        const next = () => { if (i >= sources.length) { finish(); return; } video.src = sources[i++]; video.load(); video.play().catch(() => {}); };
+        video.addEventListener('error', next);
+        video.addEventListener('ended', finish);
+        skip.addEventListener('click', finish);
+        document.body.appendChild(overlay);
+        playMusic('');
+        next();
+    }
     function triggerPlayerKO(nowMs) {
         if (mode !== 'combat' || playerDeathTriggered)
             return;
@@ -2396,7 +2426,7 @@ export function createLevel1(ui) {
         heavyAttackAnimUntil = 0;
         enemyAttackPhase = null;
         ui.combatStatus.textContent = '💫 OLLY HAS BEEN KNOCKED OUT.';
-        setTimeout(() => endCombat(false), OLLY_KO_TOTAL_MS + 280);
+        setTimeout(() => playTakenCutscene(() => endCombat(false)), OLLY_KO_TOTAL_MS + 280);
     }
 
     // ------------------------------------------------------------------
@@ -2646,7 +2676,8 @@ export function createLevel1(ui) {
         if (!isChainFight() || zombieDeathStarted)
             return;
         zombieDeathStarted = true;
-        playSfx('zombie-death', .9);   // placeholder until Chain Goth has her own death sound
+        playSfx('zombie-death', .9);
+        playSfx('chain-clatter', 1);   // her chain falls and clatters
         zombieDeathEndAt = nowMs + CHAIN_DEATH_FALL_MS + CHAIN_DEATH_HOLD_MS;
         zombieCombatState = 'death';
         zombieCombatStateStart = nowMs;
@@ -2905,18 +2936,32 @@ export function createLevel1(ui) {
         // covering either fighter and pulses only during the wind-up.
         // (The old "ATTACK INCOMING" banner is replaced by the floor rings.)
 
-        if (nowMs < attackCooldownUntil) {
-            const seconds = Math.max(0, (attackCooldownUntil - nowMs) / 1000);
-            cctx.fillStyle = '#efb7c9';
-            cctx.font = '900 20px system-ui';
+        // Combo meter: 3 pips fill as Olly punches; on the 3rd he is out of breath for 5s. Drawn above the message bar so it is actually visible.
+        {
+            const cx = COMBAT_W / 2, cy = COMBAT_H - 128;
+            cctx.save();
             cctx.textAlign = 'center';
-            cctx.fillText(`PUNCH COOLDOWN  ${seconds.toFixed(1)}s`, COMBAT_W / 2, COMBAT_H - 36);
-        } else {
-            cctx.fillStyle = '#c9b6c2';
-            cctx.font = '700 15px system-ui';
-            cctx.textAlign = 'center';
-            const remaining = Math.max(0, 3 - comboCount);
-            cctx.fillText(`${remaining} punch${remaining === 1 ? '' : 'es'} before cooldown`, COMBAT_W / 2, COMBAT_H - 36);
+            if (nowMs < attackCooldownUntil) {
+                const left = Math.max(0, attackCooldownUntil - nowMs), frac = left / 5000;
+                cctx.fillStyle = 'rgba(30,8,20,.82)';
+                cctx.strokeStyle = 'rgba(239,90,130,.95)'; cctx.lineWidth = 3;
+                cctx.beginPath(); cctx.roundRect(cx - 190, cy - 34, 380, 64, 14); cctx.fill(); cctx.stroke();
+                cctx.fillStyle = '#ffd0de'; cctx.font = '900 22px system-ui';
+                cctx.fillText(`OUT OF BREATH  ${(left / 1000).toFixed(1)}s`, cx, cy - 6);
+                cctx.fillStyle = 'rgba(255,255,255,.18)'; cctx.fillRect(cx - 160, cy + 8, 320, 9);
+                cctx.fillStyle = '#ef5a82'; cctx.fillRect(cx - 160, cy + 8, 320 * frac, 9);
+            } else {
+                for (let i = 0; i < 3; i++) {
+                    const px = cx + (i - 1) * 44;
+                    cctx.beginPath(); cctx.arc(px, cy, 14, 0, Math.PI * 2);
+                    cctx.fillStyle = i < comboCount ? '#ef5a82' : 'rgba(20,10,20,.65)'; cctx.fill();
+                    cctx.lineWidth = 3; cctx.strokeStyle = 'rgba(255,214,228,.9)'; cctx.stroke();
+                }
+                cctx.fillStyle = '#f3dce6'; cctx.font = '800 15px system-ui';
+                cctx.shadowColor = 'rgba(0,0,0,.9)'; cctx.shadowBlur = 6;
+                cctx.fillText('3 PUNCHES, THEN 5s COOLDOWN', cx, cy + 38);
+            }
+            cctx.restore();
         }
     }
 
@@ -2973,7 +3018,7 @@ export function createLevel1(ui) {
 
     function startCombat(bossFight) {
         playMusic('fight');
-        preloadSfx(['punch-1', 'punch-2', 'punch-3', 'goth-pain', ...GOTH_HURT_SFX, 'olly-hurt', 'olly-hurt-heavy', 'olly-attack', 'olly-heavy-attack', 'olly-jump', 'zombie-death', 'pickup', 'interact']);
+        preloadSfx(['punch-1', 'punch-2', 'punch-3', 'goth-pain', ...GOTH_HURT_SFX, 'olly-hurt', 'olly-hurt-heavy', 'olly-attack', 'olly-heavy-attack', 'olly-jump', 'olly-land', 'olly-dodge-grunt', 'chain-clatter', 'zombie-death', 'pickup', 'interact']);
         isBoss = bossFight;
         mode = 'combat';
         combatMax = bossFight ? 100 : (target?.maxHp || 50);
@@ -3054,6 +3099,7 @@ export function createLevel1(ui) {
             dy = enemyY - (player.y + jumpOffset);
 
         combatFacing = dx < 0 ? 'left' : 'right';
+        if (nowMs - lastAttackAt > 1500) comboCount = 0;   // a pause resets the combo
         lastAttackAt = nowMs;
         if (nowMs - lastGruntAt > 1500) { lastGruntAt = nowMs; playSfx('olly-attack', .8); }   // effort grunt, not on every punch
         attackAnimUntil = nowMs + 334;
@@ -3087,7 +3133,7 @@ export function createLevel1(ui) {
             triggerZombieHitReaction(nowMs, false, false);
         } else {
             ui.combatStatus.textContent = '👊 Too far. Get closer.';
-            comboCount = 0;
+            comboCount++;   // a miss still uses up a punch, so you can't spam to dodge the cooldown
         }
 
         if (comboCount >= 3) {
@@ -3198,6 +3244,8 @@ export function createLevel1(ui) {
         player.y = COMBAT_GROUND_Y;
         player.invuln = nowMs + 600;
         dodgeUntil = nowMs + 600;
+        playSfx('olly-jump', .8);          // whoosh
+        playSfx('olly-dodge-grunt', .75);  // effort grunt on top
         combatAnimationState = 'dodge';
         combatAnimationStart = nowMs;
         combatAnimationUntil = nowMs + 409; // v6.5.16d: 20% faster dodge animation

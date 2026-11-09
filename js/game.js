@@ -172,6 +172,7 @@ function showControls(){
           <div class="control-item"><span class="control-key">LEFT CLICK / ENTER</span><span class="control-action">Pick up / interact</span></div>
           <div class="control-item"><span class="control-key">Y</span><span class="control-action">Open inventory</span></div>
           <div class="control-item"><span class="control-key">X</span><span class="control-action">Save game</span></div>
+          <div class="control-item"><span class="control-key">O</span><span class="control-action">Settings (or the ⚙ bottom-left)</span></div>
         </div>
         <button id="controls-next" class="controls-next" type="button">CLICK TO CONTINUE →</button>
       </div>
@@ -210,7 +211,6 @@ function mountLevel1(loadSaved=false){
         <div class="play-column">
           <div class="world-wrap">
             <canvas id="world" width="1536" height="1024" tabindex="0" aria-label="Level 1 haunted cemetery"></canvas>
-            <div class="help">Explore to reveal the cemetery • WASD / arrow keys move • Click the 🧩 and ❤️ markers to interact</div>
           </div>
           <div id="dialogue" class="dialogue" aria-live="polite">You wake up somewhere very dark...</div>
         </div>
