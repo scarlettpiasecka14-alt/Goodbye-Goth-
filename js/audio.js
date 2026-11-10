@@ -52,7 +52,7 @@ export function playSfx(name, gain = 1, rate = 1) {
 export function playRandomSfx(names, gain = 1) { playSfx(names[Math.floor(Math.random() * names.length)], gain); }
 export function preloadSfx(names) { names.forEach(loadBuffer); }
 // Start downloading the common fight sounds straight away so the first punch is instant.
-['punch-1', 'punch-2', 'goth-hurt-1', 'goth-hurt-2', 'goth-hurt-3', 'goth-hurt-4', 'goth-pain', 'click', 'typing', 'footsteps', 'ambience'].forEach(n => setTimeout(() => loadBuffer(n), 0));
+['punch-1', 'punch-2', 'goth-hurt-1', 'goth-hurt-2', 'goth-hurt-3', 'goth-hurt-4', 'goth-pain', 'click', 'typing', 'footsteps'].forEach(n => setTimeout(() => loadBuffer(n), 0));
 
 /* Music "pools": each name plays one file (looping) or a playlist that moves to the next track when one ends.
    Files live in assets/audio/music/. Put the title-screen song at assets/audio/music/menu.mp3. */
@@ -116,7 +116,8 @@ export function setLoopSfx(name, on, gain = 1) {
                 L.g.gain.value = v;
             } else if (L.src) { try { L.src.stop(); } catch (e) {} L.src.disconnect(); L.src = null; }
         } else {
-            loadBuffer(name);   // use the plain <audio> element until the fast version is ready
+            if (!on && !L.fb) return;   // never create (and so never start downloading) a sound that is not wanted yet
+            if (!STREAM[name]) loadBuffer(name);   // use the plain <audio> element until the fast version is ready
             if (!L.fb) { L.fb = new Audio(`assets/audio/sfx/${STREAM[name] || name}.mp3`); L.fb.loop = true; }
             L.fb.volume = v;
             if (on && v > 0) { if (L.fb.paused) L.fb.play().catch(() => {}); }

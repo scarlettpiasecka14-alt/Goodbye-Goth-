@@ -1,9 +1,9 @@
-import { StoryController } from './story.js?v=9170';
-import { createLevel1 } from './levels/level1.js?v=9170';
-import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9170';
-import { initSettings, openSettings } from './settings.js?v=9170';
-import { actionForKey } from './controls.js?v=9170';
-import { initCheats, registerCheats } from './cheats.js?v=9170';
+import { StoryController } from './story.js?v=9180';
+import { createLevel1 } from './levels/level1.js?v=9180';
+import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9180';
+import { initSettings, openSettings } from './settings.js?v=9180';
+import { actionForKey } from './controls.js?v=9180';
+import { initCheats, registerCheats } from './cheats.js?v=9180';
 
 const root = document.getElementById('game-root');
 
@@ -60,7 +60,7 @@ function showTitle(){
   root.innerHTML = `
     <section id="title-screen" class="panel title-screen perfect-title-screen" aria-label="Goodbye Goth title screen">
       <div class="perfect-title-wrap">
-        <img class="perfect-title-art" src="assets/story/title-screen-perfect.png" alt="Goodbye Goth title screen">
+        <img class="perfect-title-art" src="assets/story/title-screen-perfect.webp" alt="Goodbye Goth title screen">
         <button id="title-art-new" class="title-art-hit" type="button" aria-label="New game"></button>
         <div class="title-menu" role="menu" aria-label="Main menu">
           <button id="title-load" class="title-menu-btn" type="button">LOAD GAME</button>
@@ -93,7 +93,7 @@ function showGothAbyss() {
       <video
         id="abyss-video"
         class="abyss-video"
-        src="assets/video/cutscene 720p.mov"
+        src="assets/video/cutscene-intro.mp4"
         playsinline
         preload="auto"
       ></video>
@@ -142,7 +142,7 @@ function showImageTransitionScreen(image, alt, onContinue, label) {
 
 function showAbyssWelcome(){
   showImageTransitionScreen(
-    'assets/story/goth-abyss-welcome.png',
+    'assets/story/goth-abyss-welcome.webp',
     'Welcome to the Goth Abyss screen.',
     showAbyssObjective,
     'Welcome to the Goth Abyss'
@@ -151,7 +151,7 @@ function showAbyssWelcome(){
 
 function showAbyssObjective(){
   showImageTransitionScreen(
-    'assets/story/goth-abyss-objective.png',
+    'assets/story/goth-abyss-objective.webp',
     'The Goths have stolen Scarlett. Explore, defeat and solve to rescue her.',
     showControls,
     'Game objective'
@@ -182,7 +182,7 @@ function showControls(){
 
 function showLevel1Intro(){
   showImageTransitionScreen(
-    'assets/story/level1-entrance.png?v=657',
+    'assets/story/level1-entrance.webp?v=657',
     'Level 1: The Cemetery. Enter if you dare.',
     mountLevel1,
     'Level 1 entrance'
@@ -261,7 +261,7 @@ function mountLevel1(loadSaved=false){
 
       <div id="death" class="overlay hidden"><div class="overlay-box center death-card">
         <div class="death-title">YOU DIED</div>
-        <img id="death-image" class="completion-art death-art" src="assets/characters/combat/olly-after-knockout.png?v=1" alt="Olly recovering after being knocked out">
+        <img id="death-image" class="completion-art death-art" src="assets/characters/combat/olly-after-knockout.webp?v=1" alt="Olly recovering after being knocked out">
         <p id="death-text">The Goths have won this round.</p>
         <div class="story-actions"><button id="retry-combat" class="primary">TRY AGAIN</button><button id="back-map">BACK TO MAP</button></div>
       </div></div>
@@ -275,7 +275,7 @@ function mountLevel1(loadSaved=false){
 
       <div id="relationship" class="overlay hidden"><div class="overlay-box center relationship-box ironic-box">
         <canvas id="relationship-canvas" width="1" height="1" hidden></canvas>
-        <img class="story-art relationship-image" src="assets/story/would-you.png" alt="Scarlett and Olly in bed, with the words Would You?" />
+        <img class="story-art relationship-image" src="assets/story/would-you.webp" alt="Scarlett and Olly in bed, with the words Would You?" />
         <div class="story-title">WOULD YOU...</div>
         <div class="ironic-copy">Sometimes princesses have far too much going on in their heads to get their words out right. In cases like these one can either 1. try to be helpful or 2. take the piss. You chose the latter. Press WOULD YOU? at the correct time to complete the puzzle.</div>
         <div class="timing-track"><div id="timing-zone" class="timing-zone"></div><div id="timing-cursor" class="timing-cursor"></div></div>
@@ -285,7 +285,7 @@ function mountLevel1(loadSaved=false){
       </div></div>
 
       <div id="puzzle" class="overlay hidden"><div class="overlay-box center quiz-box">
-        <img class="story-art quiz-image" src="assets/story/princess-quiz.png" alt="Scarlett, the kidnapped princess, with a warning about getting the answer right">
+        <img class="story-art quiz-image" src="assets/story/princess-quiz.webp" alt="Scarlett, the kidnapped princess, with a warning about getting the answer right">
         
         <p class="quiz-question">What is the correct way to ask a princess to undress?</p>
         <div class="answers quiz-answers">

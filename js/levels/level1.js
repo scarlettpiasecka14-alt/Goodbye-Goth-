@@ -1,5 +1,5 @@
 /* Goodbye Goth V9.4 - Chain Goth fight (AI + all seven animations: intro, walk, swipe, spin, stun, hurt, death) on top of V9.0 map cleanup and the v8.11 Zombie Goth AI. */
-import { playSfx, playRandomSfx, playMusic, preloadSfx, setLoopSfx } from '../audio.js?v=9170';
+import { playSfx, playRandomSfx, playMusic, preloadSfx, setLoopSfx } from '../audio.js?v=9180';
 // Game clock: normal time, but it stands still while a tutorial pop-up is open (so nothing happens behind it).
 let pausedTotal = 0, pausedAt = 0;
 const gnow = () => (pausedAt || performance.now()) - pausedTotal;
@@ -85,13 +85,13 @@ function safeParseSave() {
 }
 
 const mapBackground = new Image();
-mapBackground.src = 'assets/environment/level1-map-bg.png?v=600';
+mapBackground.src = 'assets/environment/level1-map-bg.webp?v=600';
 const goldenKeySprite = new Image();
-goldenKeySprite.src = 'assets/items/golden-key.png?v=6515';
+goldenKeySprite.src = 'assets/items/golden-key.webp?v=6515';
 const gateLockSprite = new Image();
-gateLockSprite.src = 'assets/encounters/level1/gate-lock.png?v=6524';
+gateLockSprite.src = 'assets/encounters/level1/gate-lock.webp?v=6524';
 const ollySprite = new Image();
-ollySprite.src = 'assets/characters/olly.png?v=7110';
+ollySprite.src = 'assets/characters/olly.webp?v=7110';
 
 // v7.7: directional map walking poses.
 // These are map-only sprites. Combat keeps its existing side-on movement/animations.
@@ -101,10 +101,10 @@ const ollyMapWalkSprites = {
     left: new Image(),
     right: new Image()
 };
-ollyMapWalkSprites.front.src = 'assets/characters/map/olly-walk-front.png?v=7700';
-ollyMapWalkSprites.back.src = 'assets/characters/map/olly-walk-back.png?v=7700';
-ollyMapWalkSprites.left.src = 'assets/characters/map/olly-walk-left.png?v=7700';
-ollyMapWalkSprites.right.src = 'assets/characters/map/olly-walk-right.png?v=7700';
+ollyMapWalkSprites.front.src = 'assets/characters/map/olly-walk-front.webp?v=7700';
+ollyMapWalkSprites.back.src = 'assets/characters/map/olly-walk-back.webp?v=7700';
+ollyMapWalkSprites.left.src = 'assets/characters/map/olly-walk-left.webp?v=7700';
+ollyMapWalkSprites.right.src = 'assets/characters/map/olly-walk-right.webp?v=7700';
 
 // Combat animation frames are cropped from the supplied sprite sheet so each
 // pose keeps its own aspect ratio and stray sprite-sheet labels never render.
@@ -115,11 +115,6 @@ const ollyCombatSprites = {
     heavy: [1,2,3,4,5].map(n => new Image()),
     punch: [1,2,3,4,5].map(n => new Image())
 };
-ollyCombatSprites.idle.src = 'assets/characters/combat/olly-idle.png?v=6513';
-ollyCombatSprites.dodge.forEach((img, i) => img.src = `assets/characters/combat/olly-dodge-${i+1}.png?v=6513`);
-ollyCombatSprites.jump.forEach((img, i) => img.src = `assets/characters/combat/olly-jump-${i+1}.png?v=6513`);
-ollyCombatSprites.heavy.forEach((img, i) => img.src = `assets/characters/combat/olly-heavy-${i+1}.png?v=6511`);
-ollyCombatSprites.punch.forEach((img, i) => img.src = `assets/characters/combat/olly-punch-${i+1}.png?v=6511`);
 
 // v8.11: dedicated player reaction artwork.
 // Normal damage uses the six upright hurt frames. Reaching 0 HP uses the
@@ -128,8 +123,6 @@ const ollyReactionSprites = {
     hurt: Array.from({ length: 6 }, () => new Image()),
     ko: Array.from({ length: 8 }, () => new Image())
 };
-ollyReactionSprites.hurt.forEach((img, i) => img.src = `assets/characters/combat/olly-hurt-${i + 1}.png?v=8110`);
-ollyReactionSprites.ko.forEach((img, i) => img.src = `assets/characters/combat/olly-ko-${i + 1}.png?v=8110`);
 
 const OLLY_HURT_FRAME_MS = [70, 80, 80, 90, 100, 150];
 const OLLY_HURT_TOTAL_MS = OLLY_HURT_FRAME_MS.reduce((a, b) => a + b, 0);
@@ -154,8 +147,8 @@ const OLLY_DRAW_FOOT_OFFSET = 62;
 // These shared icon references can be reused by every level. Only the activity
 // behind the role changes from level to level.
 const ICON_LIBRARY = {
-    relationshipChallenge: 'assets/icons/relationship-challenge.png?v=477',
-    princessQuestion: 'assets/icons/princess-question.png?v=477'
+    relationshipChallenge: 'assets/icons/relationship-challenge.webp?v=477',
+    princessQuestion: 'assets/icons/princess-question.webp?v=477'
 };
 const relationshipChallengeIcon = new Image();
 relationshipChallengeIcon.src = ICON_LIBRARY.relationshipChallenge;
@@ -197,31 +190,31 @@ const ENCOUNTER_DATA = {
     zombieGoth: {
         role: 'zombieGoth',
         name: 'ZOMBIE GOTH',
-        image: 'assets/encounters/level1/zombie-goth-encounter.png?v=2',
+        image: 'assets/encounters/level1/zombie-goth-encounter.webp?v=2',
         text: 'The zombie goth reaches for you with her claws moaning about the burning sun. You stumble backwards partially blinded by the light. Are you ready?'
     },
     chainGoth: {
         role: 'chainGoth',
         name: 'CHAIN GOTH',
-        image: 'assets/encounters/level1/chain-goth-encounter.png?v=2',
+        image: 'assets/encounters/level1/chain-goth-encounter.webp?v=2',
         text: 'You encounter the chain goth, she raises her chain high above her head demanding eyeliner. You turn expecting a blow that never comes. Are you ready?'
     },
     relationshipChallenge: {
         role: 'relationshipChallenge',
         name: 'RELATIONSHIP CHALLENGE',
-        image: 'assets/encounters/level1/relationship-challenge-encounter.png?v=501',
+        image: 'assets/encounters/level1/relationship-challenge-encounter.webp?v=501',
         text: "You've encountered a relationship challenge. Because apparently rescuing your kidnapped girlfriend wasn't already testing the relationship enough. Are you ready?"
     },
     princessQuestion: {
         role: 'princessQuestion',
         name: 'PRINCESS QUESTION',
-        image: 'assets/encounters/level1/princess-question-encounter.png?v=501',
+        image: 'assets/encounters/level1/princess-question-encounter.webp?v=501',
         text: "You've encountered a princess question. Answer correctly to prove your love for your princess. Are you ready?"
     },
     lockedGate: {
         role: 'lockedGate',
         name: 'THE GATE',
-        image: 'assets/encounters/level1/gate-interaction.png?v=6518',
+        image: 'assets/encounters/level1/gate-interaction.webp?v=6518',
         text: "You hear a rustling from beyond the gate. You peer through the bars, trying to get a better look, but the gate's locked! You'll have to find the key."
     }
 };
@@ -229,8 +222,6 @@ const zombieSprites = {
     shambler: new Image(),
     chain: new Image()
 };
-zombieSprites.shambler.src = 'assets/characters/zombie-goth.png?v=300';
-zombieSprites.chain.src = 'assets/characters/chain-goth-clean.png?v=6513';
 
 
 // v7.6: Zombie Goth combat walk cycle uses the new 12-frame strict side-profile animation pass.
@@ -264,17 +255,6 @@ const ZOMBIE_WALK_FRAME_MS = Array(12).fill(128);
 const ZOMBIE_WALK_CYCLE_MS = ZOMBIE_WALK_FRAME_MS.reduce((a, b) => a + b, 0);
 // Use the dedicated crouched ready pose. The attack frames belong
 // exclusively to the heavy attack and must not appear as the neutral/telegraph pose.
-zombieCombatFrames.idle[0].src = 'assets/characters/combat/zombie-ready-crouch.png?v=8111';
-zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.png?v=7600`);
-zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i + 1}.png?v=8600`);
-zombieCombatFrames.heavyKick.forEach((img, i) => img.src = `assets/characters/combat/zombie-ankle-biter-${String(i + 1).padStart(2, '0')}.png?v=10100`);
-zombieCombatFrames.hurt.forEach((img, i) => img.src = `assets/characters/combat/zombie-hurt-${i + 1}.png?v=8800`);
-zombieCombatFrames.death.forEach((img, i) => img.src = `assets/characters/combat/zombie-death-${i + 1}.png?v=8600`);
-zombieCombatFrames.prep.forEach((img, i) => img.src = `assets/characters/combat/zombie-prep-${i + 1}.png?v=8600`);
-zombieCountdownFrames[3].src = 'assets/characters/combat/zombie-countdown-3.png?v=8600';
-zombieCountdownFrames[2].src = 'assets/characters/combat/zombie-countdown-2.png?v=8600';
-zombieCountdownFrames[1].src = 'assets/characters/combat/zombie-countdown-1.png?v=8600';
-zombieCountdownFrames.fight.src = 'assets/characters/combat/zombie-countdown-fight.png?v=8600';
 // v8.8: short non-lethal hit is 1-2-3-4-3-2-1, using the same supplied fall poses.
 const ZOMBIE_HURT_SEQUENCE = [0, 1, 2, 3, 2, 1, 0];
 const ZOMBIE_HURT_FRAME_MS = [60, 65, 80, 100, 75, 65, 120];
@@ -307,11 +287,41 @@ const ZOMBIE_DEATH_FLOOR_OFFSETS = [69, 67, 66, 71, 66, 58, 41, 41];
 const CHAIN_ATLAS_DATA = {"intro":{"size":[3927,3924],"scale":0.64,"frames":[[0,0,269,401,-211,-623],[271,0,268,401,-211,-622],[541,0,269,396,-211,-615],[812,0,269,389,-211,-605],[1083,0,274,387,-211,-601],[1359,0,277,392,-211,-610],[1638,0,300,400,-211,-621],[1940,0,333,405,-211,-629],[2275,0,359,417,-211,-649],[2636,0,376,470,-211,-731],[3014,0,380,539,-215,-839],[3396,0,418,517,-382,-804],[0,541,367,543,-436,-844],[369,541,388,463,-443,-719],[759,541,456,390,-399,-606],[1217,541,352,486,-211,-756],[1571,541,419,500,-292,-777],[1992,541,554,509,-450,-791],[2548,541,476,525,-423,-819],[3026,541,377,554,-440,-865],[3405,541,522,400,-477,-624],[0,1097,511,435,-446,-664],[513,1097,381,534,-209,-792],[896,1097,436,516,-269,-788],[1334,1097,584,519,-452,-807],[1920,1097,500,532,-427,-829],[2422,1097,385,548,-452,-856],[2809,1097,530,400,-491,-625],[3341,1097,503,429,-425,-649],[0,1647,380,526,-210,-771],[382,1647,429,524,-258,-815],[813,1647,579,511,-434,-794],[1394,1647,520,529,-429,-824],[1916,1647,372,562,-437,-877],[2290,1647,486,460,-464,-718],[2778,1647,541,409,-464,-623],[3321,1647,423,481,-279,-704],[0,2211,393,549,-210,-801],[395,2211,488,505,-330,-784],[885,2211,605,515,-462,-801],[1492,2211,497,538,-427,-839],[1991,2211,370,560,-443,-874],[2363,2211,518,401,-475,-626],[2883,2211,519,412,-442,-626],[3404,2211,405,508,-241,-740],[0,2773,410,579,-225,-830],[412,2773,543,504,-413,-782],[957,2773,596,514,-461,-798],[1555,2773,449,536,-424,-834],[2006,2773,405,559,-436,-873],[2413,2773,527,400,-467,-624],[2942,2773,508,424,-414,-634],[3452,2773,390,545,-209,-783],[0,3354,423,563,-237,-803],[425,3354,547,509,-404,-790],[974,3354,609,515,-461,-799],[1585,3354,478,535,-427,-833],[2065,3354,375,568,-431,-887],[2442,3354,513,452,-455,-706],[2957,3354,530,422,-447,-630]]},"walk":{"size":[3887,391],"scale":0.64,"frames":[[0,0,231,383,-217,-594],[233,0,220,386,-209,-599],[455,0,214,387,-206,-601],[671,0,214,387,-208,-602],[887,0,214,388,-212,-601],[1103,0,216,389,-212,-600],[1321,0,217,386,-209,-595],[1540,0,219,385,-205,-593],[1761,0,222,382,-200,-590],[1985,0,223,380,-194,-587],[2210,0,224,380,-191,-586],[2436,0,228,380,-191,-587],[2666,0,233,381,-199,-588],[2901,0,241,382,-214,-590],[3144,0,251,383,-230,-590],[3397,0,247,384,-230,-592],[3646,0,241,386,-229,-595]]},"swipe":{"size":[4064,953],"scale":0.64,"frames":[[0,0,269,401,-211,-623],[271,0,269,401,-211,-623],[542,0,269,401,-211,-624],[813,0,269,401,-211,-624],[1084,0,268,403,-211,-626],[1354,0,263,403,-211,-627],[1619,0,253,408,-211,-630],[1874,0,251,404,-211,-627],[2127,0,268,396,-211,-614],[2397,0,291,396,-211,-614],[2690,0,300,401,-236,-622],[2992,0,356,419,-339,-650],[3350,0,341,398,-385,-619],[3693,0,371,394,-441,-620],[0,421,477,413,-457,-641],[479,421,502,463,-396,-690],[983,421,390,484,-180,-724],[1375,421,418,530,-182,-799],[1795,421,385,490,-122,-868],[2182,421,386,507,-97,-913]]},"death":{"size":[3897,1162],"scale":0.64,"frames":[[0,0,293,394,-263,-614],[295,0,333,392,-336,-610],[630,0,342,390,-360,-608],[974,0,321,412,-319,-656],[1297,0,381,450,-399,-725],[1680,0,470,506,-518,-805],[2152,0,349,442,-325,-713],[2503,0,348,445,-322,-703],[2853,0,347,386,-321,-609],[3202,0,347,385,-321,-609],[3551,0,346,385,-320,-615],[0,508,347,387,-320,-611],[349,508,347,386,-319,-615],[698,508,346,383,-317,-615],[1046,508,348,376,-310,-597],[1396,508,350,366,-304,-580],[1748,508,353,342,-293,-542],[2103,508,361,316,-288,-501],[2466,508,403,250,-304,-384],[2871,508,463,160,-321,-216],[3336,508,463,130,-321,-167],[0,897,463,130,-321,-167],[465,897,463,130,-321,-167],[930,897,463,131,-321,-168],[1395,897,463,130,-321,-167],[1860,897,463,131,-321,-168],[2325,897,463,130,-321,-167],[2790,897,463,130,-321,-167],[3255,897,463,130,-321,-167],[0,1030,463,130,-321,-167],[465,1030,463,130,-321,-167],[930,1030,463,130,-321,-167]]},"spin":{"size":[3824,1878],"scale":0.64,"frames":[[0,0,325,474,-221,-737],[327,0,313,541,-298,-840],[642,0,422,544,-437,-848],[1066,0,482,367,-583,-567],[1550,0,322,391,-360,-588],[1874,0,343,396,-208,-600],[2219,0,428,409,-215,-636],[2649,0,312,474,-230,-737],[2963,0,340,520,-319,-812],[3305,0,496,371,-537,-578],[0,546,474,368,-558,-574],[476,546,329,390,-367,-587],[807,546,299,393,-212,-596],[1108,546,411,391,-223,-606],[1521,546,414,387,-208,-603],[1937,546,319,421,-228,-657],[2258,546,313,445,-288,-694],[2573,546,434,451,-437,-704],[3009,546,484,360,-558,-562],[3495,546,329,383,-359,-587],[0,999,344,405,-223,-609],[346,999,415,386,-223,-601],[763,999,324,413,-300,-645],[1089,999,630,379,-744,-592],[1721,999,492,362,-573,-564],[2215,999,211,386,-154,-595],[2428,999,421,393,-220,-611],[2851,999,344,383,-213,-596],[3197,999,323,417,-295,-652],[0,1418,626,458,-734,-717],[628,1418,485,362,-561,-565],[1115,1418,293,386,-300,-587],[1410,1418,339,393,-223,-609],[1751,1418,424,387,-225,-603],[2177,1418,306,390,-277,-609],[2485,1418,638,457,-746,-714]]},"stun":{"size":[4074,1517],"scale":0.64,"frames":[[0,0,255,380,-235,-588],[257,0,255,380,-235,-590],[514,0,252,382,-235,-592],[768,0,249,383,-235,-594],[1019,0,243,383,-235,-594],[1264,0,238,387,-235,-600],[1504,0,230,389,-234,-604],[1736,0,223,394,-234,-607],[1961,0,217,402,-234,-607],[2180,0,214,402,-228,-601],[2396,0,211,400,-220,-597],[2609,0,216,391,-213,-583],[2827,0,220,380,-211,-570],[3049,0,234,369,-211,-559],[3285,0,251,356,-211,-550],[3538,0,265,353,-211,-545],[3805,0,269,350,-211,-541],[0,404,272,350,-211,-541],[274,404,266,351,-211,-542],[542,404,260,354,-211,-547],[804,404,253,356,-211,-550],[1059,404,249,358,-212,-554],[1310,404,243,359,-212,-556],[1555,404,241,364,-212,-559],[1798,404,243,367,-212,-561],[2043,404,248,365,-212,-558],[2293,404,252,361,-212,-555],[2547,404,262,355,-212,-550],[2811,404,266,352,-212,-545],[3079,404,269,349,-212,-540],[3350,404,266,348,-212,-538],[3618,404,261,350,-212,-541],[0,773,255,353,-213,-545],[257,773,249,355,-213,-549],[508,773,241,358,-212,-555],[751,773,237,362,-212,-561],[990,773,237,367,-212,-564],[1229,773,240,371,-213,-566],[1471,773,243,370,-212,-566],[1716,773,249,370,-212,-566],[1967,773,253,365,-212,-561],[2222,773,261,360,-212,-555],[2485,773,265,356,-212,-551],[2752,773,266,354,-212,-548],[3020,773,266,352,-212,-545],[3288,773,262,353,-212,-545],[3552,773,255,355,-212,-550],[3809,773,250,360,-212,-557],[0,1146,243,363,-212,-563],[245,1146,237,366,-212,-568],[484,1146,237,368,-212,-570],[723,1146,237,369,-212,-570],[962,1146,240,369,-212,-568],[1204,1146,246,365,-212,-562],[1452,1146,252,362,-212,-558],[1706,1146,260,360,-212,-554],[1968,1146,264,355,-212,-548],[2234,1146,266,354,-212,-547],[2502,1146,266,355,-212,-550],[2770,1146,261,359,-212,-556],[3033,1146,256,362,-212,-562]]},"hurt":{"size":[4073,2138],"scale":0.64,"frames":[[0,0,269,400,-211,-622],[271,0,262,400,-211,-622],[535,0,250,399,-211,-621],[787,0,241,402,-213,-625],[1030,0,239,406,-224,-632],[1271,0,243,411,-241,-638],[1516,0,253,415,-265,-645],[1771,0,253,420,-276,-652],[2026,0,248,422,-278,-656],[2276,0,239,426,-262,-660],[2517,0,225,429,-234,-662],[2744,0,220,435,-219,-662],[2966,0,218,433,-213,-657],[3186,0,223,426,-218,-645],[3411,0,234,420,-231,-635],[3647,0,247,413,-249,-625],[0,437,260,410,-263,-619],[262,437,276,407,-279,-615],[540,437,297,406,-295,-614],[839,437,320,410,-307,-619],[1161,437,335,410,-309,-620],[1498,437,349,404,-298,-611],[1849,437,349,396,-266,-597],[2200,437,367,388,-275,-585],[2569,437,366,387,-282,-584],[2937,437,351,391,-284,-590],[3290,437,332,398,-283,-601],[3624,437,312,404,-279,-611],[0,849,287,414,-273,-621],[289,849,257,422,-264,-631],[548,849,228,423,-254,-638],[778,849,213,426,-242,-646],[993,849,221,427,-222,-654],[1216,849,240,435,-218,-661],[1458,849,260,438,-215,-664],[1720,849,265,439,-202,-665],[1987,849,262,439,-190,-665],[2251,849,267,436,-182,-660],[2520,849,284,437,-178,-662],[2806,849,308,434,-177,-657],[3116,849,318,429,-168,-649],[3436,849,307,418,-154,-632],[3745,849,291,410,-150,-620],[0,1290,276,406,-150,-613],[278,1290,263,407,-150,-615],[543,1290,250,412,-150,-622],[795,1290,239,419,-150,-633],[1036,1290,231,424,-150,-641],[1269,1290,227,428,-150,-647],[1498,1290,221,428,-150,-648],[1721,1290,224,428,-150,-648],[1947,1290,231,427,-150,-646],[2180,1290,236,426,-150,-645],[2418,1290,236,425,-150,-643],[2656,1290,234,426,-150,-644],[2892,1290,232,426,-150,-645],[3126,1290,236,425,-150,-643],[3364,1290,236,424,-150,-641],[3602,1290,234,422,-150,-639],[3838,1290,235,419,-150,-634],[0,1720,236,416,-150,-629]],"bx":[3,8,12,16,20,25,30,35,38,42,45,49,51,50,45,39,33,26,20,16,14,14,15,15,20,29,39,46,51,53,58,59,55,51,50,52,57,60,61,63,65,66,66,67,68,69,69,69,69,69,69,67,67,67,70,73,76,78,80,83,85]}};
 const chainAtlas = {};
 for (const [name, data] of Object.entries(CHAIN_ATLAS_DATA)) {
-    const img = new Image();
-    img.src = `assets/characters/combat/chain-goth/chain-${name}.webp?v=9500`;
-    chainAtlas[name] = { img, frames: data.frames, scale: data.scale, bx: data.bx };
-    // Decode the big sheets now, in the background, so the first time she uses a move there is no hitch (Safari decodes lazily).
-    img.decode?.().then(() => { try { const t = document.createElement('canvas'); t.width = t.height = 1; t.getContext('2d').drawImage(img, 0, 0, 1, 1); } catch (e) {} }).catch(() => {});
+    chainAtlas[name] = { img: new Image(), frames: data.frames, scale: data.scale, bx: data.bx };
+}
+zombieSprites.shambler.src = 'assets/characters/zombie-goth.webp?v=300';
+zombieSprites.chain.src = 'assets/characters/chain-goth-clean.webp?v=6513';
+
+/* V9.18: combat art is loaded in the background once the player reaches the map (or at the start of a fight),
+   not while the title screen is loading. Keeps first load fast and Safari happy. */
+let combatAssetsRequested = false;
+function loadCombatAssets() {
+    if (combatAssetsRequested) return;
+    combatAssetsRequested = true;
+    ollyCombatSprites.idle.src = 'assets/characters/combat/olly-idle.webp?v=6513';
+    ollyCombatSprites.dodge.forEach((img, i) => img.src = `assets/characters/combat/olly-dodge-${i+1}.webp?v=6513`);
+    ollyCombatSprites.jump.forEach((img, i) => img.src = `assets/characters/combat/olly-jump-${i+1}.webp?v=6513`);
+    ollyCombatSprites.heavy.forEach((img, i) => img.src = `assets/characters/combat/olly-heavy-${i+1}.webp?v=6511`);
+    ollyCombatSprites.punch.forEach((img, i) => img.src = `assets/characters/combat/olly-punch-${i+1}.webp?v=6511`);
+    ollyReactionSprites.hurt.forEach((img, i) => img.src = `assets/characters/combat/olly-hurt-${i + 1}.webp?v=8110`);
+    ollyReactionSprites.ko.forEach((img, i) => img.src = `assets/characters/combat/olly-ko-${i + 1}.webp?v=8110`);
+    zombieCombatFrames.idle[0].src = 'assets/characters/combat/zombie-ready-crouch.webp?v=8111';
+    zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.webp?v=7600`);
+    zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i + 1}.webp?v=8600`);
+    zombieCombatFrames.heavyKick.forEach((img, i) => img.src = `assets/characters/combat/zombie-ankle-biter-${String(i + 1).padStart(2, '0')}.webp?v=10100`);
+    zombieCombatFrames.hurt.forEach((img, i) => img.src = `assets/characters/combat/zombie-hurt-${i + 1}.webp?v=8800`);
+    zombieCombatFrames.death.forEach((img, i) => img.src = `assets/characters/combat/zombie-death-${i + 1}.webp?v=8600`);
+    zombieCombatFrames.prep.forEach((img, i) => img.src = `assets/characters/combat/zombie-prep-${i + 1}.webp?v=8600`);
+    zombieCountdownFrames[3].src = 'assets/characters/combat/zombie-countdown-3.webp?v=8600';
+    zombieCountdownFrames[2].src = 'assets/characters/combat/zombie-countdown-2.webp?v=8600';
+    zombieCountdownFrames[1].src = 'assets/characters/combat/zombie-countdown-1.webp?v=8600';
+    zombieCountdownFrames.fight.src = 'assets/characters/combat/zombie-countdown-fight.webp?v=8600';
+    for (const [name, a] of Object.entries(chainAtlas)) {
+        const img = a.img;
+        img.src = `assets/characters/combat/chain-goth/chain-${name}.webp?v=9500`;
+        // Decode the big sheets in the background so the first time she uses a move there is no hitch (Safari decodes lazily).
+        img.decode?.().then(() => { try { const t = document.createElement('canvas'); t.width = t.height = 1; t.getContext('2d').drawImage(img, 0, 0, 1, 1); } catch (e) {} }).catch(() => {});
+    }
 }
 const CHAIN_RENDER_SCALE = 0.64;         // size in the arena (original pixels -> screen pixels)
 const CHAIN_WIDTH_STRETCH = 1.05;         // she is drawn 5% wider than the art (set to 1 for the original proportions)
@@ -563,6 +573,7 @@ function drawZombieSprite(ctx, x, y, type, s=.68, t=0, attack=false, face='left'
 }
 
 export function createLevel1(ui) {
+    setTimeout(loadCombatAssets, 2500);   // start fetching fight art in the background once the level opens
     const ctx = ui.canvas.getContext('2d'),
         cctx = ui.combatCanvas.getContext('2d'),
         rctx = ui.relationshipCanvas.getContext('2d');
@@ -1071,7 +1082,7 @@ export function createLevel1(ui) {
         COMBAT_H = 810,
         COMBAT_GROUND_Y = 470;
     const combatBackgroundImage = new Image();
-    combatBackgroundImage.src = 'assets/environment/combat-background-level1.png';
+    combatBackgroundImage.src = 'assets/environment/combat-background-level1.webp';
 
     // v6.5.16e: start just below the upper-left church, close to Zombie Goth.
     let x = 240,
@@ -1482,7 +1493,7 @@ export function createLevel1(ui) {
         mode = 'puzzle';
         const img = document.querySelector('#puzzle .quiz-image');
         if (img) {
-            img.src = 'assets/encounters/level1/princess-question-art.png?v=501';
+            img.src = 'assets/encounters/level1/princess-question-art.webp?v=501';
             matchArtworkLetterboxing(img);
         }
         ui.puzzle.classList.remove('hidden');
@@ -1530,8 +1541,8 @@ export function createLevel1(ui) {
         let finished = false;
         let attemptedFallback = false;
         const sources = [
-            'assets/video/cutscene2/cutscene2.mp4?v=9170',
-            'assets/video/cutscene2/cutscene2.mov?v=9170'
+            'assets/video/cutscene2/cutscene2.mp4?v=9180',
+            'assets/video/cutscene2/cutscene2.mov?v=9180'
         ];
 
         const finish = () => {
@@ -2463,7 +2474,7 @@ export function createLevel1(ui) {
             try { video.pause(); video.removeAttribute('src'); video.load(); } catch (e) {}
             overlay.remove(); done();
         };
-        const sources = ['assets/video/cutscene3/ollytaken.mp4?v=9170', 'assets/video/cutscene3/olly-taken.mp4?v=9170', 'assets/video/cutscene3/ollytaken.mov?v=9170', 'assets/video/cutscene3/olly-taken.mov?v=9170'];
+        const sources = ['assets/video/cutscene3/ollytaken.mp4?v=9180', 'assets/video/cutscene3/olly-taken.mp4?v=9180', 'assets/video/cutscene3/ollytaken.mov?v=9180', 'assets/video/cutscene3/olly-taken.mov?v=9180'];
         let i = 0;
         const next = () => { if (i >= sources.length) { finish(); return; } video.src = sources[i++]; video.load(); video.play().catch(() => {}); };
         video.addEventListener('error', next);
@@ -3101,6 +3112,7 @@ export function createLevel1(ui) {
     }
 
     function startCombat(bossFight) {
+        loadCombatAssets();
         playMusic('fight');
         preloadSfx(['punch-1', 'punch-2', 'punch-3', 'goth-pain', ...GOTH_HURT_SFX, 'olly-hurt', 'olly-hurt-heavy', 'olly-attack', 'olly-heavy-attack', 'olly-jump', 'olly-land', 'olly-dodge-grunt', 'chain-clatter', 'chain-drop', 'chain-rattle', 'chain-spin', 'chain-impact', 'chain-impact-spin', 'breath-recovery', 'countdown-tick', 'fight-shout', 'zombie-death', 'pickup', 'interact']);
         isBoss = bossFight;
@@ -3372,7 +3384,7 @@ export function createLevel1(ui) {
         overlay.appendChild(box);
 
         const img = document.createElement('img');
-        img.src = 'assets/encounters/level1/heavy-attack-reward.png?v=6529';
+        img.src = 'assets/encounters/level1/heavy-attack-reward.webp?v=6529';
         img.alt = 'Heavy Attack reward artwork';
         img.style.cssText = 'display:block;max-width:100%;max-height:62vh;object-fit:contain;border-radius:12px;';
         box.appendChild(img);
@@ -3447,8 +3459,8 @@ export function createLevel1(ui) {
                 const bothLevel1GothsDefeated = enemies.every(e => e.dead);
                 const isZombie = defeatedType === 'shambler' || defeatedType === 'zombie';
                 const defeatArt = isZombie
-                    ? 'assets/encounters/level1/zombie-goth-defeated.png?v=1'
-                    : 'assets/encounters/level1/chain-goth-defeated.png?v=1';
+                    ? 'assets/encounters/level1/zombie-goth-defeated.webp?v=1'
+                    : 'assets/encounters/level1/chain-goth-defeated.webp?v=1';
                 const defeatTitle = isZombie ? 'ZOMBIE GOTH DEFEATED!' : 'CHAIN GOTH DEFEATED!';
                 const defeatCopy = isZombie
                     ? "The Zombie Goth collapses at last. Her quest for fishnets has been cut short, and you've narrowly avoided becoming tonight's dinner. A productive evening all round."
@@ -3577,7 +3589,7 @@ export function createLevel1(ui) {
                 cancelAnimationFrame(relationshipRAF);
                 ui.relationship.classList.add('hidden');
                 stats();
-                showCompletionScreen('assets/encounters/level1/relationship-challenge-completed.png?v=1', 'Relationship Challenge complete', 'CHALLENGE COMPLETE!', "You've successfully endured this highly scientific test of patience. What it's actually proved remains unclear, but you've passed, and that's what matters. Probably.", 'KEEP EXPLORING');
+                showCompletionScreen('assets/encounters/level1/relationship-challenge-completed.webp?v=1', 'Relationship Challenge complete', 'CHALLENGE COMPLETE!', "You've successfully endured this highly scientific test of patience. What it's actually proved remains unclear, but you've passed, and that's what matters. Probably.", 'KEEP EXPLORING');
             } else {
                 relationshipRound++;
                 relationshipDuration = [2600, 2250, 1950, 1650, 1400][relationshipRound] || 1200;
@@ -3597,7 +3609,7 @@ export function createLevel1(ui) {
             mode = 'map';
             ui.puzzle.classList.add('hidden');
             stats();
-            showCompletionScreen('assets/encounters/level1/princess-question-completed.png?v=1', 'Princess Question complete', 'CONGRATULATIONS!', "You've answered the Princess Question correctly, proving that love and intelligence can, on rare occasions, coexist. Princess Scarlett would be proud. Try not to let it go to your head.", 'KEEP EXPLORING');
+            showCompletionScreen('assets/encounters/level1/princess-question-completed.webp?v=1', 'Princess Question complete', 'CONGRATULATIONS!', "You've answered the Princess Question correctly, proving that love and intelligence can, on rare occasions, coexist. Princess Scarlett would be proud. Try not to let it go to your head.", 'KEEP EXPLORING');
         } else {
             ui.puzzleFeedback.textContent = '❌ Incorrect. The princess remains imprisoned, and somewhere a goth has just judged you.';
         }

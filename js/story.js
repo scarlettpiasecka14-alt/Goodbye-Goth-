@@ -1,4 +1,4 @@
-import { playSfx, setLoopSfx } from './audio.js?v=9170';
+import { playSfx, setLoopSfx } from './audio.js?v=9180';
 
 export class StoryController {
   constructor(root, onComplete){
@@ -15,7 +15,7 @@ export class StoryController {
       },
       {
         type:'image',
-        image:'assets/story/intro-cartoon-goodnight.png',
+        image:'assets/story/intro-cartoon-goodnight.webp',
         alt:'Scarlett and Olly saying goodnight together in bed.'
       },
       {
@@ -24,7 +24,7 @@ export class StoryController {
       },
       {
         type:'image',
-        image:'assets/story/intro-cartoon-huh.png',
+        image:'assets/story/intro-cartoon-huh.webp',
         alt:'Olly waking up confused in bed.'
       },
       {
@@ -33,7 +33,7 @@ export class StoryController {
       },
       {
         type:'image',
-        image:'assets/story/intro-cartoon-awake.png',
+        image:'assets/story/intro-cartoon-awake.webp',
         alt:'Olly looking around for Scarlett after waking up.'
       },
       {
@@ -42,7 +42,7 @@ export class StoryController {
       },
       {
         type:'image',
-        image:'assets/story/intro-cartoon-note.png',
+        image:'assets/story/intro-cartoon-note.webp',
         alt:'A pink ransom note from the Goths telling Olly to rescue Scarlett.'
       }
     ];
