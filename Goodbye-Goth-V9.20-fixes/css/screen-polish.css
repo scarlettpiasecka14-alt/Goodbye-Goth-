@@ -1,0 +1,668 @@
+/* Goodbye Goth: shared full-viewport presentation for Level 1 screens.
+   Loaded after game.css so these narrow overrides win without rewriting the main stylesheet. */
+
+:root {
+  --gg-screen-bg: var(--bg, #100d13);
+}
+
+/* Encounter intros: image, title, copy and buttons sit directly on the page background. */
+#encounter.overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 5100 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: var(--gg-screen-bg) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  place-items: stretch !important;
+}
+
+#encounter.overlay > .encounter-box {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0 !important;
+  width: 100vw !important;
+  max-width: none !important;
+  min-height: 100dvh !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: clamp(14px, 2.2vh, 24px) 2vw !important;
+  overflow: visible !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: var(--gg-screen-bg) !important;
+}
+
+#encounter .encounter-art {
+  display: block !important;
+  flex: 0 1 auto !important;
+  width: min(96vw, 1440px) !important;
+  max-width: 96vw !important;
+  height: auto !important;
+  max-height: 68dvh !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  margin: 0 auto 8px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+#encounter #encounter-name,
+#encounter .encounter-name {
+  flex: 0 0 auto !important;
+  margin: 4px 12px 0 !important;
+  text-align: center !important;
+}
+
+#encounter .encounter-copy {
+  flex: 0 0 auto !important;
+  width: min(1100px, 94vw) !important;
+  max-width: 1100px !important;
+  margin: 8px auto 14px !important;
+  padding: 0 !important;
+  text-align: center !important;
+}
+
+#encounter .encounter-actions {
+  flex: 0 0 auto !important;
+  justify-content: center !important;
+  width: 100% !important;
+  margin: 4px auto 0 !important;
+  padding: 0 8px !important;
+}
+
+/* Completion artwork screens: the image stays separate from the heading, copy and action. */
+#completion.overlay,
+#death.overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 5200 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: var(--gg-screen-bg) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  place-items: stretch !important;
+}
+
+#completion.overlay > .completion-card,
+#death.overlay > .death-card {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0 !important;
+  width: 100vw !important;
+  max-width: none !important;
+  min-height: 100dvh !important;
+  height: auto !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: clamp(14px, 2.2vh, 24px) 2vw !important;
+  overflow: visible !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: var(--gg-screen-bg) !important;
+}
+
+#completion .completion-art,
+#death .death-art {
+  display: block !important;
+  flex: 0 1 auto !important;
+  width: min(94vw, 1440px) !important;
+  max-width: 94vw !important;
+  height: auto !important;
+  max-height: 64dvh !important;
+  margin: 0 auto 8px !important;
+  padding: 0 !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+#completion .completion-title,
+#death .death-title {
+  flex: 0 0 auto !important;
+  width: min(1200px, 96vw) !important;
+  max-width: 1200px !important;
+  margin: 4px auto 8px !important;
+  text-align: center !important;
+}
+
+#completion .completion-copy,
+#death #death-text {
+  flex: 0 0 auto !important;
+  width: min(1100px, 94vw) !important;
+  max-width: 1100px !important;
+  margin: 0 auto 12px !important;
+  padding: 0 !important;
+  text-align: center !important;
+  line-height: 1.45 !important;
+}
+
+#completion .story-actions,
+#death .story-actions {
+  flex: 0 0 auto !important;
+  justify-content: center !important;
+  width: 100% !important;
+  margin: 4px auto 0 !important;
+}
+
+/* The live Princess Question and WOULD YOU? activities already use a viewport overlay.
+   Remove the nested card and image borders so they follow the same visual language. */
+#relationship.overlay,
+#puzzle.overlay {
+  background: var(--gg-screen-bg) !important;
+}
+
+#relationship.overlay > .relationship-box,
+#puzzle.overlay > .quiz-box {
+  background: var(--gg-screen-bg) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+#relationship .relationship-image,
+#puzzle .quiz-image {
+  border: 0 !important;
+  border-radius: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Heavy Attack reward currently constructs its own card with inline styles. */
+#level1-heavy-reward-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 10000 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  padding: clamp(14px, 2.2vh, 24px) 2vw !important;
+  margin: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  align-items: stretch !important;
+  justify-content: stretch !important;
+  background: var(--gg-screen-bg) !important;
+}
+
+#level1-heavy-reward-overlay > div {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  width: 100vw !important;
+  max-width: none !important;
+  min-height: 100dvh !important;
+  height: auto !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: var(--gg-screen-bg) !important;
+}
+
+#level1-heavy-reward-overlay img {
+  display: block !important;
+  width: min(94vw, 1440px) !important;
+  max-width: 94vw !important;
+  height: auto !important;
+  max-height: 64dvh !important;
+  margin: 0 auto 6px !important;
+  object-fit: contain !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+#level1-heavy-reward-overlay > div > div {
+  max-width: min(1200px, 96vw) !important;
+}
+
+#level1-heavy-reward-overlay button {
+  flex: 0 0 auto !important;
+  margin-top: 4px !important;
+}
+
+/* Gate cutscene: full viewport video, no framed inner player and no normal loading label. */
+#level1-cutscene2-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 10000 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: #09070d !important;
+}
+
+#level1-cutscene2-overlay > div:first-child {
+  position: relative !important;
+  width: 100vw !important;
+  max-width: none !important;
+  height: 100dvh !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: #09070d !important;
+  overflow: hidden !important;
+}
+
+#level1-cutscene2 {
+  display: block !important;
+  width: 100vw !important;
+  max-width: none !important;
+  height: 100dvh !important;
+  max-height: none !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: #09070d !important;
+}
+
+#level1-cutscene2-overlay .gg-cutscene-status {
+  left: 50% !important;
+  top: auto !important;
+  bottom: 20px !important;
+  transform: translateX(-50%) !important;
+  max-width: min(92vw, 760px) !important;
+  padding: 10px 14px !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  background: rgba(9, 7, 13, .82) !important;
+  color: #f5dce7 !important;
+  text-align: center !important;
+  font: 600 15px Georgia, serif !important;
+  letter-spacing: 0 !important;
+}
+
+#level1-cutscene2-overlay button {
+  z-index: 3 !important;
+}
+
+@media (max-width: 700px) {
+  #encounter .encounter-art {
+    width: 96vw !important;
+    max-height: 50dvh !important;
+  }
+
+  #completion .completion-art,
+  #death .death-art,
+  #level1-heavy-reward-overlay img {
+    width: 96vw !important;
+    max-height: 47dvh !important;
+  }
+
+  #encounter.overlay > .encounter-box,
+  #completion.overlay > .completion-card,
+  #death.overlay > .death-card,
+  #level1-heavy-reward-overlay > div {
+    padding: 12px 2vw !important;
+  }
+
+  #encounter .encounter-copy,
+  #completion .completion-copy,
+  #death #death-text {
+    width: 94vw !important;
+    font-size: clamp(.9rem, 3.6vw, 1.05rem) !important;
+  }
+}
+
+/* Gate cutscene loading: one complete illustration, gently floating until playback starts. */
+#level1-cutscene2-overlay .gg-cutscene-loading-art {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 1 !important;
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  pointer-events: none !important;
+  opacity: 1;
+  animation: gg-cutscene-bat-float 3.8s ease-in-out infinite;
+  transition: opacity .4s ease;
+}
+
+#level1-cutscene2-overlay .gg-cutscene-loading-art.gg-loading-art-hidden {
+  opacity: 0 !important;
+  animation-play-state: paused !important;
+}
+
+@keyframes gg-cutscene-bat-float {
+  0%, 100% { transform: translateY(0) rotate(-0.25deg); }
+  50% { transform: translateY(-7px) rotate(0.25deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #level1-cutscene2-overlay .gg-cutscene-loading-art {
+    animation: none !important;
+  }
+}
+
+/* Follow-up polish: larger artwork (about 10% more vertical room) and a proper inventory grid. */
+#inventory .inventory-box {
+  width: min(900px, 94vw) !important;
+  max-width: 900px !important;
+  max-height: calc(100dvh - 36px) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  padding: clamp(18px, 2.6vw, 32px) !important;
+  background: #201822 !important;
+  border: 1px solid #684c61 !important;
+  border-radius: 16px !important;
+  box-shadow: 0 18px 55px rgba(0, 0, 0, .38) !important;
+}
+
+#inventory .inventory-kicker {
+  margin-bottom: 3px !important;
+  color: #c1aebb !important;
+  font-size: clamp(.78rem, 1.2vw, .95rem) !important;
+  letter-spacing: .12em !important;
+}
+
+#inventory .inventory-box > .story-title {
+  margin: 0 0 5px !important;
+}
+
+#inventory .inventory-capacity {
+  margin: 0 auto 8px !important;
+  color: #f3c6d6 !important;
+  font-size: .95rem !important;
+  font-weight: 700 !important;
+  letter-spacing: .04em !important;
+}
+
+#inventory .inventory-slots {
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: clamp(7px, 1.1vw, 12px) !important;
+  width: min(700px, 100%) !important;
+  margin: 16px auto 14px !important;
+  padding: 0 !important;
+}
+
+#inventory .inventory-slot {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  aspect-ratio: 1 / 1 !important;
+  padding: 5px !important;
+  border: 1px solid #684c61 !important;
+  border-radius: 11px !important;
+  background: linear-gradient(145deg, #2a1f2d 0%, #19121d 100%) !important;
+  color: #897b89 !important;
+  font: 700 clamp(.78rem, 1.3vw, 1rem) Georgia, serif !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .035) !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+#inventory .inventory-slot.inventory-filled {
+  border: 1px solid #ef8eaa !important;
+  background: linear-gradient(145deg, #51283f 0%, #2a1a2d 100%) !important;
+  color: #fff0f6 !important;
+  box-shadow: inset 0 0 0 1px rgba(239, 142, 170, .12), 0 0 16px rgba(239, 142, 170, .09) !important;
+  font-size: clamp(1.5rem, 3vw, 2.25rem) !important;
+}
+
+#inventory .inventory-slot.inventory-filled span {
+  max-width: 100% !important;
+  color: #ffe3ee !important;
+  font: 700 clamp(7px, .75vw, 10px) Georgia, serif !important;
+  line-height: 1.1 !important;
+  text-align: center !important;
+  overflow-wrap: anywhere !important;
+}
+
+#inventory .inventory-empty-copy {
+  margin: 6px auto 14px !important;
+  color: #c1aebb !important;
+  text-align: center !important;
+}
+
+#inventory .inventory-close-button {
+  min-width: 110px !important;
+}
+
+@media (max-width: 700px) {
+  #inventory .inventory-box {
+    width: 96vw !important;
+    padding: 14px !important;
+  }
+
+  #inventory .inventory-slots {
+    gap: 6px !important;
+    margin: 12px auto !important;
+  }
+
+  #inventory .inventory-slot {
+    padding: 3px !important;
+    border-radius: 8px !important;
+  }
+}
+
+
+
+/* ==========================================================================
+   Goodbye Goth V9.0 - map interface cleanup.
+   The right-hand side panel (objectives, mini-map, checkpoint, save/load) has
+   been removed from js/game.js. Older stylesheet rules kept re-creating a
+   second grid column for it, so this block (loaded last) forces one full-width
+   column and turns the Olly HP/Inventory HUD into a floating overlay with no
+   box behind it.
+   ========================================================================== */
+.game-screen .game-layout {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.game-screen .player-hud {
+  top: 58px !important;
+  right: 20px !important;
+  width: 205px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  pointer-events: none !important;
+}
+
+.game-screen .player-hud .player-hud-name,
+.game-screen .player-hud .player-hp-text {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .95), 0 0 8px rgba(0, 0, 0, .8);
+}
+
+/* The Inventory button keeps its own button styling and stays clickable. */
+.game-screen .player-hud #inventory-button {
+  pointer-events: auto !important;
+}
+
+/* V9.5 combat HUD: compact God-of-War style enemy plate (top-left) + stun meter; Olly's HP + Inventory stay visible (top-right). */
+#combat .combat-topline {
+  left: auto !important;
+  right: 18px !important;
+  width: 300px !important;
+  padding: 8px 12px 10px !important;
+  display: grid !important;
+  gap: 5px !important;
+}
+#combat .combat-topline strong { font-size: 13px; letter-spacing: .12em; }
+#combat .combat-enemy-hp-label { font-size: 11px; letter-spacing: .1em; display: flex; justify-content: space-between; margin-bottom: 2px; }
+#combat .combat-topline .bar { height: 10px !important; }
+#combat .combat-topline .stun-bar { height: 7px !important; }
+#combat .combat-topline .stun-bar > div {
+  height: 100%; width: 0%; background: linear-gradient(90deg, #c99a2e, #ffe27a);
+  transition: width .12s linear;
+}
+#combat .combat-stun-wrap.full .stun-bar > div { background: #ffe27a; box-shadow: 0 0 10px #ffe27a; }
+#combat .combat-stun-wrap.full .combat-enemy-hp-label { color: #ffe27a; }
+#combat .combat-stun-wrap.hidden { display: none !important; }
+/* Olly's HUD rises above the fight overlay while a fight is on. */
+.game-screen:has(#combat:not(.hidden)) .player-hud {
+  position: fixed !important;
+  top: 14px !important;
+  left: 18px !important;
+  right: auto !important;
+  z-index: 6000 !important;
+  padding: 8px 10px !important;
+  border-radius: 12px !important;
+  background: rgba(12, 9, 16, .72) !important;
+  border: 1px solid rgba(239, 183, 201, .28) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+/* V9.9 title menu: sits at the right side so it no longer covers the tagline. */
+.perfect-title-wrap .title-menu {
+  left: auto !important;
+  right: 3.5% !important;
+  bottom: 7% !important;
+  transform: none !important;
+  width: min(250px, 22vw) !important;
+}
+@media (max-width: 700px) {
+  .perfect-title-wrap .title-menu { right: 2% !important; bottom: 3% !important; width: min(200px, 34vw) !important; }
+}
+/* The NEW GAME button painted into the title art is clickable too. */
+.perfect-title-wrap { position: relative; }
+.title-art-hit {
+  position: absolute; left: 36.3%; top: 80.9%; width: 27.5%; height: 9.2%;
+  background: transparent; border: 0; border-radius: 14px; cursor: pointer; z-index: 15;
+}
+.title-art-hit:hover, .title-art-hit:focus-visible { box-shadow: 0 0 0 3px rgba(239,183,201,.55), 0 0 26px rgba(231,135,173,.5); outline: none; }
+
+/* V9.10 title menu: floating text in the top-left corner, no box, no button look (Last-of-Us style). */
+.perfect-title-wrap .title-menu {
+  left: 3.2% !important; right: auto !important; top: 4.5% !important; bottom: auto !important; transform: none !important;
+  width: auto !important; padding: 0 !important; gap: 4px !important;
+  background: none !important; border: 0 !important; box-shadow: none !important; backdrop-filter: none !important;
+  display: flex !important; flex-direction: column !important; align-items: flex-start !important;
+}
+.perfect-title-wrap .title-menu-btn {
+  background: none !important; border: 0 !important; box-shadow: none !important; border-radius: 0 !important;
+  padding: 4px 2px !important; width: auto !important; text-align: left !important;
+  font: 400 clamp(14px, 1.7vw, 24px)/1.2 Georgia, serif !important; letter-spacing: .28em !important;
+  color: rgba(246, 234, 240, .62) !important; text-shadow: 0 2px 8px rgba(0,0,0,.85) !important;
+  cursor: pointer; transition: color .15s, text-shadow .15s, letter-spacing .15s;
+}
+.perfect-title-wrap .title-menu-btn:hover, .perfect-title-wrap .title-menu-btn:focus-visible {
+  background: none !important; color: #fff !important; outline: none !important;
+  text-shadow: 0 0 14px rgba(239,135,170,.9), 0 2px 8px rgba(0,0,0,.85) !important;
+}
+@media (max-width: 700px) {
+  .perfect-title-wrap .title-menu { left: 3% !important; right: auto !important; top: 3% !important; bottom: auto !important; width: auto !important; }
+}
+/* Combat canvas keeps its true proportions in full-screen (was stretched to fill). */
+#combat .combat-arena canvas { object-fit: contain !important; }
+/* No live blur over the 60fps fight canvas - it is expensive in Safari. */
+#combat .combat-topline, #combat .combat-note,
+.game-screen:has(#combat:not(.hidden)) .player-hud { backdrop-filter: none !important; }
+
+/* V9.12: no spoilery progress pills; bigger, easier-to-read message box at the bottom. */
+.game-head .stats { display: none !important; }
+.game-screen .dialogue {
+  font-size: clamp(13px, 1.05vw, 17px) !important; line-height: 1.4 !important; font-weight: 500 !important; font-style: italic !important; letter-spacing: .01em;
+  font-family: 'Palatino Linotype', Palatino, 'Book Antiqua', 'Iowan Old Style', Georgia, serif !important;
+  min-height: 46px !important; padding: 9px 18px !important; color: #fbeef4 !important;
+  display: flex; align-items: center; text-shadow: 0 1px 4px rgba(0,0,0,.6);
+}
+
+/* V9.14 */
+.gg-gear { width: 28px !important; height: 28px !important; min-width: 0 !important; min-height: 0 !important; padding: 0 !important; aspect-ratio: 1 / 1; border-radius: 50% !important; background: transparent !important; border: 0 !important; color: #ef87aa !important; font-size: 21px !important; opacity: .8; left: 10px !important; bottom: 8px !important; }
+.gg-gear:hover { color: #ffc2d6 !important; opacity: 1; background: transparent !important; }
+#combat .combat-note { bottom: 18px !important; }
+.combo-hud { display: flex; align-items: center; gap: 9px; margin-top: 7px; padding-left: 2px; }
+.combo-pips { display: inline-flex; gap: 5px; }
+.combo-pips i { width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid rgba(255,214,228,.9); background: rgba(20,10,20,.6); display: block; }
+.combo-pips i.on { background: #ef5a82; }
+.combo-hud.tired .combo-pips i { background: rgba(239,90,130,.25); animation: comboPulse .7s ease-in-out infinite; }
+.combo-text { font: 700 10px system-ui, sans-serif; letter-spacing: .08em; color: #f3dce6; text-transform: uppercase; }
+@keyframes comboPulse { 0%,100% { opacity: .4 } 50% { opacity: 1 } }
+
+/* V9.16: painted buttons feel like real buttons (hover glow, press, smooth leave). */
+.title-screen { transition: opacity .4s ease; }
+.title-screen.title-leaving { opacity: 0; }
+.title-screen.title-leaving .title-art-hit { box-shadow: 0 0 0 4px rgba(255,214,228,.95), 0 0 46px rgba(255,120,170,.95); transform: scale(1.03); }
+.title-art-hit { transition: transform .12s ease, box-shadow .12s ease; }
+.title-art-hit:active { transform: scale(.97); }
+.cartoon-story-panel { position: relative; }
+.art-hit { position: absolute; border-radius: 16px; pointer-events: none; transition: box-shadow .15s ease, transform .12s ease; }
+.art-hit-begin { left: 28.6%; top: 80.5%; width: 43.2%; height: 12.5%; }
+.cartoon-story-panel:hover .art-hit-begin { box-shadow: 0 0 0 3px rgba(255,220,232,.8), 0 0 34px rgba(255,110,160,.75); }
+.cartoon-story-panel:active .art-hit-begin { transform: scale(.97); box-shadow: 0 0 0 4px rgba(255,255,255,.95), 0 0 44px rgba(255,110,160,.95); }
+
+/* V9.19: the painted New Game button must never get the generic dark hover fill (it hid the art). */
+.title-art-hit, .title-art-hit:hover, .title-art-hit:focus, .title-art-hit:focus-visible, .title-art-hit:active { background: transparent !important; }
+/* V9.19: the corner gear sits in Olly's HUD next to Inventory while playing, so it no longer covers the map. */
+body:has(.game-screen) .gg-gear { display: none !important; }
+.hud-btn-row { display: flex; gap: 6px; margin-top: 7px; align-items: stretch; }
+.hud-btn-row #inventory-button { flex: 1 1 auto; width: auto !important; margin-top: 0 !important; }
+.hud-gear { flex: 0 0 34px; width: 34px; min-height: 34px; padding: 0 !important; font-size: 18px; line-height: 1; color: #ef87aa; background: rgba(20,12,24,.78); border: 1px solid rgba(217,139,168,.5); border-radius: 8px; cursor: pointer; pointer-events: auto !important; }
+.hud-gear:hover { color: #ffc2d6; background: rgba(60,28,50,.92); }
+
+/* V9.19/V9.20: "You've encountered Patricia" art screen - same layout as the other encounter screens (picture, then text, then buttons). */
+.patricia-screen { position: fixed !important; inset: 0 !important; z-index: 700 !important; padding: 8px !important; border-radius: 0 !important; background: var(--gg-screen-bg, #0c0910) !important; display: flex !important; flex-direction: column; align-items: center; justify-content: center; gap: 8px; overflow: hidden !important; }
+.patricia-screen.hidden { display: none !important; }
+.patricia-art { display: block; width: min(96vw, 1440px); max-height: 66dvh; height: auto; object-fit: contain; margin: 0 auto; border: 0; border-radius: 0; }
+.patricia-card { width: min(820px, 94vw); text-align: center; color: #f6e4ea; }
+.patricia-title { font: 700 clamp(1.2rem, 2.6vw, 2rem) Georgia, serif; letter-spacing: .04em; color: #ff9fbd; margin-bottom: 6px; }
+.patricia-card p { font: italic clamp(.95rem, 1.5vw, 1.2rem)/1.4 Georgia, serif; margin: 0 0 12px; }
+.patricia-btns { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+.patricia-btns button { min-width: 180px; padding: 11px 22px; font: 700 15px Georgia, serif; letter-spacing: .12em; text-transform: uppercase; color: #fbeaf0; background: rgba(60,18,40,.88); border: 1px solid #d98ba8; border-radius: 12px; cursor: pointer; }
+.patricia-btns button:hover { background: rgba(120,32,76,.95); box-shadow: 0 0 22px rgba(231,135,173,.55); }
+.patricia-btns button.primary { background: rgba(140,36,84,.95); }
+
+/* V9.20: edge-to-edge - no frame or gap around the game on any screen size. */
+html, body, #app { width: 100% !important; height: 100% !important; margin: 0 !important; }
+#app { max-width: none !important; padding: 0 !important; }
+.title-screen, .story-screen, .game-screen, .typing-story-screen, .cartoon-story-screen { width: 100% !important; max-width: none !important; height: 100svh !important; padding: 0 !important; border-radius: 0 !important; border: 0 !important; }
+.title-art { border-radius: 0 !important; border: 0 !important; }
+.game-screen { padding: 6px 8px !important; box-sizing: border-box; }
+
+/* V9.20: bigger WOULD YOU picture (try-out). */
+#relationship .relationship-image { width: min(1000px, 96%) !important; max-width: 1000px !important; max-height: 46svh !important; }
