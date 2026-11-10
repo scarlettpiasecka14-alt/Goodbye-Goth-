@@ -1,9 +1,9 @@
-import { StoryController } from './story.js?v=9190';
-import { createLevel1 } from './levels/level1.js?v=9190';
-import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9190';
-import { initSettings, openSettings } from './settings.js?v=9190';
-import { actionForKey } from './controls.js?v=9190';
-import { initCheats, registerCheats } from './cheats.js?v=9190';
+import { StoryController } from './story.js?v=9200';
+import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9200';
+import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9200';
+import { initSettings, openSettings } from './settings.js?v=9200';
+import { actionForKey } from './controls.js?v=9200';
+import { initCheats, registerCheats } from './cheats.js?v=9200';
 
 const root = document.getElementById('game-root');
 
@@ -15,6 +15,7 @@ function hasSaveGame(){
 
 function startNewGame(){
   try { localStorage.removeItem(SAVE_KEY); } catch {}
+  resetRingTutorials();   // a new game shows the pink / red / yellow ring tutorials again
   showIntro();
 }
 

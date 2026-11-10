@@ -645,15 +645,24 @@ body:has(.game-screen) .gg-gear { display: none !important; }
 .hud-gear { flex: 0 0 34px; width: 34px; min-height: 34px; padding: 0 !important; font-size: 18px; line-height: 1; color: #ef87aa; background: rgba(20,12,24,.78); border: 1px solid rgba(217,139,168,.5); border-radius: 8px; cursor: pointer; pointer-events: auto !important; }
 .hud-gear:hover { color: #ffc2d6; background: rgba(60,28,50,.92); }
 
-/* V9.19: "You've encountered Patricia" art screen. */
-.patricia-screen { position: fixed !important; inset: 0 !important; z-index: 700 !important; padding: 0 !important; border-radius: 0 !important; background: #07040a !important; display: block !important; }
+/* V9.19/V9.20: "You've encountered Patricia" art screen - same layout as the other encounter screens (picture, then text, then buttons). */
+.patricia-screen { position: fixed !important; inset: 0 !important; z-index: 700 !important; padding: 8px !important; border-radius: 0 !important; background: var(--gg-screen-bg, #0c0910) !important; display: flex !important; flex-direction: column; align-items: center; justify-content: center; gap: 8px; overflow: hidden !important; }
 .patricia-screen.hidden { display: none !important; }
-.patricia-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 38% 30%; }
-.patricia-screen::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(7,4,10,.94) 0%, rgba(7,4,10,.72) 30%, rgba(7,4,10,0) 62%); pointer-events: none; }
-.patricia-card { position: absolute; z-index: 2; left: 50%; bottom: 4vh; transform: translateX(-50%); width: min(820px, 92vw); text-align: center; color: #f6e4ea; }
-.patricia-title { font: 700 clamp(1.3rem, 3vw, 2.2rem) Georgia, serif; letter-spacing: .04em; color: #ff9fbd; text-shadow: 0 2px 10px #000; margin-bottom: 8px; }
-.patricia-card p { font: italic clamp(1rem, 1.7vw, 1.3rem)/1.45 Georgia, serif; margin: 0 0 16px; text-shadow: 0 2px 8px #000; }
+.patricia-art { display: block; width: min(96vw, 1440px); max-height: 66dvh; height: auto; object-fit: contain; margin: 0 auto; border: 0; border-radius: 0; }
+.patricia-card { width: min(820px, 94vw); text-align: center; color: #f6e4ea; }
+.patricia-title { font: 700 clamp(1.2rem, 2.6vw, 2rem) Georgia, serif; letter-spacing: .04em; color: #ff9fbd; margin-bottom: 6px; }
+.patricia-card p { font: italic clamp(.95rem, 1.5vw, 1.2rem)/1.4 Georgia, serif; margin: 0 0 12px; }
 .patricia-btns { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
-.patricia-btns button { min-width: 180px; padding: 12px 22px; font: 700 15px Georgia, serif; letter-spacing: .12em; text-transform: uppercase; color: #fbeaf0; background: rgba(60,18,40,.88); border: 1px solid #d98ba8; border-radius: 12px; cursor: pointer; }
+.patricia-btns button { min-width: 180px; padding: 11px 22px; font: 700 15px Georgia, serif; letter-spacing: .12em; text-transform: uppercase; color: #fbeaf0; background: rgba(60,18,40,.88); border: 1px solid #d98ba8; border-radius: 12px; cursor: pointer; }
 .patricia-btns button:hover { background: rgba(120,32,76,.95); box-shadow: 0 0 22px rgba(231,135,173,.55); }
 .patricia-btns button.primary { background: rgba(140,36,84,.95); }
+
+/* V9.20: edge-to-edge - no frame or gap around the game on any screen size. */
+html, body, #app { width: 100% !important; height: 100% !important; margin: 0 !important; }
+#app { max-width: none !important; padding: 0 !important; }
+.title-screen, .story-screen, .game-screen, .typing-story-screen, .cartoon-story-screen { width: 100% !important; max-width: none !important; height: 100svh !important; padding: 0 !important; border-radius: 0 !important; border: 0 !important; }
+.title-art { border-radius: 0 !important; border: 0 !important; }
+.game-screen { padding: 6px 8px !important; box-sizing: border-box; }
+
+/* V9.20: bigger WOULD YOU picture (try-out). */
+#relationship .relationship-image { width: min(1000px, 96%) !important; max-width: 1000px !important; max-height: 46svh !important; }

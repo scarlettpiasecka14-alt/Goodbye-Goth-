@@ -1,5 +1,5 @@
 /* Goodbye Goth V9.4 - Chain Goth fight (AI + all seven animations: intro, walk, swipe, spin, stun, hurt, death) on top of V9.0 map cleanup and the v8.11 Zombie Goth AI. */
-import { playSfx, playRandomSfx, playMusic, preloadSfx, setLoopSfx } from '../audio.js?v=9190';
+import { playSfx, playRandomSfx, playMusic, preloadSfx, setLoopSfx } from '../audio.js?v=9200';
 // Game clock: normal time, but it stands still while a tutorial pop-up is open (so nothing happens behind it).
 let pausedTotal = 0, pausedAt = 0;
 const gnow = () => (pausedAt || performance.now()) - pausedTotal;
@@ -11,9 +11,9 @@ const RING_FLOOR_OFFSET = 62;   // how far below Olly's ground line the Zombie G
 const ATTACK_RING_RGB = { pink: '236,110,170', yellow: '255,208,64', red: '255,66,86' };
 // ---- Ring tutorial pop-ups: shown the first time each ring colour appears, then remembered. Images: assets/tutorial/ring-<colour>.webp
 const RING_TUTORIAL = {
-    pink: { title: 'PINK RING', text: 'A pink ring shows an incoming attack that can be avoided by jumping over the enemy.' },
-    red: { title: 'RED RING', text: 'A red ring shows an incoming attack that can only be avoided by dodging.' },
-    yellow: { title: 'YELLOW RING', text: 'A yellow ring shows an incoming attack that can only be avoided by jumping over the enemy.' }
+    pink: { title: 'PINK RING', text: 'A pink ring shows an incoming attack that you can avoid however you like: dodge it, jump over the enemy, or hit them out of it.' },
+    red: { title: 'RED RING', text: 'A red ring shows a stronger attack that you cannot hit them out of. You can still avoid it by dodging or by jumping.' },
+    yellow: { title: 'YELLOW RING', text: 'A yellow ring shows a huge attack. Enemies cannot be stunned during it and you cannot dodge it - the only way to avoid it is to jump over the enemy.' }
 };
 const TUTORIAL_KEY = 'goodbyeGothRingTutorial_v1';
 function ringTutorialSeen(kind) { try { return !!(JSON.parse(localStorage.getItem(TUTORIAL_KEY) || '{}'))[kind]; } catch (e) { return false; } }
@@ -325,7 +325,12 @@ function loadCombatAssets() {
         const img = a.img;
         img.src = `assets/characters/combat/chain-goth/chain-${name}.webp?v=9500`;
         // Decode the big sheets in the background so the first time she uses a move there is no hitch (Safari decodes lazily).
-        img.decode?.().then(() => { try { const t = document.createElement('canvas'); t.width = t.height = 1; t.getContext('2d').drawImage(img, 0, 0, 1, 1); } catch (e) {} }).catch(() => {});
+        img.decode?.().then(() => {
+            try { const t = document.createElement('canvas'); t.width = t.height = 1; t.getContext('2d').drawImage(img, 0, 0, 1, 1); } catch (e) {}
+            // V9.20: keep the decoded sheet as an ImageBitmap so Safari cannot throw the decoded pixels away and
+            // re-decode them mid-fight (that showed up as random hitching/freezing during her chain moves).
+            if (window.createImageBitmap) createImageBitmap(img).then(bmp => { a.bmp = bmp; }).catch(() => {});
+        }).catch(() => {});
     }
 }
 const CHAIN_RENDER_SCALE = 0.64;         // size in the arena (original pixels -> screen pixels)
@@ -380,7 +385,7 @@ function drawChainAtlasFrame(c, pack, index, x, floorY, face, renderScale = CHAI
         usePack = chainLastGood.pack; useIndex = chainLastGood.index;
     } else chainLastGood = { pack: usePack, index: useIndex };
     pack = usePack; index = useIndex;
-    const img = pack.img;
+    const img = pack.bmp || pack.img;   // decoded ImageBitmap once ready
     const f = pack.frames[index];
     const rs = renderScale;
     const k = rs / pack.scale;          // 1 when drawn at the pack's own size = no resampling = crisp
@@ -1127,6 +1132,7 @@ export function createLevel1(ui) {
         zombieCombatWalkIndex = 0,
         zombieBiteCaughtAt = 0,
         lastDodgeStart = -1e9,
+        lastJumpStart = -1e9,
         zombieBiteEvaded = false,
         zombieBiteHoldUntil = 0,
         zombieBiteHoldX = 0,
@@ -1548,8 +1554,8 @@ export function createLevel1(ui) {
         let finished = false;
         let attemptedFallback = false;
         const sources = [
-            'assets/video/cutscene2/cutscene2.mp4?v=9190',
-            'assets/video/cutscene2/cutscene2.mov?v=9190'
+            'assets/video/cutscene2/cutscene2.mp4?v=9200',
+            'assets/video/cutscene2/cutscene2.mov?v=9200'
         ];
 
         const finish = () => {
@@ -1684,6 +1690,7 @@ export function createLevel1(ui) {
         zombieBiteHoldX = 0;
         zombieBiteEvaded = false;
         lastDodgeStart = -1e9;
+        lastJumpStart = -1e9;
         zombieRecoveryDuration = 520;
         zombieCombatNextDecision = gnow() + 450;
         zombieCombatWalkIndex = 0;
@@ -1828,6 +1835,7 @@ export function createLevel1(ui) {
         if (mode !== 'combat' || zombieIntroActive || playerDeathTriggered || jumping || heavyAttackAnimUntil > nowMs || nowMs < zombieBiteHoldUntil)
             return;
         jumping = true;
+        lastJumpStart = gnow();
         playSfx('olly-jump', .45);   // soft take-off whoosh (the thud plays on landing)
         jumpT = 0;
         combatAnimationState = 'jump';
@@ -2290,9 +2298,9 @@ export function createLevel1(ui) {
                 // Jumping or dodging can still avoid the catch.
                 // V9.19: a dodge that starts while the red ring is closing in (or just as she lunges) beats the bite.
                 // Before, the 0.6s dodge was often over by the time she reached him, so well-timed dodges still got caught.
-                if (!zombieBiteEvaded && zombieBiteCaughtAt === 0 && lastDodgeStart >= zombieCombatStateStart - 800 && lastDodgeStart <= zombieCombatStateStart + 350) {
+                if (!zombieBiteEvaded && zombieBiteCaughtAt === 0 && Math.max(lastDodgeStart, lastJumpStart) >= zombieCombatStateStart - 800 && Math.max(lastDodgeStart, lastJumpStart) <= zombieCombatStateStart + 350) {
                     zombieBiteEvaded = true;
-                    ui.combatStatus.textContent = '↪ BITE dodged!';
+                    ui.combatStatus.textContent = '↪ BITE avoided!';
                 }
                 if (zombieBiteCaughtAt === 0 && !zombieBiteEvaded) {
                     const trackingDx = player.x - zombieCombatX;
@@ -2308,7 +2316,7 @@ export function createLevel1(ui) {
                     }
 
                     const catchDistance = Math.abs(player.x - zombieCombatX);
-                    const canCatch = nowMs >= dodgeUntil;   // red attack: jumping does not avoid the bite, only dodging does
+                    const canCatch = nowMs >= dodgeUntil;   // red attack: dodging OR jumping (timed like a dodge) avoids the bite
                     if (canCatch && catchDistance <= 155) {
                         zombieBiteCaughtAt = nowMs || 1;
                         zombieBiteHoldX = player.x;
@@ -2373,8 +2381,17 @@ export function createLevel1(ui) {
         const hurtRate = isChainFight() ? .82 : 1;   // Chain Goth reuses the zombie groans, pitched lower, until she has her own
         if (heavy) playSfx('goth-pain', .9, hurtRate); else playSfx(GOTH_HURT_SFX[Math.floor(Math.random() * GOTH_HURT_SFX.length)], .7, hurtRate);
 
-        // Chain Goth cannot be knocked out of her spin, and she shrugs off hits while dizzy (the hits still count).
+        // V9.20 ring tiers: pink attacks can be interrupted; red and yellow attacks cannot (the hit still does damage).
+        if (!isChainFight() && zombieCombatAttackType === 'heavyKick' && (zombieCombatState === 'windup' || zombieCombatState === 'heavyKick')) {
+            zombieHitFlashUntil = nowMs + 115;
+            return;
+        }
+        // Chain Goth cannot be knocked out of her swipe or spin, and she shrugs off hits while dizzy (the hits still count).
         if (isChainFight()) {
+            if (zombieCombatState === 'windup' || zombieCombatState === 'swipe' || zombieCombatState === 'spinwind' || zombieCombatState === 'spin') {
+                zombieHitFlashUntil = nowMs + 115;
+                return;
+            }
             if (zombieCombatState === 'stun') {
                 zombieHitFlashUntil = nowMs + 115;
                 return;
@@ -2491,7 +2508,7 @@ export function createLevel1(ui) {
             try { video.pause(); video.removeAttribute('src'); video.load(); } catch (e) {}
             overlay.remove(); done();
         };
-        const sources = ['assets/video/cutscene3/ollytaken.mp4?v=9190', 'assets/video/cutscene3/olly-taken.mp4?v=9190', 'assets/video/cutscene3/ollytaken.mov?v=9190', 'assets/video/cutscene3/olly-taken.mov?v=9190'];
+        const sources = ['assets/video/cutscene3/ollytaken.mp4?v=9200', 'assets/video/cutscene3/olly-taken.mp4?v=9200', 'assets/video/cutscene3/ollytaken.mov?v=9200', 'assets/video/cutscene3/olly-taken.mov?v=9200'];
         let i = 0;
         const next = () => { if (i >= sources.length) { finish(); return; } video.src = sources[i++]; video.load(); video.play().catch(() => {}); };
         video.addEventListener('error', next);
@@ -2919,7 +2936,7 @@ export function createLevel1(ui) {
                 zombieCombatAttackHit = true;
                 playSfx('chain-impact', .9);
                 // Red swipe (short reach): only a dodge avoids it. Jumping (even over her) does not.
-                applyZombieDamage(CHAIN_SWIPE_DAMAGE, CHAIN_SWIPE_RANGE, CHAIN_SWIPE_PUSH, nowMs, 'CHAIN SWIPE', true, false);
+                applyZombieDamage(CHAIN_SWIPE_DAMAGE, CHAIN_SWIPE_RANGE, CHAIN_SWIPE_PUSH, nowMs, 'CHAIN SWIPE', false, false);   // red tier: dodge or jump both avoid it
             }
             if (elapsed >= CHAIN_SWIPE_TOTAL_MS + 60) {
                 zombieCombatState = 'recover';
