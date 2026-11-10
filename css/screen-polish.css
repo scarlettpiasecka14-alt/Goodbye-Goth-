@@ -666,3 +666,45 @@ html, body, #app { width: 100% !important; height: 100% !important; margin: 0 !i
 
 /* V9.20: bigger WOULD YOU picture (try-out). */
 #relationship .relationship-image { width: min(1000px, 96%) !important; max-width: 1000px !important; max-height: 46svh !important; }
+
+/* V9.21: real key art in the bag, hover tooltip, item panel with USE */
+#inventory .inventory-slot.inventory-filled { cursor: pointer !important; }
+#inventory .inventory-slot .inv-item-img {
+  display: block !important;
+  width: 86% !important;
+  height: auto !important;
+  max-height: 68% !important;
+  object-fit: contain !important;
+  pointer-events: none !important;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .55)) !important;
+}
+#inventory-tooltip {
+  display: none;
+  position: fixed;
+  z-index: 100000;
+  max-width: 260px;
+  padding: 7px 11px;
+  border: 1px solid #ef8eaa;
+  border-radius: 9px;
+  background: #1d1220;
+  color: #ffe3ee;
+  font: 600 13px Georgia, serif;
+  line-height: 1.3;
+  pointer-events: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .5);
+}
+#inventory-item-panel {
+  width: min(520px, 100%);
+  margin: 4px auto 12px;
+  padding: 10px 14px 12px;
+  border: 1px solid #ef8eaa;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #3a2034 0%, #21162a 100%);
+  text-align: center;
+  box-sizing: border-box;
+}
+#inventory-item-panel.hidden { display: none !important; }
+#inventory-item-panel .inv-panel-name { color: #ffe3ee; font: 700 1.05rem Georgia, serif; }
+#inventory-item-panel .inv-panel-desc { margin: 2px 0 8px; color: #c1aebb; font: 400 .9rem Georgia, serif; }
+#inventory-item-panel .inv-panel-actions { display: flex; gap: 10px; justify-content: center; }
+#inventory-item-panel .inv-panel-note { min-height: 1.1em; margin-top: 8px; color: #f2b5c8; font: italic .85rem Georgia, serif; }

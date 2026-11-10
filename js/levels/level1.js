@@ -1,5 +1,5 @@
 /* Goodbye Goth V9.4 - Chain Goth fight (AI + all seven animations: intro, walk, swipe, spin, stun, hurt, death) on top of V9.0 map cleanup and the v8.11 Zombie Goth AI. */
-import { playSfx, playRandomSfx, playMusic, preloadSfx, setLoopSfx } from '../audio.js?v=9200';
+import { playSfx, playRandomSfx, playMusic, preloadSfx, setLoopSfx } from '../audio.js?v=9210';
 // Game clock: normal time, but it stands still while a tutorial pop-up is open (so nothing happens behind it).
 let pausedTotal = 0, pausedAt = 0;
 const gnow = () => (pausedAt || performance.now()) - pausedTotal;
@@ -95,6 +95,13 @@ const goldenKeySprite = new Image();
 goldenKeySprite.src = 'assets/items/golden-key.webp?v=6515';
 const gateLockSprite = new Image();
 gateLockSprite.src = 'assets/encounters/level1/gate-lock.webp?v=6524';
+
+// V9.21 inventory items (module level so the inventory code can use them at any time)
+const ITEM_INFO = {
+    key: { name: 'A Mysterious Key', desc: 'It seems important.', tip: 'A mysterious key. Seems important.' }
+};
+let selectedItem = null;
+let invTipEl = null;
 const ollySprite = new Image();
 ollySprite.src = 'assets/characters/olly.webp?v=7110';
 
@@ -1266,6 +1273,7 @@ export function createLevel1(ui) {
         return objectivesComplete() && keyCollected && gateOpened
     }
     function refreshInventoryUI() {
+        initInventoryItems();
         const count = inventory && inventory.key ? 1 : 0;
         const countText = `${count}/10`;
         const countEl = document.getElementById('inventory-count');
@@ -1276,16 +1284,104 @@ export function createLevel1(ui) {
         if (slots.length) {
             slots.forEach((slot, i) => {
                 if (i === 0 && count) {
-                    slot.innerHTML = '🔑<span style="display:block;font-size:10px;margin-top:6px;">GOLDEN KEY</span>';
+                    slot.innerHTML = '<img class="inv-item-img" src="assets/items/golden-key.webp?v=9210" alt="Key" draggable="false"><span>KEY</span>';
+                    slot.dataset.item = 'key';
+                    slot.dataset.tip = ITEM_INFO.key.tip;
                     slot.classList.add('inventory-filled');
                 } else {
                     slot.textContent = String(i + 1).padStart(2, '0');
+                    delete slot.dataset.item;
+                    delete slot.dataset.tip;
                     slot.classList.remove('inventory-filled');
                 }
             });
         }
         const emptyCopy = document.querySelector('#inventory .inventory-empty-copy');
-        if (emptyCopy) emptyCopy.textContent = count ? 'One suspiciously important key. Probably useful.' : 'Nothing in here yet. A suspiciously empty bag.';
+        if (emptyCopy) emptyCopy.textContent = count ? 'Click an item to see what you can do with it.' : 'Nothing in here yet. A suspiciously empty bag.';
+        if (!count) hideItemPanel();
+    }
+
+    // ---- V9.21 inventory items: hover text + click for actions (the key has a USE button) ----
+    function gateNearPlayer() {
+        return Math.hypot(x - boss.x, y - (boss.y - 58)) < 150;
+    }
+    function ensureItemPanel() {
+        let panel = document.getElementById('inventory-item-panel');
+        if (panel) return panel;
+        const box = document.querySelector('#inventory .inventory-box');
+        if (!box) return null;
+        panel = document.createElement('div');
+        panel.id = 'inventory-item-panel';
+        panel.className = 'hidden';
+        panel.innerHTML = '<div class="inv-panel-name"></div><div class="inv-panel-desc"></div><div class="inv-panel-actions"></div><div class="inv-panel-note"></div>';
+        const closeBtn = box.querySelector('#inventory-close');
+        box.insertBefore(panel, closeBtn || null);
+        return panel;
+    }
+    function hideItemPanel() {
+        selectedItem = null;
+        const panel = document.getElementById('inventory-item-panel');
+        if (panel) panel.classList.add('hidden');
+    }
+    function showItemPanel(item) {
+        const panel = ensureItemPanel();
+        const info = ITEM_INFO[item];
+        if (!panel || !info) return;
+        selectedItem = item;
+        panel.querySelector('.inv-panel-name').textContent = info.name;
+        panel.querySelector('.inv-panel-desc').textContent = info.desc;
+        panel.querySelector('.inv-panel-note').textContent = '';
+        const actions = panel.querySelector('.inv-panel-actions');
+        actions.innerHTML = '';
+        if (item === 'key') {
+            const use = document.createElement('button');
+            use.type = 'button';
+            use.className = 'primary inv-use-button';
+            use.textContent = 'USE';
+            use.addEventListener('click', useKeyFromBag);
+            actions.appendChild(use);
+        }
+        panel.classList.remove('hidden');
+    }
+    function useKeyFromBag() {
+        const note = document.querySelector('#inventory-item-panel .inv-panel-note');
+        if (!keyCollected || gateOpened || mode !== 'map') { if (note) note.textContent = 'Nothing to use it on right now.'; return; }
+        if (!gateNearPlayer()) { if (note) note.textContent = 'You need to be standing in front of the gate to use this.'; return; }
+        // Close the bag and start the gate cutscene.
+        ui.inventory?.classList.add('hidden');
+        ui.inventory?.setAttribute('aria-hidden', 'true');
+        hideItemPanel();
+        hideInvTip();
+        playCutscene2();
+    }
+    function hideInvTip() { if (invTipEl) invTipEl.style.display = 'none'; }
+    function initInventoryItems() {
+        const inv = document.getElementById('inventory');
+        if (!inv || inv.dataset.itemsReady) return;
+        inv.dataset.itemsReady = '1';
+        invTipEl = document.createElement('div');
+        invTipEl.id = 'inventory-tooltip';
+        document.body.appendChild(invTipEl);
+        const slotsBox = inv.querySelector('.inventory-slots');
+        if (!slotsBox) return;
+        slotsBox.addEventListener('mouseover', e => {
+            const slot = e.target.closest('.inventory-slot');
+            if (!slot || !slot.dataset.tip) { hideInvTip(); return; }
+            invTipEl.textContent = slot.dataset.tip;
+            invTipEl.style.display = 'block';
+            const r = slot.getBoundingClientRect();
+            const tw = invTipEl.offsetWidth;
+            invTipEl.style.left = Math.max(8, Math.min(window.innerWidth - tw - 8, r.left + r.width / 2 - tw / 2)) + 'px';
+            invTipEl.style.top = Math.max(8, r.top - invTipEl.offsetHeight - 8) + 'px';
+        });
+        slotsBox.addEventListener('mouseleave', hideInvTip);
+        slotsBox.addEventListener('click', e => {
+            const slot = e.target.closest('.inventory-slot');
+            if (slot && slot.dataset.item) showItemPanel(slot.dataset.item);
+        });
+        // Whenever the bag closes (button, Y, or Use) reset the panel and tooltip.
+        new MutationObserver(() => { if (inv.classList.contains('hidden')) { hideItemPanel(); hideInvTip(); } })
+            .observe(inv, { attributes: true, attributeFilter: ['class'] });
     }
 
     function stats() {
@@ -1554,8 +1650,8 @@ export function createLevel1(ui) {
         let finished = false;
         let attemptedFallback = false;
         const sources = [
-            'assets/video/cutscene2/cutscene2.mp4?v=9200',
-            'assets/video/cutscene2/cutscene2.mov?v=9200'
+            'assets/video/cutscene2/cutscene2.mp4?v=9210',
+            'assets/video/cutscene2/cutscene2.mov?v=9210'
         ];
 
         const finish = () => {
@@ -1647,7 +1743,7 @@ export function createLevel1(ui) {
             playSfx('pickup');   // assets/audio/sfx/pickup.mp3
             inventory.key = 1;
             refreshInventoryUI();
-            ui.dialogue.textContent = '🔑 A little brass key drops onto the cobblestones. Finally, a sensible piece of game design.';
+            ui.dialogue.textContent = '🔑 A little brass key drops onto the cobblestones. Finally, a sensible piece of game design. Take it to the gate: open your backpack (Y), select the key and press USE.';
             stats();
             return;
         }
@@ -1659,7 +1755,7 @@ export function createLevel1(ui) {
                 return;
             }
             if (!gateOpened) {
-                playCutscene2();
+                ui.dialogue.textContent = '🔒 The gate is locked. Open your backpack (Y), select the key and press USE while standing in front of it.';
                 return;
             }
         }
@@ -2508,7 +2604,7 @@ export function createLevel1(ui) {
             try { video.pause(); video.removeAttribute('src'); video.load(); } catch (e) {}
             overlay.remove(); done();
         };
-        const sources = ['assets/video/cutscene3/ollytaken.mp4?v=9200', 'assets/video/cutscene3/olly-taken.mp4?v=9200', 'assets/video/cutscene3/ollytaken.mov?v=9200', 'assets/video/cutscene3/olly-taken.mov?v=9200'];
+        const sources = ['assets/video/cutscene3/ollytaken.mp4?v=9210', 'assets/video/cutscene3/olly-taken.mp4?v=9210', 'assets/video/cutscene3/ollytaken.mov?v=9210', 'assets/video/cutscene3/olly-taken.mov?v=9210'];
         let i = 0;
         const next = () => { if (i >= sources.length) { finish(); return; } video.src = sources[i++]; video.load(); video.play().catch(() => {}); };
         video.addEventListener('error', next);

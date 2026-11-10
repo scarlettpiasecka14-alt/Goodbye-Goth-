@@ -1,9 +1,9 @@
-import { StoryController } from './story.js?v=9200';
-import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9200';
-import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9200';
-import { initSettings, openSettings } from './settings.js?v=9200';
-import { actionForKey } from './controls.js?v=9200';
-import { initCheats, registerCheats } from './cheats.js?v=9200';
+import { StoryController } from './story.js?v=9210';
+import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9210';
+import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9210';
+import { initSettings, openSettings } from './settings.js?v=9210';
+import { actionForKey } from './controls.js?v=9210';
+import { initCheats, registerCheats } from './cheats.js?v=9210';
 
 const root = document.getElementById('game-root');
 
