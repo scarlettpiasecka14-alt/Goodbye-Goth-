@@ -1,10 +1,11 @@
 /* Goodbye Goth V9.4 - Chain Goth fight (AI + all seven animations: intro, walk, swipe, spin, stun, hurt, death) on top of V9.0 map cleanup and the v8.11 Zombie Goth AI. */
-import { playSfx, playRandomSfx, playMusic, preloadSfx, setLoopSfx } from '../audio.js?v=9180';
+import { playSfx, playRandomSfx, playMusic, preloadSfx, setLoopSfx } from '../audio.js?v=9190';
 // Game clock: normal time, but it stands still while a tutorial pop-up is open (so nothing happens behind it).
 let pausedTotal = 0, pausedAt = 0;
 const gnow = () => (pausedAt || performance.now()) - pausedTotal;
 const GOTH_HURT_SFX = ['goth-hurt-1', 'goth-hurt-2', 'goth-hurt-3', 'goth-hurt-4'];
 // Floor warning rings. pink = attack incoming (jump or dodge), yellow = must JUMP it, red = must DODGE it (jumping won't help).
+const COMBO_PUNCHES = 2;   // V9.19: two swings then a 5s rest, so punching can't just be spammed
 const BITE_WINDUP_MS = 1150;   // red bite warning: long enough to see the ring and dodge
 const RING_FLOOR_OFFSET = 62;   // how far below Olly's ground line the Zombie Goth's ring sits
 const ATTACK_RING_RGB = { pink: '236,110,170', yellow: '255,208,64', red: '255,66,86' };
@@ -66,6 +67,10 @@ function drawAttackRing(c, x, floorY, radius, kind, progress, active, nowMs) {
     c.lineWidth = 7 + pulse * 5;
     c.strokeStyle = `rgba(${rgb},${.65 + .3 * p})`;
     c.stroke();
+    if (kind === 'red' && p > .3) {   // V9.19: the dodge window - the ring flashes white so it's obvious when to dodge
+        c.beginPath(); c.arc(0, 0, radius, 0, Math.PI * 2);
+        c.lineWidth = 6 + pulse * 6; c.strokeStyle = `rgba(255,235,240,${.35 + .5 * pulse})`; c.stroke();
+    }
     if (!active) {   // inner ring shrinks toward the edge as the hit gets closer
         c.beginPath(); c.arc(0, 0, radius * (1 - p) , 0, Math.PI * 2);
         c.lineWidth = 4; c.strokeStyle = `rgba(${rgb},${.3 + .4 * p})`; c.stroke();
@@ -1121,6 +1126,8 @@ export function createLevel1(ui) {
         zombieRecoveryDuration = 520,
         zombieCombatWalkIndex = 0,
         zombieBiteCaughtAt = 0,
+        lastDodgeStart = -1e9,
+        zombieBiteEvaded = false,
         zombieBiteHoldUntil = 0,
         zombieBiteHoldX = 0,
         zombieCombatPrevX = COMBAT_W - 320,
@@ -1541,8 +1548,8 @@ export function createLevel1(ui) {
         let finished = false;
         let attemptedFallback = false;
         const sources = [
-            'assets/video/cutscene2/cutscene2.mp4?v=9180',
-            'assets/video/cutscene2/cutscene2.mov?v=9180'
+            'assets/video/cutscene2/cutscene2.mp4?v=9190',
+            'assets/video/cutscene2/cutscene2.mov?v=9190'
         ];
 
         const finish = () => {
@@ -1557,6 +1564,7 @@ export function createLevel1(ui) {
             playMusic('map');
             stats();
             ui.dialogue.textContent = '🔓 The gate opens. Whatever is beyond it is no longer your problem for the moment...';
+            showBossIntro();   // V9.19: "You've encountered Patricia" screen
         };
 
         const showFailure = () => {
@@ -1674,6 +1682,8 @@ export function createLevel1(ui) {
         zombieBiteCaughtAt = 0;
         zombieBiteHoldUntil = 0;
         zombieBiteHoldX = 0;
+        zombieBiteEvaded = false;
+        lastDodgeStart = -1e9;
         zombieRecoveryDuration = 520;
         zombieCombatNextDecision = gnow() + 450;
         zombieCombatWalkIndex = 0;
@@ -2176,6 +2186,7 @@ export function createLevel1(ui) {
         const isHeavy = zombieAttackCycle >= 2;
         zombieCombatAttackType = isHeavy ? 'heavyKick' : 'claw';
         if (isHeavy) {
+            zombieBiteEvaded = false;
             zombieBiteCaughtAt = 0;
             zombieBiteHoldUntil = 0;
             zombieBiteHoldX = 0;
@@ -2277,7 +2288,13 @@ export function createLevel1(ui) {
                 // Crawl towards Olly at a slightly slower pace. If she reaches
                 // him while he is grounded and not dodging, the bite connects.
                 // Jumping or dodging can still avoid the catch.
-                if (zombieBiteCaughtAt === 0) {
+                // V9.19: a dodge that starts while the red ring is closing in (or just as she lunges) beats the bite.
+                // Before, the 0.6s dodge was often over by the time she reached him, so well-timed dodges still got caught.
+                if (!zombieBiteEvaded && zombieBiteCaughtAt === 0 && lastDodgeStart >= zombieCombatStateStart - 800 && lastDodgeStart <= zombieCombatStateStart + 350) {
+                    zombieBiteEvaded = true;
+                    ui.combatStatus.textContent = '↪ BITE dodged!';
+                }
+                if (zombieBiteCaughtAt === 0 && !zombieBiteEvaded) {
                     const trackingDx = player.x - zombieCombatX;
                     const trackingDirection = trackingDx < 0 ? -1 : 1;
                     const trackingGap = 112;
@@ -2474,7 +2491,7 @@ export function createLevel1(ui) {
             try { video.pause(); video.removeAttribute('src'); video.load(); } catch (e) {}
             overlay.remove(); done();
         };
-        const sources = ['assets/video/cutscene3/ollytaken.mp4?v=9180', 'assets/video/cutscene3/olly-taken.mp4?v=9180', 'assets/video/cutscene3/ollytaken.mov?v=9180', 'assets/video/cutscene3/olly-taken.mov?v=9180'];
+        const sources = ['assets/video/cutscene3/ollytaken.mp4?v=9190', 'assets/video/cutscene3/olly-taken.mp4?v=9190', 'assets/video/cutscene3/ollytaken.mov?v=9190', 'assets/video/cutscene3/olly-taken.mov?v=9190'];
         let i = 0;
         const next = () => { if (i >= sources.length) { finish(); return; } video.src = sources[i++]; video.load(); video.play().catch(() => {}); };
         video.addEventListener('error', next);
@@ -2508,9 +2525,16 @@ export function createLevel1(ui) {
             zombieCombatStateStart = nowMs;
             zombieCombatWalkIndex = 0;
             zombieCombatAttackHit = true;
-            if (isChainFight()) { playSfx(GOTH_HURT_SFX[0], .85, .82); playSfx('chain-rattle', .7); }
-            else playSfx(GOTH_HURT_SFX[Math.floor(Math.random() * GOTH_HURT_SFX.length)], .85);
+            // Olly's knockout sounds come first; only then does the winner groan and walk off (no chain noises muddying it).
+            setTimeout(() => {
+                if (!playerDeathTriggered || mode !== 'combat') return;
+                if (isChainFight()) playSfx(GOTH_HURT_SFX[0], .8, .82);
+                else playSfx(GOTH_HURT_SFX[Math.floor(Math.random() * GOTH_HURT_SFX.length)], .8);
+            }, 1100);
         }
+        playSfx('olly-hurt-heavy', .9);
+        playSfx('olly-ko', .9);
+        setLoopSfx('chain-drag', false);
         setTimeout(() => playTakenCutscene(() => endCombat(false)), Math.max(OLLY_KO_TOTAL_MS + 280, 3000));
     }
 
@@ -3021,6 +3045,14 @@ export function createLevel1(ui) {
         const anim = getCombatAnimationFrame(nowMs);
         const renderHurt = playerHurtUntil > nowMs;
         drawOllyWorldCombat(cctx, player.x, player.y, anim, nowMs / 1000, renderHurt, jumpOffset);
+        if (nowMs < attackCooldownUntil && !playerDeathTriggered) {   // V9.19: make the punch rest impossible to miss
+            const left = ((attackCooldownUntil - nowMs) / 1000).toFixed(1);
+            cctx.save(); cctx.textAlign = 'center'; cctx.font = '700 26px system-ui, sans-serif';
+            cctx.lineWidth = 5; cctx.strokeStyle = 'rgba(10,6,14,.85)'; cctx.fillStyle = '#ffd9e6';
+            const tx = player.x, ty = player.y - 330 + jumpOffset;
+            cctx.strokeText(`Out of breath ${left}s`, tx, ty); cctx.fillText(`Out of breath ${left}s`, tx, ty);
+            cctx.restore();
+        }
         if (!isBoss && target?.type === 'shambler' && !zombieIntroActive) {
             const heavyRing = zombieCombatAttackType === 'heavyKick';
             const ringKind = heavyRing ? 'red' : 'pink', ringR = heavyRing ? 200 : 140, ringY = COMBAT_GROUND_Y + RING_FLOOR_OFFSET;
@@ -3114,7 +3146,7 @@ export function createLevel1(ui) {
     function startCombat(bossFight) {
         loadCombatAssets();
         playMusic('fight');
-        preloadSfx(['punch-1', 'punch-2', 'punch-3', 'goth-pain', ...GOTH_HURT_SFX, 'olly-hurt', 'olly-hurt-heavy', 'olly-attack', 'olly-heavy-attack', 'olly-jump', 'olly-land', 'olly-dodge-grunt', 'chain-clatter', 'chain-drop', 'chain-rattle', 'chain-spin', 'chain-impact', 'chain-impact-spin', 'breath-recovery', 'countdown-tick', 'fight-shout', 'zombie-death', 'pickup', 'interact']);
+        preloadSfx(['punch-1', 'punch-2', 'punch-3', 'goth-pain', ...GOTH_HURT_SFX, 'olly-hurt', 'olly-hurt-heavy', 'olly-attack', 'olly-heavy-attack', 'olly-jump', 'olly-land', 'olly-dodge-grunt', 'chain-clatter', 'chain-drop', 'chain-rattle', 'chain-spin', 'chain-impact', 'chain-impact-spin', 'breath-recovery', 'countdown-tick', 'fight-shout', 'zombie-death', 'pickup', 'interact', 'tutorial', 'olly-ko']);
         isBoss = bossFight;
         mode = 'combat';
         combatMax = bossFight ? 100 : (target?.maxHp || 50);
@@ -3172,7 +3204,7 @@ export function createLevel1(ui) {
                 zombieCombatX += enemyLeaving.dir * 150 * dt;
                 zombieCombatWalkIndex += dt * 1000;
             }
-            setLoopSfx('chain-drag', isChainFight() && zombieCombatState === 'chase' && !zombieIntroActive && !zombieDeathStarted && (!playerDeathTriggered || !!enemyLeaving), .5);
+            setLoopSfx('chain-drag', isChainFight() && zombieCombatState === 'chase' && !zombieIntroActive && !zombieDeathStarted && !playerDeathTriggered, .5);
             setLoopSfx('footsteps', (held.left !== held.right) && !jumping && !zombieIntroActive && !playerDeathTriggered && t >= dodgeUntil, .8);
             updateZombieAI(dt, t);
             updateChainAI(dt, t);
@@ -3191,6 +3223,7 @@ export function createLevel1(ui) {
         // Step 1: the ring appears and the fight freezes with it on screen for 1s. Step 2: 1s held still. Step 3: the pop-up.
         pausedAt = performance.now(); tutorialHold = true; tutorialHoldStart = pausedAt;
         pendingTutorial = { kind, at: pausedAt + 2000 };
+        playSfx('tutorial', .8);   // so the freeze reads as intentional, not a crash
     }
     function combatAttack() {
         if (pausedAt) return;
@@ -3252,8 +3285,8 @@ export function createLevel1(ui) {
             comboCount++;   // a miss still uses up a punch, so you can't spam to dodge the cooldown
         }
 
-        if (comboCount >= 3) {
-            comboCount = 3;
+        if (comboCount >= COMBO_PUNCHES) {
+            comboCount = COMBO_PUNCHES;
             attackCooldownUntil = nowMs + 5000;
             playSfx('breath-recovery', .85);
             ui.combatStatus.textContent += ' ⚠️ Combo complete. 5s cooldown!';
@@ -3363,6 +3396,7 @@ export function createLevel1(ui) {
         player.y = COMBAT_GROUND_Y;
         player.invuln = nowMs + 600;
         dodgeUntil = nowMs + 600;
+        lastDodgeStart = nowMs;
         playSfx('olly-jump', .8);          // whoosh
         playSfx('olly-dodge-grunt', .75);  // effort grunt on top
         combatAnimationState = 'dodge';
@@ -3614,8 +3648,21 @@ export function createLevel1(ui) {
             ui.puzzleFeedback.textContent = '❌ Incorrect. The princess remains imprisoned, and somewhere a goth has just judged you.';
         }
     }
+    let bossIntroPending = false;   // true while the Patricia screen is up (also saved, so Load Game brings it back)
+    function showBossIntro() {
+        bossIntroPending = true;
+        mode = 'bossintro';
+        playMusic('map');
+        ui.bossIntro.classList.remove('hidden');
+    }
+    function saveAndQuit() {
+        bossIntroPending = true;
+        saveGame();
+        location.reload();   // back to the title screen; Load Game returns to this screen
+    }
     function startBoss() {
-        ui.bossReady.classList.add('hidden');
+        bossIntroPending = false;
+        ui.bossReady?.classList.add('hidden');
         ui.bossIntro.classList.add('hidden');
         target = null;
         combatCheckpoint = {
@@ -3639,6 +3686,7 @@ export function createLevel1(ui) {
                 puzzleSolved,
                 keyCollected,
                 gateOpened,
+                bossIntroPending,
                 heavyUnlocked,
                 inventory,
                 checkpoint,
@@ -3701,6 +3749,7 @@ export function createLevel1(ui) {
             lastFogRevealY = null;
             revealAround(x, y, true);
             ui.dialogue.textContent = '📂 Game loaded. Welcome back to the cemetery.';
+            if (state.bossIntroPending) { gateOpened = true; showBossIntro(); }
             return true;
         } catch (err) {
             console.error('Goodbye Goth load failed', err);
@@ -3774,6 +3823,7 @@ export function createLevel1(ui) {
         completeRelationship,
         answerPuzzle,
         startBoss,
+        saveAndQuit,
         saveGame,
         loadGame
     };

@@ -1,9 +1,9 @@
-import { StoryController } from './story.js?v=9180';
-import { createLevel1 } from './levels/level1.js?v=9180';
-import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9180';
-import { initSettings, openSettings } from './settings.js?v=9180';
-import { actionForKey } from './controls.js?v=9180';
-import { initCheats, registerCheats } from './cheats.js?v=9180';
+import { StoryController } from './story.js?v=9190';
+import { createLevel1 } from './levels/level1.js?v=9190';
+import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9190';
+import { initSettings, openSettings } from './settings.js?v=9190';
+import { actionForKey } from './controls.js?v=9190';
+import { initCheats, registerCheats } from './cheats.js?v=9190';
 
 const root = document.getElementById('game-root');
 
@@ -205,8 +205,11 @@ function mountLevel1(loadSaved=false){
         <div class="player-hud-name">OLLY</div>
         <div class="player-hud-bar"><div id="player-hp-fill" class="player-hp-fill"></div></div>
         <div id="player-hp-text" class="player-hp-text">100 / 100 HP</div>
-        <button id="inventory-button" type="button" style="width:100%;margin-top:7px;min-height:34px;padding:6px 10px;font-size:12px;">🎒 INVENTORY <span id="inventory-count">0/10</span></button>
-        <div id="combo-hud" class="combo-hud" style="display:none" aria-label="Punch combo"><span class="combo-pips"><i></i><i></i><i></i></span><span id="combo-text" class="combo-text"></span></div>
+        <div class="hud-btn-row">
+          <button id="inventory-button" type="button" style="min-height:34px;padding:6px 10px;font-size:12px;">🎒 INVENTORY <span id="inventory-count">0/10</span></button>
+          <button id="hud-gear" class="hud-gear" type="button" title="Settings (O)" aria-label="Settings">⚙</button>
+        </div>
+        <div id="combo-hud" class="combo-hud" style="display:none" aria-label="Punch combo"><span class="combo-pips"><i></i><i></i></span><span id="combo-text" class="combo-text"></span></div>
       </div>
       <div class="game-layout">
         <div class="play-column">
@@ -297,11 +300,14 @@ function mountLevel1(loadSaved=false){
         <p id="puzzle-feedback" class="small quiz-feedback" aria-live="polite"></p>
       </div></div>
 
-      <div id="boss-intro" class="overlay hidden"><div class="overlay-box center">
-        <img class="story-art" src="assets/story/classic-goth-fight.png" alt="Classic Goth boss">
-        <div class="story-title">THE CLASSIC GOTH</div><p>Black lace. Red wine. Existential dread.</p>
-        <p><strong>“You really thought it would be that easy?”</strong></p><button id="boss-start" class="primary">ENTER BOSS FIGHT</button>
-      </div></div>
+      <div id="boss-intro" class="overlay hidden patricia-screen">
+        <img class="patricia-art" src="assets/story/patricia-encounter.webp" alt="Patricia, the Classic Goth">
+        <div class="patricia-card">
+          <div class="patricia-title">You've encountered Patricia, The Classic Goth.</div>
+          <p>She loves watching you squirm and thinks you're rather adorable. She's terribly bored, so she'll humour you with a fight. Not that you stand much chance of surviving.</p>
+          <div class="patricia-btns"><button id="boss-start" class="primary" type="button">I'm Ready</button><button id="boss-save-quit" type="button">Save and Quit</button></div>
+        </div>
+      </div>
 
       <div id="win" class="overlay hidden"><div class="overlay-box center">
         <div class="win-title">LEVEL 1 COMPLETE 🖤</div><p>The Classic Goth has been defeated.</p><p><strong>Level 2 is unlocked.</strong></p><button id="replay" class="primary">PLAY LEVEL 1 AGAIN</button>
@@ -330,6 +336,7 @@ function mountLevel1(loadSaved=false){
   ui.completionContinue.addEventListener('click',()=>level.continueCompletion());
   ui.wouldTap.addEventListener('click',()=>level.completeRelationship());
   ui.bossStart.addEventListener('click',()=>level.startBoss());
+  document.getElementById('boss-save-quit')?.addEventListener('click',()=>level.saveAndQuit());
   ui.replay.addEventListener('click',()=>mountLevel1());
   document.querySelectorAll('[data-answer]').forEach(b=>b.addEventListener('click',()=>level.answerPuzzle(b.dataset.answer)));
   ui.combatCanvas.addEventListener('mousedown',e=>{
@@ -355,6 +362,7 @@ function mountLevel1(loadSaved=false){
     }
   }
   ui.inventoryButton?.addEventListener('click',()=>toggleInventory(true));
+  document.getElementById('hud-gear')?.addEventListener('click',e=>{ e.currentTarget.blur(); openSettings(); });
   ui.inventoryClose?.addEventListener('click',()=>toggleInventory(false));
 
   const MOVE_KEY = { up:'w', down:'s', left:'a', right:'d' };
