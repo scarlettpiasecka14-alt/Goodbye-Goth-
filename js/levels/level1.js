@@ -1,5 +1,5 @@
 /* Goodbye Goth V9.4 - Chain Goth fight (AI + all seven animations: intro, walk, swipe, spin, stun, hurt, death) on top of V9.0 map cleanup and the v8.11 Zombie Goth AI. */
-import { playSfx, playRandomSfx, playMusic, preloadSfx, setLoopSfx } from '../audio.js?v=9210';
+import { playSfx, playRandomSfx, playMusic, preloadSfx, setLoopSfx } from '../audio.js?v=9220';
 // Game clock: normal time, but it stands still while a tutorial pop-up is open (so nothing happens behind it).
 let pausedTotal = 0, pausedAt = 0;
 const gnow = () => (pausedAt || performance.now()) - pausedTotal;
@@ -98,9 +98,23 @@ gateLockSprite.src = 'assets/encounters/level1/gate-lock.webp?v=6524';
 
 // V9.21 inventory items (module level so the inventory code can use them at any time)
 const ITEM_INFO = {
-    key: { name: 'A Mysterious Key', desc: 'It seems important.', tip: 'A mysterious key. Seems important.' }
+    key: { name: 'A Mysterious Key', desc: 'It seems important.', tip: 'A mysterious key. Seems important.', img: 'assets/items/golden-key.webp', label: 'KEY' },
+    potion: { name: 'Potion', desc: 'Drink to restore to full HP.', tip: 'Drink to restore to full HP.', img: 'assets/items/potion-vial.webp', label: 'POTION' }
 };
+// V9.22: Olly's drinking animation (50 frames) used before the Patricia fight.
+const DRINK_FRAMES = 50, DRINK_FRAME_MS = 50, DRINK_HEAL_FRAME = 28, DRINK_DRAW_K = 0.656;
+const DRINK_ART = { w: 369, h: 527, feetY: 524, centerX: 191 };
+const drinkImgs = [];
+function loadDrinkFrames() {
+    if (drinkImgs.length) return;
+    for (let i = 0; i < DRINK_FRAMES; i++) {
+        const im = new Image();
+        im.src = `assets/combat/OllyDrink/olly-drink-${String(i).padStart(2, '0')}.webp?v=9220`;
+        drinkImgs.push(im);
+    }
+}
 let selectedItem = null;
+let invSig = '';
 let invTipEl = null;
 const ollySprite = new Image();
 ollySprite.src = 'assets/characters/olly.webp?v=7110';
@@ -1274,19 +1288,26 @@ export function createLevel1(ui) {
     }
     function refreshInventoryUI() {
         initInventoryItems();
-        const count = inventory && inventory.key ? 1 : 0;
+        const items = [];
+        if (inventory && inventory.key) items.push('key');
+        if (inventory && inventory.potion) items.push('potion');
+        const count = items.length;
         const countText = `${count}/10`;
         const countEl = document.getElementById('inventory-count');
         const largeCountEl = document.getElementById('inventory-count-large');
         if (countEl) countEl.textContent = countText;
         if (largeCountEl) largeCountEl.textContent = `${count} / 10 ITEMS`;
+        const sig = items.join(',');
         const slots = document.querySelectorAll('#inventory .inventory-slot');
-        if (slots.length) {
+        if (slots.length && sig !== invSig) {
+            invSig = sig;
             slots.forEach((slot, i) => {
-                if (i === 0 && count) {
-                    slot.innerHTML = '<img class="inv-item-img" src="assets/items/golden-key.webp?v=9210" alt="Key" draggable="false"><span>KEY</span>';
-                    slot.dataset.item = 'key';
-                    slot.dataset.tip = ITEM_INFO.key.tip;
+                const item = items[i];
+                if (item) {
+                    const info = ITEM_INFO[item];
+                    slot.innerHTML = `<img class="inv-item-img" src="${info.img}?v=9220" alt="${info.name}" draggable="false"><span>${info.label}</span>`;
+                    slot.dataset.item = item;
+                    slot.dataset.tip = info.tip;
                     slot.classList.add('inventory-filled');
                 } else {
                     slot.textContent = String(i + 1).padStart(2, '0');
@@ -1295,6 +1316,7 @@ export function createLevel1(ui) {
                     slot.classList.remove('inventory-filled');
                 }
             });
+            if (selectedItem && !items.includes(selectedItem)) hideItemPanel();
         }
         const emptyCopy = document.querySelector('#inventory .inventory-empty-copy');
         if (emptyCopy) emptyCopy.textContent = count ? 'Click an item to see what you can do with it.' : 'Nothing in here yet. A suspiciously empty bag.';
@@ -1333,13 +1355,18 @@ export function createLevel1(ui) {
         panel.querySelector('.inv-panel-note').textContent = '';
         const actions = panel.querySelector('.inv-panel-actions');
         actions.innerHTML = '';
-        if (item === 'key') {
-            const use = document.createElement('button');
-            use.type = 'button';
-            use.className = 'primary inv-use-button';
-            use.textContent = 'USE';
-            use.addEventListener('click', useKeyFromBag);
-            actions.appendChild(use);
+        const addBtn = (label, fn, cls) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'primary inv-use-button' + (cls ? ' ' + cls : '');
+            b.textContent = label;
+            b.addEventListener('click', fn);
+            actions.appendChild(b);
+        };
+        if (item === 'key') addBtn('USE', useKeyFromBag);
+        if (item === 'potion') {
+            addBtn('DRINK', () => potionChoice(true));
+            addBtn('SAVE FOR LATER', () => potionChoice(false), 'inv-secondary');
         }
         panel.classList.remove('hidden');
     }
@@ -1650,8 +1677,8 @@ export function createLevel1(ui) {
         let finished = false;
         let attemptedFallback = false;
         const sources = [
-            'assets/video/cutscene2/cutscene2.mp4?v=9210',
-            'assets/video/cutscene2/cutscene2.mov?v=9210'
+            'assets/video/cutscene2/cutscene2.mp4?v=9220',
+            'assets/video/cutscene2/cutscene2.mov?v=9220'
         ];
 
         const finish = () => {
@@ -2604,7 +2631,7 @@ export function createLevel1(ui) {
             try { video.pause(); video.removeAttribute('src'); video.load(); } catch (e) {}
             overlay.remove(); done();
         };
-        const sources = ['assets/video/cutscene3/ollytaken.mp4?v=9210', 'assets/video/cutscene3/olly-taken.mp4?v=9210', 'assets/video/cutscene3/ollytaken.mov?v=9210', 'assets/video/cutscene3/olly-taken.mov?v=9210'];
+        const sources = ['assets/video/cutscene3/ollytaken.mp4?v=9220', 'assets/video/cutscene3/olly-taken.mp4?v=9220', 'assets/video/cutscene3/ollytaken.mov?v=9220', 'assets/video/cutscene3/olly-taken.mov?v=9220'];
         let i = 0;
         const next = () => { if (i >= sources.length) { finish(); return; } video.src = sources[i++]; video.load(); video.play().catch(() => {}); };
         video.addEventListener('error', next);
@@ -3108,6 +3135,7 @@ export function createLevel1(ui) {
 
     let lastCountPhase = -1;
     function drawZombieCountdown(c, nowMs) {
+        if (prefightHold) return;
         if (!zombieIntroActive) { lastCountPhase = -1; return; }
         const elapsed = Math.max(0, nowMs - zombieIntroStart);
         const phase = Math.min(3, Math.floor(elapsed / ZOMBIE_COUNTDOWN_PHASE_MS));
@@ -3157,7 +3185,8 @@ export function createLevel1(ui) {
 
         const anim = getCombatAnimationFrame(nowMs);
         const renderHurt = playerHurtUntil > nowMs;
-        drawOllyWorldCombat(cctx, player.x, player.y, anim, nowMs / 1000, renderHurt, jumpOffset);
+        if (drinkAnim) drawOllyDrink(cctx, player.x, player.y, nowMs);
+        else drawOllyWorldCombat(cctx, player.x, player.y, anim, nowMs / 1000, renderHurt, jumpOffset);
         if (nowMs < attackCooldownUntil && !playerDeathTriggered) {   // V9.19: make the punch rest impossible to miss
             const left = ((attackCooldownUntil - nowMs) / 1000).toFixed(1);
             cctx.save(); cctx.textAlign = 'center'; cctx.font = '700 26px system-ui, sans-serif';
@@ -3312,6 +3341,7 @@ export function createLevel1(ui) {
             }
             const dt = Math.min(.033, (t - combatLastFrame) / 1000 || 0);
             combatLastFrame = t;
+            updatePrefight(t);
             updateCombatMovement(dt);
             if (enemyLeaving) {   // walk off-screen after a KO
                 zombieCombatX += enemyLeaving.dir * 150 * dt;
@@ -3782,7 +3812,101 @@ export function createLevel1(ui) {
             x,
             y
         };
-        startCombat(true)
+        startCombat(true);
+        beginBossPrefight();
+    }
+
+    // ---- V9.22 pre-fight: Patricia talks, the potion appears in the bag, then Drink / Save for later -> 3-2-1 -> fight ----
+    let prefight = null, prefightHold = false, prefightToken = 0, drinkAnim = null;
+    function setBagGlow(on) { document.getElementById('inventory-button')?.classList.toggle('inv-glow', !!on); }
+    function closeBag() {
+        ui.inventory?.classList.add('hidden');
+        ui.inventory?.setAttribute('aria-hidden', 'true');
+        hideItemPanel();
+        hideInvTip();
+    }
+    function beginBossPrefight() {
+        const token = ++prefightToken;
+        prefight = { ready: false };
+        prefightHold = true;
+        drinkAnim = null;
+        zombieIntroActive = true;
+        zombieIntroStart = gnow();
+        zombieIntroEndAt = Infinity;
+        loadDrinkFrames();
+        preloadSfx(['patricia-unfair-fight', 'patricia-check-backpack']);
+        ui.combatStatus.textContent = '';
+        const later = (ms, fn) => setTimeout(() => { if (token === prefightToken && mode === 'combat') fn(); }, ms);
+        later(700, () => { ui.combatStatus.textContent = 'Patricia: "I wouldn\'t enjoy an unfair fight..."'; playSfx('patricia-unfair-fight', 1); });
+        later(3850, () => {
+            ui.combatStatus.textContent = 'Patricia: "Check your backpack."';
+            playSfx('patricia-check-backpack', 1);
+            if (!inventory.potion) inventory.potion = 1;
+            refreshInventoryUI();
+        });
+        later(5800, () => {
+            if (prefight) prefight.ready = true;
+            ui.combatStatus.textContent = 'Press Y to open your backpack.';
+            setBagGlow(true);
+        });
+    }
+    function potionChoice(drink) {
+        const note = document.querySelector('#inventory-item-panel .inv-panel-note');
+        if (prefight) {
+            if (!prefight.ready) { if (note) note.textContent = 'Let her finish...'; return; }
+            closeBag(); setBagGlow(false);
+            prefight.ready = false;
+            if (drink) { drinkAnim = { start: gnow(), healed: false }; inventory.potion = 0; refreshInventoryUI(); }
+            else startPrefightCountdown();
+            return;
+        }
+        if (mode === 'map' && drink) {   // outside the boss fight: just heal
+            hp = maxHp; inventory.potion = 0; closeBag(); stats();
+            ui.dialogue.textContent = 'You drink the potion. Full HP again.';
+            return;
+        }
+        if (note) note.textContent = drink ? 'Not now.' : 'It stays in your bag.';
+    }
+    function startPrefightCountdown() {
+        const t = gnow();
+        prefightHold = false;
+        zombieIntroStart = t;
+        zombieIntroEndAt = t + ZOMBIE_INTRO_TOTAL_MS;
+        ui.combatStatus.textContent = 'GET READY...';
+    }
+    function updatePrefight(t) {
+        if (drinkAnim) {
+            const f = Math.floor((t - drinkAnim.start) / DRINK_FRAME_MS);
+            if (f >= DRINK_HEAL_FRAME && !drinkAnim.healed) { drinkAnim.healed = true; drinkAnim.healT = t; hp = maxHp; stats(); }
+            if (f >= DRINK_FRAMES + 6) { drinkAnim = null; startPrefightCountdown(); }
+        }
+        if (isBoss && zombieIntroActive && !prefightHold && t >= zombieIntroEndAt) {
+            zombieIntroActive = false;
+            prefight = null;
+            ui.combatStatus.textContent = 'The Queen is waiting. Your Heavy Attack is ready.';
+        }
+    }
+    function drawOllyDrink(c, px, py, t) {
+        const f = Math.max(0, Math.min(DRINK_FRAMES - 1, Math.floor((t - drinkAnim.start) / DRINK_FRAME_MS)));
+        const img = drinkImgs[f];
+        const k = DRINK_DRAW_K;
+        c.save();
+        c.translate(px, py + OLLY_DRAW_FOOT_OFFSET);
+        c.fillStyle = 'rgba(0,0,0,.28)';
+        c.beginPath(); c.ellipse(0, 20, 46, 10, 0, 0, Math.PI * 2); c.fill();
+        if (drinkAnim.healed) {   // soft green glow after the first sip lands
+            const a = Math.max(0, 1 - (t - drinkAnim.healT) / 900);
+            if (a > 0) {
+                const g = c.createRadialGradient(0, -150, 20, 0, -150, 190);
+                g.addColorStop(0, `rgba(140,255,120,${.45 * a})`); g.addColorStop(1, 'rgba(140,255,120,0)');
+                c.fillStyle = g; c.fillRect(-220, -360, 440, 440);
+            }
+        }
+        if (img && img.complete && img.naturalWidth) {
+            c.scale(-1, 1);   // the drink art faces left; Olly faces right in the arena
+            c.drawImage(img, -DRINK_ART.centerX * k, -DRINK_ART.feetY * k, DRINK_ART.w * k, DRINK_ART.h * k);
+        }
+        c.restore();
     }
     function saveGame() {
         try {
