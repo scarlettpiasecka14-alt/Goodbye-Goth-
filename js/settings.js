@@ -1,8 +1,8 @@
 /* Goodbye Goth - settings screen (sound, brightness, fullscreen, controls list).
    Everything is built here and lives on <body>, so it survives the game swapping screens.
    Opened from the title menu (SETTINGS) or by pressing O anywhere outside a fight; closes with O, Esc or CLOSE. */
-import { getVolumes, setVolume } from './audio.js?v=9250';
-import { ACTIONS, DEFAULTS, getBindings, swapBindings, setBinding, resetBindings, keyLabel, isDefault } from './controls.js?v=9250';
+import { getVolumes, setVolume } from './audio.js?v=9260';
+import { ACTIONS, DEFAULTS, getBindings, swapBindings, setBinding, resetBindings, keyLabel, isDefault } from './controls.js?v=9260';
 
 const BRIGHT_KEY = 'goodbyeGothBrightness_v1';
 let brightness = 100;
@@ -60,8 +60,10 @@ function refreshSoundBtn() {
     const on = getVolumes().master > 0;
     soundBtn.textContent = on ? '🔊 SOUND: ON' : '🔇 SOUND: OFF';
 }
-export function openSettings() { if (!overlay) initSettings(); overlay.classList.add('open'); refreshSoundBtn(); overlay.querySelector('#gg-close').focus(); }
-export function closeSettings() { overlay?.classList.remove('open'); }
+// V9.26: opening Settings pauses the game (the fight clock + sound effects); closing it carries on exactly where it stopped.
+function announce(open) { try { window.dispatchEvent(new CustomEvent('gg-settings', { detail: { open } })); } catch (e) {} }
+export function openSettings() { if (!overlay) initSettings(); const was = overlay.classList.contains('open'); overlay.classList.add('open'); refreshSoundBtn(); overlay.querySelector('#gg-close').focus(); if (!was) announce(true); }
+export function closeSettings() { const was = overlay?.classList.contains('open'); overlay?.classList.remove('open'); if (was) announce(false); }
 
 function renderControls() {
     const b = getBindings();
@@ -109,12 +111,11 @@ export function initSettings() {
 
     bright = document.createElement('div'); bright.className = 'gg-bright'; document.body.appendChild(bright); applyBrightness();
 
-    // O opens/closes Settings (not in a fight - the fight keeps running behind it).
+    // O opens/closes Settings (also in a fight: it pauses the fight).
     window.addEventListener('keydown', ev => {
         if (ev.ctrlKey || ev.metaKey || ev.altKey || ev.repeat) return;
         if (ev.key !== 'o' && ev.key !== 'O') return;
         if (overlay.classList.contains('open')) { if (!overlay.querySelector('.gg-slot.listening')) closeSettings(); return; }
-        if (document.querySelector('#combat:not(.hidden)')) return;
         openSettings();
     }, true);
 
@@ -149,7 +150,19 @@ export function initSettings() {
     // Keys pressed in the menu must not move Olly or punch.
     for (const type of ['keydown', 'keyup', 'pointerdown', 'mousedown', 'contextmenu'])
         overlay.addEventListener(type, ev => { if (type === 'keydown' && ev.key === 'Escape') closeSettings(); if (type !== 'contextmenu') ev.stopPropagation(); });
-    overlay.addEventListener('click', ev => { if (ev.target === overlay) closeSettings(); ev.stopPropagation(); });
+    overlay.addEventListener('click', ev => { if (ev.target === overlay && !dragMoved) closeSettings(); dragMoved = false; ev.stopPropagation(); });
+    // V9.26: drag the title bar to move the Settings window (handy for screenshots); the eye button makes the dark backdrop clear.
+    const card = overlay.querySelector('.gg-card'), title = overlay.querySelector('.gg-card h1');
+    title.style.cursor = 'move'; title.title = 'Drag to move'; title.style.userSelect = 'none'; title.style.touchAction = 'none';
+    let dragMoved = false, offX = 0, offY = 0, drag = null;
+    const place = () => { card.style.transform = `translate(${offX}px,${offY}px)`; };
+    title.addEventListener('pointerdown', ev => { drag = { x: ev.clientX - offX, y: ev.clientY - offY }; dragMoved = false; try { title.setPointerCapture(ev.pointerId); } catch (e) {} });
+    title.addEventListener('pointermove', ev => { if (!drag) return; offX = ev.clientX - drag.x; offY = ev.clientY - drag.y; dragMoved = true; place(); });
+    const endDrag = () => { drag = null; };
+    title.addEventListener('pointerup', endDrag); title.addEventListener('pointercancel', endDrag);
+    const eye = document.createElement('button'); eye.type = 'button'; eye.className = 'gg-btn'; eye.textContent = '👁 CLEAR BACKGROUND'; eye.style.cssText = 'display:block;margin:0 auto 10px;padding:5px 12px;font-size:12px';
+    eye.addEventListener('click', () => { const on = overlay.classList.toggle('clear'); overlay.style.background = on ? 'transparent' : ''; eye.textContent = on ? '👁 DARKEN BACKGROUND' : '👁 CLEAR BACKGROUND'; });
+    title.after(eye);
 
     bindSlider('gg-master', () => pct(getVolumes().master), v => { setVolume('master', v / 100); refreshSoundBtn(); });
     bindSlider('gg-music', () => pct(getVolumes().music), v => setVolume('music', v / 100));

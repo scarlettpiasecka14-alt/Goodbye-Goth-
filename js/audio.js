@@ -21,7 +21,9 @@ function getCtx() {
     } catch (e) { ctx = null; }
     return ctx;
 }
-function wake() { if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {}); }
+let held = false;   // V9.26: true while the game is paused from Settings
+function wake() { if (!held && ctx && ctx.state !== 'running') ctx.resume().catch(() => {}); }
+export function setAudioHeld(on) { held = !!on; if (!ctx) return; if (on) { if (ctx.state === 'running') ctx.suspend().catch(() => {}); } else ctx.resume().catch(() => {}); }
 function loadBuffer(name) {
     if (STREAM[name] || buffers[name] || loading[name]) return;
     const c = getCtx(); if (!c) return;

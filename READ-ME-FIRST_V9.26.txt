@@ -1,0 +1,25 @@
+GOODBYE GOTH  V9.26  -  PAUSE FROM SETTINGS + MOVABLE SETTINGS WINDOW   (branch: Testing5)
+Do NOT upload this text file. Upload the 6 files below keeping their paths. Builds on V9.25.
+
+  index.html                                  (cache-bust 9250 -> 9260)
+  js/game.js  js/story.js                     (cache-bust only)
+  js/settings.js                              (pause + drag + clear background)
+  js/audio.js                                 (sound effects can be held while paused)
+  js/levels/level1.js                         (listens for the pause)
+
+WHAT'S NEW
+ - Opening Settings (the gear, or the O key - O now also works DURING a fight) freezes the fight: all attack timers, movement,
+   animations, Patricia/Goth AI, the 3-2-1, plus sound effects. Closing Settings (CLOSE, Esc, O, or clicking outside) carries on exactly
+   where it stopped. Music keeps playing so you can still hear the music volume slider.
+ - Drag the SETTINGS title to move the window anywhere (e.g. to the side so you can screenshot).
+ - New button "CLEAR BACKGROUND" removes the dark backdrop so the frozen game is fully visible; "DARKEN BACKGROUND" puts it back.
+
+TESTING CHECKLIST
+ 1. In a fight press O (or click the gear if it shows): everything should freeze, including a lunge/lightning wind-up. Close it: it resumes.
+ 2. Drag the title; click CLEAR BACKGROUND; take a screenshot; close.
+ 3. Tell me if the gear icon isn't visible during fights (I made O work there but didn't change where the gear is shown).
+
+TESTED / NOT TESTED
+ - Syntax-checked. In a desktop Chrome test of the Patricia fight: pressing O froze her state, timer and position for 3 s (identical readings),
+   dragging the title worked, the window stayed open after the drag, and closing resumed the fight with no errors.
+ - Not tested: Safari, pausing during cutscene videos / the map (only the fight clock is held), and the sound-effect hold by ear.
