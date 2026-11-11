@@ -20,21 +20,29 @@ MAX_W = 4096
 # Most animations share one 1440x1440 canvas (anchor 720,1030, unit 1). The spin was made on a 1080 canvas at a
 # smaller zoom and the stunned loop at a slightly different zoom, so they are lined up to her standing pose here.
 STD = (720, 1030)
+# video frames kept for the slam (all of the two impacts, every 2nd/3rd frame elsewhere)
+SLAM_FRAMES = (list(range(37, 62, 2)) + list(range(62, 71)) + list(range(71, 84, 3)) +
+               list(range(84, 94, 2)) + list(range(94, 103)) + list(range(103, 118, 3)))
 ANIMS = {
     'intro': ('321 fight', list(range(0, 60)), 0.64, STD, 1.0),                 # frames 0-27 build up, 28-59 loop
-    'walk':  ('CGwalk',    list(range(14, 38, 2)), 0.56, STD, 1.0),
+    'walk':  ('CGwalk2',   list(range(36, 51)), 0.56, STD, 1.0),                # V9.24: new creepier walk loop (frames 36-50)
     'swipe': ('chaingothchainswipe', list(range(0, 20)), 0.56, STD, 1.0),       # 0-9 wind-up, 10-19 sweep
-    'death': ('chaingothdeath', list(range(6, 37)) + [60], 0.56, STD, 1.0),     # 6-36 hit + fall, 60 = lying on the floor
+    'death': ('ChainGothDeath-retry', list(range(8, 26)) + [60], 0.56, STD, 1.0),   # V9.24: 8-25 hit + fall, 60 = lying on the floor
     'spin':  ('chainspinattack', list(range(0, 25, 2)) + list(range(25, 61)), 0.56, (539.5, 730), 1.634),   # 13 wind-up frames, then 36 spin frames
     'stun':  ('ChainGothStunned', list(range(0, 61)), 0.56, (750, 971), 1.163),
     'hurt':  ('HurtReactionChainGoth', list(range(0, 47)), 0.56, STD, 1.0),
+    # V9.24: the new chain slam, made from the green-screen video (keyed frames f001..f121 in a folder given by CHAIN_SLAM_DIR)
+    'slam':  ('@slam', SLAM_FRAMES, 0.56, (675, 707), 0.9),
 }
 
 def pack(repo, name, folder, frames, ATLAS_SCALE, anchor=ANCHOR, unit=1.0):
-    src_dir = os.path.join(repo, 'assets/characters/combat', folder, 'frames')
+    if folder == '@slam':
+        src_dir = os.environ['CHAIN_SLAM_DIR']; pat = 'f%03d.png'
+    else:
+        src_dir = os.path.join(repo, 'assets/characters/combat', folder, 'frames'); pat = 'frame_%04d.png'
     tiles = []
     for n in frames:
-        im = Image.open(os.path.join(src_dir, 'frame_%04d.png' % n)).convert('RGBA')
+        im = Image.open(os.path.join(src_dir, pat % n)).convert('RGBA')
         bb = im.getchannel('A').getbbox()
         pad = 3
         bb = (max(0, bb[0]-pad), max(0, bb[1]-pad), min(im.width, bb[2]+pad), min(im.height, bb[3]+pad))

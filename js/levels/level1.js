@@ -1,5 +1,5 @@
 /* Goodbye Goth V9.4 - Chain Goth fight (AI + all seven animations: intro, walk, swipe, spin, stun, hurt, death) on top of V9.0 map cleanup and the v8.11 Zombie Goth AI. */
-import { playSfx, playRandomSfx, playMusic, preloadSfx, setLoopSfx } from '../audio.js?v=9230';
+import { playSfx, playRandomSfx, playMusic, preloadSfx, setLoopSfx } from '../audio.js?v=9240';
 // Game clock: normal time, but it stands still while a tutorial pop-up is open (so nothing happens behind it).
 let pausedTotal = 0, pausedAt = 0;
 const gnow = () => (pausedAt || performance.now()) - pausedTotal;
@@ -77,8 +77,8 @@ function drawAttackRing(c, x, floorY, radius, kind, progress, active, nowMs) {
     }
     c.restore();
 }
-// V9.23: how close the map camera is (was 1.42). Bigger = closer, characters and objects look larger.
-const MAP_ZOOM = 1.7;
+// V9.23: how close the map camera is (was 1.42; 1.7 in V9.23). Bigger = closer, characters and objects look larger.
+const MAP_ZOOM = 1.5;
 const WORLD_W = 1536,
     WORLD_H = 1024;
 const SAVE_KEY = 'goodbyeGothSave_v6';
@@ -111,7 +111,7 @@ function loadDrinkFrames() {
     if (drinkImgs.length) return;
     for (let i = 0; i < DRINK_FRAMES; i++) {
         const im = new Image();
-        im.src = `assets/combat/OllyDrink/olly-drink-${String(i).padStart(2, '0')}.webp?v=9230`;
+        im.src = `assets/combat/OllyDrink/olly-drink-${String(i).padStart(2, '0')}.webp?v=9240`;
         drinkImgs.push(im);
     }
 }
@@ -258,16 +258,16 @@ const zombieCombatFrames = {
     // v8.11: the approved crouched ready pose is the first frame of the supplied
     // heavy-attack sequence. It is used as the post-countdown ready/recovery pose.
     idle: [new Image()],
-    walk: Array.from({ length: 12 }, () => new Image()),
+    walk: Array.from({ length: 33 }, () => new Image()),   // V9.24: new creepier shamble (33 frames)
     // Regular claw swipe.
     claw: [1, 2, 3, 4, 5].map(() => new Image()),
     // Eight Ankle Biter frames used by the existing HEAVY ATTACK state.
     heavyKick: Array.from({ length: 8 }, () => new Image()),
     // Existing supplied Zombie Goth reaction/death art.
     hurt: Array.from({ length: 8 }, () => new Image()),
-    death: Array.from({ length: 8 }, () => new Image()),
+    death: Array.from({ length: 45 }, () => new Image()),   // V9.24: new detailed collapse (45 frames)
     // Countdown-only staring/prep animation. It is not an attack state.
-    prep: Array.from({ length: 8 }, () => new Image())
+    prep: Array.from({ length: 61 }, () => new Image())   // V9.24: new 3-2-1 fight-stance animation (61 frames)
 };
 const zombieCountdownFrames = {
     3: new Image(),
@@ -277,9 +277,9 @@ const zombieCountdownFrames = {
 };
 // v7.6: use the complete 12-frame side-profile cycle at a readable pace.
 // Slightly slower timing preserves the weight transfer instead of making the feet blur together.
-const ZOMBIE_WALK_SEQUENCE = Array.from({ length: 12 }, (_, i) => i);
+const ZOMBIE_WALK_SEQUENCE = Array.from({ length: 33 }, (_, i) => i);
 // v8.7: speed up the animation cycle itself by ~15% without changing Zombie's movement speed.
-const ZOMBIE_WALK_FRAME_MS = Array(12).fill(128);
+const ZOMBIE_WALK_FRAME_MS = Array(33).fill(48);
 const ZOMBIE_WALK_CYCLE_MS = ZOMBIE_WALK_FRAME_MS.reduce((a, b) => a + b, 0);
 // Use the dedicated crouched ready pose. The attack frames belong
 // exclusively to the heavy attack and must not appear as the neutral/telegraph pose.
@@ -299,20 +299,22 @@ const ZOMBIE_LONG_HURT_SEQUENCE = [0, 1, 2, 3, 4, 5, 6, 7, 6, 5, 4, 3, 2, 1, 0];
 const ZOMBIE_LONG_HURT_FRAME_MS = [70, 80, 90, 100, 120, 140, 180, 500, 180, 140, 120, 100, 90, 80, 150];
 const ZOMBIE_LONG_HURT_TOTAL_MS = ZOMBIE_LONG_HURT_FRAME_MS.reduce((a, b) => a + b, 0);
 // v8.7: slow the visible collapse by ~15%, then hold the final grounded pose for 5 seconds.
-const ZOMBIE_DEATH_FRAME_MS = [110, 100, 110, 120, 130, 145, 170, 700];
+const ZOMBIE_DEATH_FRAME_MS = Array(45).fill(45);
 const ZOMBIE_DEATH_TOTAL_MS = ZOMBIE_DEATH_FRAME_MS.reduce((a, b) => a + b, 0);
 const ZOMBIE_DEATH_HOLD_FIXED = Math.max(300, 3000 - ZOMBIE_DEATH_TOTAL_MS);
 const ZOMBIE_DEATH_HOLD_MS = 3000;   // placeholder, recomputed below so animation + hold = 3s
 // v8.7: the supplied death PNGs have different transparent margins. These offsets
 // keep the visible bottom of each frame on the combat floor instead of floating.
-const ZOMBIE_DEATH_FLOOR_OFFSETS = [69, 67, 66, 71, 66, 58, 41, 41];
+const ZOMBIE_DEATH_FLOOR_OFFSETS = [];   // V9.24: new death frames are bottom-aligned already
 
 /* V9.1: Chain Goth combat animation packs.
    Each pack is ONE small image holding the chosen frames of an animation (built from the
    animator's 1440x1440 frames by tools/build_chain_assets.py). Every frame row is
    [packX, packY, packW, packH, offsetX, offsetY]; the offsets place the trimmed frame
    relative to her feet. The art faces LEFT, like the Zombie Goth art. */
-const CHAIN_ATLAS_DATA = {"intro":{"size":[3927,3924],"scale":0.64,"frames":[[0,0,269,401,-211,-623],[271,0,268,401,-211,-622],[541,0,269,396,-211,-615],[812,0,269,389,-211,-605],[1083,0,274,387,-211,-601],[1359,0,277,392,-211,-610],[1638,0,300,400,-211,-621],[1940,0,333,405,-211,-629],[2275,0,359,417,-211,-649],[2636,0,376,470,-211,-731],[3014,0,380,539,-215,-839],[3396,0,418,517,-382,-804],[0,541,367,543,-436,-844],[369,541,388,463,-443,-719],[759,541,456,390,-399,-606],[1217,541,352,486,-211,-756],[1571,541,419,500,-292,-777],[1992,541,554,509,-450,-791],[2548,541,476,525,-423,-819],[3026,541,377,554,-440,-865],[3405,541,522,400,-477,-624],[0,1097,511,435,-446,-664],[513,1097,381,534,-209,-792],[896,1097,436,516,-269,-788],[1334,1097,584,519,-452,-807],[1920,1097,500,532,-427,-829],[2422,1097,385,548,-452,-856],[2809,1097,530,400,-491,-625],[3341,1097,503,429,-425,-649],[0,1647,380,526,-210,-771],[382,1647,429,524,-258,-815],[813,1647,579,511,-434,-794],[1394,1647,520,529,-429,-824],[1916,1647,372,562,-437,-877],[2290,1647,486,460,-464,-718],[2778,1647,541,409,-464,-623],[3321,1647,423,481,-279,-704],[0,2211,393,549,-210,-801],[395,2211,488,505,-330,-784],[885,2211,605,515,-462,-801],[1492,2211,497,538,-427,-839],[1991,2211,370,560,-443,-874],[2363,2211,518,401,-475,-626],[2883,2211,519,412,-442,-626],[3404,2211,405,508,-241,-740],[0,2773,410,579,-225,-830],[412,2773,543,504,-413,-782],[957,2773,596,514,-461,-798],[1555,2773,449,536,-424,-834],[2006,2773,405,559,-436,-873],[2413,2773,527,400,-467,-624],[2942,2773,508,424,-414,-634],[3452,2773,390,545,-209,-783],[0,3354,423,563,-237,-803],[425,3354,547,509,-404,-790],[974,3354,609,515,-461,-799],[1585,3354,478,535,-427,-833],[2065,3354,375,568,-431,-887],[2442,3354,513,452,-455,-706],[2957,3354,530,422,-447,-630]]},"walk":{"size":[3887,391],"scale":0.64,"frames":[[0,0,231,383,-217,-594],[233,0,220,386,-209,-599],[455,0,214,387,-206,-601],[671,0,214,387,-208,-602],[887,0,214,388,-212,-601],[1103,0,216,389,-212,-600],[1321,0,217,386,-209,-595],[1540,0,219,385,-205,-593],[1761,0,222,382,-200,-590],[1985,0,223,380,-194,-587],[2210,0,224,380,-191,-586],[2436,0,228,380,-191,-587],[2666,0,233,381,-199,-588],[2901,0,241,382,-214,-590],[3144,0,251,383,-230,-590],[3397,0,247,384,-230,-592],[3646,0,241,386,-229,-595]]},"swipe":{"size":[4064,953],"scale":0.64,"frames":[[0,0,269,401,-211,-623],[271,0,269,401,-211,-623],[542,0,269,401,-211,-624],[813,0,269,401,-211,-624],[1084,0,268,403,-211,-626],[1354,0,263,403,-211,-627],[1619,0,253,408,-211,-630],[1874,0,251,404,-211,-627],[2127,0,268,396,-211,-614],[2397,0,291,396,-211,-614],[2690,0,300,401,-236,-622],[2992,0,356,419,-339,-650],[3350,0,341,398,-385,-619],[3693,0,371,394,-441,-620],[0,421,477,413,-457,-641],[479,421,502,463,-396,-690],[983,421,390,484,-180,-724],[1375,421,418,530,-182,-799],[1795,421,385,490,-122,-868],[2182,421,386,507,-97,-913]]},"death":{"size":[3897,1162],"scale":0.64,"frames":[[0,0,293,394,-263,-614],[295,0,333,392,-336,-610],[630,0,342,390,-360,-608],[974,0,321,412,-319,-656],[1297,0,381,450,-399,-725],[1680,0,470,506,-518,-805],[2152,0,349,442,-325,-713],[2503,0,348,445,-322,-703],[2853,0,347,386,-321,-609],[3202,0,347,385,-321,-609],[3551,0,346,385,-320,-615],[0,508,347,387,-320,-611],[349,508,347,386,-319,-615],[698,508,346,383,-317,-615],[1046,508,348,376,-310,-597],[1396,508,350,366,-304,-580],[1748,508,353,342,-293,-542],[2103,508,361,316,-288,-501],[2466,508,403,250,-304,-384],[2871,508,463,160,-321,-216],[3336,508,463,130,-321,-167],[0,897,463,130,-321,-167],[465,897,463,130,-321,-167],[930,897,463,131,-321,-168],[1395,897,463,130,-321,-167],[1860,897,463,131,-321,-168],[2325,897,463,130,-321,-167],[2790,897,463,130,-321,-167],[3255,897,463,130,-321,-167],[0,1030,463,130,-321,-167],[465,1030,463,130,-321,-167],[930,1030,463,130,-321,-167]]},"spin":{"size":[3824,1878],"scale":0.64,"frames":[[0,0,325,474,-221,-737],[327,0,313,541,-298,-840],[642,0,422,544,-437,-848],[1066,0,482,367,-583,-567],[1550,0,322,391,-360,-588],[1874,0,343,396,-208,-600],[2219,0,428,409,-215,-636],[2649,0,312,474,-230,-737],[2963,0,340,520,-319,-812],[3305,0,496,371,-537,-578],[0,546,474,368,-558,-574],[476,546,329,390,-367,-587],[807,546,299,393,-212,-596],[1108,546,411,391,-223,-606],[1521,546,414,387,-208,-603],[1937,546,319,421,-228,-657],[2258,546,313,445,-288,-694],[2573,546,434,451,-437,-704],[3009,546,484,360,-558,-562],[3495,546,329,383,-359,-587],[0,999,344,405,-223,-609],[346,999,415,386,-223,-601],[763,999,324,413,-300,-645],[1089,999,630,379,-744,-592],[1721,999,492,362,-573,-564],[2215,999,211,386,-154,-595],[2428,999,421,393,-220,-611],[2851,999,344,383,-213,-596],[3197,999,323,417,-295,-652],[0,1418,626,458,-734,-717],[628,1418,485,362,-561,-565],[1115,1418,293,386,-300,-587],[1410,1418,339,393,-223,-609],[1751,1418,424,387,-225,-603],[2177,1418,306,390,-277,-609],[2485,1418,638,457,-746,-714]]},"stun":{"size":[4074,1517],"scale":0.64,"frames":[[0,0,255,380,-235,-588],[257,0,255,380,-235,-590],[514,0,252,382,-235,-592],[768,0,249,383,-235,-594],[1019,0,243,383,-235,-594],[1264,0,238,387,-235,-600],[1504,0,230,389,-234,-604],[1736,0,223,394,-234,-607],[1961,0,217,402,-234,-607],[2180,0,214,402,-228,-601],[2396,0,211,400,-220,-597],[2609,0,216,391,-213,-583],[2827,0,220,380,-211,-570],[3049,0,234,369,-211,-559],[3285,0,251,356,-211,-550],[3538,0,265,353,-211,-545],[3805,0,269,350,-211,-541],[0,404,272,350,-211,-541],[274,404,266,351,-211,-542],[542,404,260,354,-211,-547],[804,404,253,356,-211,-550],[1059,404,249,358,-212,-554],[1310,404,243,359,-212,-556],[1555,404,241,364,-212,-559],[1798,404,243,367,-212,-561],[2043,404,248,365,-212,-558],[2293,404,252,361,-212,-555],[2547,404,262,355,-212,-550],[2811,404,266,352,-212,-545],[3079,404,269,349,-212,-540],[3350,404,266,348,-212,-538],[3618,404,261,350,-212,-541],[0,773,255,353,-213,-545],[257,773,249,355,-213,-549],[508,773,241,358,-212,-555],[751,773,237,362,-212,-561],[990,773,237,367,-212,-564],[1229,773,240,371,-213,-566],[1471,773,243,370,-212,-566],[1716,773,249,370,-212,-566],[1967,773,253,365,-212,-561],[2222,773,261,360,-212,-555],[2485,773,265,356,-212,-551],[2752,773,266,354,-212,-548],[3020,773,266,352,-212,-545],[3288,773,262,353,-212,-545],[3552,773,255,355,-212,-550],[3809,773,250,360,-212,-557],[0,1146,243,363,-212,-563],[245,1146,237,366,-212,-568],[484,1146,237,368,-212,-570],[723,1146,237,369,-212,-570],[962,1146,240,369,-212,-568],[1204,1146,246,365,-212,-562],[1452,1146,252,362,-212,-558],[1706,1146,260,360,-212,-554],[1968,1146,264,355,-212,-548],[2234,1146,266,354,-212,-547],[2502,1146,266,355,-212,-550],[2770,1146,261,359,-212,-556],[3033,1146,256,362,-212,-562]]},"hurt":{"size":[4073,2138],"scale":0.64,"frames":[[0,0,269,400,-211,-622],[271,0,262,400,-211,-622],[535,0,250,399,-211,-621],[787,0,241,402,-213,-625],[1030,0,239,406,-224,-632],[1271,0,243,411,-241,-638],[1516,0,253,415,-265,-645],[1771,0,253,420,-276,-652],[2026,0,248,422,-278,-656],[2276,0,239,426,-262,-660],[2517,0,225,429,-234,-662],[2744,0,220,435,-219,-662],[2966,0,218,433,-213,-657],[3186,0,223,426,-218,-645],[3411,0,234,420,-231,-635],[3647,0,247,413,-249,-625],[0,437,260,410,-263,-619],[262,437,276,407,-279,-615],[540,437,297,406,-295,-614],[839,437,320,410,-307,-619],[1161,437,335,410,-309,-620],[1498,437,349,404,-298,-611],[1849,437,349,396,-266,-597],[2200,437,367,388,-275,-585],[2569,437,366,387,-282,-584],[2937,437,351,391,-284,-590],[3290,437,332,398,-283,-601],[3624,437,312,404,-279,-611],[0,849,287,414,-273,-621],[289,849,257,422,-264,-631],[548,849,228,423,-254,-638],[778,849,213,426,-242,-646],[993,849,221,427,-222,-654],[1216,849,240,435,-218,-661],[1458,849,260,438,-215,-664],[1720,849,265,439,-202,-665],[1987,849,262,439,-190,-665],[2251,849,267,436,-182,-660],[2520,849,284,437,-178,-662],[2806,849,308,434,-177,-657],[3116,849,318,429,-168,-649],[3436,849,307,418,-154,-632],[3745,849,291,410,-150,-620],[0,1290,276,406,-150,-613],[278,1290,263,407,-150,-615],[543,1290,250,412,-150,-622],[795,1290,239,419,-150,-633],[1036,1290,231,424,-150,-641],[1269,1290,227,428,-150,-647],[1498,1290,221,428,-150,-648],[1721,1290,224,428,-150,-648],[1947,1290,231,427,-150,-646],[2180,1290,236,426,-150,-645],[2418,1290,236,425,-150,-643],[2656,1290,234,426,-150,-644],[2892,1290,232,426,-150,-645],[3126,1290,236,425,-150,-643],[3364,1290,236,424,-150,-641],[3602,1290,234,422,-150,-639],[3838,1290,235,419,-150,-634],[0,1720,236,416,-150,-629]],"bx":[3,8,12,16,20,25,30,35,38,42,45,49,51,50,45,39,33,26,20,16,14,14,15,15,20,29,39,46,51,53,58,59,55,51,50,52,57,60,61,63,65,66,66,67,68,69,69,69,69,69,69,67,67,67,70,73,76,78,80,83,85]}};
+const CHAIN_ATLAS_DATA = {"intro":{"size":[3927,3924],"scale":0.64,"frames":[[0,0,269,401,-211,-623],[271,0,268,401,-211,-622],[541,0,269,396,-211,-615],[812,0,269,389,-211,-605],[1083,0,274,387,-211,-601],[1359,0,277,392,-211,-610],[1638,0,300,400,-211,-621],[1940,0,333,405,-211,-629],[2275,0,359,417,-211,-649],[2636,0,376,470,-211,-731],[3014,0,380,539,-215,-839],[3396,0,418,517,-382,-804],[0,541,367,543,-436,-844],[369,541,388,463,-443,-719],[759,541,456,390,-399,-606],[1217,541,352,486,-211,-756],[1571,541,419,500,-292,-777],[1992,541,554,509,-450,-791],[2548,541,476,525,-423,-819],[3026,541,377,554,-440,-865],[3405,541,522,400,-477,-624],[0,1097,511,435,-446,-664],[513,1097,381,534,-209,-792],[896,1097,436,516,-269,-788],[1334,1097,584,519,-452,-807],[1920,1097,500,532,-427,-829],[2422,1097,385,548,-452,-856],[2809,1097,530,400,-491,-625],[3341,1097,503,429,-425,-649],[0,1647,380,526,-210,-771],[382,1647,429,524,-258,-815],[813,1647,579,511,-434,-794],[1394,1647,520,529,-429,-824],[1916,1647,372,562,-437,-877],[2290,1647,486,460,-464,-718],[2778,1647,541,409,-464,-623],[3321,1647,423,481,-279,-704],[0,2211,393,549,-210,-801],[395,2211,488,505,-330,-784],[885,2211,605,515,-462,-801],[1492,2211,497,538,-427,-839],[1991,2211,370,560,-443,-874],[2363,2211,518,401,-475,-626],[2883,2211,519,412,-442,-626],[3404,2211,405,508,-241,-740],[0,2773,410,579,-225,-830],[412,2773,543,504,-413,-782],[957,2773,596,514,-461,-798],[1555,2773,449,536,-424,-834],[2006,2773,405,559,-436,-873],[2413,2773,527,400,-467,-624],[2942,2773,508,424,-414,-634],[3452,2773,390,545,-209,-783],[0,3354,423,563,-237,-803],[425,3354,547,509,-404,-790],[974,3354,609,515,-461,-799],[1585,3354,478,535,-427,-833],[2065,3354,375,568,-431,-887],[2442,3354,513,452,-455,-706],[2957,3354,530,422,-447,-630]]},"walk":{"size":[3639,361],"scale":0.56,"frames":[[0,0,279,344,-287,-618],[281,0,270,340,-299,-612],[553,0,249,346,-298,-621],[804,0,238,352,-310,-631],[1044,0,249,354,-324,-635],[1295,0,257,354,-335,-637],[1554,0,232,352,-209,-633],[1788,0,236,347,-205,-624],[2026,0,223,344,-206,-614],[2251,0,212,348,-222,-621],[2465,0,214,355,-263,-631],[2681,0,225,358,-290,-637],[2908,0,201,359,-242,-638],[3111,0,246,356,-259,-635],[3359,0,280,352,-279,-627]]},"swipe":{"size":[4064,953],"scale":0.64,"frames":[[0,0,269,401,-211,-623],[271,0,269,401,-211,-623],[542,0,269,401,-211,-624],[813,0,269,401,-211,-624],[1084,0,268,403,-211,-626],[1354,0,263,403,-211,-627],[1619,0,253,408,-211,-630],[1874,0,251,404,-211,-627],[2127,0,268,396,-211,-614],[2397,0,291,396,-211,-614],[2690,0,300,401,-236,-622],[2992,0,356,419,-339,-650],[3350,0,341,398,-385,-619],[3693,0,371,394,-441,-620],[0,421,477,413,-457,-641],[479,421,502,463,-396,-690],[983,421,390,484,-180,-724],[1375,421,418,530,-182,-799],[1795,421,385,490,-122,-868],[2182,421,386,507,-97,-913]]},"death":{"size":[4086,766],"scale":0.56,"frames":[[0,0,299,342,-360,-608],[301,0,281,360,-319,-656],[584,0,334,394,-399,-725],[920,0,411,442,-518,-805],[1333,0,306,387,-325,-713],[1641,0,304,390,-322,-703],[1947,0,304,338,-321,-609],[2253,0,304,337,-321,-609],[2559,0,303,337,-320,-615],[2864,0,304,338,-320,-611],[3170,0,304,338,-319,-615],[3476,0,303,335,-317,-615],[3781,0,305,329,-310,-597],[0,444,306,320,-304,-580],[308,444,309,299,-293,-542],[619,444,316,277,-288,-501],[937,444,352,218,-304,-384],[1291,444,405,140,-321,-216],[1698,444,405,114,-321,-167]]},"stun":{"size":[4074,1517],"scale":0.64,"frames":[[0,0,255,380,-235,-588],[257,0,255,380,-235,-590],[514,0,252,382,-235,-592],[768,0,249,383,-235,-594],[1019,0,243,383,-235,-594],[1264,0,238,387,-235,-600],[1504,0,230,389,-234,-604],[1736,0,223,394,-234,-607],[1961,0,217,402,-234,-607],[2180,0,214,402,-228,-601],[2396,0,211,400,-220,-597],[2609,0,216,391,-213,-583],[2827,0,220,380,-211,-570],[3049,0,234,369,-211,-559],[3285,0,251,356,-211,-550],[3538,0,265,353,-211,-545],[3805,0,269,350,-211,-541],[0,404,272,350,-211,-541],[274,404,266,351,-211,-542],[542,404,260,354,-211,-547],[804,404,253,356,-211,-550],[1059,404,249,358,-212,-554],[1310,404,243,359,-212,-556],[1555,404,241,364,-212,-559],[1798,404,243,367,-212,-561],[2043,404,248,365,-212,-558],[2293,404,252,361,-212,-555],[2547,404,262,355,-212,-550],[2811,404,266,352,-212,-545],[3079,404,269,349,-212,-540],[3350,404,266,348,-212,-538],[3618,404,261,350,-212,-541],[0,773,255,353,-213,-545],[257,773,249,355,-213,-549],[508,773,241,358,-212,-555],[751,773,237,362,-212,-561],[990,773,237,367,-212,-564],[1229,773,240,371,-213,-566],[1471,773,243,370,-212,-566],[1716,773,249,370,-212,-566],[1967,773,253,365,-212,-561],[2222,773,261,360,-212,-555],[2485,773,265,356,-212,-551],[2752,773,266,354,-212,-548],[3020,773,266,352,-212,-545],[3288,773,262,353,-212,-545],[3552,773,255,355,-212,-550],[3809,773,250,360,-212,-557],[0,1146,243,363,-212,-563],[245,1146,237,366,-212,-568],[484,1146,237,368,-212,-570],[723,1146,237,369,-212,-570],[962,1146,240,369,-212,-568],[1204,1146,246,365,-212,-562],[1452,1146,252,362,-212,-558],[1706,1146,260,360,-212,-554],[1968,1146,264,355,-212,-548],[2234,1146,266,354,-212,-547],[2502,1146,266,355,-212,-550],[2770,1146,261,359,-212,-556],[3033,1146,256,362,-212,-562]]},"hurt":{"size":[4073,2138],"scale":0.64,"frames":[[0,0,269,400,-211,-622],[271,0,262,400,-211,-622],[535,0,250,399,-211,-621],[787,0,241,402,-213,-625],[1030,0,239,406,-224,-632],[1271,0,243,411,-241,-638],[1516,0,253,415,-265,-645],[1771,0,253,420,-276,-652],[2026,0,248,422,-278,-656],[2276,0,239,426,-262,-660],[2517,0,225,429,-234,-662],[2744,0,220,435,-219,-662],[2966,0,218,433,-213,-657],[3186,0,223,426,-218,-645],[3411,0,234,420,-231,-635],[3647,0,247,413,-249,-625],[0,437,260,410,-263,-619],[262,437,276,407,-279,-615],[540,437,297,406,-295,-614],[839,437,320,410,-307,-619],[1161,437,335,410,-309,-620],[1498,437,349,404,-298,-611],[1849,437,349,396,-266,-597],[2200,437,367,388,-275,-585],[2569,437,366,387,-282,-584],[2937,437,351,391,-284,-590],[3290,437,332,398,-283,-601],[3624,437,312,404,-279,-611],[0,849,287,414,-273,-621],[289,849,257,422,-264,-631],[548,849,228,423,-254,-638],[778,849,213,426,-242,-646],[993,849,221,427,-222,-654],[1216,849,240,435,-218,-661],[1458,849,260,438,-215,-664],[1720,849,265,439,-202,-665],[1987,849,262,439,-190,-665],[2251,849,267,436,-182,-660],[2520,849,284,437,-178,-662],[2806,849,308,434,-177,-657],[3116,849,318,429,-168,-649],[3436,849,307,418,-154,-632],[3745,849,291,410,-150,-620],[0,1290,276,406,-150,-613],[278,1290,263,407,-150,-615],[543,1290,250,412,-150,-622],[795,1290,239,419,-150,-633],[1036,1290,231,424,-150,-641],[1269,1290,227,428,-150,-647],[1498,1290,221,428,-150,-648],[1721,1290,224,428,-150,-648],[1947,1290,231,427,-150,-646],[2180,1290,236,426,-150,-645],[2418,1290,236,425,-150,-643],[2656,1290,234,426,-150,-644],[2892,1290,232,426,-150,-645],[3126,1290,236,425,-150,-643],[3364,1290,236,424,-150,-641],[3602,1290,234,422,-150,-639],[3838,1290,235,419,-150,-634],[0,1720,236,416,-150,-629]],"bx":[3,8,12,16,20,25,30,35,38,42,45,49,51,50,45,39,33,26,20,16,14,14,15,15,20,29,39,46,51,53,58,59,55,51,50,52,57,60,61,63,65,66,66,67,68,69,69,69,69,69,69,67,67,67,70,73,76,78,80,83,85]},"slam":{"size":[4070,1455],"scale":0.56,"frames":[[0,0,236,353,-122,-626],[238,0,241,353,-130,-626],[481,0,243,353,-124,-626],[726,0,249,353,-116,-626],[977,0,286,354,-116,-627],[1265,0,283,355,-116,-629],[1550,0,305,356,-169,-630],[1857,0,258,357,-230,-631],[2117,0,303,357,-302,-632],[2422,0,358,359,-393,-634],[2782,0,388,360,-435,-636],[3172,0,379,362,-403,-636],[3553,0,305,363,-130,-636],[0,365,307,363,-134,-636],[309,365,307,363,-134,-636],[618,365,303,363,-136,-636],[923,365,303,361,-136,-633],[1228,365,335,361,-135,-636],[1565,365,333,359,-133,-629],[1900,365,361,359,-133,-632],[2263,365,360,357,-130,-626],[2625,365,363,357,-130,-627],[2990,365,359,355,-124,-622],[3351,365,372,355,-121,-624],[3725,365,345,355,-118,-625],[0,730,234,358,-202,-629],[236,730,303,358,-308,-632],[541,730,364,358,-409,-632],[907,730,384,361,-433,-636],[1293,730,384,362,-424,-636],[1679,730,338,362,-322,-636],[2019,730,307,363,-131,-636],[2328,730,304,363,-134,-636],[2634,730,304,363,-134,-636],[2940,730,303,363,-136,-636],[3245,730,302,361,-137,-633],[3549,730,332,360,-132,-634],[0,1095,332,358,-133,-628],[334,1095,351,357,-130,-628],[687,1095,351,356,-130,-625],[1040,1095,367,356,-130,-626],[1409,1095,366,355,-129,-623],[1777,1095,357,355,-119,-622],[2136,1095,360,356,-118,-624],[2498,1095,232,357,-118,-627],[2732,1095,230,357,-116,-628]]}};
+// Video frame numbers of the kept slam frames (the slam pack index -> frame of the source video; 24 fps).
+const CHAIN_SLAM_VF = [37,39,41,43,45,47,49,51,53,55,57,59,61,62,63,64,65,66,67,68,69,70,71,74,77,80,83,84,86,88,90,92,94,95,96,97,98,99,100,101,102,103,106,109,112,115];
 const chainAtlas = {};
 for (const [name, data] of Object.entries(CHAIN_ATLAS_DATA)) {
     chainAtlas[name] = { img: new Image(), frames: data.frames, scale: data.scale, bx: data.bx };
@@ -334,19 +336,19 @@ function loadCombatAssets() {
     ollyReactionSprites.hurt.forEach((img, i) => img.src = `assets/characters/combat/olly-hurt-${i + 1}.webp?v=8110`);
     ollyReactionSprites.ko.forEach((img, i) => img.src = `assets/characters/combat/olly-ko-${i + 1}.webp?v=8110`);
     zombieCombatFrames.idle[0].src = 'assets/characters/combat/zombie-ready-crouch.webp?v=8111';
-    zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.webp?v=7600`);
+    zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/walk-${String(i + 1).padStart(3, '0')}.webp?v=9240`);
     zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i + 1}.webp?v=8600`);
     zombieCombatFrames.heavyKick.forEach((img, i) => img.src = `assets/characters/combat/zombie-ankle-biter-${String(i + 1).padStart(2, '0')}.webp?v=10100`);
     zombieCombatFrames.hurt.forEach((img, i) => img.src = `assets/characters/combat/zombie-hurt-${i + 1}.webp?v=8800`);
-    zombieCombatFrames.death.forEach((img, i) => img.src = `assets/characters/combat/zombie-death-${i + 1}.webp?v=8600`);
-    zombieCombatFrames.prep.forEach((img, i) => img.src = `assets/characters/combat/zombie-prep-${i + 1}.webp?v=8600`);
+    zombieCombatFrames.death.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/death-${String(i + 1).padStart(3, '0')}.webp?v=9240`);
+    zombieCombatFrames.prep.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro-${String(i + 1).padStart(3, '0')}.webp?v=9240`);
     zombieCountdownFrames[3].src = 'assets/characters/combat/zombie-countdown-3.webp?v=8600';
     zombieCountdownFrames[2].src = 'assets/characters/combat/zombie-countdown-2.webp?v=8600';
     zombieCountdownFrames[1].src = 'assets/characters/combat/zombie-countdown-1.webp?v=8600';
     zombieCountdownFrames.fight.src = 'assets/characters/combat/zombie-countdown-fight.webp?v=8600';
     for (const [name, a] of Object.entries(chainAtlas)) {
         const img = a.img;
-        img.src = `assets/characters/combat/chain-goth/chain-${name}.webp?v=9500`;
+        img.src = `assets/characters/combat/chain-goth/chain-${name}.webp?v=9240`;
         // Decode the big sheets in the background so the first time she uses a move there is no hitch (Safari decodes lazily).
         img.decode?.().then(() => {
             try { const t = document.createElement('canvas'); t.width = t.height = 1; t.getContext('2d').drawImage(img, 0, 0, 1, 1); } catch (e) {}
@@ -363,7 +365,7 @@ const CHAIN_FLOOR_Y = 535;               // same floor line Olly and the Zombie 
 // Intro: 14 build-up frames, then a 15-frame chain-twirl loop that repeats until FIGHT.
 const CHAIN_INTRO_PRE_COUNT = 28, CHAIN_INTRO_PRE_MS = 55, CHAIN_INTRO_LOOP_COUNT = 32, CHAIN_INTRO_LOOP_MS = 47;   // each loop is about one countdown beat (1.5s)
 const CHAIN_INTRO_GROW_MS = 500;         // she eases from the intro size to her normal fighting size at the very end of the countdown
-const CHAIN_WALK_FRAME_MS = 70;
+const CHAIN_WALK_FRAME_MS = 56;   // V9.24: 15-frame walk loop
 // Swipe pack: frames 0-5 = wind-up (chain lifts behind her), frames 6-11 = the low sweep.
 const CHAIN_SWIPE_WINDUP_COUNT = 10, CHAIN_SWIPE_WINDUP_MS = 520;
 const CHAIN_SWIPE_STRIKE_FIRST = 10;
@@ -375,19 +377,23 @@ const CHAIN_STAND_OFF = 250;             // how far from Olly she likes to stand
 const CHAIN_CHASE_SPEED = 170;           // quicker than the Zombie Goth (135)
 const CHAIN_RECOVER_MS = 520;
 // Death is a simple topple + fade until the dedicated death art is added.
-// Chain spin (second attack): a long, red-flag telegraph, then a spin that hits twice. Dodge works, jumping does NOT.
-const CHAIN_SPIN_WINDUP_COUNT = 10, CHAIN_SPIN_WINDUP_MS = 1100;   // the wind-up re-uses the (sharper) swipe wind-up frames, held for longer
-const CHAIN_SPIN_FRAME_MS = 33, CHAIN_SPIN_FRAME_COUNT = 36;
-const CHAIN_SPIN_TOTAL_MS = CHAIN_SPIN_FRAME_MS * CHAIN_SPIN_FRAME_COUNT;
-const CHAIN_SPIN_HIT_AT_MS = [759, 957];   // the last two flashes of the mace; one dodge timed at the start of the spin avoids both
-const CHAIN_SPIN_DAMAGE = 15, CHAIN_SPIN_HIT_DAMAGE = [8, 7],   // spin = 15 total across its two passes
-      CHAIN_SPIN_UNUSED = 0, CHAIN_SPIN_RANGE = 400, CHAIN_SPIN_PUSH = 40;
+// V9.24 Chain SLAM (replaces the old spin): she winds the chain overhead and slams it down TWICE.
+// Slam 1 is only a warning (no damage). Slam 2 sends a wave of sparks across the floor in the direction she is facing.
+// Jump over HER (land behind her) or stay in the air and it misses; stand in front of her on the ground and it hits.
+const CHAIN_SLAM_MS = 36;                  // ms per source-video frame (the video is 24 fps; this plays it ~15% faster)
+const CHAIN_SLAM_START_VF = 37;            // first kept video frame
+const CHAIN_SLAM_WARN_AT_MS = (64 - 37) * CHAIN_SLAM_MS;     // slam 1 (warning)
+const CHAIN_SLAM_HIT_AT_MS = (97 - 37) * CHAIN_SLAM_MS;      // slam 2 (damage wave)
+const CHAIN_SLAM_TOTAL_MS = (118 - 37) * CHAIN_SLAM_MS;
+const CHAIN_SLAM_CLOSE_TO = 230, CHAIN_SLAM_GLIDE = 230;     // she closes to about a jump away while winding up
+const CHAIN_WAVE_REACH = 600, CHAIN_WAVE_GROW_MS = 170, CHAIN_WAVE_MS = 480;
+const CHAIN_SLAM_DAMAGE = 15, CHAIN_SLAM_PUSH = 40;
 // Stun is EARNED: three hits in a row (a Heavy Attack counts as two) leave her dizzy, and Olly gets his punches back to punish it.
 const CHAIN_STUN_HITS = 3, CHAIN_STUN_HIT_WINDOW_MS = 4000;
 const CHAIN_STUN_FRAME_MS = 33, CHAIN_STUN_FRAME_COUNT = 61, CHAIN_STUN_MS = CHAIN_STUN_FRAME_MS * CHAIN_STUN_FRAME_COUNT;
 // Hurt reaction: she doubles over and straightens up. A normal punch plays the first 46 frames, a Heavy Attack plays all 61 frames more slowly.
 const CHAIN_HURT_NORMAL_FRAMES = 46, CHAIN_HURT_NORMAL_MS = 1150, CHAIN_HURT_HEAVY_FRAMES = 61, CHAIN_HURT_HEAVY_MS = 1900;
-const CHAIN_PATTERN = ['swipe', 'swipe', 'spin'];
+const CHAIN_PATTERN = ['swipe', 'swipe', 'slam'];
 // Frames where the mace touches the floor: [x, y] of the contact point, in animator pixels relative to her feet (negative x = toward Olly; measured from where the chain lies on the floor in your frames).
 // A little cream spark burst is drawn on those frames so the chain feels like it really hits the ground.
 const CHAIN_CONTACTS = {
@@ -395,7 +401,7 @@ const CHAIN_CONTACTS = {
     swipe: { 14: [-325, -30] }
 };
 const CHAIN_SPARK_MS = 230;
-const CHAIN_DEATH_FRAME_MS = 38, CHAIN_DEATH_FALL_MS = 31 * 38, CHAIN_DEATH_HOLD_MS = 3000 - 31 * 38;   // 31 hit-and-fall frames, then she lies still before fading
+const CHAIN_DEATH_FRAME_MS = 38, CHAIN_DEATH_FALL_MS = 18 * 38, CHAIN_DEATH_HOLD_MS = 3000 - 18 * 38;   // V9.24: 18 hit-and-fall frames, then she lies still before fading
 
 let chainLastGood = null;
 function drawChainAtlasFrame(c, pack, index, x, floorY, face, renderScale = CHAIN_RENDER_SCALE, alpha = 1, rotation = 0, offsetX = 0) {
@@ -1251,7 +1257,7 @@ export function createLevel1(ui) {
                 const item = items[i];
                 if (item) {
                     const info = ITEM_INFO[item];
-                    slot.innerHTML = `<img class="inv-item-img" src="${info.img}?v=9230" alt="${info.name}" draggable="false"><span>${info.label}</span>`;
+                    slot.innerHTML = `<img class="inv-item-img" src="${info.img}?v=9240" alt="${info.name}" draggable="false"><span>${info.label}</span>`;
                     slot.dataset.item = item;
                     slot.dataset.tip = info.tip;
                     slot.classList.add('inventory-filled');
@@ -1624,8 +1630,8 @@ export function createLevel1(ui) {
         let finished = false;
         let attemptedFallback = false;
         const sources = [
-            'assets/video/cutscene2/cutscene2.mp4?v=9230',
-            'assets/video/cutscene2/cutscene2.mov?v=9230'
+            'assets/video/cutscene2/cutscene2.mp4?v=9240',
+            'assets/video/cutscene2/cutscene2.mov?v=9240'
         ];
 
         const finish = () => {
@@ -2040,10 +2046,9 @@ export function createLevel1(ui) {
         if (zombieCombatState === 'intro') {
             frames = zombieCombatFrames.prep;
             // v8.9: non-walk/non-attack animation pass is 20% larger.
-            targetHeight = 498;
-            const t = Math.max(0, elapsed);
-            const sequencePosition = Math.floor(t / ZOMBIE_PREP_FRAME_MS) % ZOMBIE_PREP_SEQUENCE.length;
-            index = ZOMBIE_PREP_SEQUENCE[sequencePosition];
+            targetHeight = 400;
+            // V9.24: the new 61-frame 3-2-1 animation plays once across the countdown, then holds its last pose.
+            index = Math.min(60, Math.floor(Math.max(0, elapsed) / (ZOMBIE_INTRO_TOTAL_MS / 61)));
         } else if (zombieCombatState === 'chase') {
             frames = zombieCombatFrames.walk;
             // v8.9: walk is 10% smaller than the v8.8 visible walk size.
@@ -2106,10 +2111,9 @@ export function createLevel1(ui) {
                 }
             }
         } else if (zombieCombatState === 'ready' || zombieCombatState === 'windup') {
-            frames = zombieCombatFrames.idle;
-            // Dedicated crouched pose is used only when getting ready to attack.
-            targetHeight = 370;
-            index = 0;
+            frames = zombieCombatFrames.prep;   // V9.24: ready pose = the last frame of the new fight-stance animation
+            targetHeight = 400;
+            index = 60;
         } else if (zombieCombatState === 'recover') {
             // After an attack, visibly walk/reposition instead of snapping back
             // into the crouch. The crouch returns before the next attack.
@@ -2133,10 +2137,10 @@ export function createLevel1(ui) {
         // One fixed scale per animation set (never per frame) so she stays the same size within and between animations.
         // Scales were matched by the size of her hair bow across the walk, crouch, claw and bite art.
         let scale = 0;
-        if (zombieCombatState === 'chase' || zombieCombatState === 'recover') scale = .4595;
+        if (zombieCombatState === 'chase' || zombieCombatState === 'recover') scale = 1;
         else if (zombieCombatState === 'claw') scale = .62;
         else if (zombieCombatState === 'heavyKick') scale = .62;
-        else if (zombieCombatState === 'ready' || zombieCombatState === 'windup') scale = .235;
+        else if (zombieCombatState === 'intro' || zombieCombatState === 'ready' || zombieCombatState === 'windup' || zombieCombatState === 'death') scale = 1;   // V9.24 frames are pre-scaled
         return { img: frames[index], targetHeight, frameIndex: index, scale };
     }
 
@@ -2207,7 +2211,7 @@ export function createLevel1(ui) {
         // Existing attack frames retain their previous rendering offset.
         // v8.9: walk and attack are deliberately 10% smaller; every other
         // Zombie combat animation is 20% larger than its v8.8 size.
-        const renderGroundY = walking ? enemyY + 25 : (dying ? enemyY + 8 : enemyY + 22);
+        const renderGroundY = (walking || dying || zombieCombatState === 'recover' || zombieCombatState === 'intro' || zombieCombatState === 'ready' || zombieCombatState === 'windup') ? enemyY + 25 : enemyY + 22;
         // The Ankle Biter frames are wide, low-to-the-ground poses. Give this
         // attack a width cap matching Zombie Goth's normal combat footprint so
         // the horizontal artwork does not become enormous on screen.
@@ -2458,7 +2462,7 @@ export function createLevel1(ui) {
         }
         // Chain Goth cannot be knocked out of her swipe or spin, and she shrugs off hits while dizzy (the hits still count).
         if (isChainFight()) {
-            if (zombieCombatState === 'windup' || zombieCombatState === 'swipe' || zombieCombatState === 'spinwind' || zombieCombatState === 'spin') {
+            if (zombieCombatState === 'windup' || zombieCombatState === 'swipe' || zombieCombatState === 'slam') {
                 zombieHitFlashUntil = nowMs + 115;
                 return;
             }
@@ -2473,10 +2477,6 @@ export function createLevel1(ui) {
             chainStunLastHit = nowMs;
             if (chainStunHits >= CHAIN_STUN_HITS) {
                 startChainStun(nowMs);
-                return;
-            }
-            if (zombieCombatState === 'spinwind' || zombieCombatState === 'spin') {
-                zombieHitFlashUntil = nowMs + 115;
                 return;
             }
         }
@@ -2578,7 +2578,7 @@ export function createLevel1(ui) {
             try { video.pause(); video.removeAttribute('src'); video.load(); } catch (e) {}
             overlay.remove(); done();
         };
-        const sources = ['assets/video/cutscene3/ollytaken.mp4?v=9230', 'assets/video/cutscene3/olly-taken.mp4?v=9230', 'assets/video/cutscene3/ollytaken.mov?v=9230', 'assets/video/cutscene3/olly-taken.mov?v=9230'];
+        const sources = ['assets/video/cutscene3/ollytaken.mp4?v=9240', 'assets/video/cutscene3/olly-taken.mp4?v=9240', 'assets/video/cutscene3/ollytaken.mov?v=9240', 'assets/video/cutscene3/olly-taken.mov?v=9240'];
         let i = 0;
         const next = () => { if (i >= sources.length) { finish(); return; } video.src = sources[i++]; video.load(); video.play().catch(() => {}); };
         video.addEventListener('error', next);
@@ -2620,7 +2620,8 @@ export function createLevel1(ui) {
             }, 1100);
         }
         playSfx('olly-hurt-heavy', .9);
-        playSfx('olly-ko', .9);
+        playSfx('olly-ko', 1);   // the "ugh" as he drops
+        setTimeout(() => { if (playerDeathTriggered) playSfx('olly-thud', 1); }, 860);   // and the thud as he hits the floor
         setLoopSfx('chain-drag', false);
         setTimeout(() => playTakenCutscene(() => endCombat(false)), Math.max(OLLY_KO_TOTAL_MS + 280, 3000));
     }
@@ -2649,6 +2650,7 @@ export function createLevel1(ui) {
     let chainLastPack = '';
     let chainLastIndex = -1;
     let chainSpinHitsDone = 0;
+    let chainSlamFace = 'left', chainSlamWarned = false, chainSlamWaveHit = false, chainSlamHitSound = false;
     // God-of-War style stun meter in the enemy plate: fills with each hit, fades if you stop, goes gold and drains while she is stunned.
     let stunMeterW = '', stunMeterFull = null;
     function updateChainStunMeter(nowMs) {
@@ -2687,14 +2689,11 @@ export function createLevel1(ui) {
             const p = Math.min(.999, elapsed / CHAIN_SWIPE_WINDUP_MS);
             return { pack: chainAtlas.swipe, index: Math.floor(p * CHAIN_SWIPE_WINDUP_COUNT), scale: CHAIN_RENDER_SCALE };
         }
-        if (zombieCombatState === 'spinwind') {
-            // Wind back over the first 65% of the telegraph, then hold the pose and shake before the spin.
-            const p = Math.min(.999, elapsed / (CHAIN_SPIN_WINDUP_MS * .65));
-            return { pack: chainAtlas.swipe, index: Math.floor(p * CHAIN_SPIN_WINDUP_COUNT), scale: CHAIN_RENDER_SCALE };
-        }
-        if (zombieCombatState === 'spin') {
-            const i = Math.min(CHAIN_SPIN_FRAME_COUNT - 1, Math.floor(elapsed / CHAIN_SPIN_FRAME_MS));
-            return { pack: chainAtlas.spin, index: i, scale: CHAIN_RENDER_SCALE };
+        if (zombieCombatState === 'slam') {
+            const vf = CHAIN_SLAM_START_VF + elapsed / CHAIN_SLAM_MS;
+            let i = 0;
+            for (let k = 0; k < CHAIN_SLAM_VF.length; k++) if (CHAIN_SLAM_VF[k] <= vf) i = k;
+            return { pack: chainAtlas.slam, index: i, scale: CHAIN_RENDER_SCALE };
         }
         if (zombieCombatState === 'stun') {
             const i = Math.min(CHAIN_STUN_FRAME_COUNT - 1, Math.floor(elapsed / CHAIN_STUN_FRAME_MS));
@@ -2727,10 +2726,62 @@ export function createLevel1(ui) {
         return { pack: chainAtlas.swipe, index: 0, scale: CHAIN_RENDER_SCALE };
     }
 
+    // Yellow danger zone in front of her (she is about to slam) + the spark wave itself.
+    function drawChainSlamFloor(c, x, face, t, nowMs) {
+        const dir = face === 'left' ? -1 : 1;
+        const y = CHAIN_FLOOR_Y + 12;
+        const x0 = x + dir * 30;
+        const warnP = Math.max(0, Math.min(1, (t - CHAIN_SLAM_WARN_AT_MS) / (CHAIN_SLAM_HIT_AT_MS - CHAIN_SLAM_WARN_AT_MS)));
+        const waveT = t - CHAIN_SLAM_HIT_AT_MS;
+        // a flat, soft-edged strip on the floor from her feet out to 'len' (an ellipse squashed to floor perspective)
+        const strip = (len, fillA, rim) => {
+            if (len < 4) return;
+            c.save();
+            c.translate(x0 + dir * len / 2, y);
+            c.scale(1, .2);
+            const g = c.createRadialGradient(0, 0, len * .08, 0, 0, len / 2);
+            g.addColorStop(0, `rgba(255,226,90,${fillA})`);
+            g.addColorStop(.7, `rgba(255,214,60,${fillA * .75})`);
+            g.addColorStop(1, 'rgba(255,214,60,0)');
+            c.fillStyle = g;
+            c.beginPath(); c.ellipse(0, 0, len / 2, 150, 0, 0, Math.PI * 2); c.fill();
+            if (rim > 0) { c.lineWidth = 6; c.strokeStyle = `rgba(255,225,110,${rim})`; c.beginPath(); c.ellipse(0, 0, len / 2 - 3, 147, 0, 0, Math.PI * 2); c.stroke(); }
+            c.restore();
+        };
+        if (waveT < 0) {
+            // danger zone: faint at first, lit up after the warning slam, pulsing faster as the real slam gets near
+            const lit = t > CHAIN_SLAM_WARN_AT_MS ? 1 : .35;
+            const pulse = .5 + .5 * Math.sin(nowMs / (110 - 60 * warnP));
+            strip(CHAIN_WAVE_REACH, (.16 + .22 * warnP) * (.65 + .35 * pulse) * lit, (.3 + .5 * warnP) * lit);
+        } else if (waveT < CHAIN_WAVE_MS) {
+            const grow = Math.min(1, waveT / CHAIN_WAVE_GROW_MS);
+            const reach = CHAIN_WAVE_REACH * (1 - Math.pow(1 - grow, 2));
+            const fade = Math.max(0, 1 - Math.max(0, waveT - CHAIN_WAVE_GROW_MS) / (CHAIN_WAVE_MS - CHAIN_WAVE_GROW_MS));
+            c.save();
+            c.globalAlpha = fade;
+            strip(reach, .8, .95);
+            // bright leading edge
+            c.save(); c.translate(x0 + dir * reach, y); c.scale(1, .2);
+            const gl = c.createRadialGradient(0, 0, 0, 0, 0, 90);
+            gl.addColorStop(0, 'rgba(255,255,220,.95)'); gl.addColorStop(1, 'rgba(235,255,110,0)');
+            c.fillStyle = gl; c.beginPath(); c.arc(0, 0, 90, 0, Math.PI * 2); c.fill(); c.restore();
+            // flying sparks (deterministic scatter so they do not shimmer randomly)
+            for (let k = 0; k < 46; k++) {
+                const u = (Math.sin(k * 91.7) * .5 + .5), v = (Math.sin(k * 37.3 + 1.7) * .5 + .5), w2 = (Math.sin(k * 12.9 + .4) * .5 + .5);
+                const px = x0 + dir * (u * reach);
+                const lift = Math.sin(Math.min(1, waveT / 360) * Math.PI) * (14 + 52 * w2);
+                const py = y + (v - .5) * 26 - lift;
+                c.fillStyle = k % 3 ? 'rgba(235,255,110,1)' : 'rgba(255,255,230,1)';
+                c.beginPath(); c.ellipse(px, py, 3 + 3 * w2, 2 + 2 * w2, 0, 0, Math.PI * 2); c.fill();
+            }
+            c.restore();
+        }
+    }
+
     function drawChainCombat(c, enemyX, enemyY, nowMs) {
         const frame = getChainCombatFrame(nowMs);
         if (zombieCombatState !== 'death') chainDeathFace = enemyLeaving ? (enemyLeaving.dir < 0 ? 'left' : 'right') : (player.x < enemyX ? 'left' : 'right');
-        const face = chainDeathFace;
+        const face = zombieCombatState === 'slam' ? chainSlamFace : chainDeathFace;   // she keeps facing the way she started the slam
         let offsetX = 0;
         const hurtBx = frame.pack === chainAtlas.hurt ? (chainAtlas.hurt.bx?.[frame.index] || 0) : 0;
         // Plant her feet: the hurt art drifts backwards, so cancel that drift (the game already shoves her back a little).
@@ -2744,7 +2795,7 @@ export function createLevel1(ui) {
             const ease = 1 - Math.pow(1 - p, 2);
             offsetX += zombieHitDirection * zombieHitStrength * (1 - ease);
             alpha = nowMs < zombieHitFlashUntil ? .72 : 1;
-        } else if (zombieCombatState === 'spinwind' || zombieCombatState === 'spin' || zombieCombatState === 'stun') {
+        } else if (zombieCombatState === 'slam' || zombieCombatState === 'stun') {
             alpha = nowMs < zombieHitFlashUntil ? .72 : 1;
         } else if (zombieCombatState === 'death') {
             const t = Math.max(0, nowMs - zombieCombatStateStart);
@@ -2762,10 +2813,9 @@ export function createLevel1(ui) {
             c.restore();
         }
 
-        // Warning rings on the floor: red = spin (dodge only), yellow = swipe (jump OVER her only).
-        if (zombieCombatState === 'spinwind' || zombieCombatState === 'spin') {
-            const t = nowMs - zombieCombatStateStart;
-            drawAttackRing(c, enemyX, CHAIN_FLOOR_Y + 8, CHAIN_SPIN_RANGE, 'yellow', zombieCombatState === 'spinwind' ? Math.min(1, t / CHAIN_SPIN_WINDUP_MS) : 1, zombieCombatState === 'spin', nowMs);
+        // Warning rings on the floor: red = swipe (dodge), yellow = slam (jump OVER her).
+        if (zombieCombatState === 'slam') {
+            drawChainSlamFloor(c, enemyX, face, nowMs - zombieCombatStateStart, nowMs);
         } else if (zombieCombatState === 'windup' && zombieCombatAttackType === 'swipe') {
             drawAttackRing(c, enemyX, CHAIN_FLOOR_Y + 8, CHAIN_SWIPE_RANGE, 'red', Math.min(1, (nowMs - zombieCombatStateStart) / CHAIN_SWIPE_WINDUP_MS), false, nowMs);
         } else if (zombieCombatState === 'swipe') {
@@ -2901,14 +2951,16 @@ export function createLevel1(ui) {
     function chooseChainAttack(nowMs) {
         const next = CHAIN_PATTERN[chainPatternStep % CHAIN_PATTERN.length];
         chainPatternStep++;
-        if (next === 'spin') {
-            zombieCombatAttackType = 'spin';
+        if (next === 'slam') {
+            zombieCombatAttackType = 'slam';
             zombieCombatAttackHit = false;
-            zombieCombatState = 'spinwind';
+            zombieCombatState = 'slam';
             zombieCombatStateStart = nowMs;
             enemyAttackPhase = 'windup';
-            playSfx('chain-rattle', .8);
             chainSwipeAim = player.x >= zombieCombatX ? 1 : -1;   // the side she is aiming at
+            chainSlamFace = chainSwipeAim < 0 ? 'left' : 'right';   // she only ever starts the slam facing Olly
+            chainSlamWarned = false; chainSlamWaveHit = false; chainSlamHitSound = false;
+            playSfx('chain-rattle', .8);
             queueRingTutorial('yellow');
             ui.combatStatus.textContent = 'The chain is too long to dodge. JUMP OVER HER!';
             return;
@@ -3017,30 +3069,36 @@ export function createLevel1(ui) {
             return;
         }
 
-        if (zombieCombatState === 'spinwind') {
-            if (nowMs - zombieCombatStateStart >= CHAIN_SPIN_WINDUP_MS) {
-                zombieCombatState = 'spin';
-                zombieCombatStateStart = nowMs;
-                playSfx('chain-spin', .85);
-                chainSpinHitsDone = 0;
-                enemyAttackPhase = 'active';
-            }
-            return;
-        }
-
-        if (zombieCombatState === 'spin') {
+        if (zombieCombatState === 'slam') {
             const elapsed = nowMs - zombieCombatStateStart;
-            // Two passes of the mace. Dodging avoids them; jumping does not (ignoreAir).
-            while (chainSpinHitsDone < CHAIN_SPIN_HIT_AT_MS.length && elapsed >= CHAIN_SPIN_HIT_AT_MS[chainSpinHitsDone]) {
-                chainSpinHitsDone++;
-                playSfx('chain-impact-spin', .85);
-                // Yellow spin (the chain is far too long to dodge): only getting BEHIND her (jumping over) avoids it.
-                if ((player.x - zombieCombatX) * chainSwipeAim < 0)
-                    ui.combatStatus.textContent = '↪ You jumped clean over the spin!';
-                else
-                    applyZombieDamage(CHAIN_SPIN_HIT_DAMAGE[chainSpinHitsDone - 1] || 7, CHAIN_SPIN_RANGE, CHAIN_SPIN_PUSH, nowMs, 'CHAIN SPIN', true, true);
+            const aim = chainSwipeAim;
+            // While she winds up she steps in towards Olly until he is about a jump away.
+            if (elapsed < CHAIN_SLAM_WARN_AT_MS && (player.x - zombieCombatX) * aim > CHAIN_SLAM_CLOSE_TO) {
+                const step = Math.min((player.x - zombieCombatX) * aim - CHAIN_SLAM_CLOSE_TO, CHAIN_SLAM_GLIDE * dt);
+                zombieCombatX = Math.max(170, Math.min(COMBAT_W - 170, zombieCombatX + aim * step));
             }
-            if (elapsed >= CHAIN_SPIN_TOTAL_MS) {
+            if (!chainSlamWarned && elapsed >= CHAIN_SLAM_WARN_AT_MS) {
+                chainSlamWarned = true;
+                playSfx('chain-impact', .8);
+                ui.combatStatus.textContent = 'Warning slam... the next one is the real one. JUMP OVER HER!';
+            }
+            if (elapsed >= CHAIN_SLAM_HIT_AT_MS && elapsed < CHAIN_SLAM_HIT_AT_MS + CHAIN_WAVE_MS) {
+                const waveT = elapsed - CHAIN_SLAM_HIT_AT_MS;
+                if (waveT < 40 && !chainSlamHitSound) { chainSlamHitSound = true; playSfx('chain-impact-spin', .95); }
+                if (!chainSlamWaveHit) {
+                    const grow = Math.min(1, waveT / CHAIN_WAVE_GROW_MS);
+                    const reach = 30 + CHAIN_WAVE_REACH * (1 - Math.pow(1 - grow, 2));
+                    const rel = (player.x - zombieCombatX) * aim;   // > 0 = in front of her (the way she is facing)
+                    const airborne = jumping || jumpOffset < -20;
+                    if (rel > -20 && rel < reach && !airborne) {
+                        chainSlamWaveHit = true;
+                        applyZombieDamage(CHAIN_SLAM_DAMAGE, 1e5, CHAIN_SLAM_PUSH, nowMs, 'CHAIN SLAM', true, true);
+                    } else if (rel <= -20 && waveT < 60) {
+                        ui.combatStatus.textContent = '↪ You jumped clean over her!';
+                    }
+                }
+            }
+            if (elapsed >= CHAIN_SLAM_TOTAL_MS) {
                 zombieCombatState = 'recover';
                 zombieCombatStateStart = nowMs;
                 zombieRecoveryDuration = CHAIN_RECOVER_MS + 250;
@@ -3235,7 +3293,7 @@ export function createLevel1(ui) {
     function startCombat(bossFight) {
         loadCombatAssets();
         playMusic('fight');
-        preloadSfx(['punch-1', 'punch-2', 'punch-3', 'goth-pain', ...GOTH_HURT_SFX, 'olly-hurt', 'olly-hurt-heavy', 'olly-attack', 'olly-heavy-attack', 'olly-jump', 'olly-land', 'olly-dodge-grunt', 'chain-clatter', 'chain-drop', 'chain-rattle', 'chain-spin', 'chain-impact', 'chain-impact-spin', 'breath-recovery', 'countdown-tick', 'fight-shout', 'zombie-death', 'pickup', 'interact', 'tutorial', 'olly-ko']);
+        preloadSfx(['punch-1', 'punch-2', 'punch-3', 'goth-pain', ...GOTH_HURT_SFX, 'olly-hurt', 'olly-hurt-heavy', 'olly-ko', 'olly-thud', 'olly-attack', 'olly-heavy-attack', 'olly-jump', 'olly-land', 'olly-dodge-grunt', 'chain-clatter', 'chain-drop', 'chain-rattle', 'chain-spin', 'chain-impact', 'chain-impact-spin', 'breath-recovery', 'countdown-tick', 'fight-shout', 'zombie-death', 'pickup', 'interact', 'tutorial', 'olly-ko']);
         isBoss = bossFight;
         mode = 'combat';
         combatMax = bossFight ? 100 : (target?.maxHp || 50);
@@ -3253,6 +3311,7 @@ export function createLevel1(ui) {
             enemyAttackPhase = 'intro';
             chainPatternStep = 0;
             chainSpinHitsDone = 0;
+            chainSlamHitSound = false;
             chainHurtHeavy = false;
             chainSparks = [];
             chainLastFrameKey = '';

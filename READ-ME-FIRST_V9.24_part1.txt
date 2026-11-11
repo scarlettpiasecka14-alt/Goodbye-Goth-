@@ -1,0 +1,58 @@
+GOODBYE GOTH  V9.24  -  PART 1 of 2   (branch: Testing5)
+Do NOT upload this text file. Upload everything else in this zip.
+
+HOW TO UPLOAD
+Unzip, then on GitHub: Add file > Upload files. Drag in the folders/files so the paths below are kept
+(index.html in the top level, then js/, tools/, assets/). Commit. Then do PART 2 (zombie walk + death frames)
+before you test - the game needs both parts.
+
+FILES IN THIS PART (72)
+  index.html                                             (cache-bust 9230 -> 9240)
+  js/game.js  js/settings.js  js/story.js                (cache-bust only)
+  js/levels/level1.js                                    (all the new fight code)
+  tools/build_chain_assets.py                            (updated; not used by the game)
+  tools/build_zombie_assets.py                           (new; not used by the game)
+  assets/audio/sfx/olly-thud.mp3                         (NEW - the thud when Olly is knocked out)
+  assets/characters/combat/chain-goth/chain-walk.webp    (new Chain Goth walk)
+  assets/characters/combat/chain-goth/chain-death.webp   (new Chain Goth death)
+  assets/characters/combat/chain-goth/chain-slam.webp    (NEW - the slam attack)
+  assets/characters/combat/zombie-v2/intro-001.webp ... intro-061.webp   (new Zombie Goth 3-2-1 animation)
+
+OPTIONAL CLEAN-UP: assets/characters/combat/chain-goth/chain-spin.webp is no longer used (the old glitchy
+yellow spin is gone). You can delete it on GitHub; nothing breaks if you leave it.
+
+WHAT CHANGED
+ - Zombie Goth: new creepier walk, new more detailed death, new 3-2-1 fight-stance animation (she now stays in
+   the last pose of it as her "ready" stance).
+ - Chain Goth: new walk and death. The old yellow SPIN is replaced by the SLAM:
+     * she steps in until Olly is about a jump away, always facing him when she starts;
+     * 1st slam = warning only (no damage), the yellow floor strip lights up;
+     * 2nd slam = a wave of sparks sweeps across the floor in the direction she is facing (15 damage);
+     * JUMP OVER HER (land behind her) or be in the air when it goes off = safe.
+       Standing in front of her on the ground = hit. Dodging does NOT avoid it.
+ - Olly's knockout: the "ugh" plays as he drops, then a thud as he hits the floor.
+ - Map zoom 1.7 -> 1.5.
+
+TESTING CHECKLIST (Safari, Mac)
+ 1. Hard-refresh first (Cmd+Shift+R). Fight the Zombie Goth: 3-2-1 animation plays, she shambles toward you,
+    feet sit on the floor, she faces you; claw/bite attacks still work; she collapses when beaten and stays down.
+ 2. Chain Goth: new walk looks right and she stays on the floor line.
+ 3. Wait for her 3rd attack (she does swipe, swipe, slam). Watch: warning slam (no damage) -> second slam.
+    a) stand still in front of her -> you should be hit (-15)
+    b) jump over her before the 2nd slam and land behind her -> no damage
+    c) be in the air when the 2nd slam lands -> no damage
+    d) landing back in the sparks while they are still on screen counts as a hit (by design)
+    Tell me if anything looks like "standing in the sparks but not hurt" (or the reverse).
+ 4. Beat the Chain Goth: new death plays; she lies still, then fades.
+ 5. Let her knock you out: "ugh" then thud as you land; the 'taken' cutscene follows.
+ 6. Map: zoom is closer than the old default but less blurry than 1.7.
+
+HONEST NOTES - what I did and did NOT test
+ - Syntax-checked every JS file. Ran the game in a desktop Chrome test browser (not Safari): Zombie intro/walk/claw
+   looked right; the Chain Goth slam fired and hit Olly when he stood still; frozen frames of the warning strip,
+   spark wave and "Olly behind her = no hit" scenario looked right.
+ - NOT tested: Safari, the real thud/ugh sounds by ear (the thud is a synthesised placeholder - send me a real one
+   if you find one), the Zombie and Chain death animations end-to-end in the browser, and how the slam FEELS to
+   dodge. Timings (1.0s to the warning slam, 2.2s to the real one, wave 0.5s) are easy to tune once you've tried it.
+ - The slam video art is slightly more muted than the rest of the Chain Goth art, and the video's own spark burst
+   shows BEHIND her while the damaging wave runs in FRONT of her. Tell me if that reads oddly.
