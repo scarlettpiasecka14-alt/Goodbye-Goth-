@@ -1,0 +1,45 @@
+GOODBYE GOTH  V9.25  -  PATRICIA BOSS FIGHT   (branch: Testing5)
+Do NOT upload this text file. Upload everything else, keeping the folder paths (14 files).
+This builds on V9.24, so upload V9.24 (both parts) first if you haven't.
+
+FILES
+  index.html                                   (cache-bust 9240 -> 9250)
+  js/game.js  js/settings.js  js/story.js      (cache-bust only)
+  js/levels/level1.js                          (the whole Patricia fight)
+  tools/build_patricia_assets.py               (not used by the game)
+  assets/characters/patricia/atlas/pat-walk.webp, pat-idle.webp, pat-lunge.webp, pat-combo.webp,
+      pat-lightning.webp, pat-smoke.webp, pat-hurt.webp, pat-defeat.webp   (NEW: her moves, 6.8 MB total)
+The big frame folders you already uploaded (321fight, SwordSwipe, etc.) are no longer needed by the game; they stay on GitHub untouched.
+
+THE FIGHT
+ - Patricia has 300 HP (Olly's 100 HP as before). Her art: walk, idle, sword lunge, sword combo, lightning, purple-smoke vanish, hurt, defeat.
+ - STAGE 1 (300 -> 150 HP), in this order: sword LUNGE (12), sword COMBO (3 hits x 8), VANISH STRIKE (15), COMBO, LUNGE, repeat.
+ - At 150 HP she staggers into STAGE 2 ("No more Mrs Nice Goth"): she moves a little faster, attacks sooner, and
+   LIGHTNING SLAM (25) joins the pattern. Stage 2 is also your checkpoint: if you are knocked out after that point,
+   Retry restarts at Patricia 150 HP with a 3-2-1. If you are knocked out in stage 1, Retry starts her at full health.
+ - Ring colours: RED = lunge/combo (dodge or jump avoids it), PURPLE = vanish strike (she vanishes and the ring shows
+   where she'll pop out, on the other side of Olly; dodge or jump), YELLOW = lightning (only JUMPING avoids it; being
+   on the ground within the ring when the bolt lands = hit).
+ - Normal punches never stagger her (she shrugs them off). A Heavy Attack staggers her only if she's between moves.
+   While she is a cloud of smoke she can't be hit.
+ - When she falls her "Salvagable?" animation plays, holds, then the Level 1 Complete screen appears as before.
+ - The existing Patricia intro (talking, potion, drink, 3-2-1) is untouched; she now uses her ready pose through it.
+
+TESTING CHECKLIST (Safari)
+ 1. Start the boss fight and go through the usual intro; after FIGHT she walks toward you with the new walk and faces you.
+ 2. Watch each move: lunge, combo, vanish strike, then keep fighting to 150 HP for stage 2 + lightning. Do the rings match what hurts you?
+ 3. Jump over the lightning ring - no damage. Stand still in it - 25 damage.
+ 4. Punch her (she shouldn't flinch), Heavy Attack her while she walks (she should stagger).
+ 5. Get knocked out in stage 2, press Retry: does she come back at 150 HP with a countdown?
+ 6. Beat her: defeat animation, then Level 1 Complete.
+ 7. Does the game feel slow or hitch when the fight starts? (her sheets are large, ~55 MB when decoded.)
+ 8. Anything that feels too easy/hard: damage and timings are all constants at the top of level1.js, easy for me to retune.
+
+HONEST NOTES - tested vs not tested
+ - Syntax-checked every JS file. In a desktop Chrome test (not Safari) with Olly unhurt (god mode) I watched her run the whole
+   pattern for ~35 s with no errors: lunge, combo, vanish strike and recover all fired and hit as designed.
+   I looked at frozen frames of the walk, lunge, combo, smoke, vanish strike, lightning and stage-2 poses and they look right.
+ - NOT tested: Safari; the real fight to 150 HP and the stage-2 checkpoint/retry flow; the defeat animation; the real game feel/balance
+   (100 HP Olly vs 300 HP Patricia with 2-punch combos is a long fight - say if you want it shorter).
+ - There was no art for a leap pounce, so the design's "leap pounce" is the sword lunge. No death or voice art/audio exists yet,
+   so she makes the Goth groan sounds and her speech is text only for now. Her fight music is still FightMusic.

@@ -1,5 +1,5 @@
 /* Goodbye Goth V9.4 - Chain Goth fight (AI + all seven animations: intro, walk, swipe, spin, stun, hurt, death) on top of V9.0 map cleanup and the v8.11 Zombie Goth AI. */
-import { playSfx, playRandomSfx, playMusic, preloadSfx, setLoopSfx } from '../audio.js?v=9240';
+import { playSfx, playRandomSfx, playMusic, preloadSfx, setLoopSfx } from '../audio.js?v=9250';
 // Game clock: normal time, but it stands still while a tutorial pop-up is open (so nothing happens behind it).
 let pausedTotal = 0, pausedAt = 0;
 const gnow = () => (pausedAt || performance.now()) - pausedTotal;
@@ -8,7 +8,7 @@ const GOTH_HURT_SFX = ['goth-hurt-1', 'goth-hurt-2', 'goth-hurt-3', 'goth-hurt-4
 const COMBO_PUNCHES = 2;   // V9.19: two swings then a 5s rest, so punching can't just be spammed
 const BITE_WINDUP_MS = 1150;   // red bite warning: long enough to see the ring and dodge
 const RING_FLOOR_OFFSET = 62;   // how far below Olly's ground line the Zombie Goth's ring sits
-const ATTACK_RING_RGB = { pink: '236,110,170', yellow: '255,208,64', red: '255,66,86' };
+const ATTACK_RING_RGB = { pink: '236,110,170', yellow: '255,208,64', red: '255,66,86', purple: '176,84,255' };
 // ---- Ring tutorial pop-ups: shown the first time each ring colour appears, then remembered. Images: assets/tutorial/ring-<colour>.webp
 const RING_TUTORIAL = {
     pink: { title: 'PINK RING', text: 'A pink ring shows an incoming attack that you can avoid however you like: dodge it, jump over the enemy, or hit them out of it.' },
@@ -111,7 +111,7 @@ function loadDrinkFrames() {
     if (drinkImgs.length) return;
     for (let i = 0; i < DRINK_FRAMES; i++) {
         const im = new Image();
-        im.src = `assets/combat/OllyDrink/olly-drink-${String(i).padStart(2, '0')}.webp?v=9240`;
+        im.src = `assets/combat/OllyDrink/olly-drink-${String(i).padStart(2, '0')}.webp?v=9250`;
         drinkImgs.push(im);
     }
 }
@@ -315,6 +315,41 @@ const ZOMBIE_DEATH_FLOOR_OFFSETS = [];   // V9.24: new death frames are bottom-a
 const CHAIN_ATLAS_DATA = {"intro":{"size":[3927,3924],"scale":0.64,"frames":[[0,0,269,401,-211,-623],[271,0,268,401,-211,-622],[541,0,269,396,-211,-615],[812,0,269,389,-211,-605],[1083,0,274,387,-211,-601],[1359,0,277,392,-211,-610],[1638,0,300,400,-211,-621],[1940,0,333,405,-211,-629],[2275,0,359,417,-211,-649],[2636,0,376,470,-211,-731],[3014,0,380,539,-215,-839],[3396,0,418,517,-382,-804],[0,541,367,543,-436,-844],[369,541,388,463,-443,-719],[759,541,456,390,-399,-606],[1217,541,352,486,-211,-756],[1571,541,419,500,-292,-777],[1992,541,554,509,-450,-791],[2548,541,476,525,-423,-819],[3026,541,377,554,-440,-865],[3405,541,522,400,-477,-624],[0,1097,511,435,-446,-664],[513,1097,381,534,-209,-792],[896,1097,436,516,-269,-788],[1334,1097,584,519,-452,-807],[1920,1097,500,532,-427,-829],[2422,1097,385,548,-452,-856],[2809,1097,530,400,-491,-625],[3341,1097,503,429,-425,-649],[0,1647,380,526,-210,-771],[382,1647,429,524,-258,-815],[813,1647,579,511,-434,-794],[1394,1647,520,529,-429,-824],[1916,1647,372,562,-437,-877],[2290,1647,486,460,-464,-718],[2778,1647,541,409,-464,-623],[3321,1647,423,481,-279,-704],[0,2211,393,549,-210,-801],[395,2211,488,505,-330,-784],[885,2211,605,515,-462,-801],[1492,2211,497,538,-427,-839],[1991,2211,370,560,-443,-874],[2363,2211,518,401,-475,-626],[2883,2211,519,412,-442,-626],[3404,2211,405,508,-241,-740],[0,2773,410,579,-225,-830],[412,2773,543,504,-413,-782],[957,2773,596,514,-461,-798],[1555,2773,449,536,-424,-834],[2006,2773,405,559,-436,-873],[2413,2773,527,400,-467,-624],[2942,2773,508,424,-414,-634],[3452,2773,390,545,-209,-783],[0,3354,423,563,-237,-803],[425,3354,547,509,-404,-790],[974,3354,609,515,-461,-799],[1585,3354,478,535,-427,-833],[2065,3354,375,568,-431,-887],[2442,3354,513,452,-455,-706],[2957,3354,530,422,-447,-630]]},"walk":{"size":[3639,361],"scale":0.56,"frames":[[0,0,279,344,-287,-618],[281,0,270,340,-299,-612],[553,0,249,346,-298,-621],[804,0,238,352,-310,-631],[1044,0,249,354,-324,-635],[1295,0,257,354,-335,-637],[1554,0,232,352,-209,-633],[1788,0,236,347,-205,-624],[2026,0,223,344,-206,-614],[2251,0,212,348,-222,-621],[2465,0,214,355,-263,-631],[2681,0,225,358,-290,-637],[2908,0,201,359,-242,-638],[3111,0,246,356,-259,-635],[3359,0,280,352,-279,-627]]},"swipe":{"size":[4064,953],"scale":0.64,"frames":[[0,0,269,401,-211,-623],[271,0,269,401,-211,-623],[542,0,269,401,-211,-624],[813,0,269,401,-211,-624],[1084,0,268,403,-211,-626],[1354,0,263,403,-211,-627],[1619,0,253,408,-211,-630],[1874,0,251,404,-211,-627],[2127,0,268,396,-211,-614],[2397,0,291,396,-211,-614],[2690,0,300,401,-236,-622],[2992,0,356,419,-339,-650],[3350,0,341,398,-385,-619],[3693,0,371,394,-441,-620],[0,421,477,413,-457,-641],[479,421,502,463,-396,-690],[983,421,390,484,-180,-724],[1375,421,418,530,-182,-799],[1795,421,385,490,-122,-868],[2182,421,386,507,-97,-913]]},"death":{"size":[4086,766],"scale":0.56,"frames":[[0,0,299,342,-360,-608],[301,0,281,360,-319,-656],[584,0,334,394,-399,-725],[920,0,411,442,-518,-805],[1333,0,306,387,-325,-713],[1641,0,304,390,-322,-703],[1947,0,304,338,-321,-609],[2253,0,304,337,-321,-609],[2559,0,303,337,-320,-615],[2864,0,304,338,-320,-611],[3170,0,304,338,-319,-615],[3476,0,303,335,-317,-615],[3781,0,305,329,-310,-597],[0,444,306,320,-304,-580],[308,444,309,299,-293,-542],[619,444,316,277,-288,-501],[937,444,352,218,-304,-384],[1291,444,405,140,-321,-216],[1698,444,405,114,-321,-167]]},"stun":{"size":[4074,1517],"scale":0.64,"frames":[[0,0,255,380,-235,-588],[257,0,255,380,-235,-590],[514,0,252,382,-235,-592],[768,0,249,383,-235,-594],[1019,0,243,383,-235,-594],[1264,0,238,387,-235,-600],[1504,0,230,389,-234,-604],[1736,0,223,394,-234,-607],[1961,0,217,402,-234,-607],[2180,0,214,402,-228,-601],[2396,0,211,400,-220,-597],[2609,0,216,391,-213,-583],[2827,0,220,380,-211,-570],[3049,0,234,369,-211,-559],[3285,0,251,356,-211,-550],[3538,0,265,353,-211,-545],[3805,0,269,350,-211,-541],[0,404,272,350,-211,-541],[274,404,266,351,-211,-542],[542,404,260,354,-211,-547],[804,404,253,356,-211,-550],[1059,404,249,358,-212,-554],[1310,404,243,359,-212,-556],[1555,404,241,364,-212,-559],[1798,404,243,367,-212,-561],[2043,404,248,365,-212,-558],[2293,404,252,361,-212,-555],[2547,404,262,355,-212,-550],[2811,404,266,352,-212,-545],[3079,404,269,349,-212,-540],[3350,404,266,348,-212,-538],[3618,404,261,350,-212,-541],[0,773,255,353,-213,-545],[257,773,249,355,-213,-549],[508,773,241,358,-212,-555],[751,773,237,362,-212,-561],[990,773,237,367,-212,-564],[1229,773,240,371,-213,-566],[1471,773,243,370,-212,-566],[1716,773,249,370,-212,-566],[1967,773,253,365,-212,-561],[2222,773,261,360,-212,-555],[2485,773,265,356,-212,-551],[2752,773,266,354,-212,-548],[3020,773,266,352,-212,-545],[3288,773,262,353,-212,-545],[3552,773,255,355,-212,-550],[3809,773,250,360,-212,-557],[0,1146,243,363,-212,-563],[245,1146,237,366,-212,-568],[484,1146,237,368,-212,-570],[723,1146,237,369,-212,-570],[962,1146,240,369,-212,-568],[1204,1146,246,365,-212,-562],[1452,1146,252,362,-212,-558],[1706,1146,260,360,-212,-554],[1968,1146,264,355,-212,-548],[2234,1146,266,354,-212,-547],[2502,1146,266,355,-212,-550],[2770,1146,261,359,-212,-556],[3033,1146,256,362,-212,-562]]},"hurt":{"size":[4073,2138],"scale":0.64,"frames":[[0,0,269,400,-211,-622],[271,0,262,400,-211,-622],[535,0,250,399,-211,-621],[787,0,241,402,-213,-625],[1030,0,239,406,-224,-632],[1271,0,243,411,-241,-638],[1516,0,253,415,-265,-645],[1771,0,253,420,-276,-652],[2026,0,248,422,-278,-656],[2276,0,239,426,-262,-660],[2517,0,225,429,-234,-662],[2744,0,220,435,-219,-662],[2966,0,218,433,-213,-657],[3186,0,223,426,-218,-645],[3411,0,234,420,-231,-635],[3647,0,247,413,-249,-625],[0,437,260,410,-263,-619],[262,437,276,407,-279,-615],[540,437,297,406,-295,-614],[839,437,320,410,-307,-619],[1161,437,335,410,-309,-620],[1498,437,349,404,-298,-611],[1849,437,349,396,-266,-597],[2200,437,367,388,-275,-585],[2569,437,366,387,-282,-584],[2937,437,351,391,-284,-590],[3290,437,332,398,-283,-601],[3624,437,312,404,-279,-611],[0,849,287,414,-273,-621],[289,849,257,422,-264,-631],[548,849,228,423,-254,-638],[778,849,213,426,-242,-646],[993,849,221,427,-222,-654],[1216,849,240,435,-218,-661],[1458,849,260,438,-215,-664],[1720,849,265,439,-202,-665],[1987,849,262,439,-190,-665],[2251,849,267,436,-182,-660],[2520,849,284,437,-178,-662],[2806,849,308,434,-177,-657],[3116,849,318,429,-168,-649],[3436,849,307,418,-154,-632],[3745,849,291,410,-150,-620],[0,1290,276,406,-150,-613],[278,1290,263,407,-150,-615],[543,1290,250,412,-150,-622],[795,1290,239,419,-150,-633],[1036,1290,231,424,-150,-641],[1269,1290,227,428,-150,-647],[1498,1290,221,428,-150,-648],[1721,1290,224,428,-150,-648],[1947,1290,231,427,-150,-646],[2180,1290,236,426,-150,-645],[2418,1290,236,425,-150,-643],[2656,1290,234,426,-150,-644],[2892,1290,232,426,-150,-645],[3126,1290,236,425,-150,-643],[3364,1290,236,424,-150,-641],[3602,1290,234,422,-150,-639],[3838,1290,235,419,-150,-634],[0,1720,236,416,-150,-629]],"bx":[3,8,12,16,20,25,30,35,38,42,45,49,51,50,45,39,33,26,20,16,14,14,15,15,20,29,39,46,51,53,58,59,55,51,50,52,57,60,61,63,65,66,66,67,68,69,69,69,69,69,69,67,67,67,70,73,76,78,80,83,85]},"slam":{"size":[4070,1455],"scale":0.56,"frames":[[0,0,236,353,-122,-626],[238,0,241,353,-130,-626],[481,0,243,353,-124,-626],[726,0,249,353,-116,-626],[977,0,286,354,-116,-627],[1265,0,283,355,-116,-629],[1550,0,305,356,-169,-630],[1857,0,258,357,-230,-631],[2117,0,303,357,-302,-632],[2422,0,358,359,-393,-634],[2782,0,388,360,-435,-636],[3172,0,379,362,-403,-636],[3553,0,305,363,-130,-636],[0,365,307,363,-134,-636],[309,365,307,363,-134,-636],[618,365,303,363,-136,-636],[923,365,303,361,-136,-633],[1228,365,335,361,-135,-636],[1565,365,333,359,-133,-629],[1900,365,361,359,-133,-632],[2263,365,360,357,-130,-626],[2625,365,363,357,-130,-627],[2990,365,359,355,-124,-622],[3351,365,372,355,-121,-624],[3725,365,345,355,-118,-625],[0,730,234,358,-202,-629],[236,730,303,358,-308,-632],[541,730,364,358,-409,-632],[907,730,384,361,-433,-636],[1293,730,384,362,-424,-636],[1679,730,338,362,-322,-636],[2019,730,307,363,-131,-636],[2328,730,304,363,-134,-636],[2634,730,304,363,-134,-636],[2940,730,303,363,-136,-636],[3245,730,302,361,-137,-633],[3549,730,332,360,-132,-634],[0,1095,332,358,-133,-628],[334,1095,351,357,-130,-628],[687,1095,351,356,-130,-625],[1040,1095,367,356,-130,-626],[1409,1095,366,355,-129,-623],[1777,1095,357,355,-119,-622],[2136,1095,360,356,-118,-624],[2498,1095,232,357,-118,-627],[2732,1095,230,357,-116,-628]]}};
 // Video frame numbers of the kept slam frames (the slam pack index -> frame of the source video; 24 fps).
 const CHAIN_SLAM_VF = [37,39,41,43,45,47,49,51,53,55,57,59,61,62,63,64,65,66,67,68,69,70,71,74,77,80,83,84,86,88,90,92,94,95,96,97,98,99,100,101,102,103,106,109,112,115];
+/* V9.25: Patricia (Level 1 boss) animation packs: one WebP per move, built by tools/build_patricia_assets.py.
+   Frame rows are [atlasX, atlasY, w, h, offX, offY] with offsets relative to her feet (source px). Her art faces LEFT
+   (except the walk, which faces right and is flipped when drawn). */
+const PATRICIA_ATLAS_DATA = {"walk":{"size":[3837,859],"scale":0.66,"frames":[[0,0,312,426,-322,-635],[314,0,376,422,-341,-632],[692,0,403,411,-356,-613],[1097,0,296,422,-323,-631],[1395,0,319,428,-328,-642],[1716,0,399,418,-357,-628],[2117,0,355,421,-355,-625],[2474,0,282,424,-314,-633],[2758,0,303,427,-304,-639],[3063,0,402,416,-347,-623],[3467,0,370,413,-368,-615],[0,430,308,420,-339,-629],[310,430,314,427,-306,-640],[626,430,391,420,-335,-632],[1019,430,385,417,-364,-620]]},"idle":{"size":[3942,760],"scale":0.66,"frames":[[0,0,339,376,-254,-566],[341,0,340,376,-254,-566],[683,0,331,376,-249,-567],[1016,0,323,378,-251,-569],[1341,0,308,379,-259,-571],[1651,0,297,378,-265,-569],[1950,0,305,377,-266,-568],[2257,0,326,377,-264,-568],[2585,0,342,375,-260,-565],[2929,0,348,376,-256,-566],[3279,0,340,376,-251,-566],[3621,0,321,376,-249,-566],[0,381,307,377,-249,-568],[309,381,298,377,-250,-568],[609,381,314,377,-254,-568],[925,381,337,377,-257,-568],[1264,381,349,376,-260,-567],[1615,381,350,376,-260,-566],[1967,381,344,376,-254,-567],[2313,381,328,377,-249,-568],[2643,381,312,377,-249,-568]]},"lunge":{"size":[4063,2004],"scale":0.66,"frames":[[0,0,339,376,-254,-566],[341,0,317,376,-255,-567],[660,0,290,376,-254,-567],[952,0,284,376,-254,-566],[1238,0,332,376,-254,-566],[1572,0,335,376,-257,-566],[1909,0,272,381,-234,-577],[2183,0,271,386,-207,-594],[2456,0,399,408,-381,-627],[2857,0,360,395,-371,-608],[3219,0,338,385,-289,-592],[3559,0,429,354,-233,-527],[0,410,409,372,-167,-568],[411,410,397,402,-175,-613],[810,410,389,446,-202,-679],[1201,410,389,462,-246,-702],[1592,410,406,458,-264,-696],[2000,410,401,455,-263,-690],[2403,410,442,568,-277,-861],[2847,410,685,425,-603,-646],[0,980,718,352,-623,-536],[720,980,695,321,-623,-489],[1417,980,676,322,-619,-491],[2095,980,649,323,-618,-491],[2746,980,655,337,-616,-491],[3403,980,660,344,-617,-491],[0,1334,663,341,-617,-490],[665,1334,664,338,-618,-490],[1331,1334,661,336,-619,-490],[1994,1334,664,330,-619,-490],[2660,1334,684,321,-619,-490],[3346,1334,699,321,-619,-490],[0,1677,708,321,-619,-490],[710,1677,713,321,-619,-490],[1425,1677,705,321,-618,-490],[2132,1677,688,322,-619,-490],[2822,1677,666,325,-619,-490]]},"combo":{"size":[3879,1494],"scale":0.66,"frames":[[0,0,273,306,-215,-512],[275,0,270,306,-215,-512],[547,0,262,306,-205,-512],[811,0,285,306,-240,-513],[1098,0,268,299,-219,-513],[1368,0,312,309,-174,-518],[1682,0,242,321,-197,-535],[1926,0,372,329,-411,-546],[2300,0,453,323,-519,-538],[2755,0,395,315,-434,-519],[3152,0,271,346,-239,-539],[3425,0,454,397,-243,-642],[0,399,325,520,-233,-828],[327,399,322,514,-206,-819],[651,399,414,355,-231,-576],[1067,399,304,329,-239,-537],[1373,399,475,446,-492,-713],[1850,399,333,554,-259,-878],[2185,399,370,537,-293,-851],[2557,399,381,481,-304,-767],[2940,399,345,359,-267,-542],[3287,399,486,402,-228,-647],[0,955,331,537,-216,-851],[333,955,335,537,-209,-851],[670,955,375,480,-205,-765],[1047,955,416,347,-196,-563],[1465,955,312,326,-190,-531],[1779,955,570,325,-565,-530],[2351,955,529,329,-514,-535],[2882,955,495,342,-486,-555],[3379,955,480,345,-481,-560]]},"lightning":{"size":[3933,3440],"scale":0.66,"frames":[[0,0,339,376,-254,-566],[341,0,355,389,-279,-585],[698,0,372,411,-333,-630],[1072,0,416,428,-392,-666],[1490,0,503,427,-514,-687],[1995,0,556,439,-595,-690],[2553,0,491,612,-475,-889],[3046,0,397,706,-320,-999],[3445,0,488,459,-333,-613],[0,708,775,651,-593,-888],[777,708,863,739,-685,-999],[1642,708,950,925,-760,-999],[2594,708,950,930,-760,-999],[0,1640,950,950,-760,-999],[952,1640,950,945,-760,-991],[1904,1640,950,913,-760,-942],[2856,1640,950,890,-760,-907],[0,2592,950,846,-760,-841],[952,2592,950,826,-760,-810]]},"smoke":{"size":[3860,2371],"scale":0.66,"frames":[[0,0,340,376,-254,-566],[342,0,339,376,-254,-566],[683,0,350,374,-271,-568],[1035,0,395,401,-339,-575],[1432,0,407,419,-320,-584],[1841,0,463,432,-352,-590],[2306,0,385,447,-186,-601],[2693,0,556,461,-403,-598],[3251,0,294,428,-287,-580],[3547,0,313,449,-265,-587],[0,463,817,566,-590,-737],[819,463,881,603,-655,-770],[1702,463,688,654,-716,-804],[2392,463,950,677,-760,-826],[0,1142,859,663,-621,-837],[861,1142,326,393,-248,-580],[1189,1142,827,567,-604,-845],[2018,1142,812,593,-576,-859],[2832,1142,809,595,-565,-857],[0,1807,714,562,-542,-827],[716,1807,688,440,-526,-645]]},"hurt":{"size":[3938,1138],"scale":0.66,"frames":[[0,0,341,376,-255,-566],[343,0,339,377,-254,-567],[684,0,337,378,-252,-568],[1023,0,337,379,-251,-570],[1362,0,340,378,-254,-569],[1704,0,351,372,-267,-563],[2057,0,663,392,-324,-594],[2722,0,704,409,-386,-620],[3428,0,436,346,-440,-524],[0,411,421,369,-486,-558],[423,411,413,373,-513,-564],[838,411,401,370,-536,-560],[1241,411,388,356,-561,-538],[1631,411,378,348,-566,-526],[2011,411,360,347,-554,-524],[2373,411,320,360,-510,-544],[2695,411,311,366,-496,-553],[3008,411,304,370,-488,-558],[3314,411,304,370,-483,-559],[3620,411,318,360,-490,-544],[0,786,319,350,-472,-529]]},"defeat":{"size":[3682,2080],"scale":0.66,"frames":[[0,0,340,376,-254,-566],[342,0,341,376,-255,-566],[685,0,333,380,-245,-572],[1020,0,304,403,-206,-604],[1326,0,415,406,-357,-629],[1743,0,569,385,-510,-591],[2314,0,521,365,-418,-561],[2837,0,370,360,-268,-555],[3209,0,473,444,-267,-670],[0,446,623,500,-340,-720],[625,446,506,417,-213,-591],[1133,446,561,380,-195,-533],[1696,446,480,406,-110,-573],[2178,446,402,441,-39,-624],[2582,446,472,537,-159,-770],[3056,446,563,532,-339,-747],[0,985,588,516,-347,-673],[590,985,513,455,-319,-581],[1105,985,512,443,-324,-563],[1619,985,389,502,-315,-636],[2010,985,374,534,-337,-693],[2386,985,378,545,-328,-704],[2766,985,430,537,-337,-681],[3198,985,471,541,-347,-687],[0,1532,459,545,-318,-694],[461,1532,418,546,-259,-696],[881,1532,395,545,-238,-695],[1278,1532,395,545,-238,-694],[1675,1532,395,544,-242,-693],[2072,1532,379,544,-243,-693],[2453,1532,357,535,-240,-680]]}};
+const patAtlas = {};
+for (const [name, data] of Object.entries(PATRICIA_ATLAS_DATA))
+    patAtlas[name] = { img: new Image(), frames: data.frames, scale: data.scale };
+let patAssetsRequested = false;
+function loadPatriciaAssets() {
+    if (patAssetsRequested) return;
+    patAssetsRequested = true;
+    for (const [name, a] of Object.entries(patAtlas)) {
+        const img = a.img;
+        img.src = `assets/characters/patricia/atlas/pat-${name}.webp?v=9250`;
+        img.decode?.().then(() => {
+            if (window.createImageBitmap) createImageBitmap(img).then(bmp => { a.bmp = bmp; }).catch(() => {});
+        }).catch(() => {});
+    }
+}
+const PAT_SCALE = 0.66;               // = the atlas scale, so she is never resampled
+const PAT_STAND_OFF = 215, PAT_CHASE_SPEED = 165;
+const PAT_HP = 300, PAT_STAGE2_HP = 150;
+const PAT_WALK_FRAME_MS = 62, PAT_IDLE_FRAME_MS = 95;
+const PAT_LUNGE_WINDUP_FRAMES = 13, PAT_LUNGE_WINDUP_MS = 760, PAT_LUNGE_STRIKE_FRAMES = 24, PAT_LUNGE_FRAME_MS = 34, PAT_LUNGE_HIT_AT_MS = 240;
+const PAT_LUNGE_DAMAGE = 12, PAT_LUNGE_RANGE = 360, PAT_LUNGE_PUSH = 36;
+const PAT_COMBO_WINDUP_MS = 500, PAT_COMBO_FRAME_MS = 62, PAT_COMBO_FRAMES = 31, PAT_COMBO_HITS_AT_MS = [496, 992, 1736];
+const PAT_COMBO_DAMAGE = 8, PAT_COMBO_RANGE = 330, PAT_COMBO_PUSH = 26;
+const PAT_SMOKE_FRAME_MS = 62, PAT_SMOKE_FRAMES = 21, PAT_SMOKE_GONE_AT_MS = 560, PAT_SMOKE_REAPPEAR_AT_MS = 1150;
+const PAT_VSTRIKE_APPEAR_MS = 380, PAT_VSTRIKE_DAMAGE = 15;
+const PAT_LIGHT_WINDUP_FRAMES = 10, PAT_LIGHT_WINDUP_MS = 1100, PAT_LIGHT_FRAMES = 9, PAT_LIGHT_FRAME_MS = 110;
+const PAT_LIGHT_DAMAGE = 25, PAT_LIGHT_RANGE = 560;
+const PAT_HURT_FRAMES = 13, PAT_HURT_MS = 780;
+const PAT_DEFEAT_FRAMES = 31, PAT_DEFEAT_FRAME_MS = 70, PAT_DEFEAT_HOLD_MS = 1600;
+const PAT_PATTERN_1 = ['lunge', 'combo', 'vanish', 'combo', 'lunge'];
+const PAT_PATTERN_2 = ['combo', 'lightning', 'vanish', 'lunge', 'combo', 'lightning', 'vanish'];
 const chainAtlas = {};
 for (const [name, data] of Object.entries(CHAIN_ATLAS_DATA)) {
     chainAtlas[name] = { img: new Image(), frames: data.frames, scale: data.scale, bx: data.bx };
@@ -1257,7 +1292,7 @@ export function createLevel1(ui) {
                 const item = items[i];
                 if (item) {
                     const info = ITEM_INFO[item];
-                    slot.innerHTML = `<img class="inv-item-img" src="${info.img}?v=9240" alt="${info.name}" draggable="false"><span>${info.label}</span>`;
+                    slot.innerHTML = `<img class="inv-item-img" src="${info.img}?v=9250" alt="${info.name}" draggable="false"><span>${info.label}</span>`;
                     slot.dataset.item = item;
                     slot.dataset.tip = info.tip;
                     slot.classList.add('inventory-filled');
@@ -1630,8 +1665,8 @@ export function createLevel1(ui) {
         let finished = false;
         let attemptedFallback = false;
         const sources = [
-            'assets/video/cutscene2/cutscene2.mp4?v=9240',
-            'assets/video/cutscene2/cutscene2.mov?v=9240'
+            'assets/video/cutscene2/cutscene2.mp4?v=9250',
+            'assets/video/cutscene2/cutscene2.mov?v=9250'
         ];
 
         const finish = () => {
@@ -2170,6 +2205,10 @@ export function createLevel1(ui) {
     }
 
     function drawZombieCombat(c, enemyX, enemyY, nowMs) {
+        if (isPatriciaFight()) {
+            drawPatriciaCombat(c, enemyX, enemyY, nowMs);
+            return;
+        }
         if (isChainFight()) {
             drawChainCombat(c, enemyX, enemyY, nowMs);
             return;
@@ -2452,6 +2491,7 @@ export function createLevel1(ui) {
     function triggerZombieHitReaction(nowMs, heavy = false, longHit = false) {
         if (!isAIFight())
             return;
+        if (isPatriciaFight()) { onPatriciaHit(nowMs, heavy); return; }
         const hurtRate = isChainFight() ? .82 : 1;   // Chain Goth reuses the zombie groans, pitched lower, until she has her own
         if (heavy) playSfx('goth-pain', .9, hurtRate); else playSfx(GOTH_HURT_SFX[Math.floor(Math.random() * GOTH_HURT_SFX.length)], .7, hurtRate);
 
@@ -2578,7 +2618,7 @@ export function createLevel1(ui) {
             try { video.pause(); video.removeAttribute('src'); video.load(); } catch (e) {}
             overlay.remove(); done();
         };
-        const sources = ['assets/video/cutscene3/ollytaken.mp4?v=9240', 'assets/video/cutscene3/olly-taken.mp4?v=9240', 'assets/video/cutscene3/ollytaken.mov?v=9240', 'assets/video/cutscene3/olly-taken.mov?v=9240'];
+        const sources = ['assets/video/cutscene3/ollytaken.mp4?v=9250', 'assets/video/cutscene3/olly-taken.mp4?v=9250', 'assets/video/cutscene3/ollytaken.mov?v=9250', 'assets/video/cutscene3/olly-taken.mov?v=9250'];
         let i = 0;
         const next = () => { if (i >= sources.length) { finish(); return; } video.src = sources[i++]; video.load(); video.play().catch(() => {}); };
         video.addEventListener('error', next);
@@ -2633,11 +2673,14 @@ export function createLevel1(ui) {
     // attack. The Zombie functions above are untouched.
     // ------------------------------------------------------------------
     function isAIFight() {
-        return mode === 'combat' && !isBoss && (target?.type === 'shambler' || target?.type === 'chain');
+        return mode === 'combat' && (isBoss || target?.type === 'shambler' || target?.type === 'chain');
     }
 
     function isChainFight() {
         return mode === 'combat' && !isBoss && target?.type === 'chain';
+    }
+    function isPatriciaFight() {
+        return mode === 'combat' && isBoss;
     }
 
     let chainDeathFace = 'left';
@@ -2918,6 +2961,309 @@ export function createLevel1(ui) {
         }
     }
 
+    // ------------------------------------------------------------------
+    // V9.25: PATRICIA (Level 1 boss). Same finite-state style as the Goths.
+    // 300 HP, two stages (stage 2 starts at 150 HP and is also the retry checkpoint).
+    // Moves: LUNGE (red ring: dodge or jump), SWORD COMBO x3 (red: dodge or jump), VANISH STRIKE (purple smoke,
+    // she reappears on the other side of Olly), LIGHTNING SLAM (yellow: only jumping avoids it). Stage 2 adds lightning.
+    // ------------------------------------------------------------------
+    let patStage = 1, patCheckpoint = false, patStep = 0, patFace = 'left', patHitsDone = 0, patDoneOnce = false;
+    let patVanishX = 0, patPlayerNoteAt = 0;
+    function initPatricia(resume) {
+        loadPatriciaAssets();
+        patStage = resume ? 2 : 1;
+        patStep = 0; patFace = 'left'; patHitsDone = 0; patDoneOnce = false;
+        zombieCombatX = COMBAT_W - 320;
+        zombieCombatState = 'intro';
+        zombieCombatStateStart = gnow();
+        zombieCombatNextDecision = Infinity;
+        zombieCombatAttackType = 'none';
+        enemyLeaving = null;
+        zombieDeathStarted = false;
+        if (resume) {
+            combatHp = PAT_STAGE2_HP;
+            const t = gnow();
+            prefightHold = false;
+            zombieIntroActive = true;
+            zombieIntroStart = t;
+            zombieIntroEndAt = t + ZOMBIE_INTRO_TOTAL_MS;
+            enemyAttackPhase = 'intro';
+        }
+    }
+    function patGone() {   // while she is a cloud of smoke Olly cannot hit her
+        return isPatriciaFight() && zombieCombatState === 'smoke' && (gnow() - zombieCombatStateStart) >= PAT_SMOKE_GONE_AT_MS && (gnow() - zombieCombatStateStart) < PAT_SMOKE_REAPPEAR_AT_MS;
+    }
+    function patSide() { return player.x >= zombieCombatX ? 1 : -1; }
+    function patBeginAttack(kind, nowMs) {
+        patFace = patSide() < 0 ? 'left' : 'right';
+        patHitsDone = 0;
+        zombieCombatAttackHit = false;
+        zombieCombatAttackType = kind;
+        zombieCombatStateStart = nowMs;
+        enemyAttackPhase = 'windup';
+        chainSwipeAim = patSide();
+        if (kind === 'lunge') {
+            zombieCombatState = 'lunge'; queueRingTutorial('red');
+            playSfx('chain-rattle', .6, 1.3);
+            ui.combatStatus.textContent = 'Patricia raises her sword. DODGE or JUMP!';
+        } else if (kind === 'combo') {
+            zombieCombatState = 'combo'; queueRingTutorial('red');
+            ui.combatStatus.textContent = 'A three-hit sword combo. Keep moving!';
+        } else if (kind === 'lightning') {
+            zombieCombatState = 'lightning'; queueRingTutorial('yellow');
+            playSfx('chain-rattle', .7, .8);
+            ui.combatStatus.textContent = 'Lightning! The whole floor is dangerous. JUMP!';
+        } else {   // vanish
+            zombieCombatState = 'smoke'; queueRingTutorial('pink');
+            patVanishX = Math.max(190, Math.min(COMBAT_W - 190, player.x - patSide() * 170));
+            playSfx('chain-rattle', .5, 1.5);
+            ui.combatStatus.textContent = 'Patricia vanishes in smoke. Watch where she appears!';
+        }
+    }
+    function patChooseAttack(nowMs) {
+        const pat = patStage === 1 ? PAT_PATTERN_1 : PAT_PATTERN_2;
+        const next = pat[patStep % pat.length];
+        patStep++;
+        patBeginAttack(next, nowMs);
+    }
+    function patToRecover(nowMs, ms) {
+        zombieCombatState = 'recover';
+        zombieCombatStateStart = nowMs;
+        zombieRecoveryDuration = ms;
+        enemyAttackPhase = 'recover';
+        zombieCombatAttackType = 'none';
+    }
+    function patDamage(dmg, range, push, name, nowMs, ignoreAir = false, ignoreDodge = false) {
+        applyZombieDamage(dmg, range, push, nowMs, name, ignoreAir, ignoreDodge);
+    }
+    function onPatriciaHit(nowMs, heavy) {
+        playSfx(heavy ? 'goth-pain' : GOTH_HURT_SFX[Math.floor(Math.random() * GOTH_HURT_SFX.length)], heavy ? .9 : .6, .9);
+        zombieHitFlashUntil = nowMs + 120;
+        const st = zombieCombatState;
+        // She shrugs off normal punches; only a Heavy Attack staggers her, and never in the middle of a move.
+        if (heavy && (st === 'chase' || st === 'recover' || st === 'ready')) {
+            zombieCombatState = 'phurt';
+            zombieCombatStateStart = nowMs;
+            enemyAttackPhase = 'hurt';
+            zombieCombatNextDecision = Infinity;
+        }
+    }
+    function triggerPatriciaDefeat(nowMs) {
+        if (!isPatriciaFight() || zombieDeathStarted) return;
+        zombieDeathStarted = true;
+        zombieCombatState = 'death';
+        zombieCombatStateStart = nowMs;
+        enemyAttackPhase = 'death';
+        zombieCombatNextDecision = Infinity;
+        zombieDeathEndAt = nowMs + PAT_DEFEAT_FRAMES * PAT_DEFEAT_FRAME_MS + PAT_DEFEAT_HOLD_MS;
+        playSfx('goth-pain', .95, .85);
+        ui.combatStatus.textContent = '💀 PATRICIA HAS FALLEN. (Is she salvageable?)';
+    }
+
+    function updatePatriciaAI(dt, nowMs) {
+        if (!isPatriciaFight() || playerDeathTriggered)
+            return;
+        const st = zombieCombatState;
+        const elapsed = nowMs - zombieCombatStateStart;
+        const toward = patSide();
+
+        if (st === 'intro') {
+            if (!zombieIntroActive) {
+                zombieCombatState = 'chase';
+                zombieCombatStateStart = nowMs;
+                zombieCombatNextDecision = nowMs + 700;
+                enemyAttackPhase = null;
+                ui.combatStatus.textContent = 'FIGHT! Patricia has 300 HP. Make it count.';
+            }
+            return;
+        }
+        if (st === 'death') {
+            if (nowMs >= zombieDeathEndAt && !patDoneOnce) { patDoneOnce = true; endCombat(true); }
+            return;
+        }
+        if (st === 'phurt') {
+            if (elapsed >= PAT_HURT_MS) { patToRecover(nowMs, 380); }
+            return;
+        }
+        if (st === 'stage2') {
+            if (elapsed >= 1250) { patToRecover(nowMs, 300); }
+            return;
+        }
+        // Half health: she snaps into stage 2 as soon as she is between moves (this is also the retry checkpoint).
+        if (patStage === 1 && combatHp <= PAT_STAGE2_HP && combatHp > 0 && (st === 'chase' || st === 'recover' || st === 'ready')) {
+            patStage = 2; patCheckpoint = true; patStep = 0;
+            zombieCombatState = 'stage2'; zombieCombatStateStart = nowMs; enemyAttackPhase = 'hurt';
+            playSfx('goth-pain', .9, .8);
+            ui.combatStatus.textContent = 'Patricia: "No more Mrs Nice Goth." Stage 2: lightning joins the party.';
+            return;
+        }
+
+        if (st === 'chase' || st === 'recover' || st === 'ready') {
+            const desiredX = player.x - toward * PAT_STAND_OFF;
+            const step = Math.min(Math.abs(desiredX - zombieCombatX), PAT_CHASE_SPEED * (patStage === 2 ? 1.15 : 1) * dt);
+            if (step > .5) {
+                zombieCombatX += (desiredX >= zombieCombatX ? 1 : -1) * step;
+                zombieCombatX = Math.max(170, Math.min(COMBAT_W - 170, zombieCombatX));
+                zombieCombatWalkIndex += dt * 1000;
+            }
+            if (st === 'recover' && elapsed >= zombieRecoveryDuration) {
+                zombieCombatState = 'chase'; zombieCombatStateStart = nowMs;
+                zombieCombatNextDecision = nowMs + (patStage === 2 ? 260 : 520) + Math.random() * 380;
+                enemyAttackPhase = null;
+            } else if (st === 'chase' && nowMs >= zombieCombatNextDecision && Math.abs(player.x - zombieCombatX) < PAT_STAND_OFF + 80) {
+                patChooseAttack(nowMs);
+            }
+            return;
+        }
+
+        if (st === 'lunge') {
+            const strikeAt = PAT_LUNGE_WINDUP_MS;
+            if (elapsed >= strikeAt && !zombieCombatAttackHit && elapsed >= strikeAt + PAT_LUNGE_HIT_AT_MS) {
+                zombieCombatAttackHit = true;
+                playSfx('chain-impact', .9, 1.1);
+                enemyAttackPhase = 'active';
+                patDamage(PAT_LUNGE_DAMAGE, PAT_LUNGE_RANGE, PAT_LUNGE_PUSH, 'SWORD LUNGE', nowMs);
+            }
+            // she steps into the thrust
+            if (elapsed >= strikeAt && elapsed < strikeAt + 300) {
+                const d = patFace === 'left' ? -1 : 1;
+                zombieCombatX = Math.max(170, Math.min(COMBAT_W - 170, zombieCombatX + d * 230 * dt));
+            }
+            if (elapsed >= strikeAt + PAT_LUNGE_STRIKE_FRAMES * PAT_LUNGE_FRAME_MS + 120) patToRecover(nowMs, 650);
+            return;
+        }
+        if (st === 'combo') {
+            const t = elapsed - PAT_COMBO_WINDUP_MS;
+            while (t >= 0 && patHitsDone < PAT_COMBO_HITS_AT_MS.length && t >= PAT_COMBO_HITS_AT_MS[patHitsDone]) {
+                patHitsDone++;
+                enemyAttackPhase = 'active';
+                playSfx('chain-impact', .8, 1.2);
+                patDamage(PAT_COMBO_DAMAGE, PAT_COMBO_RANGE, PAT_COMBO_PUSH, 'SWORD COMBO', nowMs);
+            }
+            if (t >= PAT_COMBO_FRAMES * PAT_COMBO_FRAME_MS + 80) patToRecover(nowMs, 700);
+            return;
+        }
+        if (st === 'smoke') {
+            if (elapsed >= PAT_SMOKE_REAPPEAR_AT_MS && !zombieCombatAttackHit) {
+                // she steps out of the smoke on the other side of Olly and turns on him
+                zombieCombatAttackHit = true;
+                zombieCombatX = patVanishX;
+                patFace = player.x < zombieCombatX ? 'left' : 'right';
+                zombieCombatState = 'vstrike';
+                zombieCombatStateStart = nowMs;
+                zombieCombatAttackHit = false;
+                enemyAttackPhase = 'windup';
+                playSfx('chain-rattle', .7, 1.4);
+                ui.combatStatus.textContent = 'Behind you! DODGE or JUMP!';
+            }
+            return;
+        }
+        if (st === 'vstrike') {
+            const strikeAt = PAT_VSTRIKE_APPEAR_MS;
+            if (!zombieCombatAttackHit && elapsed >= strikeAt + PAT_LUNGE_HIT_AT_MS) {
+                zombieCombatAttackHit = true;
+                playSfx('chain-impact', .95, 1.0);
+                enemyAttackPhase = 'active';
+                patDamage(PAT_VSTRIKE_DAMAGE, PAT_LUNGE_RANGE, PAT_LUNGE_PUSH + 6, 'VANISH STRIKE', nowMs);
+            }
+            if (elapsed >= strikeAt + PAT_LUNGE_STRIKE_FRAMES * PAT_LUNGE_FRAME_MS + 120) patToRecover(nowMs, 700);
+            return;
+        }
+        if (st === 'lightning') {
+            const strikeAt = PAT_LIGHT_WINDUP_MS;
+            if (elapsed >= strikeAt && elapsed < strikeAt + 420 && !zombieCombatAttackHit) {
+                if (elapsed - strikeAt < 40 && patHitsDone === 0) { patHitsDone = 1; playSfx('chain-impact-spin', 1, .7); }
+                const airborne = jumping || jumpOffset < -20;
+                if (Math.abs(player.x - zombieCombatX) <= PAT_LIGHT_RANGE && !airborne) {
+                    zombieCombatAttackHit = true;
+                    patDamage(PAT_LIGHT_DAMAGE, 1e5, 44, 'LIGHTNING SLAM', nowMs, true, true);
+                }
+            }
+            if (elapsed >= strikeAt + PAT_LIGHT_FRAMES * PAT_LIGHT_FRAME_MS + 150) patToRecover(nowMs, 900);
+            return;
+        }
+        // anything unexpected: carry on
+        patToRecover(nowMs, 500);
+    }
+
+    function getPatriciaFrame(nowMs) {
+        const st = zombieCombatState;
+        const elapsed = Math.max(0, nowMs - zombieCombatStateStart);
+        const idleIndex = Math.floor(nowMs / PAT_IDLE_FRAME_MS) % (patAtlas.idle.frames.length);
+        if (st === 'chase' || (st === 'recover' && enemyLeaving)) {
+            const n = patAtlas.walk.frames.length;
+            return { pack: patAtlas.walk, index: Math.floor(Math.max(0, zombieCombatWalkIndex) / PAT_WALK_FRAME_MS) % n, flipArt: true };
+        }
+        if (st === 'recover' || st === 'ready' || st === 'intro')
+            return { pack: patAtlas.idle, index: idleIndex };
+        if (st === 'lunge' || st === 'vstrike') {
+            const wind = st === 'lunge' ? PAT_LUNGE_WINDUP_MS : PAT_VSTRIKE_APPEAR_MS;
+            if (elapsed < wind) {
+                const p = Math.min(.999, elapsed / wind);
+                // (the vanish strike appears already crouched: it only plays the second half of the wind-up)
+                const from = st === 'lunge' ? 0 : 7;
+                return { pack: patAtlas.lunge, index: from + Math.floor(p * (PAT_LUNGE_WINDUP_FRAMES - from)) };
+            }
+            const i = Math.min(PAT_LUNGE_STRIKE_FRAMES - 1, Math.floor((elapsed - wind) / PAT_LUNGE_FRAME_MS));
+            return { pack: patAtlas.lunge, index: PAT_LUNGE_WINDUP_FRAMES + i };
+        }
+        if (st === 'combo') {
+            const t = elapsed - PAT_COMBO_WINDUP_MS;
+            return { pack: patAtlas.combo, index: t < 0 ? 0 : Math.min(PAT_COMBO_FRAMES - 1, Math.floor(t / PAT_COMBO_FRAME_MS)) };
+        }
+        if (st === 'smoke') {
+            return { pack: patAtlas.smoke, index: Math.min(PAT_SMOKE_FRAMES - 1, Math.floor(elapsed / PAT_SMOKE_FRAME_MS)) };
+        }
+        if (st === 'lightning') {
+            if (elapsed < PAT_LIGHT_WINDUP_MS)
+                return { pack: patAtlas.lightning, index: Math.min(PAT_LIGHT_WINDUP_FRAMES - 1, Math.floor(elapsed / PAT_LIGHT_WINDUP_MS * PAT_LIGHT_WINDUP_FRAMES)) };
+            return { pack: patAtlas.lightning, index: PAT_LIGHT_WINDUP_FRAMES + Math.min(PAT_LIGHT_FRAMES - 1, Math.floor((elapsed - PAT_LIGHT_WINDUP_MS) / PAT_LIGHT_FRAME_MS)) };
+        }
+        if (st === 'phurt')
+            return { pack: patAtlas.hurt, index: Math.min(PAT_HURT_FRAMES - 1, Math.floor(elapsed / PAT_HURT_MS * PAT_HURT_FRAMES)) };
+        if (st === 'stage2')
+            return { pack: patAtlas.hurt, index: Math.min(patAtlas.hurt.frames.length - 1, Math.floor(elapsed / 1250 * patAtlas.hurt.frames.length)) };
+        if (st === 'death')
+            return { pack: patAtlas.defeat, index: Math.min(PAT_DEFEAT_FRAMES - 1, Math.floor(elapsed / PAT_DEFEAT_FRAME_MS)) };
+        return { pack: patAtlas.idle, index: idleIndex };
+    }
+
+    function drawPatriciaCombat(c, enemyX, enemyY, nowMs) {
+        const st = zombieCombatState;
+        const frame = getPatriciaFrame(nowMs);
+        const locked = (st === 'lunge' || st === 'combo' || st === 'lightning' || st === 'vstrike' || st === 'smoke' || st === 'phurt' || st === 'stage2' || st === 'death');
+        let face;
+        if (enemyLeaving) face = enemyLeaving.dir < 0 ? 'left' : 'right';
+        else if (locked) face = patFace;
+        else { face = player.x < enemyX ? 'left' : 'right'; patFace = face; }
+        const drawFace = frame.flipArt ? (face === 'left' ? 'right' : 'left') : face;
+        const alpha = nowMs < zombieHitFlashUntil ? .75 : 1;
+        // floor shadow
+        if (st !== 'death' && !patGone()) {
+            c.save(); c.fillStyle = 'rgba(0,0,0,.30)';
+            c.beginPath(); c.ellipse(enemyX, CHAIN_FLOOR_Y + 6, 74, 12, 0, 0, Math.PI * 2); c.fill(); c.restore();
+        }
+        // warning rings (the same colour language as the Goths: red = dodge or jump, yellow = only jumping works, purple = vanish strike)
+        if (st === 'lunge' && zombieCombatStateStart) {
+            const t = nowMs - zombieCombatStateStart;
+            drawAttackRing(c, enemyX, CHAIN_FLOOR_Y + 8, PAT_LUNGE_RANGE - 40, 'red', Math.min(1, t / PAT_LUNGE_WINDUP_MS), t >= PAT_LUNGE_WINDUP_MS, nowMs);
+        } else if (st === 'combo') {
+            const t = nowMs - zombieCombatStateStart;
+            drawAttackRing(c, enemyX, CHAIN_FLOOR_Y + 8, PAT_COMBO_RANGE - 30, 'red', Math.min(1, t / PAT_COMBO_WINDUP_MS), t >= PAT_COMBO_WINDUP_MS, nowMs);
+        } else if (st === 'lightning') {
+            const t = nowMs - zombieCombatStateStart;
+            drawAttackRing(c, enemyX, CHAIN_FLOOR_Y + 8, PAT_LIGHT_RANGE, 'yellow', Math.min(1, t / PAT_LIGHT_WINDUP_MS), t >= PAT_LIGHT_WINDUP_MS, nowMs);
+        } else if (st === 'smoke') {
+            const t = nowMs - zombieCombatStateStart;
+            if (t > 250) drawAttackRing(c, patVanishX, CHAIN_FLOOR_Y + 8, PAT_LUNGE_RANGE - 60, 'purple', Math.min(1, (t - 250) / (PAT_SMOKE_REAPPEAR_AT_MS - 250)), false, nowMs);
+        } else if (st === 'vstrike') {
+            const t = nowMs - zombieCombatStateStart;
+            drawAttackRing(c, enemyX, CHAIN_FLOOR_Y + 8, PAT_LUNGE_RANGE - 60, 'purple', Math.min(1, t / PAT_VSTRIKE_APPEAR_MS), t >= PAT_VSTRIKE_APPEAR_MS, nowMs);
+        }
+        // the smoke clip draws her at her starting spot; she is gone from the ground after that, the smoke stays
+        drawChainAtlasFrame(c, frame.pack, frame.index, enemyX, CHAIN_FLOOR_Y, drawFace, PAT_SCALE, alpha, 0, 0);
+    }
+
     function triggerChainDeath(nowMs) {
         if (!isChainFight() || zombieDeathStarted)
             return;
@@ -3172,7 +3518,7 @@ export function createLevel1(ui) {
         cctx.imageSmoothingQuality = 'high';
         drawCombatBackground(cctx);
 
-        const enemyX = isBoss ? COMBAT_W - 320 : zombieCombatX;
+        const enemyX = zombieCombatX;
         const enemyY = COMBAT_GROUND_Y;
         const nowMs = gnow();
         const enemyType = target?.type || (isBoss ? 'chain' : 'shambler');
@@ -3290,15 +3636,16 @@ export function createLevel1(ui) {
         return Math.max(0, nowMs - startMs);
     }
 
-    function startCombat(bossFight) {
+    function startCombat(bossFight, resume = false) {
         loadCombatAssets();
         playMusic('fight');
         preloadSfx(['punch-1', 'punch-2', 'punch-3', 'goth-pain', ...GOTH_HURT_SFX, 'olly-hurt', 'olly-hurt-heavy', 'olly-ko', 'olly-thud', 'olly-attack', 'olly-heavy-attack', 'olly-jump', 'olly-land', 'olly-dodge-grunt', 'chain-clatter', 'chain-drop', 'chain-rattle', 'chain-spin', 'chain-impact', 'chain-impact-spin', 'breath-recovery', 'countdown-tick', 'fight-shout', 'zombie-death', 'pickup', 'interact', 'tutorial', 'olly-ko']);
         isBoss = bossFight;
         mode = 'combat';
-        combatMax = bossFight ? 100 : (target?.maxHp || 50);
+        combatMax = bossFight ? PAT_HP : (target?.maxHp || 50);
         combatHp = combatMax;
         resetCombatVisual();
+        if (bossFight) initPatricia(resume);
         if (!bossFight && (target?.type === 'shambler' || target?.type === 'chain')) {
             const introStart = gnow();
             zombieCombatX = COMBAT_W - 320;
@@ -3320,8 +3667,8 @@ export function createLevel1(ui) {
             chainStunHits = 0;
             chainStunLastHit = -1e9;
         }
-        ui.combatName.textContent = bossFight ? 'THE CLASSIC GOTH • QUEEN' : target?.name || 'ZOMBIE GOTH';
-        ui.enemyHp.style.width = '100%';
+        ui.combatName.textContent = bossFight ? 'PATRICIA • THE CLASSIC GOTH' : target?.name || 'ZOMBIE GOTH';
+        ui.enemyHp.style.width = (combatHp / combatMax * 100) + '%';
         ui.enemyStunWrap.classList.toggle('hidden', target?.type !== 'chain');
         ui.enemyStun.style.width = '0%'; stunMeterW = ''; stunMeterFull = null;
         ui.enemyStunWrap.classList.remove('full');
@@ -3330,7 +3677,7 @@ export function createLevel1(ui) {
         ui.combatStatus.textContent =
             (target?.type === 'chain')
                 ? 'The Chain Goth is quick. Defeat both Level 1 Goths to unlock Heavy Attack. Make it count.'
-                : (bossFight ? 'The Queen is waiting. Your Heavy Attack is ready.' : 'GET READY...');
+                : (bossFight ? (resume ? 'Patricia is on her second wind. GET READY...' : 'Patricia is waiting. Your Heavy Attack is ready.') : 'GET READY...');
         ui.combat.classList.remove('hidden');
         clearInterval(enemyTimer);
         enemyTimer = null;
@@ -3357,6 +3704,7 @@ export function createLevel1(ui) {
             setLoopSfx('footsteps', (held.left !== held.right) && !jumping && !zombieIntroActive && !playerDeathTriggered && t >= dodgeUntil, .8);
             updateZombieAI(dt, t);
             updateChainAI(dt, t);
+            updatePatriciaAI(dt, t);
             resolveCombatBodyCollision(t);
             resolveHeavyStrike(t);
             drawCombat();
@@ -3391,7 +3739,7 @@ export function createLevel1(ui) {
         if (nowMs - lastAttackAt < 334)
             return;
 
-        const enemyX = isBoss ? COMBAT_W - 320 : zombieCombatX,
+        const enemyX = zombieCombatX,
             enemyY = COMBAT_GROUND_Y,
             dx = enemyX - player.x,
             dy = enemyY - (player.y + jumpOffset);
@@ -3408,7 +3756,7 @@ export function createLevel1(ui) {
         const horizontalDistance = Math.abs(dx);
         const verticalDistance = Math.abs(dy);
         const hit = isAIFight()
-            ? horizontalDistance <= (isChainFight() ? 280 : 205) && verticalDistance <= 105   // Chain Goth keeps ~250px away, so her reach is longer
+            ? horizontalDistance <= (isPatriciaFight() ? 260 : (isChainFight() ? 280 : 205)) && verticalDistance <= 105 && !patGone()   // Chain Goth keeps ~250px away, so her reach is longer
             : Math.hypot(dx, dy) <= 180;
 
         if (hit) {
@@ -3424,6 +3772,8 @@ export function createLevel1(ui) {
                     triggerZombieDeath(nowMs);
                 else if (isChainFight())
                     triggerChainDeath(nowMs);
+                else if (isPatriciaFight())
+                    triggerPatriciaDefeat(nowMs);
                 else
                     setTimeout(() => endCombat(true), 180);
                 return;
@@ -3464,7 +3814,7 @@ export function createLevel1(ui) {
         if (jumping || nowMs < attackAnimUntil || nowMs < dodgeUntil)
             return;
 
-        const enemyX = isBoss ? COMBAT_W - 320 : zombieCombatX,
+        const enemyX = zombieCombatX,
             playerMinX = 140,
             playerMaxX = COMBAT_W - 140,
             dx = enemyX - player.x;
@@ -3494,11 +3844,11 @@ export function createLevel1(ui) {
             return;
 
         heavyStrikeApplied = true;
-        const enemyX = isBoss ? COMBAT_W - 320 : zombieCombatX,
+        const enemyX = zombieCombatX,
             enemyY = COMBAT_GROUND_Y,
             distance = Math.hypot(enemyX - player.x, enemyY - player.y);
 
-        if (distance <= 230) {
+        if (distance <= 230 && !patGone()) {
             const damage = 20;
             combatHp = Math.max(0, combatHp - damage);
             ui.enemyHp.style.width = (combatHp / combatMax * 100) + '%';
@@ -3510,6 +3860,8 @@ export function createLevel1(ui) {
                     triggerZombieDeath(nowMs);
                 else if (isChainFight())
                     triggerChainDeath(nowMs);
+                else if (isPatriciaFight())
+                    triggerPatriciaDefeat(nowMs);
                 else
                     setTimeout(() => endCombat(true), 180);
             } else {
@@ -3530,7 +3882,7 @@ export function createLevel1(ui) {
             return;
         }
 
-        const enemyX = isBoss ? COMBAT_W - 320 : zombieCombatX,
+        const enemyX = zombieCombatX,
             playerMinX = 140,
             playerMaxX = COMBAT_W - 140;
         // Always dodge AWAY from the enemy (backwards), whichever way Olly happens to be facing or walking.
@@ -3681,7 +4033,7 @@ export function createLevel1(ui) {
         }
         mode = 'map';
         if (target || isBoss)
-            setTimeout(() => startCombat(isBoss), 100);
+            setTimeout(() => startCombat(isBoss, isBoss && patCheckpoint), 100);
     }
     function backToMap() {
         ui.death.classList.add('hidden');
@@ -3818,6 +4170,7 @@ export function createLevel1(ui) {
             x,
             y
         };
+        patCheckpoint = false;
         startCombat(true);
         beginBossPrefight();
     }
@@ -3889,7 +4242,7 @@ export function createLevel1(ui) {
         if (isBoss && zombieIntroActive && !prefightHold && t >= zombieIntroEndAt) {
             zombieIntroActive = false;
             prefight = null;
-            ui.combatStatus.textContent = 'The Queen is waiting. Your Heavy Attack is ready.';
+            ui.combatStatus.textContent = 'Patricia is waiting. Your Heavy Attack is ready.';
         }
     }
     function drawOllyDrink(c, px, py, t) {
