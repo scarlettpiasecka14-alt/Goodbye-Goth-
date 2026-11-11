@@ -1,0 +1,5 @@
+GOODBYE GOTH  V9.24  -  PART 2 of 2   (branch: Testing5)
+Do NOT upload this text file. Upload the assets/ folder from this zip (78 files), keeping the path:
+  assets/characters/combat/zombie-v2/walk-001.webp ... walk-033.webp     (new Zombie Goth walk)
+  assets/characters/combat/zombie-v2/death-001.webp ... death-045.webp   (new Zombie Goth death)
+Upload PART 1 first (it holds the code + the 3-2-1 frames), then this, then test with the checklist in part 1.
