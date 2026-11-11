@@ -1,9 +1,9 @@
-import { StoryController } from './story.js?v=9220';
-import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9220';
-import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9220';
-import { initSettings, openSettings } from './settings.js?v=9220';
-import { actionForKey } from './controls.js?v=9220';
-import { initCheats, registerCheats } from './cheats.js?v=9220';
+import { StoryController } from './story.js?v=9230';
+import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9230';
+import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9230';
+import { initSettings, openSettings } from './settings.js?v=9230';
+import { actionForKey } from './controls.js?v=9230';
+import { initCheats, registerCheats } from './cheats.js?v=9230';
 
 const root = document.getElementById('game-root');
 
@@ -142,6 +142,7 @@ function showImageTransitionScreen(image, alt, onContinue, label) {
 }
 
 function showAbyssWelcome(){
+  playMusic('map');   // V9.23: the map music starts as the cutscene ends and the Welcome screen appears
   showImageTransitionScreen(
     'assets/story/goth-abyss-welcome.webp',
     'Welcome to the Goth Abyss screen.',
