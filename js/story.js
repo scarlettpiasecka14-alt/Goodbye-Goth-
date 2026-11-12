@@ -1,4 +1,4 @@
-import { playSfx, setLoopSfx } from './audio.js?v=9260';
+import { playSfx, setLoopSfx } from './audio.js?v=9280';
 
 export class StoryController {
   constructor(root, onComplete){

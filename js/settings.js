@@ -1,8 +1,8 @@
 /* Goodbye Goth - settings screen (sound, brightness, fullscreen, controls list).
    Everything is built here and lives on <body>, so it survives the game swapping screens.
    Opened from the title menu (SETTINGS) or by pressing O anywhere outside a fight; closes with O, Esc or CLOSE. */
-import { getVolumes, setVolume } from './audio.js?v=9260';
-import { ACTIONS, DEFAULTS, getBindings, swapBindings, setBinding, resetBindings, keyLabel, isDefault } from './controls.js?v=9260';
+import { getVolumes, setVolume } from './audio.js?v=9280';
+import { ACTIONS, DEFAULTS, getBindings, swapBindings, setBinding, resetBindings, keyLabel, isDefault } from './controls.js?v=9280';
 
 const BRIGHT_KEY = 'goodbyeGothBrightness_v1';
 let brightness = 100;
@@ -123,6 +123,9 @@ export function initSettings() {
     overlay.innerHTML = `
       <div class="gg-card">
         <h1>SETTINGS</h1>
+        <h2>GAME</h2>
+        <div class="gg-btns"><button id="gg-save" class="gg-btn" type="button">💾 SAVE GAME</button></div>
+        <p class="gg-note" id="gg-save-note">Saves where you are on the map. Use LOAD GAME on the title screen to come back.</p>
         <h2>SOUND</h2>
         <div class="gg-btns"><button id="gg-sound" class="gg-btn" type="button"></button></div>
         <div class="gg-row"><label for="gg-master">Master volume</label><input id="gg-master" type="range" min="0" max="100" step="5"><output id="gg-master-out"></output></div>
@@ -139,7 +142,7 @@ export function initSettings() {
         <div id="gg-controls-default"></div>
         <div id="gg-controls-custom" hidden>
           <div class="gg-slots" id="gg-slots"></div>
-          <p class="gg-note">Drag an action onto another box to swap keys, or click a key and press the one you want. Arrow keys always move, left click attacks, right click dodges.</p>
+          <p class="gg-note">Drag an action onto another box to swap keys, or click a key and press the one you want. Arrow keys always move, left click also punches, right click dodges.</p>
           <div class="gg-btns"><button id="gg-reset-keys" class="gg-btn" type="button">RESET TO DEFAULT</button></div>
         </div>
         <div class="gg-btns" style="margin-top:18px"><button id="gg-close" class="gg-btn primary" type="button">CLOSE</button></div>
@@ -177,6 +180,13 @@ export function initSettings() {
     });
     overlay.querySelector('#gg-full').addEventListener('click', () => {
         try { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen(); } catch (e) {}
+    });
+    const saveBtn = overlay.querySelector('#gg-save'), saveNote = overlay.querySelector('#gg-save-note');
+    saveBtn.addEventListener('click', () => {
+        const ok = typeof window.ggSaveGame === 'function' ? window.ggSaveGame() : null;
+        saveNote.textContent = ok === null ? 'Start a game first, then you can save it here.' : ok ? 'Saved ✓ Your progress is stored in this browser.' : 'Save failed. Your browser may be blocking storage.';
+        saveBtn.textContent = ok ? '💾 SAVED ✓' : '💾 SAVE GAME';
+        setTimeout(() => { saveBtn.textContent = '💾 SAVE GAME'; }, 1800);
     });
     overlay.querySelector('#gg-close').addEventListener('click', closeSettings);
     overlay.querySelector('#gg-tab-default').addEventListener('click', () => showControlsTab(false));
