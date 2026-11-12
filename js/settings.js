@@ -1,9 +1,24 @@
 /* Goodbye Goth - settings screen (sound, brightness, fullscreen, controls list).
    Everything is built here and lives on <body>, so it survives the game swapping screens.
    Opened from the title menu (SETTINGS) or by pressing O anywhere outside a fight; closes with O, Esc or CLOSE. */
-import { getVolumes, setVolume } from './audio.js?v=9280';
-import { ACTIONS, DEFAULTS, getBindings, swapBindings, setBinding, resetBindings, keyLabel, isDefault } from './controls.js?v=9280';
+import { getVolumes, setVolume } from './audio.js?v=9300';
+import { ACTIONS, DEFAULTS, getBindings, swapBindings, setBinding, resetBindings, keyLabel, isDefault } from './controls.js?v=9300';
 
+// V9.30: display / accessibility preferences. Saved in the browser; the game reads window.ggPrefs.
+const PREFS_KEY = 'goodbyeGothPrefs_v1';
+const PREF_DEFAULTS = { contrast: 100, hud: 100, text: 100, hiContrastText: false, shake: true, fog: true, shadows: true, hiRes: true, crispMap: false, calm: false };
+export const prefs = Object.assign({}, PREF_DEFAULTS);
+try { Object.assign(prefs, JSON.parse(localStorage.getItem(PREFS_KEY) || '{}')); } catch (e) {}
+window.ggPrefs = prefs;
+function savePrefs() { try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch (e) {} }
+function applyPrefs() {
+    const r = document.documentElement, b = document.body;
+    r.style.setProperty('--gg-hud', String(prefs.hud / 100));
+    r.style.setProperty('--gg-text', String(prefs.text / 100));
+    r.style.setProperty('--gg-contrast', String(prefs.contrast / 100));
+    if (b) { b.classList.toggle('gg-hc', !!prefs.hiContrastText); b.classList.toggle('gg-calm', !!prefs.calm); }
+    const app = document.getElementById('app'); if (app) app.style.filter = prefs.contrast === 100 ? '' : `contrast(${prefs.contrast / 100})`;
+}
 const BRIGHT_KEY = 'goodbyeGothBrightness_v1';
 let brightness = 100;
 try { const b = parseInt(localStorage.getItem(BRIGHT_KEY), 10); if (b >= 50 && b <= 130) brightness = b; } catch (e) {}
@@ -13,7 +28,7 @@ const CSS = `
 .gg-settings{position:fixed;inset:0;z-index:10000;display:none;align-items:center;justify-content:center;background:rgba(6,4,10,.82);
   font-family:Georgia,serif;color:#f6eaf0}
 .gg-settings.open{display:flex}
-.gg-card{width:min(560px,92vw);max-height:92vh;overflow:auto;background:#17101c;border:1px solid rgba(239,183,201,.45);border-radius:18px;padding:22px 26px;
+.gg-card{width:min(600px,92vw);max-height:92vh;overflow:auto;background:#17101c;border:1px solid rgba(239,183,201,.45);border-radius:18px;padding:22px 26px;
   box-shadow:0 0 40px rgba(231,135,173,.18)}
 .gg-card h1{margin:0 0 14px;font-size:26px;letter-spacing:.18em;text-align:center}
 .gg-card h2{margin:18px 0 8px;font-size:13px;letter-spacing:.18em;color:#e787ad}
@@ -25,7 +40,15 @@ const CSS = `
   font:700 14px Georgia,serif;letter-spacing:.1em;cursor:pointer}
 .gg-btn:hover,.gg-btn:focus-visible{background:#402040}
 .gg-btn.primary{background:#7a2f55}
-.gg-keys{display:grid;grid-template-columns:auto 1fr;gap:5px 16px;font-size:14px;margin:0}
+.gg-keys{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:5px 14px;font-size:14px;margin:0}
+.gg-sec{border-top:1px solid rgba(239,183,201,.2);margin:0}
+.gg-sec>summary{list-style:none;cursor:pointer;padding:11px 2px;font-size:13px;letter-spacing:.18em;color:#e787ad;font-weight:700;display:flex;justify-content:space-between;align-items:center;user-select:none}
+.gg-sec>summary::-webkit-details-marker{display:none}
+.gg-sec>summary::after{content:'▾';font-size:14px;transition:transform .15s}
+.gg-sec[open]>summary::after{transform:rotate(180deg)}
+.gg-sec>.gg-body{padding:2px 2px 12px}
+.gg-toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:9px 0;font-size:15px;cursor:pointer}
+.gg-toggle input{width:20px;height:20px;accent-color:#e787ad;cursor:pointer}
 .gg-keys dt{font-family:system-ui,sans-serif;font-weight:700;font-size:12px;letter-spacing:.06em;color:#efb7c9;white-space:nowrap}
 .gg-keys dd{margin:0}
 .gg-tabs{display:flex;gap:8px;margin:0 0 10px}
@@ -123,29 +146,46 @@ export function initSettings() {
     overlay.innerHTML = `
       <div class="gg-card">
         <h1>SETTINGS</h1>
-        <h2>GAME</h2>
-        <div class="gg-btns"><button id="gg-save" class="gg-btn" type="button">💾 SAVE GAME</button></div>
-        <p class="gg-note" id="gg-save-note">Saves where you are on the map. Use LOAD GAME on the title screen to come back.</p>
-        <h2>SOUND</h2>
-        <div class="gg-btns"><button id="gg-sound" class="gg-btn" type="button"></button></div>
-        <div class="gg-row"><label for="gg-master">Master volume</label><input id="gg-master" type="range" min="0" max="100" step="5"><output id="gg-master-out"></output></div>
-        <div class="gg-row"><label for="gg-music">Music</label><input id="gg-music" type="range" min="0" max="100" step="5"><output id="gg-music-out"></output></div>
-        <div class="gg-row"><label for="gg-sfx">Sound effects</label><input id="gg-sfx" type="range" min="0" max="100" step="5"><output id="gg-sfx-out"></output></div>
-        <h2>DISPLAY</h2>
-        <div class="gg-row"><label for="gg-bright">Brightness</label><input id="gg-bright" type="range" min="50" max="130" step="5"><output id="gg-bright-out"></output></div>
-        <div class="gg-btns"><button id="gg-full" class="gg-btn" type="button">⛶ FULLSCREEN</button></div>
-        <h2>CONTROLS</h2>
-        <div class="gg-tabs" role="tablist">
-          <button class="gg-tab" id="gg-tab-default" role="tab" type="button">DEFAULT</button>
-          <button class="gg-tab" id="gg-tab-custom" role="tab" type="button">CUSTOMISE</button>
-        </div>
-        <div id="gg-controls-default"></div>
-        <div id="gg-controls-custom" hidden>
-          <div class="gg-slots" id="gg-slots"></div>
-          <p class="gg-note">Drag an action onto another box to swap keys, or click a key and press the one you want. Arrow keys always move, left click also punches, right click dodges.</p>
-          <div class="gg-btns"><button id="gg-reset-keys" class="gg-btn" type="button">RESET TO DEFAULT</button></div>
-        </div>
-        <div class="gg-btns" style="margin-top:18px"><button id="gg-close" class="gg-btn primary" type="button">CLOSE</button></div>
+        <details class="gg-sec"><summary>GAME</summary><div class="gg-body">
+          <div class="gg-btns"><button id="gg-save" class="gg-btn" type="button">💾 SAVE GAME</button></div>
+          <p class="gg-note" id="gg-save-note">Saves where you are on the map. Use LOAD GAME on the title screen to come back.</p>
+        </div></details>
+        <details class="gg-sec"><summary>SOUND</summary><div class="gg-body">
+          <div class="gg-btns"><button id="gg-sound" class="gg-btn" type="button"></button></div>
+          <div class="gg-row"><label for="gg-master">Master volume</label><input id="gg-master" type="range" min="0" max="100" step="5"><output id="gg-master-out"></output></div>
+          <div class="gg-row"><label for="gg-music">Music</label><input id="gg-music" type="range" min="0" max="100" step="5"><output id="gg-music-out"></output></div>
+          <div class="gg-row"><label for="gg-sfx">Sound effects</label><input id="gg-sfx" type="range" min="0" max="100" step="5"><output id="gg-sfx-out"></output></div>
+        </div></details>
+        <details class="gg-sec"><summary>DISPLAY</summary><div class="gg-body">
+          <div class="gg-row"><label for="gg-bright">Brightness</label><input id="gg-bright" type="range" min="50" max="130" step="5"><output id="gg-bright-out"></output></div>
+          <div class="gg-row"><label for="gg-contrast">Contrast</label><input id="gg-contrast" type="range" min="80" max="140" step="5"><output id="gg-contrast-out"></output></div>
+          <div class="gg-row"><label for="gg-hud">HUD size</label><input id="gg-hud" type="range" min="70" max="150" step="5"><output id="gg-hud-out"></output></div>
+          <div class="gg-row"><label for="gg-text">Text size</label><input id="gg-text" type="range" min="80" max="150" step="5"><output id="gg-text-out"></output></div>
+          <label class="gg-toggle"><span>High-contrast text</span><input id="gg-hc" type="checkbox"></label>
+          <div class="gg-btns"><button id="gg-full" class="gg-btn" type="button">⛶ FULLSCREEN</button></div>
+        </div></details>
+        <details class="gg-sec"><summary>EFFECTS &amp; QUALITY</summary><div class="gg-body">
+          <label class="gg-toggle"><span>Screen shake</span><input id="gg-shake" type="checkbox"></label>
+          <label class="gg-toggle"><span>Fog on the map</span><input id="gg-fog" type="checkbox"></label>
+          <label class="gg-toggle"><span>Shadows under characters</span><input id="gg-shadows" type="checkbox"></label>
+          <label class="gg-toggle"><span>Reduce flashing &amp; pulsing</span><input id="gg-calm" type="checkbox"></label>
+          <label class="gg-toggle"><span>Sharp picture (full screen resolution)</span><input id="gg-hires" type="checkbox"></label>
+          <label class="gg-toggle"><span>Crisp pixel map (instead of smooth)</span><input id="gg-crisp" type="checkbox"></label>
+          <p class="gg-note">If the game ever feels slow, turn off Sharp picture, Fog or Shadows.</p>
+        </div></details>
+        <details class="gg-sec"><summary>CONTROLS</summary><div class="gg-body">
+          <div class="gg-tabs" role="tablist">
+            <button class="gg-tab" id="gg-tab-default" role="tab" type="button">DEFAULT</button>
+            <button class="gg-tab" id="gg-tab-custom" role="tab" type="button">CUSTOMISE</button>
+          </div>
+          <div id="gg-controls-default"></div>
+          <div id="gg-controls-custom" hidden>
+            <div class="gg-slots" id="gg-slots"></div>
+            <p class="gg-note">Drag an action onto another box to swap keys, or click a key and press the one you want. Arrow keys always move, left click also punches, right click dodges.</p>
+            <div class="gg-btns"><button id="gg-reset-keys" class="gg-btn" type="button">RESET TO DEFAULT</button></div>
+          </div>
+        </div></details>
+        <div class="gg-btns" style="margin-top:14px"><button id="gg-close" class="gg-btn primary" type="button">CLOSE</button></div>
       </div>`;
     document.body.appendChild(overlay);
     soundBtn = overlay.querySelector('#gg-sound');
@@ -172,6 +212,12 @@ export function initSettings() {
     bindSlider('gg-sfx', () => pct(getVolumes().sfx), v => setVolume('sfx', v / 100));
     bindSlider('gg-bright', () => brightness, v => { brightness = v; applyBrightness(); try { localStorage.setItem(BRIGHT_KEY, String(v)); } catch (e) {} });
 
+    const prefSlider = (id, key) => bindSlider(id, () => prefs[key], v => { prefs[key] = v; savePrefs(); applyPrefs(); });
+    prefSlider('gg-contrast', 'contrast'); prefSlider('gg-hud', 'hud'); prefSlider('gg-text', 'text');
+    const prefBox = (id, key) => { const el = overlay.querySelector('#' + id); el.checked = !!prefs[key]; el.addEventListener('change', () => { prefs[key] = el.checked; savePrefs(); applyPrefs(); }); };
+    prefBox('gg-hc', 'hiContrastText'); prefBox('gg-shake', 'shake'); prefBox('gg-fog', 'fog'); prefBox('gg-shadows', 'shadows');
+    prefBox('gg-calm', 'calm'); prefBox('gg-hires', 'hiRes'); prefBox('gg-crisp', 'crispMap');
+    applyPrefs();
     soundBtn.addEventListener('click', () => {
         const on = getVolumes().master > 0;
         setVolume('master', on ? 0 : 1);

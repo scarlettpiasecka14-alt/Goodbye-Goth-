@@ -1,5 +1,5 @@
 /* Goodbye Goth V9.4 - Chain Goth fight (AI + all seven animations: intro, walk, swipe, spin, stun, hurt, death) on top of V9.0 map cleanup and the v8.11 Zombie Goth AI. */
-import { playSfx, playRandomSfx, playMusic, preloadSfx, setLoopSfx, setAudioHeld } from '../audio.js?v=9280';
+import { playSfx, playRandomSfx, playMusic, preloadSfx, setLoopSfx, setAudioHeld } from '../audio.js?v=9300';
 // Game clock: normal time, but it stands still while a tutorial pop-up is open (so nothing happens behind it).
 let pausedTotal = 0, pausedAt = 0;
 const gnow = () => (pausedAt || performance.now()) - pausedTotal;
@@ -107,7 +107,24 @@ function safeParseSave() {
 }
 
 const mapBackground = new Image();
-mapBackground.src = 'assets/environment/level1-map-bg.webp?v=600';
+mapBackground.src = 'assets/environment/level1-map-bg-2x.webp?v=9300';   // V9.30: pre-sharpened 2x version (same picture, twice the pixels)
+// V9.30: Settings options (window.ggPrefs is created by settings.js)
+const prefOn = k => !(window.ggPrefs && window.ggPrefs[k] === false);
+const SH = a => prefOn('shadows') ? `rgba(0,0,0,${a})` : 'rgba(0,0,0,0)';
+// make a canvas draw at the real screen resolution (it was a fixed size that the browser stretched = soft picture)
+function syncHiRes(canvas, c, logicalW, logicalH) {
+    const css = canvas.clientWidth || logicalW;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const k = (window.ggPrefs && window.ggPrefs.hiRes === false) ? 1 : Math.max(1, Math.min(2, css * dpr / logicalW));
+    const w = Math.round(logicalW * k), h = Math.round(logicalH * k);
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+    c.setTransform(k, 0, 0, k, 0, 0);
+    c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
+    return k;
+}
+// screen shake (big hits). Off when Settings -> Screen shake is off.
+let shakeUntil = 0, shakeMag = 0, shakeStart = 0;
+function kickShake(mag, ms = 260) { if (!prefOn('shake')) return; shakeStart = performance.now(); shakeUntil = shakeStart + ms; shakeMag = mag; }
 const goldenKeySprite = new Image();
 goldenKeySprite.src = 'assets/items/golden-key.webp?v=6515';
 const gateLockSprite = new Image();
@@ -126,7 +143,7 @@ function loadDrinkFrames() {
     if (drinkImgs.length) return;
     for (let i = 0; i < DRINK_FRAMES; i++) {
         const im = new Image();
-        im.src = `assets/combat/OllyDrink/olly-drink-${String(i).padStart(2, '0')}.webp?v=9280`;
+        im.src = `assets/combat/OllyDrink/olly-drink-${String(i).padStart(2, '0')}.webp?v=9300`;
         drinkImgs.push(im);
     }
 }
@@ -190,8 +207,8 @@ const OLLY_DRAW_FOOT_OFFSET = 62;
 // These shared icon references can be reused by every level. Only the activity
 // behind the role changes from level to level.
 const ICON_LIBRARY = {
-    relationshipChallenge: 'assets/icons/relationship-challenge.webp?v=9280',
-    princessQuestion: 'assets/icons/princess-question.webp?v=9280'
+    relationshipChallenge: 'assets/icons/relationship-challenge.webp?v=9300',
+    princessQuestion: 'assets/icons/princess-question.webp?v=9300'
 };
 const relationshipChallengeIcon = new Image();
 relationshipChallengeIcon.src = ICON_LIBRARY.relationshipChallenge;
@@ -272,13 +289,13 @@ const zombieCombatFrames = {
     // v8.11: the approved crouched ready pose is the first frame of the supplied
     // heavy-attack sequence. It is used as the post-countdown ready/recovery pose.
     idle: [new Image()],
-    walk: Array.from({ length: 33 }, () => new Image()),   // V9.24: new creepier shamble (33 frames)
+    walk: Array.from({ length: 12 }, () => new Image()),   // V9.30: back to the original 12-frame walk (her legs visibly cross)
     // Regular claw swipe.
     claw: [1, 2, 3, 4, 5].map(() => new Image()),
     // Eight Ankle Biter frames used by the existing HEAVY ATTACK state.
     heavyKick: Array.from({ length: 8 }, () => new Image()),
     // Existing supplied Zombie Goth reaction/death art.
-    hurt: Array.from({ length: 8 }, () => new Image()),
+    hurt: Array.from({ length: 19 }, () => new Image()),
     death: Array.from({ length: 45 }, () => new Image()),   // V9.24: new detailed collapse (45 frames)
     // Countdown-only staring/prep animation. It is not an attack state.
     prep: Array.from({ length: 61 }, () => new Image())   // V9.24: new 3-2-1 fight-stance animation (61 frames)
@@ -292,15 +309,16 @@ const zombieCountdownFrames = {
 // v7.6: use the complete 12-frame side-profile cycle at a readable pace.
 // Slightly slower timing preserves the weight transfer instead of making the feet blur together.
 // V9.28: the 33-frame walk clip is not a loop (starts upright, ends crouched), which made her flash every cycle. Play it forwards then backwards.
-const ZOMBIE_WALK_SEQUENCE = [...Array.from({ length: 33 }, (_, i) => i), ...Array.from({ length: 31 }, (_, i) => 31 - i)];
+const ZOMBIE_WALK_SEQUENCE = Array.from({ length: 12 }, (_, i) => i);   // V9.30: original walk restored
 // v8.7: speed up the animation cycle itself by ~15% without changing Zombie's movement speed.
-const ZOMBIE_WALK_FRAME_MS = Array(64).fill(26);   // was 48ms/frame: looked like slow motion
+const ZOMBIE_WALK_FRAME_MS = Array(12).fill(100);
 const ZOMBIE_WALK_CYCLE_MS = ZOMBIE_WALK_FRAME_MS.reduce((a, b) => a + b, 0);
 // Use the dedicated crouched ready pose. The attack frames belong
 // exclusively to the heavy attack and must not appear as the neutral/telegraph pose.
 // v8.8: short non-lethal hit is 1-2-3-4-3-2-1, using the same supplied fall poses.
-const ZOMBIE_HURT_SEQUENCE = [0, 1, 2, 3, 2, 1, 0];
-const ZOMBIE_HURT_FRAME_MS = [60, 65, 80, 100, 75, 65, 120];
+// V9.29: new hurt animation (19 frames from the green-screen video): 0 = stance, 1-5 = snap back, 6-18 = recovery.
+const ZOMBIE_HURT_SEQUENCE = [0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 14, 16, 18];
+const ZOMBIE_HURT_FRAME_MS = [40, 40, 45, 50, 70, 100, 70, 60, 60, 60, 60, 60, 110];
 const ZOMBIE_HURT_TOTAL_MS = ZOMBIE_HURT_FRAME_MS.reduce((a, b) => a + b, 0);
 // Keep the five-second countdown, but play the supplied prep poses at a brisk,
  // even pace in a ping-pong loop so the motion does not sit on each frame.
@@ -310,8 +328,8 @@ const ZOMBIE_PREP_CYCLE_MS = ZOMBIE_PREP_FRAME_MS * ZOMBIE_PREP_SEQUENCE.length;
 const ZOMBIE_PREP_TOTAL_MS = 5000;
 const ZOMBIE_COUNTDOWN_PHASE_MS = 1500;
 const ZOMBIE_INTRO_TOTAL_MS = ZOMBIE_COUNTDOWN_PHASE_MS * 4;
-const ZOMBIE_LONG_HURT_SEQUENCE = [0, 1, 2, 3, 4, 5, 6, 7, 6, 5, 4, 3, 2, 1, 0];
-const ZOMBIE_LONG_HURT_FRAME_MS = [70, 80, 90, 100, 120, 140, 180, 500, 180, 140, 120, 100, 90, 80, 150];
+const ZOMBIE_LONG_HURT_SEQUENCE = [0, 1, 2, 3, 4, 5, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+const ZOMBIE_LONG_HURT_FRAME_MS = [50, 50, 55, 60, 80, 150, 400, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 120];
 const ZOMBIE_LONG_HURT_TOTAL_MS = ZOMBIE_LONG_HURT_FRAME_MS.reduce((a, b) => a + b, 0);
 // v8.7: slow the visible collapse by ~15%, then hold the final grounded pose for 5 seconds.
 const ZOMBIE_DEATH_FRAME_MS = Array(45).fill(45);
@@ -327,7 +345,7 @@ const ZOMBIE_DEATH_FLOOR_OFFSETS = [];   // V9.24: new death frames are bottom-a
    animator's 1440x1440 frames by tools/build_chain_assets.py). Every frame row is
    [packX, packY, packW, packH, offsetX, offsetY]; the offsets place the trimmed frame
    relative to her feet. The art faces LEFT, like the Zombie Goth art. */
-const CHAIN_ATLAS_DATA = {"intro":{"size":[3927,3924],"scale":0.64,"frames":[[0,0,269,401,-211,-623],[271,0,268,401,-211,-622],[541,0,269,396,-211,-615],[812,0,269,389,-211,-605],[1083,0,274,387,-211,-601],[1359,0,277,392,-211,-610],[1638,0,300,400,-211,-621],[1940,0,333,405,-211,-629],[2275,0,359,417,-211,-649],[2636,0,376,470,-211,-731],[3014,0,380,539,-215,-839],[3396,0,418,517,-382,-804],[0,541,367,543,-436,-844],[369,541,388,463,-443,-719],[759,541,456,390,-399,-606],[1217,541,352,486,-211,-756],[1571,541,419,500,-292,-777],[1992,541,554,509,-450,-791],[2548,541,476,525,-423,-819],[3026,541,377,554,-440,-865],[3405,541,522,400,-477,-624],[0,1097,511,435,-446,-664],[513,1097,381,534,-209,-792],[896,1097,436,516,-269,-788],[1334,1097,584,519,-452,-807],[1920,1097,500,532,-427,-829],[2422,1097,385,548,-452,-856],[2809,1097,530,400,-491,-625],[3341,1097,503,429,-425,-649],[0,1647,380,526,-210,-771],[382,1647,429,524,-258,-815],[813,1647,579,511,-434,-794],[1394,1647,520,529,-429,-824],[1916,1647,372,562,-437,-877],[2290,1647,486,460,-464,-718],[2778,1647,541,409,-464,-623],[3321,1647,423,481,-279,-704],[0,2211,393,549,-210,-801],[395,2211,488,505,-330,-784],[885,2211,605,515,-462,-801],[1492,2211,497,538,-427,-839],[1991,2211,370,560,-443,-874],[2363,2211,518,401,-475,-626],[2883,2211,519,412,-442,-626],[3404,2211,405,508,-241,-740],[0,2773,410,579,-225,-830],[412,2773,543,504,-413,-782],[957,2773,596,514,-461,-798],[1555,2773,449,536,-424,-834],[2006,2773,405,559,-436,-873],[2413,2773,527,400,-467,-624],[2942,2773,508,424,-414,-634],[3452,2773,390,545,-209,-783],[0,3354,423,563,-237,-803],[425,3354,547,509,-404,-790],[974,3354,609,515,-461,-799],[1585,3354,478,535,-427,-833],[2065,3354,375,568,-431,-887],[2442,3354,513,452,-455,-706],[2957,3354,530,422,-447,-630]]},"walk":{"size":[3639,361],"scale":0.56,"frames":[[0,0,279,344,-287,-618],[281,0,270,340,-299,-612],[553,0,249,346,-298,-621],[804,0,238,352,-310,-631],[1044,0,249,354,-324,-635],[1295,0,257,354,-335,-637],[1554,0,232,352,-209,-633],[1788,0,236,347,-205,-624],[2026,0,223,344,-206,-614],[2251,0,212,348,-222,-621],[2465,0,214,355,-263,-631],[2681,0,225,358,-290,-637],[2908,0,201,359,-242,-638],[3111,0,246,356,-259,-635],[3359,0,280,352,-279,-627]]},"swipe":{"size":[4064,953],"scale":0.64,"frames":[[0,0,269,401,-211,-623],[271,0,269,401,-211,-623],[542,0,269,401,-211,-624],[813,0,269,401,-211,-624],[1084,0,268,403,-211,-626],[1354,0,263,403,-211,-627],[1619,0,253,408,-211,-630],[1874,0,251,404,-211,-627],[2127,0,268,396,-211,-614],[2397,0,291,396,-211,-614],[2690,0,300,401,-236,-622],[2992,0,356,419,-339,-650],[3350,0,341,398,-385,-619],[3693,0,371,394,-441,-620],[0,421,477,413,-457,-641],[479,421,502,463,-396,-690],[983,421,390,484,-180,-724],[1375,421,418,530,-182,-799],[1795,421,385,490,-122,-868],[2182,421,386,507,-97,-913]]},"death":{"size":[4086,766],"scale":0.56,"frames":[[0,0,299,342,-360,-608],[301,0,281,360,-319,-656],[584,0,334,394,-399,-725],[920,0,411,442,-518,-805],[1333,0,306,387,-325,-713],[1641,0,304,390,-322,-703],[1947,0,304,338,-321,-609],[2253,0,304,337,-321,-609],[2559,0,303,337,-320,-615],[2864,0,304,338,-320,-611],[3170,0,304,338,-319,-615],[3476,0,303,335,-317,-615],[3781,0,305,329,-310,-597],[0,444,306,320,-304,-580],[308,444,309,299,-293,-542],[619,444,316,277,-288,-501],[937,444,352,218,-304,-384],[1291,444,405,140,-321,-216],[1698,444,405,114,-321,-167]]},"stun":{"size":[4074,1517],"scale":0.64,"frames":[[0,0,255,380,-235,-588],[257,0,255,380,-235,-590],[514,0,252,382,-235,-592],[768,0,249,383,-235,-594],[1019,0,243,383,-235,-594],[1264,0,238,387,-235,-600],[1504,0,230,389,-234,-604],[1736,0,223,394,-234,-607],[1961,0,217,402,-234,-607],[2180,0,214,402,-228,-601],[2396,0,211,400,-220,-597],[2609,0,216,391,-213,-583],[2827,0,220,380,-211,-570],[3049,0,234,369,-211,-559],[3285,0,251,356,-211,-550],[3538,0,265,353,-211,-545],[3805,0,269,350,-211,-541],[0,404,272,350,-211,-541],[274,404,266,351,-211,-542],[542,404,260,354,-211,-547],[804,404,253,356,-211,-550],[1059,404,249,358,-212,-554],[1310,404,243,359,-212,-556],[1555,404,241,364,-212,-559],[1798,404,243,367,-212,-561],[2043,404,248,365,-212,-558],[2293,404,252,361,-212,-555],[2547,404,262,355,-212,-550],[2811,404,266,352,-212,-545],[3079,404,269,349,-212,-540],[3350,404,266,348,-212,-538],[3618,404,261,350,-212,-541],[0,773,255,353,-213,-545],[257,773,249,355,-213,-549],[508,773,241,358,-212,-555],[751,773,237,362,-212,-561],[990,773,237,367,-212,-564],[1229,773,240,371,-213,-566],[1471,773,243,370,-212,-566],[1716,773,249,370,-212,-566],[1967,773,253,365,-212,-561],[2222,773,261,360,-212,-555],[2485,773,265,356,-212,-551],[2752,773,266,354,-212,-548],[3020,773,266,352,-212,-545],[3288,773,262,353,-212,-545],[3552,773,255,355,-212,-550],[3809,773,250,360,-212,-557],[0,1146,243,363,-212,-563],[245,1146,237,366,-212,-568],[484,1146,237,368,-212,-570],[723,1146,237,369,-212,-570],[962,1146,240,369,-212,-568],[1204,1146,246,365,-212,-562],[1452,1146,252,362,-212,-558],[1706,1146,260,360,-212,-554],[1968,1146,264,355,-212,-548],[2234,1146,266,354,-212,-547],[2502,1146,266,355,-212,-550],[2770,1146,261,359,-212,-556],[3033,1146,256,362,-212,-562]]},"hurt":{"size":[4073,2138],"scale":0.64,"frames":[[0,0,269,400,-211,-622],[271,0,262,400,-211,-622],[535,0,250,399,-211,-621],[787,0,241,402,-213,-625],[1030,0,239,406,-224,-632],[1271,0,243,411,-241,-638],[1516,0,253,415,-265,-645],[1771,0,253,420,-276,-652],[2026,0,248,422,-278,-656],[2276,0,239,426,-262,-660],[2517,0,225,429,-234,-662],[2744,0,220,435,-219,-662],[2966,0,218,433,-213,-657],[3186,0,223,426,-218,-645],[3411,0,234,420,-231,-635],[3647,0,247,413,-249,-625],[0,437,260,410,-263,-619],[262,437,276,407,-279,-615],[540,437,297,406,-295,-614],[839,437,320,410,-307,-619],[1161,437,335,410,-309,-620],[1498,437,349,404,-298,-611],[1849,437,349,396,-266,-597],[2200,437,367,388,-275,-585],[2569,437,366,387,-282,-584],[2937,437,351,391,-284,-590],[3290,437,332,398,-283,-601],[3624,437,312,404,-279,-611],[0,849,287,414,-273,-621],[289,849,257,422,-264,-631],[548,849,228,423,-254,-638],[778,849,213,426,-242,-646],[993,849,221,427,-222,-654],[1216,849,240,435,-218,-661],[1458,849,260,438,-215,-664],[1720,849,265,439,-202,-665],[1987,849,262,439,-190,-665],[2251,849,267,436,-182,-660],[2520,849,284,437,-178,-662],[2806,849,308,434,-177,-657],[3116,849,318,429,-168,-649],[3436,849,307,418,-154,-632],[3745,849,291,410,-150,-620],[0,1290,276,406,-150,-613],[278,1290,263,407,-150,-615],[543,1290,250,412,-150,-622],[795,1290,239,419,-150,-633],[1036,1290,231,424,-150,-641],[1269,1290,227,428,-150,-647],[1498,1290,221,428,-150,-648],[1721,1290,224,428,-150,-648],[1947,1290,231,427,-150,-646],[2180,1290,236,426,-150,-645],[2418,1290,236,425,-150,-643],[2656,1290,234,426,-150,-644],[2892,1290,232,426,-150,-645],[3126,1290,236,425,-150,-643],[3364,1290,236,424,-150,-641],[3602,1290,234,422,-150,-639],[3838,1290,235,419,-150,-634],[0,1720,236,416,-150,-629]],"bx":[3,8,12,16,20,25,30,35,38,42,45,49,51,50,45,39,33,26,20,16,14,14,15,15,20,29,39,46,51,53,58,59,55,51,50,52,57,60,61,63,65,66,66,67,68,69,69,69,69,69,69,67,67,67,70,73,76,78,80,83,85]},"slam":{"size":[4070,1455],"scale":0.56,"frames":[[0,0,236,353,-122,-626],[238,0,241,353,-130,-626],[481,0,243,353,-124,-626],[726,0,249,353,-116,-626],[977,0,286,354,-116,-627],[1265,0,283,355,-116,-629],[1550,0,305,356,-169,-630],[1857,0,258,357,-230,-631],[2117,0,303,357,-302,-632],[2422,0,358,359,-393,-634],[2782,0,388,360,-435,-636],[3172,0,379,362,-403,-636],[3553,0,305,363,-130,-636],[0,365,307,363,-134,-636],[309,365,307,363,-134,-636],[618,365,303,363,-136,-636],[923,365,303,361,-136,-633],[1228,365,335,361,-135,-636],[1565,365,333,359,-133,-629],[1900,365,361,359,-133,-632],[2263,365,360,357,-130,-626],[2625,365,363,357,-130,-627],[2990,365,359,355,-124,-622],[3351,365,372,355,-121,-624],[3725,365,345,355,-118,-625],[0,730,234,358,-202,-629],[236,730,303,358,-308,-632],[541,730,364,358,-409,-632],[907,730,384,361,-433,-636],[1293,730,384,362,-424,-636],[1679,730,338,362,-322,-636],[2019,730,307,363,-131,-636],[2328,730,304,363,-134,-636],[2634,730,304,363,-134,-636],[2940,730,303,363,-136,-636],[3245,730,302,361,-137,-633],[3549,730,332,360,-132,-634],[0,1095,332,358,-133,-628],[334,1095,351,357,-130,-628],[687,1095,351,356,-130,-625],[1040,1095,367,356,-130,-626],[1409,1095,366,355,-129,-623],[1777,1095,357,355,-119,-622],[2136,1095,360,356,-118,-624],[2498,1095,232,357,-118,-627],[2732,1095,230,357,-116,-628]]}};
+const CHAIN_ATLAS_DATA = {"intro":{"size":[3927,3924],"scale":0.64,"frames":[[0,0,269,401,-211,-623],[271,0,268,401,-211,-622],[541,0,269,396,-211,-615],[812,0,269,389,-211,-605],[1083,0,274,387,-211,-601],[1359,0,277,392,-211,-610],[1638,0,300,400,-211,-621],[1940,0,333,405,-211,-629],[2275,0,359,417,-211,-649],[2636,0,376,470,-211,-731],[3014,0,380,539,-215,-839],[3396,0,418,517,-382,-804],[0,541,367,543,-436,-844],[369,541,388,463,-443,-719],[759,541,456,390,-399,-606],[1217,541,352,486,-211,-756],[1571,541,419,500,-292,-777],[1992,541,554,509,-450,-791],[2548,541,476,525,-423,-819],[3026,541,377,554,-440,-865],[3405,541,522,400,-477,-624],[0,1097,511,435,-446,-664],[513,1097,381,534,-209,-792],[896,1097,436,516,-269,-788],[1334,1097,584,519,-452,-807],[1920,1097,500,532,-427,-829],[2422,1097,385,548,-452,-856],[2809,1097,530,400,-491,-625],[3341,1097,503,429,-425,-649],[0,1647,380,526,-210,-771],[382,1647,429,524,-258,-815],[813,1647,579,511,-434,-794],[1394,1647,520,529,-429,-824],[1916,1647,372,562,-437,-877],[2290,1647,486,460,-464,-718],[2778,1647,541,409,-464,-623],[3321,1647,423,481,-279,-704],[0,2211,393,549,-210,-801],[395,2211,488,505,-330,-784],[885,2211,605,515,-462,-801],[1492,2211,497,538,-427,-839],[1991,2211,370,560,-443,-874],[2363,2211,518,401,-475,-626],[2883,2211,519,412,-442,-626],[3404,2211,405,508,-241,-740],[0,2773,410,579,-225,-830],[412,2773,543,504,-413,-782],[957,2773,596,514,-461,-798],[1555,2773,449,536,-424,-834],[2006,2773,405,559,-436,-873],[2413,2773,527,400,-467,-624],[2942,2773,508,424,-414,-634],[3452,2773,390,545,-209,-783],[0,3354,423,563,-237,-803],[425,3354,547,509,-404,-790],[974,3354,609,515,-461,-799],[1585,3354,478,535,-427,-833],[2065,3354,375,568,-431,-887],[2442,3354,513,452,-455,-706],[2957,3354,530,422,-447,-630]]},"walk":{"size":[3693,357],"scale":0.56,"frames":[[0,0,240,352,-172,-624],[242,0,246,354,-168,-630],[490,0,244,355,-188,-631],[736,0,264,352,-259,-628],[1002,0,245,347,-261,-618],[1249,0,237,340,-245,-609],[1488,0,223,343,-213,-614],[1713,0,216,348,-173,-623],[1931,0,218,353,-144,-630],[2151,0,225,355,-155,-633],[2378,0,236,352,-217,-632],[2616,0,275,347,-271,-625],[2893,0,278,345,-257,-614],[3173,0,267,347,-225,-614],[3442,0,251,352,-187,-622]]},"swipe":{"size":[4064,953],"scale":0.64,"frames":[[0,0,269,401,-211,-623],[271,0,269,401,-211,-623],[542,0,269,401,-211,-624],[813,0,269,401,-211,-624],[1084,0,268,403,-211,-626],[1354,0,263,403,-211,-627],[1619,0,253,408,-211,-630],[1874,0,251,404,-211,-627],[2127,0,268,396,-211,-614],[2397,0,291,396,-211,-614],[2690,0,300,401,-236,-622],[2992,0,356,419,-339,-650],[3350,0,341,398,-385,-619],[3693,0,371,394,-441,-620],[0,421,477,413,-457,-641],[479,421,502,463,-396,-690],[983,421,390,484,-180,-724],[1375,421,418,530,-182,-799],[1795,421,385,490,-122,-868],[2182,421,386,507,-97,-913]]},"death":{"size":[4086,766],"scale":0.56,"frames":[[0,0,299,342,-360,-608],[301,0,281,360,-319,-656],[584,0,334,394,-399,-725],[920,0,411,442,-518,-805],[1333,0,306,387,-325,-713],[1641,0,304,390,-322,-703],[1947,0,304,338,-321,-609],[2253,0,304,337,-321,-609],[2559,0,303,337,-320,-615],[2864,0,304,338,-320,-611],[3170,0,304,338,-319,-615],[3476,0,303,335,-317,-615],[3781,0,305,329,-310,-597],[0,444,306,320,-304,-580],[308,444,309,299,-293,-542],[619,444,316,277,-288,-501],[937,444,352,218,-304,-384],[1291,444,405,140,-321,-216],[1698,444,405,114,-321,-167]]},"stun":{"size":[4074,1517],"scale":0.64,"frames":[[0,0,255,380,-235,-588],[257,0,255,380,-235,-590],[514,0,252,382,-235,-592],[768,0,249,383,-235,-594],[1019,0,243,383,-235,-594],[1264,0,238,387,-235,-600],[1504,0,230,389,-234,-604],[1736,0,223,394,-234,-607],[1961,0,217,402,-234,-607],[2180,0,214,402,-228,-601],[2396,0,211,400,-220,-597],[2609,0,216,391,-213,-583],[2827,0,220,380,-211,-570],[3049,0,234,369,-211,-559],[3285,0,251,356,-211,-550],[3538,0,265,353,-211,-545],[3805,0,269,350,-211,-541],[0,404,272,350,-211,-541],[274,404,266,351,-211,-542],[542,404,260,354,-211,-547],[804,404,253,356,-211,-550],[1059,404,249,358,-212,-554],[1310,404,243,359,-212,-556],[1555,404,241,364,-212,-559],[1798,404,243,367,-212,-561],[2043,404,248,365,-212,-558],[2293,404,252,361,-212,-555],[2547,404,262,355,-212,-550],[2811,404,266,352,-212,-545],[3079,404,269,349,-212,-540],[3350,404,266,348,-212,-538],[3618,404,261,350,-212,-541],[0,773,255,353,-213,-545],[257,773,249,355,-213,-549],[508,773,241,358,-212,-555],[751,773,237,362,-212,-561],[990,773,237,367,-212,-564],[1229,773,240,371,-213,-566],[1471,773,243,370,-212,-566],[1716,773,249,370,-212,-566],[1967,773,253,365,-212,-561],[2222,773,261,360,-212,-555],[2485,773,265,356,-212,-551],[2752,773,266,354,-212,-548],[3020,773,266,352,-212,-545],[3288,773,262,353,-212,-545],[3552,773,255,355,-212,-550],[3809,773,250,360,-212,-557],[0,1146,243,363,-212,-563],[245,1146,237,366,-212,-568],[484,1146,237,368,-212,-570],[723,1146,237,369,-212,-570],[962,1146,240,369,-212,-568],[1204,1146,246,365,-212,-562],[1452,1146,252,362,-212,-558],[1706,1146,260,360,-212,-554],[1968,1146,264,355,-212,-548],[2234,1146,266,354,-212,-547],[2502,1146,266,355,-212,-550],[2770,1146,261,359,-212,-556],[3033,1146,256,362,-212,-562]]},"hurt":{"size":[4073,2138],"scale":0.64,"frames":[[0,0,269,400,-211,-622],[271,0,262,400,-211,-622],[535,0,250,399,-211,-621],[787,0,241,402,-213,-625],[1030,0,239,406,-224,-632],[1271,0,243,411,-241,-638],[1516,0,253,415,-265,-645],[1771,0,253,420,-276,-652],[2026,0,248,422,-278,-656],[2276,0,239,426,-262,-660],[2517,0,225,429,-234,-662],[2744,0,220,435,-219,-662],[2966,0,218,433,-213,-657],[3186,0,223,426,-218,-645],[3411,0,234,420,-231,-635],[3647,0,247,413,-249,-625],[0,437,260,410,-263,-619],[262,437,276,407,-279,-615],[540,437,297,406,-295,-614],[839,437,320,410,-307,-619],[1161,437,335,410,-309,-620],[1498,437,349,404,-298,-611],[1849,437,349,396,-266,-597],[2200,437,367,388,-275,-585],[2569,437,366,387,-282,-584],[2937,437,351,391,-284,-590],[3290,437,332,398,-283,-601],[3624,437,312,404,-279,-611],[0,849,287,414,-273,-621],[289,849,257,422,-264,-631],[548,849,228,423,-254,-638],[778,849,213,426,-242,-646],[993,849,221,427,-222,-654],[1216,849,240,435,-218,-661],[1458,849,260,438,-215,-664],[1720,849,265,439,-202,-665],[1987,849,262,439,-190,-665],[2251,849,267,436,-182,-660],[2520,849,284,437,-178,-662],[2806,849,308,434,-177,-657],[3116,849,318,429,-168,-649],[3436,849,307,418,-154,-632],[3745,849,291,410,-150,-620],[0,1290,276,406,-150,-613],[278,1290,263,407,-150,-615],[543,1290,250,412,-150,-622],[795,1290,239,419,-150,-633],[1036,1290,231,424,-150,-641],[1269,1290,227,428,-150,-647],[1498,1290,221,428,-150,-648],[1721,1290,224,428,-150,-648],[1947,1290,231,427,-150,-646],[2180,1290,236,426,-150,-645],[2418,1290,236,425,-150,-643],[2656,1290,234,426,-150,-644],[2892,1290,232,426,-150,-645],[3126,1290,236,425,-150,-643],[3364,1290,236,424,-150,-641],[3602,1290,234,422,-150,-639],[3838,1290,235,419,-150,-634],[0,1720,236,416,-150,-629]],"bx":[3,8,12,16,20,25,30,35,38,42,45,49,51,50,45,39,33,26,20,16,14,14,15,15,20,29,39,46,51,53,58,59,55,51,50,52,57,60,61,63,65,66,66,67,68,69,69,69,69,69,69,67,67,67,70,73,76,78,80,83,85]},"slam":{"size":[4070,1455],"scale":0.56,"frames":[[0,0,236,353,-122,-626],[238,0,241,353,-130,-626],[481,0,243,353,-124,-626],[726,0,249,353,-116,-626],[977,0,286,354,-116,-627],[1265,0,283,355,-116,-629],[1550,0,305,356,-169,-630],[1857,0,258,357,-230,-631],[2117,0,303,357,-302,-632],[2422,0,358,359,-393,-634],[2782,0,388,360,-435,-636],[3172,0,379,362,-403,-636],[3553,0,305,363,-130,-636],[0,365,307,363,-134,-636],[309,365,307,363,-134,-636],[618,365,303,363,-136,-636],[923,365,303,361,-136,-633],[1228,365,335,361,-135,-636],[1565,365,333,359,-133,-629],[1900,365,361,359,-133,-632],[2263,365,360,357,-130,-626],[2625,365,363,357,-130,-627],[2990,365,359,355,-124,-622],[3351,365,372,355,-121,-624],[3725,365,345,355,-118,-625],[0,730,234,358,-202,-629],[236,730,303,358,-308,-632],[541,730,364,358,-409,-632],[907,730,384,361,-433,-636],[1293,730,384,362,-424,-636],[1679,730,338,362,-322,-636],[2019,730,307,363,-131,-636],[2328,730,304,363,-134,-636],[2634,730,304,363,-134,-636],[2940,730,303,363,-136,-636],[3245,730,302,361,-137,-633],[3549,730,332,360,-132,-634],[0,1095,332,358,-133,-628],[334,1095,351,357,-130,-628],[687,1095,351,356,-130,-625],[1040,1095,367,356,-130,-626],[1409,1095,366,355,-129,-623],[1777,1095,357,355,-119,-622],[2136,1095,360,356,-118,-624],[2498,1095,232,357,-118,-627],[2732,1095,230,357,-116,-628]]}};
 // Video frame numbers of the kept slam frames (the slam pack index -> frame of the source video; 24 fps).
 const CHAIN_SLAM_VF = [37,39,41,43,45,47,49,51,53,55,57,59,61,62,63,64,65,66,67,68,69,70,71,74,77,80,83,84,86,88,90,92,94,95,96,97,98,99,100,101,102,103,106,109,112,115];
 /* V9.25: Patricia (Level 1 boss) animation packs: one WebP per move, built by tools/build_patricia_assets.py.
@@ -343,7 +361,7 @@ function loadPatriciaAssets() {
     patAssetsRequested = true;
     for (const [name, a] of Object.entries(patAtlas)) {
         const img = a.img;
-        img.src = `assets/characters/patricia/atlas/pat-${name}.webp?v=9250`;
+        img.src = `assets/characters/patricia/atlas/pat-${name}.webp?v=9300`;
         img.decode?.().then(() => {
             if (window.createImageBitmap) createImageBitmap(img).then(bmp => { a.bmp = bmp; }).catch(() => {});
         }).catch(() => {});
@@ -352,6 +370,7 @@ function loadPatriciaAssets() {
 const PAT_SCALE = 0.66;               // = the atlas scale, so she is never resampled
 const PAT_STAND_OFF = 215, PAT_CHASE_SPEED = 165;
 const PAT_HP = 300, PAT_STAGE2_HP = 150;
+const PAT_OLLY_SCALE = 0.8;   // V9.30: Olly was too big next to her
 const PAT_WALK_FRAME_MS = 62, PAT_IDLE_FRAME_MS = 95;
 const PAT_LUNGE_WINDUP_FRAMES = 13, PAT_LUNGE_WINDUP_MS = 760, PAT_LUNGE_STRIKE_FRAMES = 24, PAT_LUNGE_FRAME_MS = 34, PAT_LUNGE_HIT_AT_MS = 240;
 const PAT_LUNGE_DAMAGE = 12, PAT_LUNGE_RANGE = 360, PAT_LUNGE_PUSH = 36;
@@ -386,10 +405,10 @@ function loadCombatAssets() {
     ollyReactionSprites.hurt.forEach((img, i) => img.src = `assets/characters/combat/olly-hurt-${i + 1}.webp?v=8110`);
     ollyReactionSprites.ko.forEach((img, i) => img.src = `assets/characters/combat/olly-ko-${i + 1}.webp?v=8110`);
     zombieCombatFrames.idle[0].src = 'assets/characters/combat/zombie-ready-crouch.webp?v=8111';
-    zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/walk-${String(i + 1).padStart(3, '0')}.webp?v=9240`);
+    zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.webp?v=7600`);
     zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i + 1}.webp?v=8600`);
     zombieCombatFrames.heavyKick.forEach((img, i) => img.src = `assets/characters/combat/zombie-ankle-biter-${String(i + 1).padStart(2, '0')}.webp?v=10100`);
-    zombieCombatFrames.hurt.forEach((img, i) => img.src = `assets/characters/combat/zombie-hurt-${i + 1}.webp?v=8800`);
+    zombieCombatFrames.hurt.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/hurt-${String(i + 1).padStart(3, '0')}.webp?v=9300`);
     zombieCombatFrames.death.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/death-${String(i + 1).padStart(3, '0')}.webp?v=9240`);
     zombieCombatFrames.prep.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro-${String(i + 1).padStart(3, '0')}.webp?v=9240`);
     zombieCountdownFrames[3].src = 'assets/characters/combat/zombie-countdown-3.webp?v=8600';
@@ -398,7 +417,7 @@ function loadCombatAssets() {
     zombieCountdownFrames.fight.src = 'assets/characters/combat/zombie-countdown-fight.webp?v=8600';
     for (const [name, a] of Object.entries(chainAtlas)) {
         const img = a.img;
-        img.src = `assets/characters/combat/chain-goth/chain-${name}.webp?v=9240`;
+        img.src = `assets/characters/combat/chain-goth/chain-${name}.webp?v=9300`;
         // Decode the big sheets in the background so the first time she uses a move there is no hitch (Safari decodes lazily).
         img.decode?.().then(() => {
             try { const t = document.createElement('canvas'); t.width = t.height = 1; t.getContext('2d').drawImage(img, 0, 0, 1, 1); } catch (e) {}
@@ -547,7 +566,7 @@ function drawOlly(ctx, x, y, s=.78, t=0, front=true, dir='right', moving=false, 
     ctx.save();
     const bob = moving ? Math.sin(t * 18) * 1.5 : Math.sin(t * 2) * .35;
     ctx.translate(x, y - bob);
-    ctx.fillStyle = 'rgba(0,0,0,.34)';
+    ctx.fillStyle = SH(.34);
     ctx.beginPath();
     ctx.ellipse(0, 38 * s, 23 * s, 6 * s, 0, 0, Math.PI * 2);
     ctx.fill();
@@ -583,7 +602,7 @@ function drawZombieSprite(ctx, x, y, type, s=.68, t=0, attack=false, face='left'
     const img = zombieSprites[type] || zombieSprites.shambler;
     ctx.save();
     ctx.translate(x, y + Math.sin(t * 7) * 1.5);
-    ctx.fillStyle = 'rgba(0,0,0,.34)';
+    ctx.fillStyle = SH(.34);
     ctx.beginPath();
     ctx.ellipse(0, 40 * s, 28 * s, 7 * s, 0, 0, Math.PI * 2);
     ctx.fill();
@@ -1075,8 +1094,8 @@ export function createLevel1(ui) {
 
     const enemies = [
     {
-        x: 485,
-        y: 420,
+        x: 604,
+        y: 244,
         type: 'shambler',
         name: 'ZOMBIE GOTH',
         hp: 50,
@@ -1085,8 +1104,8 @@ export function createLevel1(ui) {
         pattern: 'Scratch • Lunge'
     },
     {
-        x: 1115,
-        y: 505,
+        x: 1004,
+        y: 444,
         type: 'chain',
         name: 'CHAIN GOTH',
         hp: 100,
@@ -1097,20 +1116,20 @@ export function createLevel1(ui) {
     ];
     // V9.27: both markers moved out of the bushes onto open path (checked against the walk grid).
     const relationshipChallenge = {
-            x: 370,
-            y: 722
+            x: 332,
+            y: 652
         },
         princessQuestion = {
-            x: 770,
-            y: 345
+            x: 1232,
+            y: 64
         },
         boss = {
             x: 1380,
             y: 820
         },
         key = {
-            x: 1200,
-            y: 700
+            x: 732,
+            y: 576
         };
     const MAX_HP = 100;
     const COMBAT_W = 1440,
@@ -1118,6 +1137,8 @@ export function createLevel1(ui) {
         COMBAT_GROUND_Y = 470;
     const combatBackgroundImage = new Image();
     combatBackgroundImage.src = 'assets/environment/combat-background-level1.webp';
+    const patriciaArenaImage = new Image();
+    patriciaArenaImage.src = 'assets/arenas/patricia-arena.webp?v=9300';   // V9.30: Patricia's own arena
 
     // v6.5.16e: start just below the upper-left church, close to Zombie Goth.
     let x = 240,
@@ -1309,7 +1330,7 @@ export function createLevel1(ui) {
                 const item = items[i];
                 if (item) {
                     const info = ITEM_INFO[item];
-                    slot.innerHTML = `<img class="inv-item-img" src="${info.img}?v=9280" alt="${info.name}" draggable="false"><span>${info.label}</span>`;
+                    slot.innerHTML = `<img class="inv-item-img" src="${info.img}?v=9300" alt="${info.name}" draggable="false"><span>${info.label}</span>`;
                     slot.dataset.item = item;
                     slot.dataset.tip = info.tip;
                     slot.classList.add('inventory-filled');
@@ -1460,6 +1481,13 @@ export function createLevel1(ui) {
     function drawWorld(t, dt = 1 / 60) {
         const vw = ui.canvas.clientWidth || 1000,
             vh = ui.canvas.clientHeight || 600;
+        {   // V9.30: draw the map at the real screen resolution
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            const hi = !(window.ggPrefs && window.ggPrefs.hiRes === false);
+            const wantW = hi ? Math.max(1536, Math.round(vw * dpr)) : 1536, wantH = hi ? Math.max(1024, Math.round(vh * dpr)) : 1024;
+            if (ui.canvas.width !== wantW || ui.canvas.height !== wantH) { ui.canvas.width = wantW; ui.canvas.height = wantH; }
+            ctx.imageSmoothingEnabled = !(window.ggPrefs && window.ggPrefs.crispMap); ctx.imageSmoothingQuality = 'high';
+        }
         const sx = ui.canvas.width / vw,
             sy = ui.canvas.height / vh;
         ctx.clearRect(0, 0, ui.canvas.width, ui.canvas.height);
@@ -1489,7 +1517,8 @@ export function createLevel1(ui) {
         }
         if (WALK_DEBUG) drawWalkDebug(ctx);
         // V9.27: Goths only emerge from the mist as you get close (so the Chain Goth is not on screen at the start).
-        const mistAlpha = e => Math.max(0, Math.min(1, (MIST_SEE_FAR - Math.hypot(e.x - x, e.y - y)) / (MIST_SEE_FAR - MIST_SEE_NEAR)));
+        const mistAlpha = e => { const near = e === enemies[0] ? 150 : MIST_SEE_NEAR, far = e === enemies[0] ? 250 : MIST_SEE_FAR;   // the Zombie Goth lurks close to the start, so she only shows up very close
+            return Math.max(0, Math.min(1, (far - Math.hypot(e.x - x, e.y - y)) / (far - near))); };
         if (!enemies[0].dead) {
             ctx.save(); ctx.globalAlpha = mistAlpha(enemies[0]);
             drawZombieSprite(ctx, enemies[0].x, enemies[0].y, 'shambler', .84, t / 1000, false);
@@ -1501,9 +1530,9 @@ export function createLevel1(ui) {
             ctx.restore();
         }
         if (!relationshipDone)
-            drawMarker(ctx, relationshipChallengeIcon, relationshipChallenge.x, relationshipChallenge.y, 120, 120, '', t / 1000);
+            drawMarker(ctx, relationshipChallengeIcon, relationshipChallenge.x, relationshipChallenge.y, 90, 90, '', t / 1000);
         if (!puzzleSolved)
-            drawMarker(ctx, princessQuestionIcon, princessQuestion.x, princessQuestion.y, 140, 140, '', t / 1000);
+            drawMarker(ctx, princessQuestionIcon, princessQuestion.x, princessQuestion.y, 100, 100, '', t / 1000);
         if (!keyCollected && objectivesComplete()) {
             ctx.save();
             ctx.translate(key.x, key.y + Math.sin(t / 280) * 4);
@@ -1525,12 +1554,14 @@ export function createLevel1(ui) {
             ctx.restore();
         }
         const mapMoving = mode === 'map' && (held.up || held.down || held.left || held.right);
-        drawOlly(ctx, playerX, playerY, .78, t / 1000, true, facingDir, mapMoving, walkDir);
+        drawOlly(ctx, playerX, playerY, .92, t / 1000, true, facingDir, mapMoving, walkDir);
         // v6.5.16e: unexplored cemetery remains covered; revealed areas stay clear.
         updateFogPatchClears(t);
         updateFogParting(t);
-        ctx.drawImage(fogCanvas, 0, 0, WORLD_W, WORLD_H);
-        drawAnimatedMist(t);
+        if (prefOn('fog')) {
+            ctx.drawImage(fogCanvas, 0, 0, WORLD_W, WORLD_H);
+            drawAnimatedMist(t);
+        }
         ctx.restore();
     }
     function canvasPointToWorld(e) {
@@ -1693,8 +1724,8 @@ export function createLevel1(ui) {
         let finished = false;
         let attemptedFallback = false;
         const sources = [
-            'assets/video/cutscene2/cutscene2.mp4?v=9280',
-            'assets/video/cutscene2/cutscene2.mov?v=9280'
+            'assets/video/cutscene2/cutscene2.mp4?v=9300',
+            'assets/video/cutscene2/cutscene2.mov?v=9300'
         ];
 
         const finish = () => {
@@ -1705,6 +1736,8 @@ export function createLevel1(ui) {
             video.load();
             overlay.remove();
             gateOpened = true;
+            inventory.key = 0;   // V9.30: the key is used up when the gate opens
+            refreshInventoryUI();
             mode = 'map';
             playMusic('map');
             stats();
@@ -1984,8 +2017,9 @@ export function createLevel1(ui) {
     }
     function drawCombatBackground(c) {
         c.clearRect(0, 0, COMBAT_W, COMBAT_H);
-        if (combatBackgroundImage.complete && combatBackgroundImage.naturalWidth > 0) {
-            c.drawImage(combatBackgroundImage, 0, 0, COMBAT_W, COMBAT_H);
+        const bgImg = (isBoss && patriciaArenaImage.complete && patriciaArenaImage.naturalWidth > 0) ? patriciaArenaImage : combatBackgroundImage;
+        if (bgImg.complete && bgImg.naturalWidth > 0) {
+            c.drawImage(bgImg, 0, 0, COMBAT_W, COMBAT_H);
         } else {
             const g = c.createLinearGradient(0, 0, 0, COMBAT_H);
             g.addColorStop(0, '#23192a');
@@ -2111,7 +2145,11 @@ export function createLevel1(ui) {
             // v8.9: non-walk/non-attack animation pass is 20% larger.
             targetHeight = 400;
             // V9.24: the new 61-frame 3-2-1 animation plays once across the countdown, then holds its last pose.
-            index = Math.min(60, Math.floor(Math.max(0, elapsed) / (ZOMBIE_INTRO_TOTAL_MS * .72 / 61)));   // V9.28: plays in ~72% of the countdown, then holds the ready pose
+            {   // V9.30: only the calm first part of the clip is used (the later frames shuffle her feet on the spot, which looked like a treadmill)
+                const e = Math.max(0, elapsed);
+                if (e < 16 * 70) index = Math.floor(e / 70);
+                else index = [15, 14, 13, 14][Math.floor((e - 16 * 70) / 260) % 4];
+            }
         } else if (zombieCombatState === 'chase') {
             frames = zombieCombatFrames.walk;
             // v8.9: walk is 10% smaller than the v8.8 visible walk size.
@@ -2142,9 +2180,10 @@ export function createLevel1(ui) {
                 else if (sinceCatch < 1200) index = 6;  // Frame 07: recoil.
                 else index = 7;                         // Frame 08: return to crouch.
             } else {
-                const crawlAnimationMs = 1200;
-                const progress = Math.min(.999, elapsed / crawlAnimationMs);
-                index = Math.min(4, Math.floor(progress * 5)); // Frames 01-05: slower approach.
+                // V9.30: she keeps crawling after Olly (loop the crawl frames) instead of freezing on the last lunge pose.
+                const CRAWL_LOOP = [1, 2, 3, 4, 3, 2];
+                if (elapsed < 140) index = 0;
+                else index = CRAWL_LOOP[Math.floor((elapsed - 140) / 105) % CRAWL_LOOP.length];
             }
         } else if (zombieCombatState === 'death') {
             frames = zombieCombatFrames.death;
@@ -2160,8 +2199,7 @@ export function createLevel1(ui) {
             }
         } else if (zombieCombatState === 'hit') {
             frames = zombieCombatFrames.hurt;
-            // v8.9: hurt/reaction artwork is 20% larger.
-            targetHeight = 498;
+            targetHeight = 330;   // V9.29: new hurt frames are drawn at their natural size (scale 1 below)
             const seq = zombieHitLong ? ZOMBIE_LONG_HURT_SEQUENCE : ZOMBIE_HURT_SEQUENCE;
             const times = zombieHitLong ? ZOMBIE_LONG_HURT_FRAME_MS : ZOMBIE_HURT_FRAME_MS;
             let acc = 0;
@@ -2174,9 +2212,9 @@ export function createLevel1(ui) {
                 }
             }
         } else if (zombieCombatState === 'ready' || zombieCombatState === 'windup') {
-            frames = zombieCombatFrames.prep;   // V9.24: ready pose = the last frame of the new fight-stance animation
+            frames = zombieCombatFrames.prep;   // V9.30: ready pose = settled stance of the new animation
             targetHeight = 400;
-            index = 60;
+            index = 15;
         } else if (zombieCombatState === 'recover') {
             // After an attack, visibly walk/reposition instead of snapping back
             // into the crouch. The crouch returns before the next attack.
@@ -2200,10 +2238,10 @@ export function createLevel1(ui) {
         // One fixed scale per animation set (never per frame) so she stays the same size within and between animations.
         // Scales were matched by the size of her hair bow across the walk, crouch, claw and bite art.
         let scale = 0;
-        if (zombieCombatState === 'chase' || zombieCombatState === 'recover') scale = 1;
+        if (zombieCombatState === 'chase' || zombieCombatState === 'recover') scale = .4595;   // V9.30: original walk art scale
         else if (zombieCombatState === 'claw') scale = .62;
         else if (zombieCombatState === 'heavyKick') scale = .62;
-        else if (zombieCombatState === 'intro' || zombieCombatState === 'ready' || zombieCombatState === 'windup' || zombieCombatState === 'death') scale = 1;   // V9.24 frames are pre-scaled
+        else if (zombieCombatState === 'intro' || zombieCombatState === 'ready' || zombieCombatState === 'windup' || zombieCombatState === 'death' || zombieCombatState === 'hit') scale = 1;   // V9.24 frames are pre-scaled
         return { img: frames[index], targetHeight, frameIndex: index, scale };
     }
 
@@ -2278,7 +2316,7 @@ export function createLevel1(ui) {
         // Existing attack frames retain their previous rendering offset.
         // v8.9: walk and attack are deliberately 10% smaller; every other
         // Zombie combat animation is 20% larger than its v8.8 size.
-        const renderGroundY = (walking || dying || zombieCombatState === 'recover' || zombieCombatState === 'intro' || zombieCombatState === 'ready' || zombieCombatState === 'windup') ? enemyY + 25 : enemyY + 22;
+        const renderGroundY = (walking || dying || zombieCombatState === 'recover' || zombieCombatState === 'intro' || zombieCombatState === 'ready' || zombieCombatState === 'windup' || zombieCombatState === 'hit') ? enemyY + 25 : enemyY + 22;
         // The Ankle Biter frames are wide, low-to-the-ground poses. Give this
         // attack a width cap matching Zombie Goth's normal combat footprint so
         // the horizontal artwork does not become enormous on screen.
@@ -2449,13 +2487,13 @@ export function createLevel1(ui) {
                     zombieBiteEvaded = true;
                     ui.combatStatus.textContent = '↪ BITE avoided!';
                 }
-                if (zombieBiteCaughtAt === 0 && !zombieBiteEvaded) {
+                if (zombieBiteCaughtAt === 0) {   // V9.30: keeps chasing even after a dodge (she just can't bite him)
                     const trackingDx = player.x - zombieCombatX;
                     const trackingDirection = trackingDx < 0 ? -1 : 1;
                     const trackingGap = 112;
                     const desiredX = player.x - trackingDirection * trackingGap;
                     const targetX = Math.max(170, Math.min(COMBAT_W - 170, desiredX));
-                    const crawlStep = Math.min(Math.abs(targetX - zombieCombatX), 430 * dt);
+                    const crawlStep = Math.min(Math.abs(targetX - zombieCombatX), (zombieBiteEvaded ? 300 : 400) * dt);
                     if (crawlStep > 0.5) {
                         zombieCombatX += (targetX >= zombieCombatX ? 1 : -1) * crawlStep;
                         zombieCombatX = Math.max(170, Math.min(COMBAT_W - 170, zombieCombatX));
@@ -2463,7 +2501,7 @@ export function createLevel1(ui) {
                     }
 
                     const catchDistance = Math.abs(player.x - zombieCombatX);
-                    const canCatch = nowMs >= dodgeUntil;   // red attack: dodging OR jumping (timed like a dodge) avoids the bite
+                    const canCatch = nowMs >= dodgeUntil && !zombieBiteEvaded;   // red attack: dodging OR jumping (timed like a dodge) avoids the bite
                     if (canCatch && catchDistance <= 215) {   // V9.28: longer red-attack reach (was 155)
                         zombieBiteCaughtAt = nowMs || 1;
                         zombieBiteHoldX = player.x;
@@ -2614,6 +2652,7 @@ export function createLevel1(ui) {
         combatAnimationStart = nowMs;
         combatAnimationUntil = nowMs + OLLY_HURT_TOTAL_MS;
         ui.combatStatus.textContent = `💥 ${attackName}! -${damage} HP.`;
+        kickShake(damage >= 15 ? 11 : (damage >= 10 ? 8 : 5), damage >= 15 ? 360 : 240);   // V9.30
 
         // Knockback always travels AWAY from the Zombie. Avoid repeated
         // full-distance corner shoves that can make the encounter unreadable.
@@ -2652,7 +2691,7 @@ export function createLevel1(ui) {
             try { video.pause(); video.removeAttribute('src'); video.load(); } catch (e) {}
             overlay.remove(); done();
         };
-        const sources = ['assets/video/cutscene3/ollytaken.mp4?v=9280', 'assets/video/cutscene3/olly-taken.mp4?v=9280', 'assets/video/cutscene3/ollytaken.mov?v=9280', 'assets/video/cutscene3/olly-taken.mov?v=9280'];
+        const sources = ['assets/video/cutscene3/ollytaken.mp4?v=9300', 'assets/video/cutscene3/olly-taken.mp4?v=9300', 'assets/video/cutscene3/ollytaken.mov?v=9300', 'assets/video/cutscene3/olly-taken.mov?v=9300'];
         let i = 0;
         const next = () => { if (i >= sources.length) { finish(); return; } video.src = sources[i++]; video.load(); video.play().catch(() => {}); };
         video.addEventListener('error', next);
@@ -2689,7 +2728,8 @@ export function createLevel1(ui) {
             // Olly's knockout sounds come first; only then does the winner groan and walk off (no chain noises muddying it).
             setTimeout(() => {
                 if (!playerDeathTriggered || mode !== 'combat') return;
-                if (isChainFight()) playSfx(GOTH_HURT_SFX[0], .8, .82);
+                if (isPatriciaFight()) { /* V9.30: no zombie groan for Patricia */ }
+                else if (isChainFight()) playSfx(GOTH_HURT_SFX[0], .8, .82);
                 else playSfx(GOTH_HURT_SFX[Math.floor(Math.random() * GOTH_HURT_SFX.length)], .8);
             }, 1100);
         }
@@ -2839,18 +2879,45 @@ export function createLevel1(ui) {
             strip(reach, .8, .95);
             // bright leading edge
             c.save(); c.translate(x0 + dir * reach, y); c.scale(1, .2);
-            const gl = c.createRadialGradient(0, 0, 0, 0, 0, 90);
+            const gl = c.createRadialGradient(0, 0, 0, 0, 0, 150);
             gl.addColorStop(0, 'rgba(255,255,220,.95)'); gl.addColorStop(1, 'rgba(235,255,110,0)');
-            c.fillStyle = gl; c.beginPath(); c.arc(0, 0, 90, 0, Math.PI * 2); c.fill(); c.restore();
-            // flying sparks (deterministic scatter so they do not shimmer randomly)
-            for (let k = 0; k < 46; k++) {
-                const u = (Math.sin(k * 91.7) * .5 + .5), v = (Math.sin(k * 37.3 + 1.7) * .5 + .5), w2 = (Math.sin(k * 12.9 + .4) * .5 + .5);
-                const px = x0 + dir * (u * reach);
-                const lift = Math.sin(Math.min(1, waveT / 360) * Math.PI) * (14 + 52 * w2);
-                const py = y + (v - .5) * 26 - lift;
-                c.fillStyle = k % 3 ? 'rgba(235,255,110,1)' : 'rgba(255,255,230,1)';
-                c.beginPath(); c.ellipse(px, py, 3 + 3 * w2, 2 + 2 * w2, 0, 0, Math.PI * 2); c.fill();
+            c.fillStyle = gl; c.beginPath(); c.arc(0, 0, 150, 0, Math.PI * 2); c.fill(); c.restore();
+            // V9.30: far more dramatic flying sparks: streaks that fly up in arcs, hot white cores, orange embers, plus a burst at her feet
+            // (deterministic scatter so they do not shimmer randomly)
+            c.globalCompositeOperation = 'lighter';
+            c.lineCap = 'round';
+            for (let k = 0; k < 170; k++) {
+                const u = (Math.sin(k * 91.7) * .5 + .5), v = (Math.sin(k * 37.3 + 1.7) * .5 + .5), w2 = (Math.sin(k * 12.9 + .4) * .5 + .5), z = (Math.sin(k * 5.3 + 2.2) * .5 + .5);
+                const life = Math.min(1, waveT / (320 + 260 * w2));
+                const px = x0 + dir * (u * reach) + dir * 40 * life;
+                const peak = 40 + 190 * w2 * w2 + 40 * z;
+                const lift = 4 * life * (1 - life) * peak;
+                const py = y + (v - .5) * 30 - lift;
+                const prevLife = Math.max(0, life - .09);
+                const ppx = x0 + dir * (u * reach) + dir * 40 * prevLife;
+                const ppy = y + (v - .5) * 30 - 4 * prevLife * (1 - prevLife) * peak;
+                const a = Math.max(0, 1 - life * .85);
+                const hot = k % 4 === 0;
+                c.strokeStyle = hot ? `rgba(255,255,235,${a})` : (k % 2 ? `rgba(255,224,90,${a})` : `rgba(255,150,40,${a})`);
+                c.lineWidth = hot ? 4.5 : 2.5 + 2 * w2;
+                c.beginPath(); c.moveTo(ppx, ppy); c.lineTo(px, py); c.stroke();
+                if (w2 > .55) { c.fillStyle = c.strokeStyle; c.beginPath(); c.arc(px, py, 2.5 + 3 * w2, 0, Math.PI * 2); c.fill(); }
             }
+            // burst fountain right where the chain hit the floor
+            if (waveT < 420) {
+                const bp = waveT / 420;
+                for (let k = 0; k < 40; k++) {
+                    const ang = -Math.PI / 2 + (Math.sin(k * 17.1) * .5) * 2.1 + dir * .45;
+                    const sp = 120 + 260 * (Math.sin(k * 8.7) * .5 + .5);
+                    const bx = x0 + Math.cos(ang) * sp * bp, by = y + Math.sin(ang) * sp * bp + 520 * bp * bp * .35;
+                    c.strokeStyle = `rgba(255,${200 + (k % 3) * 20},90,${1 - bp})`; c.lineWidth = 3.5;
+                    c.beginPath(); c.moveTo(bx - Math.cos(ang) * 14, by - Math.sin(ang) * 14); c.lineTo(bx, by); c.stroke();
+                }
+                const fl = c.createRadialGradient(x0, y - 20, 0, x0, y - 20, 170);
+                fl.addColorStop(0, `rgba(255,255,230,${.9 * (1 - bp)})`); fl.addColorStop(1, 'rgba(255,200,60,0)');
+                c.fillStyle = fl; c.beginPath(); c.arc(x0, y - 20, 170, 0, Math.PI * 2); c.fill();
+            }
+            c.globalCompositeOperation = 'source-over';
             c.restore();
         }
     }
@@ -2883,7 +2950,7 @@ export function createLevel1(ui) {
         // Soft floor shadow so she sits on the ground like Olly does.
         if (zombieCombatState !== 'death') {
             c.save();
-            c.fillStyle = 'rgba(0,0,0,.28)';
+            c.fillStyle = SH(.28);
             c.beginPath();
             c.ellipse(enemyX + offsetX, CHAIN_FLOOR_Y + 6, 66 * (frame.scale / CHAIN_RENDER_SCALE), 11, 0, 0, Math.PI * 2);
             c.fill();
@@ -2903,10 +2970,10 @@ export function createLevel1(ui) {
         }
 
         // V9.28: the walk art was drawn facing RIGHT (every other chain animation faces left), so flip it or she walks backwards.
-        const drawFace = frame.pack === chainAtlas.walk ? (face === 'left' ? 'right' : 'left') : face;
+        const drawFace = face;   // V9.30: the walk art now natively faces left like the rest of her animations
         const slamGlow = zombieCombatState === 'slam' && nowMs - zombieCombatStateStart < CHAIN_SLAM_HIT_AT_MS;
         if (slamGlow) {   // the yellow "ghost": she glows yellow while the slam is coming
-            c.save(); c.shadowColor = 'rgba(255,214,60,1)'; c.shadowBlur = 34 + 12 * Math.sin(nowMs / 70);
+            c.save(); c.shadowColor = 'rgba(255,214,60,1)'; c.shadowBlur = 34 + (prefOn('calm') ? 0 : 12 * Math.sin(nowMs / 70));
         }
         drawChainAtlasFrame(c, frame.pack, frame.index, enemyX, CHAIN_FLOOR_Y, drawFace, frame.scale, alpha, rotation, offsetX);
         if (slamGlow) c.restore();
@@ -3048,19 +3115,19 @@ export function createLevel1(ui) {
         chainSwipeAim = patSide();
         if (kind === 'lunge') {
             zombieCombatState = 'lunge'; queueRingTutorial('red');
-            playSfx('chain-rattle', .6, 1.3);
+            // (no chain noises for Patricia)
             ui.combatStatus.textContent = 'Patricia raises her sword. DODGE or JUMP!';
         } else if (kind === 'combo') {
             zombieCombatState = 'combo'; queueRingTutorial('red');
             ui.combatStatus.textContent = 'A three-hit sword combo. Keep moving!';
         } else if (kind === 'lightning') {
             zombieCombatState = 'lightning'; queueRingTutorial('yellow');
-            playSfx('chain-rattle', .7, .8);
+            // (no chain noises for Patricia)
             ui.combatStatus.textContent = 'Lightning! The whole floor is dangerous. JUMP!';
         } else {   // vanish
             zombieCombatState = 'smoke'; queueRingTutorial('pink');
             patVanishX = Math.max(190, Math.min(COMBAT_W - 190, player.x - patSide() * 170));
-            playSfx('chain-rattle', .5, 1.5);
+            // (no chain noises for Patricia)
             ui.combatStatus.textContent = 'Patricia vanishes in smoke. Watch where she appears!';
         }
     }
@@ -3081,7 +3148,7 @@ export function createLevel1(ui) {
         applyZombieDamage(dmg, range, push, nowMs, name, ignoreAir, ignoreDodge);
     }
     function onPatriciaHit(nowMs, heavy) {
-        playSfx(heavy ? 'goth-pain' : GOTH_HURT_SFX[Math.floor(Math.random() * GOTH_HURT_SFX.length)], heavy ? .9 : .6, .9);
+        // V9.30: no zombie groans for Patricia (her own hurt voice lines are still to come)
         zombieHitFlashUntil = nowMs + 120;
         const st = zombieCombatState;
         // She shrugs off normal punches; only a Heavy Attack staggers her, and never in the middle of a move.
@@ -3100,7 +3167,6 @@ export function createLevel1(ui) {
         enemyAttackPhase = 'death';
         zombieCombatNextDecision = Infinity;
         zombieDeathEndAt = nowMs + PAT_DEFEAT_FRAMES * PAT_DEFEAT_FRAME_MS + PAT_DEFEAT_HOLD_MS;
-        playSfx('goth-pain', .95, .85);
         ui.combatStatus.textContent = '💀 PATRICIA HAS FALLEN. (Is she salvageable?)';
     }
 
@@ -3137,7 +3203,6 @@ export function createLevel1(ui) {
         if (patStage === 1 && combatHp <= PAT_STAGE2_HP && combatHp > 0 && (st === 'chase' || st === 'recover' || st === 'ready')) {
             patStage = 2; patCheckpoint = true; patStep = 0;
             zombieCombatState = 'stage2'; zombieCombatStateStart = nowMs; enemyAttackPhase = 'hurt';
-            playSfx('goth-pain', .9, .8);
             ui.combatStatus.textContent = 'Patricia: "No more Mrs Nice Goth." Stage 2: lightning joins the party.';
             return;
         }
@@ -3197,7 +3262,7 @@ export function createLevel1(ui) {
                 zombieCombatStateStart = nowMs;
                 zombieCombatAttackHit = false;
                 enemyAttackPhase = 'windup';
-                playSfx('chain-rattle', .7, 1.4);
+                // (no chain noises for Patricia)
                 ui.combatStatus.textContent = 'Behind you! DODGE or JUMP!';
             }
             return;
@@ -3284,7 +3349,7 @@ export function createLevel1(ui) {
         const alpha = nowMs < zombieHitFlashUntil ? .75 : 1;
         // floor shadow
         if (st !== 'death' && !patGone()) {
-            c.save(); c.fillStyle = 'rgba(0,0,0,.30)';
+            c.save(); c.fillStyle = SH(.30);
             c.beginPath(); c.ellipse(enemyX, CHAIN_FLOOR_Y + 6, 74, 12, 0, 0, Math.PI * 2); c.fill(); c.restore();
         }
         // warning rings (the same colour language as the Goths: red = dodge or jump, yellow = only jumping works, purple = vanish strike)
@@ -3306,6 +3371,30 @@ export function createLevel1(ui) {
         }
         // the smoke clip draws her at her starting spot; she is gone from the ground after that, the smoke stays
         drawChainAtlasFrame(c, frame.pack, frame.index, enemyX, CHAIN_FLOOR_Y, drawFace, PAT_SCALE, alpha, 0, 0);
+        if (patSpeech) drawSpeechBubble(c, enemyX - 20, 178, patSpeech.text, nowMs - patSpeech.start, -250);   // bubble sits beside her head so it never covers her HP box
+    }
+    // V9.30: comic speech bubble above a character's head (tail points down at (x, tipY)).
+    function drawSpeechBubble(c, x, tipY, text, age, shiftX = 0) {
+        const pop = Math.min(1, age / 160);
+        if (pop <= 0) return;
+        c.save();
+        c.font = 'italic 700 27px Georgia, "Times New Roman", serif';
+        const w = Math.min(640, c.measureText(text).width + 54), h = 62;
+        const bx = Math.max(16, Math.min(COMBAT_W - w - 16, x + shiftX - w / 2)), by = tipY - 18 - h;
+        const baseL = Math.max(bx + 26, Math.min(bx + w - 56, x - 14));
+        c.translate(x, tipY); c.scale(.85 + .15 * pop, .85 + .15 * pop); c.translate(-x, -tipY);
+        c.globalAlpha = pop;
+        c.fillStyle = 'rgba(255,244,250,.97)'; c.strokeStyle = '#3a1830'; c.lineWidth = 4; c.lineJoin = 'round';
+        c.beginPath();
+        c.moveTo(bx + 18, by); c.lineTo(bx + w - 18, by); c.quadraticCurveTo(bx + w, by, bx + w, by + 18);
+        c.lineTo(bx + w, by + h - 18); c.quadraticCurveTo(bx + w, by + h, bx + w - 18, by + h);
+        c.lineTo(baseL + 30, by + h); c.lineTo(x, tipY); c.lineTo(baseL, by + h);
+        c.lineTo(bx + 18, by + h); c.quadraticCurveTo(bx, by + h, bx, by + h - 18);
+        c.lineTo(bx, by + 18); c.quadraticCurveTo(bx, by, bx + 18, by);
+        c.closePath(); c.fill(); c.stroke();
+        c.fillStyle = '#2a1224'; c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.fillText(text, bx + w / 2, by + h / 2 + 1);
+        c.restore();
     }
 
     function triggerChainDeath(nowMs) {
@@ -3558,9 +3647,17 @@ export function createLevel1(ui) {
     }
 
     function drawCombat() {
-        cctx.imageSmoothingEnabled = true;
-        cctx.imageSmoothingQuality = 'high';
+        syncHiRes(ui.combatCanvas, cctx, COMBAT_W, COMBAT_H);
         drawCombatBackground(cctx);
+        const shakeNow = performance.now();
+        if (shakeNow < shakeUntil) {   // screen shake: the whole arena jolts, then settles
+            const p = 1 - (shakeNow - shakeStart) / Math.max(1, shakeUntil - shakeStart);
+            cctx.save(); cctx.translate(Math.sin(shakeNow / 21) * shakeMag * p, Math.cos(shakeNow / 17) * shakeMag * .6 * p);
+            drawCombatInner();
+            cctx.restore();
+        } else drawCombatInner();
+    }
+    function drawCombatInner() {
 
         const enemyX = zombieCombatX;
         const enemyY = COMBAT_GROUND_Y;
@@ -3581,6 +3678,12 @@ export function createLevel1(ui) {
         const anim = getCombatAnimationFrame(nowMs);
         const renderHurt = playerHurtUntil > nowMs;
         if (drinkAnim) drawOllyDrink(cctx, player.x, player.y, nowMs);
+        else if (isBoss) {   // V9.30: Olly is smaller next to Patricia (scaled around his feet)
+            const fy = player.y + OLLY_DRAW_FOOT_OFFSET + 20, k = PAT_OLLY_SCALE;
+            cctx.save(); cctx.translate(player.x, fy); cctx.scale(k, k); cctx.translate(-player.x, -fy);
+            drawOllyWorldCombat(cctx, player.x, player.y, anim, nowMs / 1000, renderHurt, jumpOffset);
+            cctx.restore();
+        }
         else drawOllyWorldCombat(cctx, player.x, player.y, anim, nowMs / 1000, renderHurt, jumpOffset);
         if (nowMs < attackCooldownUntil && !playerDeathTriggered) {   // V9.19: make the punch rest impossible to miss
             const left = ((attackCooldownUntil - nowMs) / 1000).toFixed(1);
@@ -3647,7 +3750,7 @@ export function createLevel1(ui) {
             c.translate(drawX, visualY);
         }
         // Keep the shadow on the actual combat floor, separate from the animation pose.
-        c.fillStyle = 'rgba(0,0,0,.28)';
+        c.fillStyle = SH(.28);
         c.beginPath();
         c.ellipse(0, 20 - offsetY, 46, 10, 0, 0, Math.PI * 2);
         c.fill();
@@ -3682,7 +3785,7 @@ export function createLevel1(ui) {
 
     function startCombat(bossFight, resume = false) {
         loadCombatAssets();
-        playMusic('fight');
+        playMusic(bossFight ? 'boss' : 'fight');   // V9.30: Patricia gets her own track (PatriciaBoss.mp3); falls back to the fight music until it exists
         preloadSfx(['punch-1', 'punch-2', 'punch-3', 'goth-pain', ...GOTH_HURT_SFX, 'olly-hurt', 'olly-hurt-heavy', 'olly-ko', 'olly-thud', 'olly-attack', 'olly-heavy-attack', 'olly-jump', 'olly-land', 'olly-dodge-grunt', 'chain-clatter', 'chain-drop', 'chain-rattle', 'chain-spin', 'chain-impact', 'chain-impact-spin', 'breath-recovery', 'countdown-tick', 'fight-shout', 'zombie-death', 'pickup', 'interact', 'tutorial', 'olly-ko']);
         isBoss = bossFight;
         mode = 'combat';
@@ -4101,10 +4204,10 @@ export function createLevel1(ui) {
     }
 
     // ---- V9.27 "Would You" game: 7 rounds, decoy "Would you..." phrases, a smaller target each round, a miss restarts the ramble ----
-    const WY_ROUNDS = 7;
-    const WY_DURATION = [3000, 2700, 2400, 2150, 1900, 1700, 1500];
-    const WY_ZONE_START = [.78, .80, .82, .84, .86, .88, .90];
-    const WY_ZONE_WIDTH = [.12, .11, .10, .09, .08, .07, .06];
+    const WY_ROUNDS = 10;
+    const WY_DURATION = [3000, 2750, 2500, 2300, 2100, 1900, 1750, 1600, 1450, 1300];
+    const WY_ZONE_START = [.78, .80, .82, .83, .84, .86, .88, .89, .90, .91];
+    const WY_ZONE_WIDTH = [.12, .11, .10, .095, .09, .08, .07, .065, .06, .055];
     const WY_SCRIPTS = [
         [[0, '“Can I ask you a question...”'], [.2, '“Have you ever...”'], [.4, '“Do you like...”'], [.6, '“What was I going to say?”']],
         [[0, '“Okay, so, hypothetically...”'], [.2, '“If I were to say...”'], [.4, '“Would you rather... no, wait.”'], [.62, '“Hang on.”']],
@@ -4112,7 +4215,10 @@ export function createLevel1(ui) {
         [[0, '“I had a really good point...”'], [.2, '“Would you ever...”'], [.4, '“Actually, never mind.”'], [.6, '“That was stupid. Forget it.”']],
         [[0, '“So the other day I was thinking...”'], [.18, '“Would you consider...”'], [.38, '“Would you like to...”'], [.58, '“No. Wrong question.”'], [.72, '“Hang on, hang on...”']],
         [[0, '“Don’t laugh, but...”'], [.16, '“Would you... could you...”'], [.34, '“Would you maybe... no.”'], [.52, '“I lost it. It’s gone.”'], [.7, '“Hold on...”']],
-        [[0, '“Right. This is it. Properly.”'], [.14, '“Would you...”'], [.3, '“Would you... ugh.”'], [.46, '“Would you... um...”'], [.62, '“Shh, I’m concentrating.”'], [.78, '“Wait for it...”']]
+        [[0, '“Right. This is it. Properly.”'], [.14, '“Would you...”'], [.3, '“Would you... ugh.”'], [.46, '“Would you... um...”'], [.62, '“Shh, I’m concentrating.”'], [.78, '“Wait for it...”']],
+        [[0, '“Okay. Okay. Deep breath.”'], [.15, '“Would you... no.”'], [.3, '“I’m doing it wrong.”'], [.48, '“Would you ever... hang on.”'], [.66, '“Nearly there...”']],
+        [[0, '“You’re going to laugh at this.”'], [.14, '“Would you kindly...”'], [.3, '“That’s not what I meant.”'], [.46, '“Would you... eventually...”'], [.64, '“Don’t look at me.”']],
+        [[0, '“Final one. I promise.”'], [.12, '“Would you possibly...”'], [.28, '“Would you... oh, come on.”'], [.44, '“Why is this so hard?”'], [.6, '“Would you... almost...”'], [.74, '“Steady...”']]
     ];
     let wyLine = '';
     function wyZone(round = relationshipRound) {
@@ -4141,7 +4247,7 @@ export function createLevel1(ui) {
         matchArtworkLetterboxing(relationshipImage);
         const relationshipCopy = ui.relationship.querySelector('.ironic-copy');
         if (relationshipCopy) {
-            relationshipCopy.textContent = 'Princesses have lots of important things to say, but sometimes they lose their train of thought along the way... and all they can manage is “Would you...?”\nPress WOULD YOU? only when she properly says it in capitals, not while she is merely circling the idea. Seven rambles. Any mistake and she starts again.';
+            relationshipCopy.textContent = 'Press WOULD YOU? when she says it in capitals.';
             relationshipCopy.style.textAlign = 'center';
             relationshipCopy.style.whiteSpace = 'pre-line';
             relationshipCopy.style.setProperty('line-height', '1.22', 'important');
@@ -4151,7 +4257,7 @@ export function createLevel1(ui) {
             relationshipCopy.style.marginLeft = 'auto';
             relationshipCopy.style.marginRight = 'auto';
         }
-        ui.wouldFeedback.textContent = 'The princess is rambling. Your job is to weaponise your timing. Round 1 of ' + WY_ROUNDS + '.';
+        ui.wouldFeedback.textContent = '';
         ui.wouldDisplay.textContent = WY_SCRIPTS[0][0][1];
         ui.wouldDisplay.classList.remove('would-now');
         renderWouldPips();
@@ -4176,8 +4282,7 @@ export function createLevel1(ui) {
             ui.wouldDisplay.classList.toggle('would-now', now);
             if (pct >= 1) {
                 relationshipStart = gnow();
-                ui.wouldFeedback.textContent = 'Too late. The princess has already escaped the sentence. She rambles again. Round ' + (relationshipStep + 1) + ' of ' + WY_ROUNDS + '.';
-                playSfx('wrong-buzz', 1.4);
+                ui.wouldFeedback.textContent = 'Too late. She rambles again.';
             }
             relationshipRAF = requestAnimationFrame(tick);
         };
@@ -4208,14 +4313,13 @@ export function createLevel1(ui) {
                 wyLine = '';
                 renderWouldPips();
                 playSfx('round-ok', 1.5);
-                ui.wouldFeedback.textContent = '✅ PERFECT. She has started another ramble. Round ' + (relationshipStep + 1) + ' of ' + WY_ROUNDS + '. Less time and a smaller target, because apparently love needed a difficulty curve.';
+                ui.wouldFeedback.textContent = '✅';
             }
         } else {
             // A miss: she loses the thread and starts the ramble again from the top.
             relationshipStart = gnow();
             wyLine = '';
-            playSfx('wrong-buzz', 1.4);
-            ui.wouldFeedback.textContent = pct < zoneStart ? '❌ Too early. That was a decoy “would you”. She starts again from the top.' : '❌ Too late. She has already said “WOULD YOU?” and is emotionally moving on. She starts again.';
+            ui.wouldFeedback.textContent = pct < zoneStart ? '❌ Too early. Decoy. Starting again.' : '❌ Too late. Starting again.';   // V9.30: no buzz here (the wrong-answer sound is for the Princess Question only)
         }
     }
     function answerPuzzle(answer) {
@@ -4261,6 +4365,7 @@ export function createLevel1(ui) {
 
     // ---- V9.22 pre-fight: Patricia talks, the potion appears in the bag, then Drink / Save for later -> 3-2-1 -> fight ----
     let prefight = null, prefightHold = false, prefightToken = 0, drinkAnim = null;
+    let patSpeech = null;   // V9.30: { text, start, until } speech bubble over Patricia's head
     function setBagGlow(on) { document.getElementById('inventory-button')?.classList.toggle('inv-glow', !!on); }
     function closeBag() {
         ui.inventory?.classList.add('hidden');
@@ -4280,14 +4385,18 @@ export function createLevel1(ui) {
         preloadSfx(['patricia-unfair-fight', 'patricia-check-backpack']);
         ui.combatStatus.textContent = '';
         const later = (ms, fn) => setTimeout(() => { if (token === prefightToken && mode === 'combat') fn(); }, ms);
-        later(700, () => { ui.combatStatus.textContent = 'Patricia: "I wouldn\'t enjoy an unfair fight..."'; playSfx('patricia-unfair-fight', 1); });
-        later(3850, () => {
-            ui.combatStatus.textContent = 'Patricia: "Check your backpack."';
+        // V9.30: she speaks in a bubble over her head. 1 s after the fight loads she says line 1; line 2 only starts once line 1 has finished (they used to overlap).
+        const L1 = 2690, L2 = 1910, GAP = 450;
+        patSpeech = null;
+        later(1000, () => { patSpeech = { text: 'I wouldn\'t enjoy an unfair fight...', start: gnow(), until: Infinity }; ui.combatStatus.textContent = ''; playSfx('patricia-unfair-fight', 1); });
+        later(1000 + L1 + GAP, () => {
+            patSpeech = { text: 'Check your backpack.', start: gnow(), until: Infinity };
             playSfx('patricia-check-backpack', 1);
             if (!inventory.potion) inventory.potion = 1;
             refreshInventoryUI();
         });
-        later(5800, () => {
+        later(1000 + L1 + GAP + L2 + 500, () => {
+            patSpeech = null;
             if (prefight) prefight.ready = true;
             ui.combatStatus.textContent = 'Press Y to open your backpack.';
             setBagGlow(true);
@@ -4335,7 +4444,7 @@ export function createLevel1(ui) {
         const k = DRINK_DRAW_K;
         c.save();
         c.translate(px, py + OLLY_DRAW_FOOT_OFFSET);
-        c.fillStyle = 'rgba(0,0,0,.28)';
+        c.fillStyle = SH(.28);
         c.beginPath(); c.ellipse(0, 20, 46, 10, 0, 0, Math.PI * 2); c.fill();
         if (drinkAnim.healed) {   // soft green glow after the first sip lands
             const a = Math.max(0, 1 - (t - drinkAnim.healT) / 900);
@@ -4406,7 +4515,7 @@ export function createLevel1(ui) {
             gateOpened = !!state.gateOpened;
             keySpawnAnnounced = keyCollected;
             inventory = state.inventory && typeof state.inventory === 'object' ? state.inventory : {};
-            if (keyCollected) inventory.key = 1;
+            if (keyCollected && !gateOpened) inventory.key = 1; else inventory.key = 0;   // V9.30: a used key is gone
             checkpoint = state.checkpoint || 'cemetery-entrance';
             if (Array.isArray(state.enemies)) {
                 state.enemies.forEach((saved, i) => {

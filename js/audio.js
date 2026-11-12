@@ -61,7 +61,8 @@ export function preloadSfx(names) { names.forEach(loadBuffer); }
 const MUSIC = {
     menu: ['Menu.mp3'],
     map: ['BackgroundMusicTrack1.mp3', 'BackgroundTrack2.mp3', 'BackgroundTrack3.mp3', 'BackgroundTrack4.mp3'],
-    fight: ['FightMusic1.mp3', 'FightMusic2.mp3']
+    fight: ['FightMusic1.mp3', 'FightMusic2.mp3'],
+    boss: ['PatriciaBoss.mp3', 'FightMusic1.mp3', 'FightMusic2.mp3']   // V9.30: put Patricia's own track at assets/audio/music/PatriciaBoss.mp3 (until it exists the normal fight music plays)
 };
 let musicEl = null, musicName = '', wantMusic = '', fadeTimer = null, musicToken = 0;
 function musicTarget() { return Math.max(0, Math.min(1, vol.master * vol.music)); }
