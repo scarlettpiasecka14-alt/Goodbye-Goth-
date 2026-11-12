@@ -1,6 +1,6 @@
 /* Goodbye Goth - keyboard bindings. One place decides which key does which action.
    Defaults can be changed in Settings > Controls > CUSTOMISE (saved in the browser).
-   Arrow keys always move too, and the mouse (left click punch, right click dodge) is not rebindable. Saving lives in Settings (no key). */
+   Arrow keys always move too, and the mouse (right click dodge) is not rebindable. Saving lives in Settings (no key). */
 const KEY = 'goodbyeGothControls_v1';
 export const ACTIONS = [
     { id: 'up', label: 'Move up' },

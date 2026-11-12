@@ -1,8 +1,8 @@
 /* Goodbye Goth - settings screen (sound, brightness, fullscreen, controls list).
    Everything is built here and lives on <body>, so it survives the game swapping screens.
    Opened from the title menu (SETTINGS) or by pressing O anywhere outside a fight; closes with O, Esc or CLOSE. */
-import { getVolumes, setVolume } from './audio.js?v=9300';
-import { ACTIONS, DEFAULTS, getBindings, swapBindings, setBinding, resetBindings, keyLabel, isDefault } from './controls.js?v=9300';
+import { getVolumes, setVolume } from './audio.js?v=9310';
+import { ACTIONS, DEFAULTS, getBindings, swapBindings, setBinding, resetBindings, keyLabel, isDefault } from './controls.js?v=9310';
 
 // V9.30: display / accessibility preferences. Saved in the browser; the game reads window.ggPrefs.
 const PREFS_KEY = 'goodbyeGothPrefs_v1';
@@ -36,6 +36,7 @@ const CSS = `
 .gg-row output{text-align:right;font-family:system-ui,sans-serif;font-size:13px;opacity:.85}
 .gg-row input[type=range]{width:100%;accent-color:#e787ad}
 .gg-btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+.gg-top,.gg-modes{margin:0 0 10px}
 .gg-btn{flex:1;min-width:140px;padding:10px 14px;border-radius:10px;border:1px solid rgba(239,183,201,.5);background:#2a1a30;color:#f6eaf0;
   font:700 14px Georgia,serif;letter-spacing:.1em;cursor:pointer}
 .gg-btn:hover,.gg-btn:focus-visible{background:#402040}
@@ -146,9 +147,10 @@ export function initSettings() {
     overlay.innerHTML = `
       <div class="gg-card">
         <h1>SETTINGS</h1>
+        <div class="gg-btns gg-top"><button id="gg-full" class="gg-btn" type="button">⛶ FULLSCREEN</button></div>
         <details class="gg-sec"><summary>GAME</summary><div class="gg-body">
-          <div class="gg-btns"><button id="gg-save" class="gg-btn" type="button">💾 SAVE GAME</button></div>
-          <p class="gg-note" id="gg-save-note">Saves where you are on the map. Use LOAD GAME on the title screen to come back.</p>
+          <div class="gg-btns"><button id="gg-save" class="gg-btn" type="button">💾 SAVE GAME</button><button id="gg-savequit" class="gg-btn" type="button">💾 SAVE AND QUIT</button></div>
+          <p class="gg-note" id="gg-save-note">The game also saves itself every few seconds. Save and Quit saves and takes you back to the title screen; use LOAD GAME there to come back.</p>
         </div></details>
         <details class="gg-sec"><summary>SOUND</summary><div class="gg-body">
           <div class="gg-btns"><button id="gg-sound" class="gg-btn" type="button"></button></div>
@@ -162,7 +164,6 @@ export function initSettings() {
           <div class="gg-row"><label for="gg-hud">HUD size</label><input id="gg-hud" type="range" min="70" max="150" step="5"><output id="gg-hud-out"></output></div>
           <div class="gg-row"><label for="gg-text">Text size</label><input id="gg-text" type="range" min="80" max="150" step="5"><output id="gg-text-out"></output></div>
           <label class="gg-toggle"><span>High-contrast text</span><input id="gg-hc" type="checkbox"></label>
-          <div class="gg-btns"><button id="gg-full" class="gg-btn" type="button">⛶ FULLSCREEN</button></div>
         </div></details>
         <details class="gg-sec"><summary>EFFECTS &amp; QUALITY</summary><div class="gg-body">
           <label class="gg-toggle"><span>Screen shake</span><input id="gg-shake" type="checkbox"></label>
@@ -181,7 +182,7 @@ export function initSettings() {
           <div id="gg-controls-default"></div>
           <div id="gg-controls-custom" hidden>
             <div class="gg-slots" id="gg-slots"></div>
-            <p class="gg-note">Drag an action onto another box to swap keys, or click a key and press the one you want. Arrow keys always move, left click also punches, right click dodges.</p>
+            <p class="gg-note">Drag an action onto another box to swap keys, or click a key and press the one you want. Arrow keys always move, X punches, right click dodges.</p>
             <div class="gg-btns"><button id="gg-reset-keys" class="gg-btn" type="button">RESET TO DEFAULT</button></div>
           </div>
         </div></details>
@@ -203,9 +204,13 @@ export function initSettings() {
     title.addEventListener('pointermove', ev => { if (!drag) return; offX = ev.clientX - drag.x; offY = ev.clientY - drag.y; dragMoved = true; place(); });
     const endDrag = () => { drag = null; };
     title.addEventListener('pointerup', endDrag); title.addEventListener('pointercancel', endDrag);
-    const eye = document.createElement('button'); eye.type = 'button'; eye.className = 'gg-btn'; eye.textContent = '👁 CLEAR BACKGROUND'; eye.style.cssText = 'display:block;margin:0 auto 10px;padding:5px 12px;font-size:12px';
-    eye.addEventListener('click', () => { const on = overlay.classList.toggle('clear'); overlay.style.background = on ? 'transparent' : ''; eye.textContent = on ? '👁 DARKEN BACKGROUND' : '👁 CLEAR BACKGROUND'; });
-    title.after(eye);
+    // V9.31: the old "clear background" toggle is now two buttons: DARK MODE (dark backdrop) and LIGHT MODE (see-through backdrop).
+    const modes = document.createElement('div'); modes.className = 'gg-btns gg-modes';
+    modes.innerHTML = '<button type="button" class="gg-btn" id="gg-mode-dark">☾ DARK MODE</button><button type="button" class="gg-btn" id="gg-mode-light">☀ LIGHT MODE</button>';
+    const setMode = light => { overlay.classList.toggle('clear', light); overlay.style.background = light ? 'transparent' : ''; modes.querySelector('#gg-mode-dark').classList.toggle('primary', !light); modes.querySelector('#gg-mode-light').classList.toggle('primary', light); };
+    modes.querySelector('#gg-mode-dark').addEventListener('click', () => setMode(false));
+    modes.querySelector('#gg-mode-light').addEventListener('click', () => setMode(true));
+    overlay.querySelector('.gg-top').after(modes); setMode(false);
 
     bindSlider('gg-master', () => pct(getVolumes().master), v => { setVolume('master', v / 100); refreshSoundBtn(); });
     bindSlider('gg-music', () => pct(getVolumes().music), v => setVolume('music', v / 100));
@@ -233,6 +238,10 @@ export function initSettings() {
         saveNote.textContent = ok === null ? 'Start a game first, then you can save it here.' : ok ? 'Saved ✓ Your progress is stored in this browser.' : 'Save failed. Your browser may be blocking storage.';
         saveBtn.textContent = ok ? '💾 SAVED ✓' : '💾 SAVE GAME';
         setTimeout(() => { saveBtn.textContent = '💾 SAVE GAME'; }, 1800);
+    });
+    overlay.querySelector('#gg-savequit').addEventListener('click', () => {
+        if (typeof window.ggSaveAndQuit === 'function') { window.ggSaveAndQuit(); }
+        else { saveNote.textContent = 'Start a game first, then you can save and quit.'; }
     });
     overlay.querySelector('#gg-close').addEventListener('click', closeSettings);
     overlay.querySelector('#gg-tab-default').addEventListener('click', () => showControlsTab(false));

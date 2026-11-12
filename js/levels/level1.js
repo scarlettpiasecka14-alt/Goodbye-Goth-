@@ -1,5 +1,6 @@
 /* Goodbye Goth V9.4 - Chain Goth fight (AI + all seven animations: intro, walk, swipe, spin, stun, hurt, death) on top of V9.0 map cleanup and the v8.11 Zombie Goth AI. */
-import { playSfx, playRandomSfx, playMusic, preloadSfx, setLoopSfx, setAudioHeld } from '../audio.js?v=9300';
+import { playSfx, playRandomSfx, playMusic, preloadSfx, setLoopSfx, setAudioHeld } from '../audio.js?v=9310';
+import { activeKey } from '../saves.js?v=9310';
 // Game clock: normal time, but it stands still while a tutorial pop-up is open (so nothing happens behind it).
 let pausedTotal = 0, pausedAt = 0;
 const gnow = () => (pausedAt || performance.now()) - pausedTotal;
@@ -96,10 +97,9 @@ const CAM_LEAD_Y = 90;
 const MIST_SEE_NEAR = 560, MIST_SEE_FAR = 760;   // enemies are fully visible inside 560 map-px of Olly, invisible beyond 760
 const WORLD_W = 1536,
     WORLD_H = 1024;
-const SAVE_KEY = 'goodbyeGothSave_v6';
 function safeParseSave() {
     try {
-        const raw = localStorage.getItem(SAVE_KEY);
+        const raw = localStorage.getItem(activeKey());
         return raw ? JSON.parse(raw) : null
     } catch {
         return null
@@ -107,7 +107,7 @@ function safeParseSave() {
 }
 
 const mapBackground = new Image();
-mapBackground.src = 'assets/environment/level1-map-bg-2x.webp?v=9300';   // V9.30: pre-sharpened 2x version (same picture, twice the pixels)
+mapBackground.src = 'assets/environment/level1-map-bg-2x.webp?v=9310';   // V9.30: pre-sharpened 2x version (same picture, twice the pixels)
 // V9.30: Settings options (window.ggPrefs is created by settings.js)
 const prefOn = k => !(window.ggPrefs && window.ggPrefs[k] === false);
 const SH = a => prefOn('shadows') ? `rgba(0,0,0,${a})` : 'rgba(0,0,0,0)';
@@ -143,7 +143,7 @@ function loadDrinkFrames() {
     if (drinkImgs.length) return;
     for (let i = 0; i < DRINK_FRAMES; i++) {
         const im = new Image();
-        im.src = `assets/combat/OllyDrink/olly-drink-${String(i).padStart(2, '0')}.webp?v=9300`;
+        im.src = `assets/combat/OllyDrink/olly-drink-${String(i).padStart(2, '0')}.webp?v=9310`;
         drinkImgs.push(im);
     }
 }
@@ -198,7 +198,7 @@ const OLLY_ANIMATIONS = {
     // rapidly cycling through every dramatic drawing.
     dodge: { indices:[0,1,2], frameMs:[88,210,111], height:260 }, // v6.5.16d: ~20% faster than v6.5.16c
     jump:  { indices:[0,1,2], frameMs:[120,225,165], height:208, frameYOffset:[0,-22,0] }, // v6.5.16d: ~20% faster; non-idle jump sprites remain 20% smaller
-    heavy: { indices:[0,3,4], frameMs:[130,260,230], height:260 },
+    heavy: { indices:[0,3,4], frameMs:[130,260,230], height:260, kScale:.6 },   // V9.31: one fixed scale (these crouch frames are cropped tight, so scaling each to 260px high made his head swell)
     punch: { indices:[0,1,2,3,4], frameMs:[52,62,72,78,70], height:224 }
 };
 const OLLY_IDLE_HEIGHT = 300; // v6.5.15: slightly larger combat idle so head/body proportions stay closer to action poses.
@@ -207,8 +207,8 @@ const OLLY_DRAW_FOOT_OFFSET = 62;
 // These shared icon references can be reused by every level. Only the activity
 // behind the role changes from level to level.
 const ICON_LIBRARY = {
-    relationshipChallenge: 'assets/icons/relationship-challenge.webp?v=9300',
-    princessQuestion: 'assets/icons/princess-question.webp?v=9300'
+    relationshipChallenge: 'assets/icons/relationship-challenge.webp?v=9310',
+    princessQuestion: 'assets/icons/princess-question.webp?v=9310'
 };
 const relationshipChallengeIcon = new Image();
 relationshipChallengeIcon.src = ICON_LIBRARY.relationshipChallenge;
@@ -262,7 +262,7 @@ const ENCOUNTER_DATA = {
         role: 'relationshipChallenge',
         name: 'RELATIONSHIP CHALLENGE',
         image: 'assets/encounters/level1/relationship-challenge-encounter.webp?v=501',
-        text: "You've encountered a relationship challenge. Because apparently rescuing your kidnapped girlfriend wasn't already testing the relationship enough. Are you ready?"
+        text: "You've encountered a relationship challenge.\nWould You: sometimes princesses have a lot to say and they get a little bit lost along the way. You could help by trying to figure out what she means... or you could just make fun of her.\nAre you ready?"
     },
     princessQuestion: {
         role: 'princessQuestion',
@@ -361,7 +361,7 @@ function loadPatriciaAssets() {
     patAssetsRequested = true;
     for (const [name, a] of Object.entries(patAtlas)) {
         const img = a.img;
-        img.src = `assets/characters/patricia/atlas/pat-${name}.webp?v=9300`;
+        img.src = `assets/characters/patricia/atlas/pat-${name}.webp?v=9310`;
         img.decode?.().then(() => {
             if (window.createImageBitmap) createImageBitmap(img).then(bmp => { a.bmp = bmp; }).catch(() => {});
         }).catch(() => {});
@@ -370,18 +370,21 @@ function loadPatriciaAssets() {
 const PAT_SCALE = 0.66;               // = the atlas scale, so she is never resampled
 const PAT_STAND_OFF = 215, PAT_CHASE_SPEED = 165;
 const PAT_HP = 300, PAT_STAGE2_HP = 150;
+const PAT_FLOOR_SHIFT = 105;   // V9.31: Patricia's arena floor is lower than the Level 1 arena, so both fighters were floating; everything is drawn this far lower there
 const PAT_OLLY_SCALE = 0.8;   // V9.30: Olly was too big next to her
-const PAT_WALK_FRAME_MS = 62, PAT_IDLE_FRAME_MS = 95;
-const PAT_LUNGE_WINDUP_FRAMES = 13, PAT_LUNGE_WINDUP_MS = 760, PAT_LUNGE_STRIKE_FRAMES = 24, PAT_LUNGE_FRAME_MS = 34, PAT_LUNGE_HIT_AT_MS = 240;
+// V9.31: Patricia's clips are 24 fps video (41.7 ms per source frame). The V9.25 timings below assumed ~31 fps (some moves 2x), so every move played far too fast.
+// Every number here is now source-frames x 41.7 ms, so she moves exactly as in the clips.
+const PAT_WALK_FRAME_MS = 83, PAT_IDLE_FRAME_MS = 125;
+const PAT_LUNGE_WINDUP_FRAMES = 13, PAT_LUNGE_WINDUP_MS = 1500, PAT_LUNGE_STRIKE_FRAMES = 24, PAT_LUNGE_FRAME_MS = 42, PAT_LUNGE_HIT_AT_MS = 290;
 const PAT_LUNGE_DAMAGE = 12, PAT_LUNGE_RANGE = 360, PAT_LUNGE_PUSH = 36;
-const PAT_COMBO_WINDUP_MS = 500, PAT_COMBO_FRAME_MS = 62, PAT_COMBO_FRAMES = 31, PAT_COMBO_HITS_AT_MS = [496, 992, 1736];
+const PAT_COMBO_WINDUP_MS = 700, PAT_COMBO_FRAME_MS = 83, PAT_COMBO_FRAMES = 31, PAT_COMBO_HITS_AT_MS = [664, 1328, 2325];
 const PAT_COMBO_DAMAGE = 8, PAT_COMBO_RANGE = 330, PAT_COMBO_PUSH = 26;
-const PAT_SMOKE_FRAME_MS = 62, PAT_SMOKE_FRAMES = 21, PAT_SMOKE_GONE_AT_MS = 560, PAT_SMOKE_REAPPEAR_AT_MS = 1150;
-const PAT_VSTRIKE_APPEAR_MS = 380, PAT_VSTRIKE_DAMAGE = 15;
-const PAT_LIGHT_WINDUP_FRAMES = 10, PAT_LIGHT_WINDUP_MS = 1100, PAT_LIGHT_FRAMES = 9, PAT_LIGHT_FRAME_MS = 110;
+const PAT_SMOKE_FRAME_MS = 125, PAT_SMOKE_FRAMES = 21, PAT_SMOKE_GONE_AT_MS = 1120, PAT_SMOKE_REAPPEAR_AT_MS = 2300;
+const PAT_VSTRIKE_APPEAR_MS = 600, PAT_VSTRIKE_DAMAGE = 15;
+const PAT_LIGHT_WINDUP_FRAMES = 10, PAT_LIGHT_WINDUP_MS = 1170, PAT_LIGHT_FRAMES = 9, PAT_LIGHT_FRAME_MS = 167;
 const PAT_LIGHT_DAMAGE = 25, PAT_LIGHT_RANGE = 560;
-const PAT_HURT_FRAMES = 13, PAT_HURT_MS = 780;
-const PAT_DEFEAT_FRAMES = 31, PAT_DEFEAT_FRAME_MS = 70, PAT_DEFEAT_HOLD_MS = 1600;
+const PAT_HURT_FRAMES = 13, PAT_HURT_MS = 1700;
+const PAT_DEFEAT_FRAMES = 31, PAT_DEFEAT_FRAME_MS = 83, PAT_DEFEAT_HOLD_MS = 1600;
 const PAT_PATTERN_1 = ['lunge', 'combo', 'vanish', 'combo', 'lunge'];
 const PAT_PATTERN_2 = ['combo', 'lightning', 'vanish', 'lunge', 'combo', 'lightning', 'vanish'];
 const chainAtlas = {};
@@ -408,7 +411,7 @@ function loadCombatAssets() {
     zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.webp?v=7600`);
     zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i + 1}.webp?v=8600`);
     zombieCombatFrames.heavyKick.forEach((img, i) => img.src = `assets/characters/combat/zombie-ankle-biter-${String(i + 1).padStart(2, '0')}.webp?v=10100`);
-    zombieCombatFrames.hurt.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/hurt-${String(i + 1).padStart(3, '0')}.webp?v=9300`);
+    zombieCombatFrames.hurt.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/hurt-${String(i + 1).padStart(3, '0')}.webp?v=9310`);
     zombieCombatFrames.death.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/death-${String(i + 1).padStart(3, '0')}.webp?v=9240`);
     zombieCombatFrames.prep.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro-${String(i + 1).padStart(3, '0')}.webp?v=9240`);
     zombieCountdownFrames[3].src = 'assets/characters/combat/zombie-countdown-3.webp?v=8600';
@@ -417,7 +420,7 @@ function loadCombatAssets() {
     zombieCountdownFrames.fight.src = 'assets/characters/combat/zombie-countdown-fight.webp?v=8600';
     for (const [name, a] of Object.entries(chainAtlas)) {
         const img = a.img;
-        img.src = `assets/characters/combat/chain-goth/chain-${name}.webp?v=9300`;
+        img.src = `assets/characters/combat/chain-goth/chain-${name}.webp?v=9310`;
         // Decode the big sheets in the background so the first time she uses a move there is no hitch (Safari decodes lazily).
         img.decode?.().then(() => {
             try { const t = document.createElement('canvas'); t.width = t.height = 1; t.getContext('2d').drawImage(img, 0, 0, 1, 1); } catch (e) {}
@@ -449,7 +452,7 @@ const CHAIN_RECOVER_MS = 520;
 // V9.24 Chain SLAM (replaces the old spin): she winds the chain overhead and slams it down TWICE.
 // Slam 1 is only a warning (no damage). Slam 2 sends a wave of sparks across the floor in the direction she is facing.
 // Jump over HER (land behind her) or stay in the air and it misses; stand in front of her on the ground and it hits.
-const CHAIN_SLAM_MS = 27;                  // ms per source-video frame (the video is 24 fps; this plays it ~15% faster)
+const CHAIN_SLAM_MS = 24;                  // ms per source-video frame (the video is 24 fps; this plays it ~15% faster)
 const CHAIN_SLAM_START_VF = 37;            // first kept video frame
 const CHAIN_SLAM_WARN_AT_MS = (64 - 37) * CHAIN_SLAM_MS;     // slam 1 (warning)
 const CHAIN_SLAM_HIT_AT_MS = (97 - 37) * CHAIN_SLAM_MS;      // slam 2 (damage wave)
@@ -458,8 +461,9 @@ const CHAIN_SLAM_CLOSE_TO = 230, CHAIN_SLAM_GLIDE = 230;     // she closes to ab
 const CHAIN_WAVE_REACH = 780, CHAIN_WAVE_GROW_MS = 150, CHAIN_WAVE_MS = 460;
 const CHAIN_SLAM_DAMAGE = 15, CHAIN_SLAM_PUSH = 40;
 // Stun is EARNED: three hits in a row (a Heavy Attack counts as two) leave her dizzy, and Olly gets his punches back to punish it.
-const CHAIN_STUN_HITS = 3, CHAIN_STUN_HIT_WINDOW_MS = 4000;
-const CHAIN_STUN_FRAME_MS = 33, CHAIN_STUN_FRAME_COUNT = 61, CHAIN_STUN_MS = CHAIN_STUN_FRAME_MS * CHAIN_STUN_FRAME_COUNT;
+const CHAIN_STUN_HITS = 3, CHAIN_STUN_HIT_WINDOW_MS = 5500;   // V9.31: 5.5 s to land the hits (was 4 s) = easier to stun
+const CHAIN_STUN_FRAME_MS = 41,   // V9.31: stun lasts ~25% longer (2.5 s, was 2 s)
+     CHAIN_STUN_FRAME_COUNT = 61, CHAIN_STUN_MS = CHAIN_STUN_FRAME_MS * CHAIN_STUN_FRAME_COUNT;
 // Hurt reaction: she doubles over and straightens up. A normal punch plays the first 46 frames, a Heavy Attack plays all 61 frames more slowly.
 const CHAIN_HURT_NORMAL_FRAMES = 46, CHAIN_HURT_NORMAL_MS = 1150, CHAIN_HURT_HEAVY_FRAMES = 61, CHAIN_HURT_HEAVY_MS = 1900;
 const CHAIN_PATTERN = ['swipe', 'swipe', 'slam'];
@@ -1138,7 +1142,7 @@ export function createLevel1(ui) {
     const combatBackgroundImage = new Image();
     combatBackgroundImage.src = 'assets/environment/combat-background-level1.webp';
     const patriciaArenaImage = new Image();
-    patriciaArenaImage.src = 'assets/arenas/patricia-arena.webp?v=9300';   // V9.30: Patricia's own arena
+    patriciaArenaImage.src = 'assets/arenas/patricia-arena.webp?v=9310';   // V9.30: Patricia's own arena
 
     // v6.5.16e: start just below the upper-left church, close to Zombie Goth.
     let x = 240,
@@ -1330,7 +1334,7 @@ export function createLevel1(ui) {
                 const item = items[i];
                 if (item) {
                     const info = ITEM_INFO[item];
-                    slot.innerHTML = `<img class="inv-item-img" src="${info.img}?v=9300" alt="${info.name}" draggable="false"><span>${info.label}</span>`;
+                    slot.innerHTML = `<img class="inv-item-img" src="${info.img}?v=9310" alt="${info.name}" draggable="false"><span>${info.label}</span>`;
                     slot.dataset.item = item;
                     slot.dataset.tip = info.tip;
                     slot.classList.add('inventory-filled');
@@ -1724,8 +1728,8 @@ export function createLevel1(ui) {
         let finished = false;
         let attemptedFallback = false;
         const sources = [
-            'assets/video/cutscene2/cutscene2.mp4?v=9300',
-            'assets/video/cutscene2/cutscene2.mov?v=9300'
+            'assets/video/cutscene2/cutscene2.mp4?v=9310',
+            'assets/video/cutscene2/cutscene2.mov?v=9310'
         ];
 
         const finish = () => {
@@ -2125,6 +2129,7 @@ export function createLevel1(ui) {
             frameIndex: sourceIndex,
             drawDir: combatFacing,
             height: cfg.height,
+            kScale: cfg.kScale,
             visualOffsetY: cfg.frameYOffset ? (cfg.frameYOffset[Math.min(localIndex, cfg.frameYOffset.length - 1)] || 0) : 0,
             duration: total
         };
@@ -2147,8 +2152,7 @@ export function createLevel1(ui) {
             // V9.24: the new 61-frame 3-2-1 animation plays once across the countdown, then holds its last pose.
             {   // V9.30: only the calm first part of the clip is used (the later frames shuffle her feet on the spot, which looked like a treadmill)
                 const e = Math.max(0, elapsed);
-                if (e < 16 * 70) index = Math.floor(e / 70);
-                else index = [15, 14, 13, 14][Math.floor((e - 16 * 70) / 260) % 4];
+                index = Math.min(15, Math.floor(e / 70));   // V9.31: she moves once, then freezes in her attack-ready pose (no more loop / glitch)
             }
         } else if (zombieCombatState === 'chase') {
             frames = zombieCombatFrames.walk;
@@ -2691,7 +2695,7 @@ export function createLevel1(ui) {
             try { video.pause(); video.removeAttribute('src'); video.load(); } catch (e) {}
             overlay.remove(); done();
         };
-        const sources = ['assets/video/cutscene3/ollytaken.mp4?v=9300', 'assets/video/cutscene3/olly-taken.mp4?v=9300', 'assets/video/cutscene3/ollytaken.mov?v=9300', 'assets/video/cutscene3/olly-taken.mov?v=9300'];
+        const sources = ['assets/video/cutscene3/ollytaken.mp4?v=9310', 'assets/video/cutscene3/olly-taken.mp4?v=9310', 'assets/video/cutscene3/ollytaken.mov?v=9310', 'assets/video/cutscene3/olly-taken.mov?v=9310'];
         let i = 0;
         const next = () => { if (i >= sources.length) { finish(); return; } video.src = sources[i++]; video.load(); video.play().catch(() => {}); };
         video.addEventListener('error', next);
@@ -3658,6 +3662,11 @@ export function createLevel1(ui) {
         } else drawCombatInner();
     }
     function drawCombatInner() {
+        if (isBoss) { cctx.save(); cctx.translate(0, PAT_FLOOR_SHIFT); }
+        drawCombatInner2();
+        if (isBoss) cctx.restore();
+    }
+    function drawCombatInner2() {
 
         const enemyX = zombieCombatX;
         const enemyY = COMBAT_GROUND_Y;
@@ -4046,7 +4055,7 @@ export function createLevel1(ui) {
         dodgeUntil = nowMs + 600;
         lastDodgeStart = nowMs;
         playSfx('olly-jump', .8);          // whoosh
-        playSfx('olly-dodge-grunt', .75);  // effort grunt on top
+        // V9.31: no grunt on dodge (it sounded like he was hurt)
         combatAnimationState = 'dodge';
         combatAnimationStart = nowMs;
         combatAnimationUntil = nowMs + 409; // v6.5.16d: 20% faster dodge animation
@@ -4072,12 +4081,12 @@ export function createLevel1(ui) {
         box.appendChild(img);
 
         const title = document.createElement('div');
-        title.textContent = 'YOU\'VE UNLOCKED THE HEAVY ATTACK!';
+        title.textContent = 'HEAVY ATTACK UNLOCKED!';
         title.style.cssText = 'color:#f3c6d6;font:900 clamp(22px,3vw,34px) Georgia,serif;text-align:center;';
         box.appendChild(title);
 
         const copy = document.createElement('div');
-        copy.innerHTML = '💥 <strong>HEAVY ATTACK UNLOCKED.</strong><br>Press <strong>Z</strong> to unleash it. It deals 20 damage and has a 15 second cooldown.';
+        copy.innerHTML = 'Press <strong>Z</strong> to unleash it. It deals 20 damage and has a 15 second cooldown.';   // V9.31: no second "unlocked" line
         copy.style.cssText = 'color:#f5eaf0;font:700 clamp(16px,2vw,20px) Georgia,serif;text-align:center;line-height:1.45;';
         box.appendChild(copy);
 
@@ -4090,7 +4099,7 @@ export function createLevel1(ui) {
         button.addEventListener('click', () => {
             overlay.remove();
             mode = 'map';
-            ui.dialogue.textContent = '💥 Heavy Attack unlocked. The cemetery is going to regret that.';
+            ui.dialogue.textContent = 'The cemetery is going to regret that.';
             stats();
         }, { once:true });
     }
@@ -4166,6 +4175,7 @@ export function createLevel1(ui) {
             const deathTitle = ui.death?.querySelector('.death-title');
             if (deathTitle) deathTitle.textContent = 'KNOCKED OUT';
             ui.deathText.textContent = "You wake with a pounding headache. You're alive, if somewhat worse for wear. You're not entirely sure what the Goths did while you were out, and frankly, you're not sure you want to know.";
+            if (ui.backMap) { ui.backMap.textContent = isBoss ? 'SAVE AND QUIT' : 'BACK TO MAP'; ui.backMap.dataset.mode = isBoss ? 'quit' : ''; }   // V9.31: after Patricia the choice is Try Again / Save and Quit
             ui.death.classList.remove('hidden');
             mode = 'dead';
         }
@@ -4345,8 +4355,8 @@ export function createLevel1(ui) {
         ui.bossIntro.classList.remove('hidden');
     }
     function saveAndQuit() {
-        bossIntroPending = true;
-        saveGame();
+        if (isBoss && mode !== 'map') bossIntroPending = true;   // quitting during / after the Patricia fight: Load Game brings you back to her screen
+        saveGame(true);
         location.reload();   // back to the title screen; Load Game returns to this screen
     }
     function startBoss() {
@@ -4385,17 +4395,17 @@ export function createLevel1(ui) {
         preloadSfx(['patricia-unfair-fight', 'patricia-check-backpack']);
         ui.combatStatus.textContent = '';
         const later = (ms, fn) => setTimeout(() => { if (token === prefightToken && mode === 'combat') fn(); }, ms);
-        // V9.30: she speaks in a bubble over her head. 1 s after the fight loads she says line 1; line 2 only starts once line 1 has finished (they used to overlap).
-        const L1 = 2690, L2 = 1910, GAP = 450;
+        // V9.30: she speaks in a bubble over her head. 2 s after the fight loads she says line 1; line 2 only starts once line 1 has finished (they used to overlap).
+        const L1 = 2690, L2 = 1910, GAP = 450, PAT_SPEECH_DELAY = 2000;   // V9.31: 2 s after the fight loads (was 1 s)
         patSpeech = null;
-        later(1000, () => { patSpeech = { text: 'I wouldn\'t enjoy an unfair fight...', start: gnow(), until: Infinity }; ui.combatStatus.textContent = ''; playSfx('patricia-unfair-fight', 1); });
-        later(1000 + L1 + GAP, () => {
+        later(PAT_SPEECH_DELAY, () => { patSpeech = { text: 'I wouldn\'t enjoy an unfair fight...', start: gnow(), until: Infinity }; ui.combatStatus.textContent = ''; playSfx('patricia-unfair-fight', 1); });
+        later(PAT_SPEECH_DELAY + L1 + GAP, () => {
             patSpeech = { text: 'Check your backpack.', start: gnow(), until: Infinity };
             playSfx('patricia-check-backpack', 1);
             if (!inventory.potion) inventory.potion = 1;
             refreshInventoryUI();
         });
-        later(1000 + L1 + GAP + L2 + 500, () => {
+        later(PAT_SPEECH_DELAY + L1 + GAP + L2 + 500, () => {
             patSpeech = null;
             if (prefight) prefight.ready = true;
             ui.combatStatus.textContent = 'Press Y to open your backpack.';
@@ -4460,7 +4470,7 @@ export function createLevel1(ui) {
         }
         c.restore();
     }
-    function saveGame() {
+    function saveGame(silent = false) {
         try {
             const state = {
                 version: 5,
@@ -4484,8 +4494,8 @@ export function createLevel1(ui) {
                     hp: e.hp
                 }))
             };
-            localStorage.setItem(SAVE_KEY, JSON.stringify(state));
-            ui.dialogue.textContent = '💾 Game saved. The Goths will have to wait.';
+            localStorage.setItem(activeKey(), JSON.stringify(state));
+            if (!silent) ui.dialogue.textContent = '💾 Game saved. The Goths will have to wait.';
             return true;
         } catch (err) {
             console.error('Goodbye Goth save failed', err);
@@ -4566,8 +4576,17 @@ export function createLevel1(ui) {
                 walkPulse = 0;
             raf = requestAnimationFrame(loop)
         };
-        raf = requestAnimationFrame(loop)
+        raf = requestAnimationFrame(loop);
+        // V9.31: autosave into the slot you are playing in: every 15 s on the map, and whenever the tab is hidden / closed.
+        clearInterval(autosaveTimer);
+        autosaveTimer = setInterval(() => { if (mode === 'map') saveGame(true); }, 15000);
+        setTimeout(() => { if (mode === 'map' && !safeParseSave()) saveGame(true); }, 2500);   // a brand-new slot gets its first save right away
+        const flush = () => { if (mode === 'map' || mode === 'bossintro') saveGame(true); };
+        window.removeEventListener('pagehide', window.__ggFlush || (() => {}));
+        window.__ggFlush = flush; window.addEventListener('pagehide', flush);
+        document.addEventListener('visibilitychange', () => { if (document.hidden) flush(); });
     }
+    let autosaveTimer = null;
     function primaryAction() {
         if (mode === 'encounter')
             startEncounterFight();

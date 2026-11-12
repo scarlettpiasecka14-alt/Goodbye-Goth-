@@ -6,7 +6,8 @@
   function applyScreenPolish() {
     // Keep the existing knockout recovery behaviour, changing only its visible label.
     const backToMapButton = document.getElementById('back-map');
-    if (backToMapButton && backToMapButton.textContent.trim() !== 'KEEP EXPLORING') {
+    // V9.31: after Patricia the button is SAVE AND QUIT (level1.js sets data-mode="quit"), so only relabel it for ordinary knockouts.
+    if (backToMapButton && backToMapButton.dataset.mode !== 'quit' && backToMapButton.textContent.trim() !== 'KEEP EXPLORING') {
       backToMapButton.textContent = 'KEEP EXPLORING';
     }
 

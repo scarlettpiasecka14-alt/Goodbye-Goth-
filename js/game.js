@@ -1,31 +1,56 @@
-import { StoryController } from './story.js?v=9300';
-import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9300';
-import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9300';
-import { initSettings, openSettings } from './settings.js?v=9300';
-import { actionForKey } from './controls.js?v=9300';
-import { initCheats, registerCheats } from './cheats.js?v=9300';
+import { StoryController } from './story.js?v=9310';
+import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9310';
+import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9310';
+import { initSettings, openSettings } from './settings.js?v=9310';
+import { actionForKey } from './controls.js?v=9310';
+import { initCheats, registerCheats } from './cheats.js?v=9310';
+import { SLOT_COUNT, getActiveSlot, setActiveSlot, readSlot, clearSlot, slotSummary, anySave } from './saves.js?v=9310';
 
 const root = document.getElementById('game-root');
 
-const SAVE_KEY = 'goodbyeGothSave_v6';
-
-function hasSaveGame(){
-  try { return !!localStorage.getItem(SAVE_KEY); } catch { return false; }
-}
-
-function startNewGame(){
-  try { localStorage.removeItem(SAVE_KEY); } catch {}
+function startNewGame(slot){
+  setActiveSlot(slot);
+  clearSlot(slot);        // only the slot you picked (and confirmed) is wiped
   resetRingTutorials();   // a new game shows the pink / red / yellow ring tutorials again
   showIntro();
 }
 
-function loadSavedGame(){
-  if(!hasSaveGame()){
-    showTitleMessage('No saved game yet. Start a NEW GAME first.');
+function loadSavedGame(slot){
+  if(!readSlot(slot)){
+    showTitleMessage('That slot is empty.');
     return;
   }
+  setActiveSlot(slot);
   setLoopSfx('ambience', false);
   mountLevel1(true);
+}
+
+// V9.31: three save slots. mode 'new' = pick where a new game goes (asks before replacing a save), 'load' = pick a save to continue.
+function showSlotPicker(mode){
+  const wrap = root.querySelector('.perfect-title-wrap') || root;
+  wrap.querySelector('.slot-picker')?.remove();
+  const box = document.createElement('div');
+  box.className = 'slot-picker';
+  const cards = [];
+  for(let n=1;n<=SLOT_COUNT;n++){
+    const info = slotSummary(n);
+    const label = info ? `${info.kills}/2 Goths beaten · ${info.hp}/${info.maxHp} HP${info.when ? ' · ' + info.when : ''}` : 'Empty';
+    cards.push(`<button type="button" class="slot-card${info?'':' empty'}" data-slot="${n}" ${mode==='load'&&!info?'disabled':''}><span class="slot-n">SLOT ${n}</span><span class="slot-info">${label}</span></button>`);
+  }
+  box.innerHTML = `<div class="slot-box"><div class="slot-title">${mode==='new'?'♥ NEW GAME — PICK A SLOT ♥':'♥ LOAD GAME ♥'}</div>${cards.join('')}<div class="slot-confirm" hidden></div><button type="button" class="slot-back">BACK</button></div>`;
+  wrap.appendChild(box);
+  const confirmBox = box.querySelector('.slot-confirm');
+  box.querySelector('.slot-back').addEventListener('click', () => box.remove());
+  box.querySelectorAll('.slot-card').forEach(b => b.addEventListener('click', () => {
+    const n = +b.dataset.slot;
+    if(mode==='load'){ box.remove(); loadSavedGame(n); return; }
+    const go = () => { document.getElementById('title-screen')?.classList.add('title-leaving'); box.remove(); setTimeout(() => startNewGame(n), 420); };
+    if(!readSlot(n)){ go(); return; }
+    confirmBox.hidden = false;
+    confirmBox.innerHTML = `<div>Slot ${n} already has a saved game. Start over and <b>delete it</b>?</div><div class="slot-confirm-btns"><button type="button" class="slot-yes">YES, REPLACE IT</button><button type="button" class="slot-no">NO, KEEP IT</button></div>`;
+    confirmBox.querySelector('.slot-yes').addEventListener('click', go);
+    confirmBox.querySelector('.slot-no').addEventListener('click', () => { confirmBox.hidden = true; });
+  }));
 }
 
 function quitGame(){
@@ -71,10 +96,8 @@ function showTitle(){
       </div>
     </section>`;
 
-  let started = false;
-  const begin = () => { if(started) return; started = true; document.getElementById('title-screen')?.classList.add('title-leaving'); setTimeout(startNewGame, 420); };   // glow + fade instead of an abrupt vanish
-  document.getElementById('title-art-new').addEventListener('click', begin);
-  document.getElementById('title-load').addEventListener('click', loadSavedGame, { once:true });
+  document.getElementById('title-art-new').addEventListener('click', () => showSlotPicker('new'));
+  document.getElementById('title-load').addEventListener('click', () => showSlotPicker('load'));
   document.getElementById('title-settings').addEventListener('click', openSettings);
   document.getElementById('title-quit').addEventListener('click', quitGame, { once:true });
 }
@@ -336,7 +359,7 @@ function mountLevel1(loadSaved=false){
   ui.encounterReady.addEventListener('click',()=>level.confirmEncounter());
   ui.encounterExplore.addEventListener('click',()=>level.closeEncounter());
   ui.retryCombat.addEventListener('click',()=>level.retryCombat());
-  ui.backMap.addEventListener('click',()=>level.backToMap());
+  ui.backMap.addEventListener('click',()=>{ if(ui.backMap.dataset.mode==='quit') level.saveAndQuit(); else level.backToMap(); });
   ui.completionContinue.addEventListener('click',()=>level.continueCompletion());
   ui.wouldTap.addEventListener('click',()=>level.completeRelationship());
   ui.bossStart.addEventListener('click',()=>level.startBoss());
@@ -344,12 +367,10 @@ function mountLevel1(loadSaved=false){
   ui.replay.addEventListener('click',()=>mountLevel1());
   document.querySelectorAll('[data-answer]').forEach(b=>b.addEventListener('click',()=>level.answerPuzzle(b.dataset.answer)));
   ui.combatCanvas.addEventListener('mousedown',e=>{
-    if(e.button!==0 && e.button!==2) return;
+    if(e.button!==2) return;   // V9.31: punching is the X key only (left-click is kept free for shooting arrows later)
     e.preventDefault();
     e.stopPropagation();
-    if(e.button===0){
-      level.combatAttack();
-    } else if(e.button===2){
+    if(e.button===2){
       level.combatDodge();
     }
   });
@@ -397,6 +418,7 @@ function mountLevel1(loadSaved=false){
   });
   // Save lives in Settings now: the Settings window calls this.
   window.ggSaveGame = () => { try { return !!level.saveGame(); } catch(e) { return false; } };
+  window.ggSaveAndQuit = () => { try { level.saveAndQuit(); } catch(e) {} };
   window.addEventListener('keyup',e=>{
     const act = actionForKey(e.key);
     if(MOVE_KEY[act]) level.setMoveKey?.(MOVE_KEY[act],false);

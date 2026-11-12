@@ -21,6 +21,9 @@ function getCtx() {
     } catch (e) { ctx = null; }
     return ctx;
 }
+// V9.31: Safari can leave the audio engine "suspended" (or "interrupted") until a click / key press; wake it on every gesture so fight sounds and voice lines always play.
+function unlockAudio() { if (held) return; const c = getCtx(); if (c && c.state !== 'running') c.resume().catch(() => {}); }
+['pointerdown', 'mousedown', 'keydown', 'touchstart'].forEach(ev => window.addEventListener(ev, unlockAudio, true));
 let held = false;   // V9.26: true while the game is paused from Settings
 function wake() { if (!held && ctx && ctx.state !== 'running') ctx.resume().catch(() => {}); }
 export function setAudioHeld(on) { held = !!on; if (!ctx) return; if (on) { if (ctx.state === 'running') ctx.suspend().catch(() => {}); } else ctx.resume().catch(() => {}); }

@@ -639,7 +639,8 @@
 /* V9.19: the painted New Game button must never get the generic dark hover fill (it hid the art). */
 .title-art-hit, .title-art-hit:hover, .title-art-hit:focus, .title-art-hit:focus-visible, .title-art-hit:active { background: transparent !important; }
 /* V9.19: the corner gear sits in Olly's HUD next to Inventory while playing, so it no longer covers the map. */
-body:has(.game-screen) .gg-gear { display: none !important; }
+/* V9.31: the corner gear is ALWAYS visible now (it was hidden while playing, and the HUD one is covered by slides and fights) */
+body:has(.game-screen) .gg-gear { display: flex !important; }
 .hud-btn-row { display: flex; gap: 6px; margin-top: 7px; align-items: stretch; }
 .hud-btn-row #inventory-button { flex: 1 1 auto; width: auto !important; margin-top: 0 !important; }
 .hud-gear { flex: 0 0 34px; width: 34px; min-height: 34px; padding: 0 !important; font-size: 18px; line-height: 1; color: #ef87aa; background: rgba(20,12,24,.78); border: 1px solid rgba(217,139,168,.5); border-radius: 8px; cursor: pointer; pointer-events: auto !important; }
@@ -832,3 +833,62 @@ body.gg-hc .encounter-copy, body.gg-hc .ironic-copy, body.gg-hc .quiz-feedback {
 body.gg-hc #dialogue, body.gg-hc #combat .combat-note { background: rgba(6, 3, 10, .92) !important; border-color: #efb7c9 !important; }
 body.gg-calm *, body.gg-calm *::before, body.gg-calm *::after { animation-duration: 0s !important; animation-iteration-count: 1 !important; animation-delay: 0s !important; }
 .gg-card details > summary { outline: none; }
+
+/* ===================== V9.31 ===================== */
+/* The settings gear is always on top and always visible (slides, fights, everything). */
+.gg-gear { z-index: 15000 !important; display: flex !important; left: 10px !important; bottom: 10px !important; width: 34px !important; height: 34px !important; background: rgba(20,12,24,.82) !important; border: 1px solid rgba(217,139,168,.55) !important; opacity: .92; }
+
+/* Every explanation / activity screen covers the whole browser window, fullscreen or not. */
+#relationship.overlay, #puzzle.overlay, #boss-intro.overlay, #win.overlay, #encounter.overlay, #completion.overlay, #death.overlay {
+  position: fixed !important; inset: 0 !important; border-radius: 0 !important; border: 0 !important; width: auto !important; height: auto !important;
+}
+#relationship.overlay, #puzzle.overlay, #boss-intro.overlay, #win.overlay { z-index: 5150 !important; overflow-y: auto !important; }
+#encounter .encounter-copy { white-space: pre-line; }
+
+/* "Cute indie goth" text boxes: a sticker-style card with a chunky pink outline, a stitched inner line and a hand-lettered font. */
+:root { --gg-cute-font: 'Pangolin', 'Patrick Hand', 'Comic Sans MS', 'Chalkboard SE', cursive; }
+#dialogue, #combat .combat-note, #encounter .encounter-copy, #completion .completion-copy, #death-text, .patricia-card,
+#relationship.overlay .minigame-display, #puzzle.overlay .quiz-question, #puzzle.overlay .quiz-answers button {
+  font-family: var(--gg-cute-font) !important; font-style: normal !important; letter-spacing: .01em;
+  color: #ffe6f0 !important;
+  background: #1f1024 !important;
+  border: 2.5px solid #ef87aa !important;
+  border-radius: 20px 24px 20px 24px / 24px 20px 24px 20px !important;
+  box-shadow: 5px 5px 0 #6d2949, inset 0 0 0 3px #1f1024, inset 0 0 0 4.5px rgba(239,135,170,.42) !important;
+  text-shadow: none !important;
+}
+#dialogue::before, #encounter .encounter-copy::before, #completion .completion-copy::before { content: "♥ "; color: #ef87aa; }
+#encounter .encounter-copy, #completion .completion-copy, #death-text, .patricia-card { padding: 14px 22px !important; max-width: min(760px, 92vw); margin-left: auto !important; margin-right: auto !important; }
+.patricia-card p, .patricia-title { font-family: var(--gg-cute-font) !important; font-style: normal !important; }
+#relationship.overlay .minigame-display::after, #puzzle.overlay .quiz-question::after { background: #1f1024 !important; border-color: #ef87aa !important; border-width: 0 2.5px 2.5px 0 !important; }
+#relationship.overlay .minigame-display.would-now { background: #c8407f !important; border-color: #ffd1e2 !important; color: #fff !important; box-shadow: 5px 5px 0 #6d2949, 0 0 30px rgba(255,110,170,.8), inset 0 0 0 3px #c8407f, inset 0 0 0 4.5px rgba(255,255,255,.45) !important; }
+#relationship.overlay .minigame-display.would-now::after { background: #c8407f !important; }
+#puzzle.overlay .quiz-answers button:hover, #puzzle.overlay .quiz-answers button:focus-visible { background: #3a1a40 !important; transform: translate(-1px,-1px) rotate(-.4deg); }
+#relationship .story-title, #completion .completion-title, #encounter #encounter-name, .patricia-title, .death-title { font-family: var(--gg-cute-font) !important; }
+.slot-picker button, .gg-card, .gg-btn { font-family: var(--gg-cute-font); }
+#relationship.overlay .ironic-copy, #puzzle.overlay .quiz-feedback, #relationship.overlay #would-feedback { font-family: var(--gg-cute-font) !important; font-style: normal !important; color: #f3c6d6 !important; }
+
+/* Save-slot picker (title screen) */
+.slot-picker { position: absolute; inset: 0; z-index: 40; display: grid; place-items: center; background: rgba(8,4,12,.78); }
+.slot-box { width: min(520px, 92vw); display: flex; flex-direction: column; gap: 10px; padding: 18px; font-family: var(--gg-cute-font); color: #ffe6f0;
+  background: #1f1024; border: 2.5px solid #ef87aa; border-radius: 22px; box-shadow: 6px 6px 0 #6d2949; }
+.slot-title { text-align: center; font-size: 1.25rem; letter-spacing: .08em; color: #ef87aa; }
+.slot-card { display: flex; flex-direction: column; gap: 2px; text-align: left; padding: 10px 14px; border: 2px solid #8a4d6c; border-radius: 14px; background: #2a1630; color: #ffe6f0; font: inherit; cursor: pointer; }
+.slot-card:hover:not(:disabled) { border-color: #ffc7dc; background: #3a1a40; }
+.slot-card:disabled { opacity: .45; cursor: default; }
+.slot-n { font-size: 1.05rem; color: #ef87aa; }
+.slot-info { font-size: .95rem; }
+.slot-card.empty .slot-info { opacity: .7; }
+.slot-confirm { padding: 10px; border: 2px dashed #ef87aa; border-radius: 12px; text-align: center; }
+.slot-confirm-btns { display: flex; gap: 8px; justify-content: center; margin-top: 8px; }
+.slot-confirm-btns button, .slot-back { padding: 8px 14px; border-radius: 12px; border: 2px solid #ef87aa; background: #7a2f55; color: #fff; font: inherit; cursor: pointer; }
+.slot-back { align-self: center; background: #2a1630; }
+.slot-confirm-btns .slot-no { background: #2a1630; }
+
+/* Heavy-attack unlock screen */
+#level1-heavy-reward-overlay > div { background: #1f1024 !important; border: 2.5px solid #ef87aa !important; border-radius: 24px !important; box-shadow: 6px 6px 0 #6d2949 !important; font-family: var(--gg-cute-font); }
+#level1-heavy-reward-overlay div, #level1-heavy-reward-overlay button { font-family: var(--gg-cute-font) !important; }
+#level1-heavy-reward-overlay button { border: 2.5px solid #ef87aa !important; border-radius: 16px !important; background: #7a2f55 !important; box-shadow: 3px 3px 0 #6d2949; }
+#dialogue { padding-left: 56px !important; }   /* leave room for the always-visible gear */
+#combat .combat-note { padding-left: 56px !important; padding-right: 56px !important; }
+#death .death-card #death-text, #completion .completion-copy, #encounter .encounter-copy { padding: 14px 26px !important; box-sizing: border-box; }
