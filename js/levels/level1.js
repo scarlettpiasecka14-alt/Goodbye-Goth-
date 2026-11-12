@@ -1,5 +1,5 @@
 /* Goodbye Goth V9.4 - Chain Goth fight (AI + all seven animations: intro, walk, swipe, spin, stun, hurt, death) on top of V9.0 map cleanup and the v8.11 Zombie Goth AI. */
-import { playSfx, playRandomSfx, playMusic, preloadSfx, setLoopSfx, setAudioHeld } from '../audio.js?v=9270';
+import { playSfx, playRandomSfx, playMusic, preloadSfx, setLoopSfx, setAudioHeld } from '../audio.js?v=9280';
 // Game clock: normal time, but it stands still while a tutorial pop-up is open (so nothing happens behind it).
 let pausedTotal = 0, pausedAt = 0;
 const gnow = () => (pausedAt || performance.now()) - pausedTotal;
@@ -126,7 +126,7 @@ function loadDrinkFrames() {
     if (drinkImgs.length) return;
     for (let i = 0; i < DRINK_FRAMES; i++) {
         const im = new Image();
-        im.src = `assets/combat/OllyDrink/olly-drink-${String(i).padStart(2, '0')}.webp?v=9270`;
+        im.src = `assets/combat/OllyDrink/olly-drink-${String(i).padStart(2, '0')}.webp?v=9280`;
         drinkImgs.push(im);
     }
 }
@@ -190,8 +190,8 @@ const OLLY_DRAW_FOOT_OFFSET = 62;
 // These shared icon references can be reused by every level. Only the activity
 // behind the role changes from level to level.
 const ICON_LIBRARY = {
-    relationshipChallenge: 'assets/icons/relationship-challenge.webp?v=9270',
-    princessQuestion: 'assets/icons/princess-question.webp?v=9270'
+    relationshipChallenge: 'assets/icons/relationship-challenge.webp?v=9280',
+    princessQuestion: 'assets/icons/princess-question.webp?v=9280'
 };
 const relationshipChallengeIcon = new Image();
 relationshipChallengeIcon.src = ICON_LIBRARY.relationshipChallenge;
@@ -291,9 +291,10 @@ const zombieCountdownFrames = {
 };
 // v7.6: use the complete 12-frame side-profile cycle at a readable pace.
 // Slightly slower timing preserves the weight transfer instead of making the feet blur together.
-const ZOMBIE_WALK_SEQUENCE = Array.from({ length: 33 }, (_, i) => i);
+// V9.28: the 33-frame walk clip is not a loop (starts upright, ends crouched), which made her flash every cycle. Play it forwards then backwards.
+const ZOMBIE_WALK_SEQUENCE = [...Array.from({ length: 33 }, (_, i) => i), ...Array.from({ length: 31 }, (_, i) => 31 - i)];
 // v8.7: speed up the animation cycle itself by ~15% without changing Zombie's movement speed.
-const ZOMBIE_WALK_FRAME_MS = Array(33).fill(48);
+const ZOMBIE_WALK_FRAME_MS = Array(64).fill(26);   // was 48ms/frame: looked like slow motion
 const ZOMBIE_WALK_CYCLE_MS = ZOMBIE_WALK_FRAME_MS.reduce((a, b) => a + b, 0);
 // Use the dedicated crouched ready pose. The attack frames belong
 // exclusively to the heavy attack and must not appear as the neutral/telegraph pose.
@@ -412,7 +413,7 @@ const CHAIN_WIDTH_STRETCH = 1.05;         // she is drawn 5% wider than the art 
 const CHAIN_INTRO_SCALE = 0.64;          // 3-2-1 pose is drawn at full fighting size (no grow-in)
 const CHAIN_FLOOR_Y = 535;               // same floor line Olly and the Zombie stand on
 // Intro: 14 build-up frames, then a 15-frame chain-twirl loop that repeats until FIGHT.
-const CHAIN_INTRO_PRE_COUNT = 28, CHAIN_INTRO_PRE_MS = 55, CHAIN_INTRO_LOOP_COUNT = 32, CHAIN_INTRO_LOOP_MS = 47;   // each loop is about one countdown beat (1.5s)
+const CHAIN_INTRO_PRE_COUNT = 28, CHAIN_INTRO_PRE_MS = 60, CHAIN_INTRO_LOOP_COUNT = 32, CHAIN_INTRO_LOOP_MS = 51;   // each loop is about one countdown beat (1.5s)
 const CHAIN_INTRO_GROW_MS = 500;         // she eases from the intro size to her normal fighting size at the very end of the countdown
 const CHAIN_WALK_FRAME_MS = 56;   // V9.24: 15-frame walk loop
 // Swipe pack: frames 0-5 = wind-up (chain lifts behind her), frames 6-11 = the low sweep.
@@ -429,13 +430,13 @@ const CHAIN_RECOVER_MS = 520;
 // V9.24 Chain SLAM (replaces the old spin): she winds the chain overhead and slams it down TWICE.
 // Slam 1 is only a warning (no damage). Slam 2 sends a wave of sparks across the floor in the direction she is facing.
 // Jump over HER (land behind her) or stay in the air and it misses; stand in front of her on the ground and it hits.
-const CHAIN_SLAM_MS = 36;                  // ms per source-video frame (the video is 24 fps; this plays it ~15% faster)
+const CHAIN_SLAM_MS = 27;                  // ms per source-video frame (the video is 24 fps; this plays it ~15% faster)
 const CHAIN_SLAM_START_VF = 37;            // first kept video frame
 const CHAIN_SLAM_WARN_AT_MS = (64 - 37) * CHAIN_SLAM_MS;     // slam 1 (warning)
 const CHAIN_SLAM_HIT_AT_MS = (97 - 37) * CHAIN_SLAM_MS;      // slam 2 (damage wave)
 const CHAIN_SLAM_TOTAL_MS = (118 - 37) * CHAIN_SLAM_MS;
 const CHAIN_SLAM_CLOSE_TO = 230, CHAIN_SLAM_GLIDE = 230;     // she closes to about a jump away while winding up
-const CHAIN_WAVE_REACH = 600, CHAIN_WAVE_GROW_MS = 170, CHAIN_WAVE_MS = 480;
+const CHAIN_WAVE_REACH = 780, CHAIN_WAVE_GROW_MS = 150, CHAIN_WAVE_MS = 460;
 const CHAIN_SLAM_DAMAGE = 15, CHAIN_SLAM_PUSH = 40;
 // Stun is EARNED: three hits in a row (a Heavy Attack counts as two) leave her dizzy, and Olly gets his punches back to punish it.
 const CHAIN_STUN_HITS = 3, CHAIN_STUN_HIT_WINDOW_MS = 4000;
@@ -1308,7 +1309,7 @@ export function createLevel1(ui) {
                 const item = items[i];
                 if (item) {
                     const info = ITEM_INFO[item];
-                    slot.innerHTML = `<img class="inv-item-img" src="${info.img}?v=9270" alt="${info.name}" draggable="false"><span>${info.label}</span>`;
+                    slot.innerHTML = `<img class="inv-item-img" src="${info.img}?v=9280" alt="${info.name}" draggable="false"><span>${info.label}</span>`;
                     slot.dataset.item = item;
                     slot.dataset.tip = info.tip;
                     slot.classList.add('inventory-filled');
@@ -1692,8 +1693,8 @@ export function createLevel1(ui) {
         let finished = false;
         let attemptedFallback = false;
         const sources = [
-            'assets/video/cutscene2/cutscene2.mp4?v=9270',
-            'assets/video/cutscene2/cutscene2.mov?v=9270'
+            'assets/video/cutscene2/cutscene2.mp4?v=9280',
+            'assets/video/cutscene2/cutscene2.mov?v=9280'
         ];
 
         const finish = () => {
@@ -2110,7 +2111,7 @@ export function createLevel1(ui) {
             // v8.9: non-walk/non-attack animation pass is 20% larger.
             targetHeight = 400;
             // V9.24: the new 61-frame 3-2-1 animation plays once across the countdown, then holds its last pose.
-            index = Math.min(60, Math.floor(Math.max(0, elapsed) / (ZOMBIE_INTRO_TOTAL_MS / 61)));
+            index = Math.min(60, Math.floor(Math.max(0, elapsed) / (ZOMBIE_INTRO_TOTAL_MS * .72 / 61)));   // V9.28: plays in ~72% of the countdown, then holds the ready pose
         } else if (zombieCombatState === 'chase') {
             frames = zombieCombatFrames.walk;
             // v8.9: walk is 10% smaller than the v8.8 visible walk size.
@@ -2405,7 +2406,7 @@ export function createLevel1(ui) {
             if (distance > 135) {
                 const desiredX = player.x - direction * 100;
                 const targetX = Math.max(280, Math.min(COMBAT_W - 280, desiredX));
-                const step = Math.min(Math.abs(targetX - zombieCombatX), 135 * dt);
+                const step = Math.min(Math.abs(targetX - zombieCombatX), 175 * dt);   // V9.28: was 135
                 zombieCombatX += (targetX >= zombieCombatX ? 1 : -1) * step;
                 zombieCombatX = Math.max(170, Math.min(COMBAT_W - 170, zombieCombatX));
                 zombieCombatWalkIndex += dt * 1000;
@@ -2418,7 +2419,13 @@ export function createLevel1(ui) {
         }
 
         if (zombieCombatState === 'windup') {
-            const windup = zombieCombatAttackType === 'heavyKick' ? BITE_WINDUP_MS : 620;   // long enough to read the warning ring
+            const windup = zombieCombatAttackType === 'heavyKick' ? BITE_WINDUP_MS : 560;   // long enough to read the warning ring
+            // V9.28: she keeps stalking Olly while she winds up (she used to stand still, so stepping away was free)
+            if (distance > 105) {
+                zombieCombatX += direction * Math.min(distance - 105, 120 * dt);
+                zombieCombatX = Math.max(170, Math.min(COMBAT_W - 170, zombieCombatX));
+                zombieCombatWalkIndex += dt * 1000;
+            }
             if (nowMs - zombieCombatStateStart >= windup) {
                 zombieCombatState = zombieCombatAttackType;
                 zombieCombatStateStart = nowMs;
@@ -2448,7 +2455,7 @@ export function createLevel1(ui) {
                     const trackingGap = 112;
                     const desiredX = player.x - trackingDirection * trackingGap;
                     const targetX = Math.max(170, Math.min(COMBAT_W - 170, desiredX));
-                    const crawlStep = Math.min(Math.abs(targetX - zombieCombatX), 360 * dt);
+                    const crawlStep = Math.min(Math.abs(targetX - zombieCombatX), 430 * dt);
                     if (crawlStep > 0.5) {
                         zombieCombatX += (targetX >= zombieCombatX ? 1 : -1) * crawlStep;
                         zombieCombatX = Math.max(170, Math.min(COMBAT_W - 170, zombieCombatX));
@@ -2457,7 +2464,7 @@ export function createLevel1(ui) {
 
                     const catchDistance = Math.abs(player.x - zombieCombatX);
                     const canCatch = nowMs >= dodgeUntil;   // red attack: dodging OR jumping (timed like a dodge) avoids the bite
-                    if (canCatch && catchDistance <= 155) {
+                    if (canCatch && catchDistance <= 215) {   // V9.28: longer red-attack reach (was 155)
                         zombieBiteCaughtAt = nowMs || 1;
                         zombieBiteHoldX = player.x;
                         zombieBiteHoldUntil = nowMs + 1000;
@@ -2477,7 +2484,7 @@ export function createLevel1(ui) {
 
             if (!heavy && !zombieCombatAttackHit && elapsed >= 300 && elapsed <= 500) {
                 zombieCombatAttackHit = true;
-                applyZombieDamage(5, 135, 38, nowMs, 'CLAW SWIPE');
+                applyZombieDamage(7, 165, 38, nowMs, 'CLAW SWIPE');
             }
 
             // A successful bite holds contact for 1s, then plays recoil and
@@ -2645,7 +2652,7 @@ export function createLevel1(ui) {
             try { video.pause(); video.removeAttribute('src'); video.load(); } catch (e) {}
             overlay.remove(); done();
         };
-        const sources = ['assets/video/cutscene3/ollytaken.mp4?v=9270', 'assets/video/cutscene3/olly-taken.mp4?v=9270', 'assets/video/cutscene3/ollytaken.mov?v=9270', 'assets/video/cutscene3/olly-taken.mov?v=9270'];
+        const sources = ['assets/video/cutscene3/ollytaken.mp4?v=9280', 'assets/video/cutscene3/olly-taken.mp4?v=9280', 'assets/video/cutscene3/ollytaken.mov?v=9280', 'assets/video/cutscene3/olly-taken.mov?v=9280'];
         let i = 0;
         const next = () => { if (i >= sources.length) { finish(); return; } video.src = sources[i++]; video.load(); video.play().catch(() => {}); };
         video.addEventListener('error', next);
@@ -2820,7 +2827,7 @@ export function createLevel1(ui) {
         };
         if (waveT < 0) {
             // danger zone: faint at first, lit up after the warning slam, pulsing faster as the real slam gets near
-            const lit = t > CHAIN_SLAM_WARN_AT_MS ? 1 : .35;
+            const lit = t > CHAIN_SLAM_WARN_AT_MS ? 1 : .8;
             const pulse = .5 + .5 * Math.sin(nowMs / (110 - 60 * warnP));
             strip(CHAIN_WAVE_REACH, (.16 + .22 * warnP) * (.65 + .35 * pulse) * lit, (.3 + .5 * warnP) * lit);
         } else if (waveT < CHAIN_WAVE_MS) {
@@ -2885,14 +2892,24 @@ export function createLevel1(ui) {
 
         // Warning rings on the floor: red = swipe (dodge), yellow = slam (jump OVER her).
         if (zombieCombatState === 'slam') {
-            drawChainSlamFloor(c, enemyX, face, nowMs - zombieCombatStateStart, nowMs);
+            const st = nowMs - zombieCombatStateStart;
+            if (st < CHAIN_SLAM_HIT_AT_MS)   // V9.28: the yellow ring the tutorial shows is now really drawn in the fight
+                drawAttackRing(c, enemyX, CHAIN_FLOOR_Y + 8, 300, 'yellow', Math.min(1, st / CHAIN_SLAM_HIT_AT_MS), false, nowMs);
+            drawChainSlamFloor(c, enemyX, face, st, nowMs);
         } else if (zombieCombatState === 'windup' && zombieCombatAttackType === 'swipe') {
             drawAttackRing(c, enemyX, CHAIN_FLOOR_Y + 8, CHAIN_SWIPE_RANGE, 'red', Math.min(1, (nowMs - zombieCombatStateStart) / CHAIN_SWIPE_WINDUP_MS), false, nowMs);
         } else if (zombieCombatState === 'swipe') {
             drawAttackRing(c, enemyX, CHAIN_FLOOR_Y + 8, CHAIN_SWIPE_RANGE, 'red', 1, true, nowMs);
         }
 
-        drawChainAtlasFrame(c, frame.pack, frame.index, enemyX, CHAIN_FLOOR_Y, face, frame.scale, alpha, rotation, offsetX);
+        // V9.28: the walk art was drawn facing RIGHT (every other chain animation faces left), so flip it or she walks backwards.
+        const drawFace = frame.pack === chainAtlas.walk ? (face === 'left' ? 'right' : 'left') : face;
+        const slamGlow = zombieCombatState === 'slam' && nowMs - zombieCombatStateStart < CHAIN_SLAM_HIT_AT_MS;
+        if (slamGlow) {   // the yellow "ghost": she glows yellow while the slam is coming
+            c.save(); c.shadowColor = 'rgba(255,214,60,1)'; c.shadowBlur = 34 + 12 * Math.sin(nowMs / 70);
+        }
+        drawChainAtlasFrame(c, frame.pack, frame.index, enemyX, CHAIN_FLOOR_Y, drawFace, frame.scale, alpha, rotation, offsetX);
+        if (slamGlow) c.restore();
         updateChainStunMeter(nowMs);
 
         // Stun feedback: a clear label over her head while she is stunned, and 1-2 pips while a stun is building.
@@ -3575,9 +3592,9 @@ export function createLevel1(ui) {
         }
         if (!isBoss && target?.type === 'shambler' && !zombieIntroActive) {
             const heavyRing = zombieCombatAttackType === 'heavyKick';
-            const ringKind = heavyRing ? 'red' : 'pink', ringR = heavyRing ? 200 : 140, ringY = COMBAT_GROUND_Y + RING_FLOOR_OFFSET;
+            const ringKind = heavyRing ? 'red' : 'pink', ringR = heavyRing ? 235 : 165, ringY = COMBAT_GROUND_Y + RING_FLOOR_OFFSET;
             if (zombieCombatState === 'windup')
-                drawAttackRing(cctx, enemyX, ringY, ringR, ringKind, (nowMs - zombieCombatStateStart) / (heavyRing ? BITE_WINDUP_MS : 620), false, nowMs);
+                drawAttackRing(cctx, enemyX, ringY, ringR, ringKind, (nowMs - zombieCombatStateStart) / (heavyRing ? BITE_WINDUP_MS : 560), false, nowMs);
             else if (zombieCombatState === 'claw' || zombieCombatState === 'heavyKick')
                 drawAttackRing(cctx, enemyX, ringY, ringR, ringKind, 1, true, nowMs);
         }
@@ -3997,6 +4014,8 @@ export function createLevel1(ui) {
     }
 
     function endCombat(won) {
+        comboCount = 0; attackCooldownUntil = 0; lastAttackAt = 0;   // V9.28: combo resets when a fight ends
+        { const ch = document.getElementById('combo-hud'); if (ch) ch.style.display = 'none'; comboHudKey = ''; }
         setLoopSfx('chain-drag', false);
         clearInterval(enemyTimer);
         enemyTimer = null;
