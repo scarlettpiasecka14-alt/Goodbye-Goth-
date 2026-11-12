@@ -1,6 +1,6 @@
 /* Goodbye Goth - keyboard bindings. One place decides which key does which action.
    Defaults can be changed in Settings > Controls > CUSTOMISE (saved in the browser).
-   Arrow keys always move too, and the mouse (left click attack, right click dodge) is not rebindable. */
+   Arrow keys always move too, and the mouse (left click punch, right click dodge) is not rebindable. Saving lives in Settings (no key). */
 const KEY = 'goodbyeGothControls_v1';
 export const ACTIONS = [
     { id: 'up', label: 'Move up' },
@@ -9,11 +9,11 @@ export const ACTIONS = [
     { id: 'right', label: 'Move right' },
     { id: 'jump', label: 'Jump / interact' },
     { id: 'dodge', label: 'Dodge' },
+    { id: 'attack', label: 'Punch' },
     { id: 'heavy', label: 'Heavy attack' },
-    { id: 'inventory', label: 'Inventory' },
-    { id: 'save', label: 'Save game' }
+    { id: 'inventory', label: 'Inventory (backpack)' }
 ];
-export const DEFAULTS = { up: 'w', down: 's', left: 'a', right: 'd', jump: ' ', dodge: 'r', heavy: 'z', inventory: 'y', save: 'x' };
+export const DEFAULTS = { up: 'w', down: 's', left: 'a', right: 'd', jump: ' ', dodge: 'r', attack: 'x', heavy: 'z', inventory: 'y' };
 const ARROWS = { arrowup: 'up', arrowdown: 'down', arrowleft: 'left', arrowright: 'right' };
 const RESERVED = new Set(['o', 'escape', 'tab', 'enter', '`', 'f5', 'f11', 'f12', 'meta', 'control', 'alt', 'shift', 'capslock']);
 

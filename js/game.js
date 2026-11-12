@@ -1,9 +1,9 @@
-import { StoryController } from './story.js?v=9260';
-import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9260';
-import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9260';
-import { initSettings, openSettings } from './settings.js?v=9260';
-import { actionForKey } from './controls.js?v=9260';
-import { initCheats, registerCheats } from './cheats.js?v=9260';
+import { StoryController } from './story.js?v=9270';
+import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9270';
+import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9270';
+import { initSettings, openSettings } from './settings.js?v=9270';
+import { actionForKey } from './controls.js?v=9270';
+import { initCheats, registerCheats } from './cheats.js?v=9270';
 
 const root = document.getElementById('game-root');
 
@@ -170,12 +170,13 @@ function showControls(){
           <div class="control-item"><span class="control-key">WASD / ARROWS</span><span class="control-action">Move</span></div>
           <div class="control-item"><span class="control-key">SPACE</span><span class="control-action">Jump</span></div>
           <div class="control-item"><span class="control-key">RIGHT CLICK</span><span class="control-action">Dodge</span></div>
-          <div class="control-item"><span class="control-key">LEFT CLICK</span><span class="control-action">Attack</span></div>
+          <div class="control-item"><span class="control-key">X / LEFT CLICK</span><span class="control-action">Punch</span></div>
+          <div class="control-item"><span class="control-key">Z</span><span class="control-action">Heavy attack (once earned)</span></div>
           <div class="control-item"><span class="control-key">LEFT CLICK / ENTER</span><span class="control-action">Pick up / interact</span></div>
-          <div class="control-item"><span class="control-key">Y</span><span class="control-action">Open inventory</span></div>
-          <div class="control-item"><span class="control-key">X</span><span class="control-action">Save game</span></div>
-          <div class="control-item"><span class="control-key">O</span><span class="control-action">Settings (or the ⚙ bottom-left)</span></div>
+          <div class="control-item"><span class="control-key">Y</span><span class="control-action">Open inventory (backpack)</span></div>
+          <div class="control-item"><span class="control-key">O</span><span class="control-action">Settings (or the ⚙ button)</span></div>
         </div>
+        <p class="controls-note">Every key can be changed in Settings, under Controls &gt; Customise. Saving your game is in Settings too.</p>
         <button id="controls-next" class="controls-next" type="button">CLICK TO CONTINUE →</button>
       </div>
     </section>`;
@@ -208,7 +209,7 @@ function mountLevel1(loadSaved=false){
         <div class="player-hud-bar"><div id="player-hp-fill" class="player-hp-fill"></div></div>
         <div id="player-hp-text" class="player-hp-text">100 / 100 HP</div>
         <div class="hud-btn-row">
-          <button id="inventory-button" type="button" style="min-height:34px;padding:6px 10px;font-size:12px;">🎒 INVENTORY <span id="inventory-count">0/10</span></button>
+          <button id="inventory-button" type="button" style="min-height:34px;padding:6px 10px;font-size:12px;">🎒 BACKPACK <span id="inventory-count">0/10</span></button>
           <button id="hud-gear" class="hud-gear" type="button" title="Settings (O)" aria-label="Settings">⚙</button>
         </div>
         <div id="combo-hud" class="combo-hud" style="display:none" aria-label="Punch combo"><span class="combo-pips"><i></i><i></i></span><span id="combo-text" class="combo-text"></span></div>
@@ -225,7 +226,7 @@ function mountLevel1(loadSaved=false){
       <div id="inventory" class="overlay hidden" style="z-index:40">
         <div class="overlay-box center inventory-box">
           <div class="inventory-kicker">OLLY'S BAG</div>
-          <div class="story-title">INVENTORY</div>
+          <div class="story-title">INVENTORY (BACKPACK)</div>
           <div class="inventory-capacity"><span id="inventory-count-large">0 / 10 ITEMS</span></div>
           <div class="inventory-slots" aria-label="Inventory slots">
             <div class="inventory-slot">01</div><div class="inventory-slot">02</div><div class="inventory-slot">03</div><div class="inventory-slot">04</div><div class="inventory-slot">05</div>
@@ -285,6 +286,7 @@ function mountLevel1(loadSaved=false){
         <div class="ironic-copy">Sometimes princesses have far too much going on in their heads to get their words out right. In cases like these one can either 1. try to be helpful or 2. take the piss. You chose the latter. Press WOULD YOU? at the correct time to complete the puzzle.</div>
         <div class="timing-track"><div id="timing-zone" class="timing-zone"></div><div id="timing-cursor" class="timing-cursor"></div></div>
         <div id="would-display" class="minigame-display">“Can I ask you a question... have you ever...”</div>
+        <div id="would-pips" class="would-pips" aria-label="Rounds completed"></div>
         <button id="would-tap" class="primary timing-button">WOULD YOU?</button>
         <p id="would-feedback" class="small">Listen for the phrase. The timing gets quicker each round.</p>
       </div></div>
@@ -380,6 +382,11 @@ function mountLevel1(loadSaved=false){
       if(!e.repeat) level.combatDodge?.();
       return;
     }
+    if(act==='attack' && inFight){
+      e.preventDefault();
+      if(!e.repeat) level.combatAttack?.();
+      return;
+    }
     if(act==='heavy' && inFight){
       e.preventDefault();
       if(!e.repeat) level.combatHeavyAttack?.();
@@ -387,12 +394,9 @@ function mountLevel1(loadSaved=false){
     }
     if(MOVE_KEY[act]){ e.preventDefault(); level.setMoveKey?.(MOVE_KEY[act],true); return; }
     if(act==='jump'){ e.preventDefault(); if(!e.repeat) level.primaryAction(); return; }
-    if(act==='save'){
-      e.preventDefault();
-      const ok=level.saveGame();
-      if(ui.saveStatus) ui.saveStatus.textContent=ok?'Saved ✓':'Save failed';
-    }
   });
+  // Save lives in Settings now: the Settings window calls this.
+  window.ggSaveGame = () => { try { return !!level.saveGame(); } catch(e) { return false; } };
   window.addEventListener('keyup',e=>{
     const act = actionForKey(e.key);
     if(MOVE_KEY[act]) level.setMoveKey?.(MOVE_KEY[act],false);

@@ -716,3 +716,45 @@ html, body, #app { width: 100% !important; height: 100% !important; margin: 0 !i
 
 /* V9.22: the backpack must open ON TOP of the fight screen (Patricia's "check your backpack" happens during the fight scene). */
 #inventory.overlay { position: fixed !important; inset: 0 !important; z-index: 6000 !important; }
+
+/* V9.27: note under the Controls list */
+.controls-note { margin: 14px auto 0; max-width: 560px; color: #d9c1cd; font: italic .95rem/1.4 Georgia, serif; text-align: center; }
+
+/* V9.27: "Would You" speech bubble. Wider, taller, italic, with a tail; turns bright pink when it is time to press. */
+#relationship.overlay .minigame-display {
+  position: relative;
+  box-sizing: border-box;
+  width: min(92vw, 980px) !important;
+  max-width: 980px !important;
+  min-height: 92px !important;
+  margin: 14px auto 16px !important;
+  padding: 18px 28px !important;
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  font: italic 600 clamp(1.25rem, 2.7vw, 2.1rem)/1.25 Georgia, serif !important;
+  color: #f6e4ec;
+  background: linear-gradient(180deg, rgba(58, 30, 54, .96), rgba(32, 18, 34, .98));
+  border: 2px solid #b4668a;
+  border-radius: 22px;
+  box-shadow: 0 0 0 4px rgba(20, 10, 22, .9), 0 10px 30px rgba(0, 0, 0, .55), inset 0 0 22px rgba(239, 142, 170, .12);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, .7);
+  transition: background .12s, border-color .12s, box-shadow .12s, color .12s;
+}
+#relationship.overlay .minigame-display::after {
+  content: ""; position: absolute; left: 50%; bottom: -17px; width: 26px; height: 26px; margin-left: -13px;
+  background: #261425; border-right: 2px solid #b4668a; border-bottom: 2px solid #b4668a;
+  transform: rotate(45deg); transition: border-color .12s, background .12s;
+}
+#relationship.overlay .minigame-display.would-now {
+  font-style: normal; font-weight: 800; letter-spacing: .12em; color: #fff;
+  background: linear-gradient(180deg, #c8407f, #8f2459);
+  border-color: #ffc7dc;
+  box-shadow: 0 0 0 4px rgba(20, 10, 22, .9), 0 0 36px rgba(255, 110, 170, .85), inset 0 0 26px rgba(255, 220, 235, .35);
+  animation: wyPulse .32s ease-in-out infinite alternate;
+}
+#relationship.overlay .minigame-display.would-now::after { background: #8f2459; border-color: #ffc7dc; }
+@keyframes wyPulse { from { transform: scale(1); } to { transform: scale(1.025); } }
+.would-pips { display: flex; gap: 10px; justify-content: center; margin: 0 auto 8px; }
+.would-pips i { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #b4668a; background: transparent; display: block; }
+.would-pips i.now { box-shadow: 0 0 10px rgba(255, 130, 180, .8); }
+.would-pips i.done { background: #ef8eaa; border-color: #ffc7dc; }
+#relationship.overlay .minigame-display { margin-bottom: 28px !important; }
