@@ -138,14 +138,14 @@ const ITEM_INFO = {
     potion: { name: 'Potion', desc: 'Drink to restore to full HP.', tip: 'Drink to restore to full HP.', img: 'assets/items/potion-vial.webp', label: 'POTION' }
 };
 // V9.22: Olly's drinking animation (50 frames) used before the Patricia fight.
-const DRINK_FRAMES = 50, DRINK_FRAME_MS = 50, DRINK_HEAL_FRAME = 28, DRINK_DRAW_K = 0.656;
+const DRINK_FRAMES = 50, DRINK_FRAME_MS = 50, DRINK_HEAL_FRAME = 28, DRINK_DRAW_K = 0.51;   // V9.36b: was 0.656 (he looked about 30% bigger than in the fight itself)
 const DRINK_ART = { w: 369, h: 527, feetY: 524, centerX: 191 };
 const drinkImgs = [];
 function loadDrinkFrames() {
     if (drinkImgs.length) return;
     for (let i = 0; i < DRINK_FRAMES; i++) {
         const im = new Image();
-        im.src = `assets/combat/OllyDrink/olly-drink-${String(i).padStart(2, '0')}.webp?v=9310`;
+        im.src = `assets/combat/OllyDrink/olly-drink-${String(i).padStart(2, '0')}.webp?v=9362`;
         drinkImgs.push(im);
     }
 }

@@ -1,4 +1,4 @@
-GOODBYE GOTH V9.36 - Patricia overhaul + warning rings + Princess Question layout
+GOODBYE GOTH V9.36b - Patricia overhaul + warning rings + Princess Question layout
 (CUMULATIVE: includes everything from V9.35, so upload this one even though you never uploaded 35)
 ==========================================================================================
 UPLOAD to Testing5 (keep folders exactly as in the zip):
@@ -10,6 +10,12 @@ UPLOAD to Testing5 (keep folders exactly as in the zip):
   assets/fonts/CormorantGaramond-italic-600.woff
   assets/fonts/OFL-CormorantGaramond.txt
   tools/build_chain_assets.py   (optional)
+
+V9.36b ADDITION (drink animation)
+ - The repo already holds the vial version of Olly's drink frames (assets/combat/OllyDrink, checked: identical to my vial art). You were most likely
+   seeing the OLD green-bottle frames because your browser had cached them under the same address. The frames now load with a new version tag (?v=9362),
+   which forces a fresh download. If you still see the green bottle after uploading, hard-refresh (Cmd+Shift+R) and tell me.
+ - Size: the drink art was drawn about 30% larger than Olly is in the boss fight. Scaled down (0.656 -> 0.51) to match. NOT checked by eye in-game; tell me if he is still too big/small.
 
 WHAT'S NEW IN 9.36
 1. Princess Question: the question is plain text (no box). The four answers keep their boxes, in a square: A B on top, C D below
