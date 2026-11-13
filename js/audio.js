@@ -26,6 +26,20 @@ function unlockAudio() { if (held) return; const c = getCtx(); if (c && c.state 
 ['pointerdown', 'mousedown', 'keydown', 'touchstart'].forEach(ev => window.addEventListener(ev, unlockAudio, true));
 let held = false;   // V9.26: true while the game is paused from Settings
 function wake() { if (!held && ctx && ctx.state !== 'running') ctx.resume().catch(() => {}); }
+// V9.41: after switching browser tabs Safari can leave the sound engine 'suspended' / 'interrupted' for good (music kept playing, sound effects and voice lines died). Wake it when the tab comes back, and rebuild it if it will not wake.
+function reviveAudio() {
+    if (held || !ctx) return;
+    if (ctx.state !== 'running') ctx.resume().catch(() => {});
+    setTimeout(() => {
+        if (held || !ctx || ctx.state === 'running' || document.hidden) return;
+        try { ctx.close(); } catch (e) {}
+        ctx = null; sfxGain = null; getCtx();
+        if (ctx) ctx.resume().catch(() => {});
+    }, 500);
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) reviveAudio(); });
+window.addEventListener('focus', reviveAudio);
+window.addEventListener('pageshow', reviveAudio);
 export function setAudioHeld(on) { held = !!on; if (!ctx) return; if (on) { if (ctx.state === 'running') ctx.suspend().catch(() => {}); } else ctx.resume().catch(() => {}); }
 function loadBuffer(name) {
     if (STREAM[name] || buffers[name] || loading[name]) return;

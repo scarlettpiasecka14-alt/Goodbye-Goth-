@@ -1,10 +1,10 @@
-import { StoryController } from './story.js?v=9400';
-import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9400';
-import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9400';
-import { initSettings, openSettings } from './settings.js?v=9400';
-import { actionForKey } from './controls.js?v=9400';
-import { initCheats, registerCheats } from './cheats.js?v=9400';
-import { SLOT_COUNT, getActiveSlot, setActiveSlot, readSlot, clearSlot, slotSummary, anySave } from './saves.js?v=9400';
+import { StoryController } from './story.js?v=9410';
+import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9410';
+import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9410';
+import { initSettings, openSettings } from './settings.js?v=9410';
+import { actionForKey } from './controls.js?v=9410';
+import { initCheats, registerCheats } from './cheats.js?v=9410';
+import { SLOT_COUNT, getActiveSlot, setActiveSlot, readSlot, clearSlot, slotSummary, anySave } from './saves.js?v=9410';
 
 const root = document.getElementById('game-root');
 

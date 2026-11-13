@@ -14,11 +14,10 @@ ANIMS = {
     'walk':      ('walk', R(32, 61), 0.9),
     'idle':      ('321fight', R(0, 61, 2), 0.9),
     'lunge':     ('SwordSwipe', R(0, 61), 0.8),
-    'combo':     ('Swordcombo', R(0, 61), 0.8),
+    'combo':     ('Swordcombo', R(0, 61), 0.9),     # V9.41: her sword-combo art is ~20% smaller in its picture than her other moves, so it is stored at a higher resolution (and drawn bigger)
     'lightning': ('Lightningstrike', R(0, 61, 2), 0.56),
     'smoke':     ('Purplesmoke', R(0, 61, 3), 0.66),
-    'hurt':      ('hurtand recover', R(0, 41), 0.9),
-    'defeat':    ('Salvagable?', R(0, 61, 2), 0.8),
+    'salv':      ('Salvagable?', R(4, 53), 0.7),   # V9.41: the 'Salvagable?' jumps are now her four hurt reactions (frames 4-52); the old 'hurtand recover' clip is no longer used
 }
 MAX_W = 4096
 def pack(repo, name, folder, frames, SCALE):
@@ -29,6 +28,14 @@ def pack(repo, name, folder, frames, SCALE):
         bb = im.getchannel('A').point(lambda v: 255 if v > 12 else 0).getbbox()
         if bb is None: bb = (0, 0, 2, 2)
         bb = (max(0, bb[0]-2), max(0, bb[1]-2), min(im.width, bb[2]+2), min(im.height, bb[3]+2))
+        if name == 'smoke':   # V9.41: some smoke frames are cut off by the edge of the picture (a hard square edge); fade the last 150px at each edge so nothing looks squared off
+            import numpy as np
+            arr = np.asarray(im).astype(np.float32); h, w = arr.shape[:2]; R_ = 150.0
+            ramp = np.minimum(np.minimum(np.arange(w), w - 1 - np.arange(w))[None, :], np.minimum(np.arange(h), h - 1 - np.arange(h))[:, None]) / R_
+            arr[..., 3] *= np.clip(ramp, 0, 1)
+            im = Image.fromarray(arr.clip(0, 255).astype(np.uint8), 'RGBA')
+            bb = im.getchannel('A').point(lambda v: 255 if v > 12 else 0).getbbox() or bb
+            bb = (max(0, bb[0]-2), max(0, bb[1]-2), min(im.width, bb[2]+2), min(im.height, bb[3]+2))
         crop = im.crop(bb)
         crop = crop.resize((max(1, round(crop.width*SCALE)), max(1, round(crop.height*SCALE))), Image.LANCZOS)
         tiles.append((bb, crop))

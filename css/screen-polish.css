@@ -834,3 +834,63 @@ body.gg-calm *, body.gg-calm *::before, body.gg-calm *::after { animation-durati
 }
 /* V9.37: tiny build stamp so we can always tell which version is really running */
 #gg-ver { position: fixed; right: 8px; bottom: 6px; z-index: 15000; font: 700 11px/1 system-ui, sans-serif; letter-spacing: .08em; color: rgba(239,135,170,.55); pointer-events: none; }
+
+/* ==========================================================================
+   V9.41: the inventory looks like a BACKPACK: domed top with a carry loop, canvas weave,
+   shoulder-strap edges with stitching, and a zipped front pocket that holds the slots.
+   ========================================================================== */
+#inventory .inventory-box {
+  position: relative !important;
+  width: min(860px, 94vw) !important;
+  padding: 74px clamp(40px, 6vw, 64px) 32px !important;
+  border: 3px solid #4a2c3d !important;
+  border-radius: 190px 190px 36px 36px / 130px 130px 36px 36px !important;
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, .022) 0 2px, transparent 2px 6px),
+    repeating-linear-gradient(-45deg, rgba(0, 0, 0, .12) 0 2px, transparent 2px 6px),
+    linear-gradient(180deg, #34202f 0%, #25172a 55%, #1b1220 100%) !important;
+  box-shadow: inset 0 0 0 7px #2b1a28, inset 0 0 0 9px rgba(216, 182, 106, .35), 0 24px 60px rgba(0, 0, 0, .55) !important;
+}
+/* stitched seam just inside the edge */
+#inventory .inventory-box::before {
+  content: "";
+  position: absolute; inset: 15px;
+  border: 2px dashed rgba(239, 142, 170, .38);
+  border-radius: 176px 176px 26px 26px / 118px 118px 26px 26px;
+  pointer-events: none;
+}
+/* carry loop at the top */
+#inventory .inventory-box::after {
+  content: "";
+  position: absolute; left: 50%; top: 10px; transform: translateX(-50%);
+  width: 118px; height: 40px;
+  border: 11px solid #4a2c3d; border-bottom: none;
+  border-radius: 64px 64px 0 0;
+  box-shadow: 0 0 0 2px rgba(216, 182, 106, .3);
+  pointer-events: none;
+}
+/* the slots live in the zipped front pocket */
+#inventory .inventory-slots {
+  position: relative !important;
+  width: min(660px, 100%) !important;
+  margin: 18px auto 14px !important;
+  padding: 26px 18px 18px !important;
+  border: 2px solid #5a3550 !important;
+  border-radius: 20px 20px 28px 28px !important;
+  background: linear-gradient(180deg, rgba(20, 12, 24, .55), rgba(36, 22, 38, .55)) !important;
+  box-shadow: inset 0 3px 8px rgba(0, 0, 0, .45) !important;
+}
+#inventory .inventory-slots::before {   /* zipper */
+  content: "";
+  position: absolute; left: 14px; right: 14px; top: 8px; height: 0;
+  border-top: 4px dashed #d8b66a; opacity: .75;
+}
+#inventory .inventory-slots::after {    /* zip pull */
+  content: "";
+  position: absolute; left: calc(50% - 8px); top: 2px; width: 16px; height: 22px;
+  border-radius: 5px 5px 9px 9px; background: linear-gradient(180deg, #f0d48a, #b78f3d); box-shadow: 0 2px 4px rgba(0, 0, 0, .5);
+}
+@media (max-width: 700px) {
+  #inventory .inventory-box { padding: 66px 22px 22px !important; border-radius: 120px 120px 28px 28px / 90px 90px 28px 28px !important; }
+  #inventory .inventory-box::before { border-radius: 108px 108px 20px 20px / 80px 80px 20px 20px; inset: 11px; }
+}
