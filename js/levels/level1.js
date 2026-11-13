@@ -2637,6 +2637,7 @@ export function createLevel1(ui) {
         const dodging = !ignoreDodge && player.invuln > nowMs;
         if (horizontalDistance > range || airborne || dodging) {
             ui.combatStatus.textContent = `↪ ${attackName} missed!`;
+            if (isPatriciaFight() && (airborne || dodging)) patSay(Math.random() < .5 ? 'nice-try' : 'nice-try-cutie', { cd: 6000, chance: .7 });   // V9.31: Olly dodged / jumped her attack
             return;
         }
         if (cheatGod) {
@@ -2657,6 +2658,7 @@ export function createLevel1(ui) {
         combatAnimationUntil = nowMs + OLLY_HURT_TOTAL_MS;
         ui.combatStatus.textContent = `💥 ${attackName}! -${damage} HP.`;
         kickShake(damage >= 15 ? 11 : (damage >= 10 ? 8 : 5), damage >= 15 ? 360 : 240);   // V9.30
+        if (isPatriciaFight() && hp > 0 && hp <= maxHp * .3) patSay('kill-you', { once: 'lowOlly', gap: 0 });   // V9.31
 
         // Knockback always travels AWAY from the Zombie. Avoid repeated
         // full-distance corner shoves that can make the encounter unreadable.
@@ -3084,8 +3086,34 @@ export function createLevel1(ui) {
     // ------------------------------------------------------------------
     let patStage = 1, patCheckpoint = false, patStep = 0, patFace = 'left', patHitsDone = 0, patDoneOnce = false;
     let patVanishX = 0, patPlayerNoteAt = 0;
+    // ---- V9.31: Patricia's voice lines. One voice at a time (a line never talks over another); attack grunts give way to lines. ----
+    // Line -> length in ms. Which moment plays which line is decided in patSay(...) calls below (search "patSay").
+    const PAT_VOICE_MS = { 'hey': 630, 'ugh-stop-it': 2010, 'nice-try': 1930, 'nice-try-cutie': 2530, 'who-do-you': 2900, 'pay-for-that': 2900, 'not-funny': 2200, 'kill-you': 5040, 'trying-hard': 2430,
+        'grunt-1': 290, 'grunt-3': 620, 'grunt-4': 240, 'grunt-5': 890, 'grunt-6': 310, 'grunt-7': 410, 'grunt-8': 430, 'grunt-9': 1010 };
+    const PAT_GRUNTS = ['grunt-1', 'grunt-3', 'grunt-4', 'grunt-5', 'grunt-6', 'grunt-7', 'grunt-8', 'grunt-9'];
+    let patVoiceUntil = 0, patVoiceLast = {}, patVoiceOnce = {}, patLastGrunt = '';
+    function patVoiceReset() { patVoiceUntil = 0; patVoiceLast = {}; patVoiceOnce = {}; patLastGrunt = ''; preloadSfx(Object.keys(PAT_VOICE_MS).map(n => 'patricia-' + n)); }
+    // opts: cd = min ms before the SAME line repeats, chance = 0..1, once = key (only ever plays once per fight), gap = quiet ms needed after the previous voice
+    function patSay(name, opts = {}) {
+        if (!isPatriciaFight() || zombieDeathStarted || playerDeathTriggered || patSpeech || (typeof prefight !== 'undefined' && prefight && !prefight.ready)) return false;
+        const nowMs = gnow();
+        if (opts.once && patVoiceOnce[opts.once]) return false;
+        if (nowMs < patVoiceUntil + (opts.gap ?? 500)) return false;
+        if (opts.cd && nowMs - (patVoiceLast[name] || -1e9) < opts.cd) return false;
+        if (opts.chance !== undefined && Math.random() > opts.chance) return false;
+        if (opts.once) patVoiceOnce[opts.once] = 1;
+        patVoiceLast[name] = nowMs; patVoiceUntil = nowMs + (PAT_VOICE_MS[name] || 1500);
+        playSfx('patricia-' + name, 1);
+        return true;
+    }
+    function patGrunt() {
+        if (!isPatriciaFight() || zombieDeathStarted || gnow() < patVoiceUntil) return;
+        let g; do { g = PAT_GRUNTS[Math.floor(Math.random() * PAT_GRUNTS.length)]; } while (g === patLastGrunt && PAT_GRUNTS.length > 1);
+        patLastGrunt = g; patVoiceUntil = gnow() + PAT_VOICE_MS[g]; playSfx('patricia-' + g, .95);
+    }
     function initPatricia(resume) {
         loadPatriciaAssets();
+        patVoiceReset();
         patStage = resume ? 2 : 1;
         patStep = 0; patFace = 'left'; patHitsDone = 0; patDoneOnce = false;
         zombieCombatX = COMBAT_W - 320;
@@ -3110,6 +3138,7 @@ export function createLevel1(ui) {
     }
     function patSide() { return player.x >= zombieCombatX ? 1 : -1; }
     function patBeginAttack(kind, nowMs) {
+        if (kind !== 'vanish') patGrunt();   // V9.31: an effort grunt as she starts each attack
         patFace = patSide() < 0 ? 'left' : 'right';
         patHitsDone = 0;
         zombieCombatAttackHit = false;
@@ -3155,6 +3184,10 @@ export function createLevel1(ui) {
         // V9.30: no zombie groans for Patricia (her own hurt voice lines are still to come)
         zombieHitFlashUntil = nowMs + 120;
         const st = zombieCombatState;
+        // V9.31 voice: a heavy hit makes her complain; the first one earns "who do you think you are"; light punches only sometimes get a "hey" / "ugh".
+        if (heavy) { if (!patSay('who-do-you', { once: 'firstHeavy', gap: 0 })) patSay('ugh-stop-it', { cd: 9000, gap: 0 }); }
+        else if (combatHp <= PAT_HP * .25) patSay('pay-for-that', { once: 'lowHp', gap: 0 });
+        else patSay(Math.random() < .5 ? 'hey' : 'ugh-stop-it', { cd: 8000, chance: .28 });
         // She shrugs off normal punches; only a Heavy Attack staggers her, and never in the middle of a move.
         if (heavy && (st === 'chase' || st === 'recover' || st === 'ready')) {
             zombieCombatState = 'phurt';
@@ -3207,6 +3240,7 @@ export function createLevel1(ui) {
         if (patStage === 1 && combatHp <= PAT_STAGE2_HP && combatHp > 0 && (st === 'chase' || st === 'recover' || st === 'ready')) {
             patStage = 2; patCheckpoint = true; patStep = 0;
             zombieCombatState = 'stage2'; zombieCombatStateStart = nowMs; enemyAttackPhase = 'hurt';
+            patSay('not-funny', { once: 'stage2', gap: 0 });   // V9.31
             ui.combatStatus.textContent = 'Patricia: "No more Mrs Nice Goth." Stage 2: lightning joins the party.';
             return;
         }
@@ -3937,6 +3971,7 @@ export function createLevel1(ui) {
             triggerZombieHitReaction(nowMs, false, false);
         } else {
             ui.combatStatus.textContent = '👊 Too far. Get closer.';
+            if (isPatriciaFight()) patSay('trying-hard', { cd: 14000, chance: .45 });   // V9.31: his punch missed
             comboCount++;   // a miss still uses up a punch, so you can't spam to dodge the cooldown
         }
 
