@@ -27,7 +27,7 @@ ANIMS = {
     'intro': ('321 fight', list(range(0, 60)), 0.64, STD, 1.0),                 # frames 0-27 build up, 28-59 loop
     'walk':  ('CGwalk2',   list(range(4, 19)), 0.56, STD, 1.0),                 # V9.30: the face-visible side of the walk (frames 4-18, native facing LEFT)
     'swipe': ('chaingothchainswipe', list(range(0, 20)), 0.56, STD, 1.0),       # 0-9 wind-up, 10-19 sweep
-    'death': ('ChainGothDeath3', list(range(7, 29)) + [60], 0.56, STD, 1.0),   # V9.24: 8-25 hit + fall, 60 = lying on the floor
+    'death': ('ChainGothDeathNew', list(range(0, 61)), 0.56, (540, 773), 1.333),   # V9.39: her new death (1080 canvas): hangs in the air, drops to her knees, falls (all 61 frames)
     'spin':  ('chainspinattack', list(range(0, 25, 2)) + list(range(25, 61)), 0.56, (539.5, 730), 1.634),   # 13 wind-up frames, then 36 spin frames
     'stun':  ('ChainGothStunned', list(range(0, 61)), 0.56, (750, 971), 1.163),
     'hurt':  ('HurtReactionChainGoth', list(range(0, 47)), 0.56, STD, 1.0),
@@ -40,6 +40,7 @@ def pack(repo, name, folder, frames, ATLAS_SCALE, anchor=ANCHOR, unit=1.0):
         src_dir = os.environ['CHAIN_SLAM_DIR']; pat = 'f%03d.png'
     else:
         src_dir = os.path.join(repo, 'assets/characters/combat', folder, 'frames'); pat = 'frame_%04d.png'
+        if not os.path.isdir(src_dir): src_dir = os.path.join(repo, 'assets/characters/combat', folder)   # V9.39: ChainGothDeathNew has no frames/ subfolder
     tiles = []
     for n in frames:
         im = Image.open(os.path.join(src_dir, pat % n)).convert('RGBA')

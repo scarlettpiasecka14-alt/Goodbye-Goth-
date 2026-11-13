@@ -6,20 +6,22 @@ usage: build_patricia_assets.py <repo_root> [name ...]"""
 import sys, os, json
 from PIL import Image
 ANCHOR = (760, 999)     # feet position (source px) shared by all of her clips
-SCALE = 0.66            # = size she is drawn at in the arena (no resampling)
+SCALE = 0.66            # default atlas scale (the arena draws her at 0.66 x her pack factor)
 R = lambda a, b, s=1: list(range(a, b, s))
+# V9.39: (folder, frames, atlas scale). Frames are now (nearly) every video frame so she plays at the speed of your preview; the atlas is stored at a higher
+# resolution than the arena draws it, so on a big/retina screen she is sharp. (video is 24 fps: step 1 = 41.7 ms per frame)
 ANIMS = {
-    'walk':      ('walk', R(32, 61, 2)),
-    'idle':      ('321fight', R(0, 61, 3)),
-    'lunge':     ('SwordSwipe', R(0, 37, 3) + R(37, 61)),
-    'combo':     ('Swordcombo', R(0, 61, 2)),
-    'lightning': ('Lightningstrike', R(0, 28, 3) + R(28, 61, 4)),
-    'smoke':     ('Purplesmoke', R(0, 61, 3)),
-    'hurt':      ('hurtand recover', R(0, 41, 2)),
-    'defeat':    ('Salvagable?', R(0, 61, 2)),
+    'walk':      ('walk', R(32, 61), 0.9),
+    'idle':      ('321fight', R(0, 61, 2), 0.9),
+    'lunge':     ('SwordSwipe', R(0, 61), 0.8),
+    'combo':     ('Swordcombo', R(0, 61), 0.8),
+    'lightning': ('Lightningstrike', R(0, 61, 2), 0.56),
+    'smoke':     ('Purplesmoke', R(0, 61, 3), 0.66),
+    'hurt':      ('hurtand recover', R(0, 41), 0.9),
+    'defeat':    ('Salvagable?', R(0, 61, 2), 0.8),
 }
 MAX_W = 4096
-def pack(repo, name, folder, frames):
+def pack(repo, name, folder, frames, SCALE):
     src = os.path.join(repo, 'assets/characters/patricia', folder)
     tiles = []
     for n in frames:
@@ -46,8 +48,8 @@ def pack(repo, name, folder, frames):
 if __name__ == '__main__':
     repo = sys.argv[1]; names = sys.argv[2:] or list(ANIMS); res = {}
     for n in names:
-        folder, frames = ANIMS[n]
-        out, size, table = pack(repo, n, folder, frames)
+        folder, frames, sc = ANIMS[n]
+        out, size, table = pack(repo, n, folder, frames, sc)
         print('%-9s %2d frames atlas %dx%d (%.1f Mpx) %.0f KB' % (n, len(frames), size[0], size[1], size[0]*size[1]/1e6, os.path.getsize(out)/1024), file=sys.stderr)
-        res[n] = {'size': list(size), 'scale': SCALE, 'frames': table}
+        res[n] = {'size': list(size), 'scale': sc, 'frames': table}
     print(json.dumps(res, separators=(',', ':')))
