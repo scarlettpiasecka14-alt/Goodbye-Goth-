@@ -368,13 +368,15 @@ function loadPatriciaAssets() {
     }
 }
 const PAT_SCALE = 0.66;               // = the atlas scale, so she is never resampled
-const PAT_STAND_OFF = 215, PAT_CHASE_SPEED = 165;
+const PAT_STAND_OFF = 215, PAT_CHASE_SPEED = 140;
+// V9.34: her clips were generated separately, so she was a different size in each. These multipliers (measured head-to-feet against the idle clip) make her the same size in every move.
+const PAT_PACK_K = { walk: .885, combo: 1.1 };
 const PAT_HP = 300, PAT_STAGE2_HP = 150;
 const PAT_FLOOR_SHIFT = 105;   // V9.31: Patricia's arena floor is lower than the Level 1 arena, so both fighters were floating; everything is drawn this far lower there
 const PAT_OLLY_SCALE = 0.8;   // V9.30: Olly was too big next to her
 // V9.31: Patricia's clips are 24 fps video (41.7 ms per source frame). The V9.25 timings below assumed ~31 fps (some moves 2x), so every move played far too fast.
 // Every number here is now source-frames x 41.7 ms, so she moves exactly as in the clips.
-const PAT_WALK_FRAME_MS = 83, PAT_IDLE_FRAME_MS = 125;
+const PAT_WALK_FRAME_MS = 105, PAT_IDLE_FRAME_MS = 125;
 const PAT_LUNGE_WINDUP_FRAMES = 13, PAT_LUNGE_WINDUP_MS = 1500, PAT_LUNGE_STRIKE_FRAMES = 24, PAT_LUNGE_FRAME_MS = 42, PAT_LUNGE_HIT_AT_MS = 290;
 const PAT_LUNGE_DAMAGE = 12, PAT_LUNGE_RANGE = 360, PAT_LUNGE_PUSH = 36;
 const PAT_COMBO_WINDUP_MS = 700, PAT_COMBO_FRAME_MS = 83, PAT_COMBO_FRAMES = 31, PAT_COMBO_HITS_AT_MS = [664, 1328, 2325];
@@ -383,6 +385,8 @@ const PAT_SMOKE_FRAME_MS = 125, PAT_SMOKE_FRAMES = 21, PAT_SMOKE_GONE_AT_MS = 11
 const PAT_VSTRIKE_APPEAR_MS = 600, PAT_VSTRIKE_DAMAGE = 15;
 const PAT_LIGHT_WINDUP_FRAMES = 10, PAT_LIGHT_WINDUP_MS = 1170, PAT_LIGHT_FRAMES = 9, PAT_LIGHT_FRAME_MS = 167;
 const PAT_LIGHT_DAMAGE = 25, PAT_LIGHT_RANGE = 560;
+// V9.34: the lightning clip ends with her floating, so the discharge frames now loop for a while, then she settles back down (windup frames played in reverse).
+const PAT_LIGHT_LOOP_MS = 1100, PAT_LIGHT_LOOP_FRAME_MS = 95, PAT_LIGHT_SETTLE_MS = 480, PAT_LIGHT_HIT_WINDOW_MS = 620;
 const PAT_HURT_FRAMES = 13, PAT_HURT_MS = 1700;
 const PAT_DEFEAT_FRAMES = 31, PAT_DEFEAT_FRAME_MS = 83, PAT_DEFEAT_HOLD_MS = 1600;
 const PAT_PATTERN_1 = ['lunge', 'combo', 'vanish', 'combo', 'lunge'];
@@ -1610,8 +1614,17 @@ export function createLevel1(ui) {
         };
         mode = 'encounter';
         ui.encounterImage.src = data.image;
+        // V9.34: the Would You screen already says "relationship challenge" in the picture, so the big title is hidden and the first line is just a bit bigger.
+        const relEnc = kind === 'relationshipChallenge';
+        ui.encounter.classList.toggle('enc-rel', relEnc);
         ui.encounterName.textContent = data.name;
-        ui.encounterText.textContent = data.text;
+        ui.encounterName.style.display = relEnc ? 'none' : '';
+        if (relEnc && data.text.includes('\n')) {
+            const cut = data.text.indexOf('\n');
+            ui.encounterText.textContent = '';
+            const lead = document.createElement('span'); lead.className = 'enc-lead'; lead.textContent = data.text.slice(0, cut);
+            ui.encounterText.append(lead, document.createTextNode(data.text.slice(cut + 1)));
+        } else ui.encounterText.textContent = data.text;
         if (ui.encounterReady) {
             ui.encounterReady.textContent = 'I\'M READY';
             ui.encounterReady.classList.remove('hidden');
@@ -2146,13 +2159,12 @@ export function createLevel1(ui) {
         // v7.9: walking frames receive the new enlarged arena render and floor alignment.
 
         if (zombieCombatState === 'intro') {
-            frames = zombieCombatFrames.prep;
-            // v8.9: non-walk/non-attack animation pass is 20% larger.
-            targetHeight = 400;
+            frames = zombieCombatFrames.claw;   // V9.34: the 3-2-1 now uses her claw-swipe frames, spread slowly over the countdown (the old freeze was too quick)
+            targetHeight = 315;
             // V9.24: the new 61-frame 3-2-1 animation plays once across the countdown, then holds its last pose.
             {   // V9.30: only the calm first part of the clip is used (the later frames shuffle her feet on the spot, which looked like a treadmill)
                 const e = Math.max(0, elapsed);
-                index = Math.min(15, Math.floor(e / 70));   // V9.31: she moves once, then freezes in her attack-ready pose (no more loop / glitch)
+                index = Math.min(frames.length - 1, Math.floor(e / (ZOMBIE_INTRO_TOTAL_MS * .19)));
             }
         } else if (zombieCombatState === 'chase') {
             frames = zombieCombatFrames.walk;
@@ -2243,9 +2255,9 @@ export function createLevel1(ui) {
         // Scales were matched by the size of her hair bow across the walk, crouch, claw and bite art.
         let scale = 0;
         if (zombieCombatState === 'chase' || zombieCombatState === 'recover') scale = .4595;   // V9.30: original walk art scale
-        else if (zombieCombatState === 'claw') scale = .62;
+        else if (zombieCombatState === 'claw' || zombieCombatState === 'intro') scale = .62;
         else if (zombieCombatState === 'heavyKick') scale = .62;
-        else if (zombieCombatState === 'intro' || zombieCombatState === 'ready' || zombieCombatState === 'windup' || zombieCombatState === 'death' || zombieCombatState === 'hit') scale = 1;   // V9.24 frames are pre-scaled
+        else if (zombieCombatState === 'ready' || zombieCombatState === 'windup' || zombieCombatState === 'death' || zombieCombatState === 'hit') scale = 1;   // V9.24 frames are pre-scaled
         return { img: frames[index], targetHeight, frameIndex: index, scale };
     }
 
@@ -2637,7 +2649,7 @@ export function createLevel1(ui) {
         const dodging = !ignoreDodge && player.invuln > nowMs;
         if (horizontalDistance > range || airborne || dodging) {
             ui.combatStatus.textContent = `↪ ${attackName} missed!`;
-            if (isPatriciaFight() && (airborne || dodging)) patSay(Math.random() < .5 ? 'nice-try' : 'nice-try-cutie', { cd: 6000, chance: .7 });   // V9.31: Olly dodged / jumped her attack
+            if (isPatriciaFight() && (airborne || dodging)) patSay(Math.random() < .5 ? 'nice-try' : 'nice-try-cutie', { cd: 7000, chance: .9, gap: 0 });   // V9.31: Olly dodged / jumped her attack
             return;
         }
         if (cheatGod) {
@@ -3085,31 +3097,31 @@ export function createLevel1(ui) {
     // she reappears on the other side of Olly), LIGHTNING SLAM (yellow: only jumping avoids it). Stage 2 adds lightning.
     // ------------------------------------------------------------------
     let patStage = 1, patCheckpoint = false, patStep = 0, patFace = 'left', patHitsDone = 0, patDoneOnce = false;
-    let patVanishX = 0, patPlayerNoteAt = 0;
+    let patVanishX = 0, patPlayerNoteAt = 0, patLastHurtGrunt = -1e9, patMoving = false, patMoveUntil = 0;
     // ---- V9.31: Patricia's voice lines. One voice at a time (a line never talks over another); attack grunts give way to lines. ----
     // Line -> length in ms. Which moment plays which line is decided in patSay(...) calls below (search "patSay").
     const PAT_VOICE_MS = { 'hey': 630, 'ugh-stop-it': 2010, 'nice-try': 1930, 'nice-try-cutie': 2530, 'who-do-you': 2900, 'pay-for-that': 2900, 'not-funny': 2200, 'kill-you': 5040, 'trying-hard': 2430,
         'grunt-1': 290, 'grunt-3': 620, 'grunt-4': 240, 'grunt-5': 890, 'grunt-6': 310, 'grunt-7': 410, 'grunt-8': 430, 'grunt-9': 1010 };
     const PAT_GRUNTS = ['grunt-1', 'grunt-3', 'grunt-4', 'grunt-5', 'grunt-6', 'grunt-7', 'grunt-8', 'grunt-9'];
-    let patVoiceUntil = 0, patVoiceLast = {}, patVoiceOnce = {}, patLastGrunt = '';
-    function patVoiceReset() { patVoiceUntil = 0; patVoiceLast = {}; patVoiceOnce = {}; patLastGrunt = ''; preloadSfx(Object.keys(PAT_VOICE_MS).map(n => 'patricia-' + n)); }
+    let patVoiceUntil = 0, patVoiceLast = {}, patVoiceOnce = {}, patLastGrunt = '', patVoiceIsGrunt = false, patLastAnyLine = 0, patStage2At = -1e9;
+    function patVoiceReset() { patVoiceUntil = 0; patVoiceLast = {}; patVoiceOnce = {}; patLastGrunt = ''; patVoiceIsGrunt = false; patLastAnyLine = gnow(); patStage2At = -1e9; preloadSfx(Object.keys(PAT_VOICE_MS).map(n => 'patricia-' + n)); }
     // opts: cd = min ms before the SAME line repeats, chance = 0..1, once = key (only ever plays once per fight), gap = quiet ms needed after the previous voice
     function patSay(name, opts = {}) {
         if (!isPatriciaFight() || zombieDeathStarted || playerDeathTriggered || patSpeech || (typeof prefight !== 'undefined' && prefight && !prefight.ready)) return false;
         const nowMs = gnow();
         if (opts.once && patVoiceOnce[opts.once]) return false;
-        if (nowMs < patVoiceUntil + (opts.gap ?? 500)) return false;
+        if (nowMs < patVoiceUntil + (opts.gap ?? 500) && !(patVoiceIsGrunt && !PAT_GRUNTS.includes(name))) return false;   // a real line may cut off an attack grunt
         if (opts.cd && nowMs - (patVoiceLast[name] || -1e9) < opts.cd) return false;
         if (opts.chance !== undefined && Math.random() > opts.chance) return false;
         if (opts.once) patVoiceOnce[opts.once] = 1;
-        patVoiceLast[name] = nowMs; patVoiceUntil = nowMs + (PAT_VOICE_MS[name] || 1500);
+        patVoiceLast[name] = nowMs; patVoiceUntil = nowMs + (PAT_VOICE_MS[name] || 1500); patVoiceIsGrunt = false; patLastAnyLine = nowMs;
         playSfx('patricia-' + name, 1);
         return true;
     }
     function patGrunt() {
         if (!isPatriciaFight() || zombieDeathStarted || gnow() < patVoiceUntil) return;
         let g; do { g = PAT_GRUNTS[Math.floor(Math.random() * PAT_GRUNTS.length)]; } while (g === patLastGrunt && PAT_GRUNTS.length > 1);
-        patLastGrunt = g; patVoiceUntil = gnow() + PAT_VOICE_MS[g]; playSfx('patricia-' + g, .95);
+        patLastGrunt = g; patVoiceUntil = gnow() + PAT_VOICE_MS[g]; patVoiceIsGrunt = true; playSfx('patricia-' + g, .95);
     }
     function initPatricia(resume) {
         loadPatriciaAssets();
@@ -3159,7 +3171,8 @@ export function createLevel1(ui) {
             ui.combatStatus.textContent = 'Lightning! The whole floor is dangerous. JUMP!';
         } else {   // vanish
             zombieCombatState = 'smoke'; queueRingTutorial('pink');
-            patVanishX = Math.max(190, Math.min(COMBAT_W - 190, player.x - patSide() * 170));
+            patVanishX = Math.max(190, Math.min(COMBAT_W - 190, player.x + patSide() * 210));   // V9.34: the far side of Olly (it was the same side she started on)
+            if (Math.abs(patVanishX - player.x) < 130) patVanishX = Math.max(190, Math.min(COMBAT_W - 190, player.x - patSide() * 320));
             // (no chain noises for Patricia)
             ui.combatStatus.textContent = 'Patricia vanishes in smoke. Watch where she appears!';
         }
@@ -3185,9 +3198,9 @@ export function createLevel1(ui) {
         zombieHitFlashUntil = nowMs + 120;
         const st = zombieCombatState;
         // V9.31 voice: a heavy hit makes her complain; the first one earns "who do you think you are"; light punches only sometimes get a "hey" / "ugh".
-        if (heavy) { if (!patSay('who-do-you', { once: 'firstHeavy', gap: 0 })) patSay('ugh-stop-it', { cd: 9000, gap: 0 }); }
-        else if (combatHp <= PAT_HP * .25) patSay('pay-for-that', { once: 'lowHp', gap: 0 });
-        else patSay(Math.random() < .5 ? 'hey' : 'ugh-stop-it', { cd: 8000, chance: .28 });
+        if (heavy) { if (!patSay('who-do-you', { once: 'firstHeavy', gap: 0 }) && !patSay('ugh-stop-it', { cd: 9000, gap: 0 })) { patVoiceUntil = 0; patGrunt(); } }   // a Heavy hit always gets a sound
+        else if (combatHp <= PAT_HP * .25 && patSay('pay-for-that', { once: 'lowHp', gap: 0 })) { }
+        else if (!patSay(Math.random() < .5 ? 'hey' : 'ugh-stop-it', { cd: 7000, chance: .4 })) { if (Math.random() < .4 && nowMs - patLastHurtGrunt > 1300) { patLastHurtGrunt = nowMs; patGrunt(); } }
         // She shrugs off normal punches; only a Heavy Attack staggers her, and never in the middle of a move.
         if (heavy && (st === 'chase' || st === 'recover' || st === 'ready')) {
             zombieCombatState = 'phurt';
@@ -3240,19 +3253,25 @@ export function createLevel1(ui) {
         if (patStage === 1 && combatHp <= PAT_STAGE2_HP && combatHp > 0 && (st === 'chase' || st === 'recover' || st === 'ready')) {
             patStage = 2; patCheckpoint = true; patStep = 0;
             zombieCombatState = 'stage2'; zombieCombatStateStart = nowMs; enemyAttackPhase = 'hurt';
-            patSay('not-funny', { once: 'stage2', gap: 0 });   // V9.31
-            ui.combatStatus.textContent = 'Patricia: "No more Mrs Nice Goth." Stage 2: lightning joins the party.';
+            patStage2At = nowMs; patSay('not-funny', { once: 'stage2', gap: 0 });   // V9.31
+            ui.combatStatus.textContent = 'HALF HEALTH! Patricia is furious: she is faster now and lightning joins the party.';
+            try { ui.enemyHp.style.background = 'linear-gradient(90deg,#8e1230,#ff3d6e)'; ui.enemyHp.parentElement.classList.add('pat-enraged'); } catch (e) {}
             return;
         }
 
         if (st === 'chase' || st === 'recover' || st === 'ready') {
-            const desiredX = player.x - toward * PAT_STAND_OFF;
-            const step = Math.min(Math.abs(desiredX - zombieCombatX), PAT_CHASE_SPEED * (patStage === 2 ? 1.15 : 1) * dt);
-            if (step > .5) {
-                zombieCombatX += (desiredX >= zombieCombatX ? 1 : -1) * step;
-                zombieCombatX = Math.max(170, Math.min(COMBAT_W - 170, zombieCombatX));
-                zombieCombatWalkIndex += dt * 1000;
+            // V9.34: she only ever walks TOWARD Olly (no walking backwards), and only plays the walk while she is really moving (no gliding in the idle pose).
+            const gap = Math.abs(player.x - zombieCombatX);
+            if (gap > PAT_STAND_OFF) {
+                const step = Math.min(gap - PAT_STAND_OFF, PAT_CHASE_SPEED * (patStage === 2 ? 1.15 : 1) * dt);
+                if (step > .3) {
+                    zombieCombatX += toward * step;
+                    zombieCombatX = Math.max(170, Math.min(COMBAT_W - 170, zombieCombatX));
+                    zombieCombatWalkIndex += dt * 1000;
+                    patMoveUntil = nowMs + 140;
+                }
             }
+            patMoving = nowMs < patMoveUntil;
             if (st === 'recover' && elapsed >= zombieRecoveryDuration) {
                 zombieCombatState = 'chase'; zombieCombatStateStart = nowMs;
                 zombieCombatNextDecision = nowMs + (patStage === 2 ? 260 : 520) + Math.random() * 380;
@@ -3318,15 +3337,15 @@ export function createLevel1(ui) {
         }
         if (st === 'lightning') {
             const strikeAt = PAT_LIGHT_WINDUP_MS;
-            if (elapsed >= strikeAt && elapsed < strikeAt + 420 && !zombieCombatAttackHit) {
-                if (elapsed - strikeAt < 40 && patHitsDone === 0) { patHitsDone = 1; playSfx('chain-impact-spin', 1, .7); }
+            if (elapsed >= strikeAt && elapsed < strikeAt + PAT_LIGHT_HIT_WINDOW_MS && !zombieCombatAttackHit) {
+                if (elapsed - strikeAt < 60 && patHitsDone === 0) { patHitsDone = 1; playSfx('chain-impact-spin', 1, .7); }
                 const airborne = jumping || jumpOffset < -20;
                 if (Math.abs(player.x - zombieCombatX) <= PAT_LIGHT_RANGE && !airborne) {
                     zombieCombatAttackHit = true;
                     patDamage(PAT_LIGHT_DAMAGE, 1e5, 44, 'LIGHTNING SLAM', nowMs, true, true);
                 }
             }
-            if (elapsed >= strikeAt + PAT_LIGHT_FRAMES * PAT_LIGHT_FRAME_MS + 150) patToRecover(nowMs, 900);
+            if (elapsed >= strikeAt + PAT_LIGHT_LOOP_MS + PAT_LIGHT_SETTLE_MS) patToRecover(nowMs, 700);
             return;
         }
         // anything unexpected: carry on
@@ -3337,7 +3356,7 @@ export function createLevel1(ui) {
         const st = zombieCombatState;
         const elapsed = Math.max(0, nowMs - zombieCombatStateStart);
         const idleIndex = Math.floor(nowMs / PAT_IDLE_FRAME_MS) % (patAtlas.idle.frames.length);
-        if (st === 'chase' || (st === 'recover' && enemyLeaving)) {
+        if ((st === 'chase' || st === 'recover' || st === 'ready') && patMoving) {
             const n = patAtlas.walk.frames.length;
             return { pack: patAtlas.walk, index: Math.floor(Math.max(0, zombieCombatWalkIndex) / PAT_WALK_FRAME_MS) % n, flipArt: true };
         }
@@ -3364,7 +3383,16 @@ export function createLevel1(ui) {
         if (st === 'lightning') {
             if (elapsed < PAT_LIGHT_WINDUP_MS)
                 return { pack: patAtlas.lightning, index: Math.min(PAT_LIGHT_WINDUP_FRAMES - 1, Math.floor(elapsed / PAT_LIGHT_WINDUP_MS * PAT_LIGHT_WINDUP_FRAMES)) };
-            return { pack: patAtlas.lightning, index: PAT_LIGHT_WINDUP_FRAMES + Math.min(PAT_LIGHT_FRAMES - 1, Math.floor((elapsed - PAT_LIGHT_WINDUP_MS) / PAT_LIGHT_FRAME_MS)) };
+            {   // V9.34: loop the discharge frames (ping-pong 11..18), then settle: the rising frames played backwards
+                const t = elapsed - PAT_LIGHT_WINDUP_MS;
+                if (t < PAT_LIGHT_LOOP_MS) {
+                    const first = 11, n = 8, k = Math.floor(t / PAT_LIGHT_LOOP_FRAME_MS), cyc = (n - 1) * 2;
+                    const m = k % cyc, i = m < n ? m : cyc - m;
+                    return { pack: patAtlas.lightning, index: t < 190 ? PAT_LIGHT_WINDUP_FRAMES + Math.floor(t / 95) : first + i };
+                }
+                const u = Math.min(.999, (t - PAT_LIGHT_LOOP_MS) / PAT_LIGHT_SETTLE_MS);
+                return { pack: patAtlas.lightning, index: 7 - Math.floor(u * 7) };
+            }
         }
         if (st === 'phurt')
             return { pack: patAtlas.hurt, index: Math.min(PAT_HURT_FRAMES - 1, Math.floor(elapsed / PAT_HURT_MS * PAT_HURT_FRAMES)) };
@@ -3408,7 +3436,25 @@ export function createLevel1(ui) {
             drawAttackRing(c, enemyX, CHAIN_FLOOR_Y + 8, PAT_LUNGE_RANGE - 60, 'purple', Math.min(1, t / PAT_VSTRIKE_APPEAR_MS), t >= PAT_VSTRIKE_APPEAR_MS, nowMs);
         }
         // the smoke clip draws her at her starting spot; she is gone from the ground after that, the smoke stays
-        drawChainAtlasFrame(c, frame.pack, frame.index, enemyX, CHAIN_FLOOR_Y, drawFace, PAT_SCALE, alpha, 0, 0);
+        const packName = Object.keys(patAtlas).find(k => patAtlas[k] === frame.pack);
+        drawChainAtlasFrame(c, frame.pack, frame.index, enemyX, CHAIN_FLOOR_Y, drawFace, PAT_SCALE * (PAT_PACK_K[packName] || 1), alpha, 0, 0);
+        // V9.34: where she will step out of the smoke
+        if (st === 'smoke' && nowMs - zombieCombatStateStart > 250) {
+            c.save(); c.font = '800 22px Georgia, serif'; c.textAlign = 'center'; c.fillStyle = '#e8c8ff'; c.strokeStyle = '#2a0f3a'; c.lineWidth = 5;
+            c.strokeText('SHE REAPPEARS HERE', patVanishX, CHAIN_FLOOR_Y - 150); c.fillText('SHE REAPPEARS HERE', patVanishX, CHAIN_FLOOR_Y - 150); c.restore();
+        }
+        // V9.34: HALF HEALTH cue: red flash across the arena + a big banner
+        const s2 = nowMs - patStage2At;
+        if (s2 >= 0 && s2 < 2600) {
+            c.save();
+            c.globalAlpha = Math.max(0, .42 * (1 - s2 / 900)); c.fillStyle = '#ff1f4d'; c.fillRect(0, -PAT_FLOOR_SHIFT - 10, COMBAT_W, 900);
+            c.globalAlpha = Math.min(1, s2 / 150) * Math.min(1, (2600 - s2) / 500);
+            c.textAlign = 'center'; c.font = '900 76px Georgia, serif'; c.lineWidth = 10; c.strokeStyle = '#2a0610'; c.fillStyle = '#ff5a86';
+            c.strokeText('HALF HEALTH!', COMBAT_W / 2, 250 - PAT_FLOOR_SHIFT); c.fillText('HALF HEALTH!', COMBAT_W / 2, 250 - PAT_FLOOR_SHIFT);
+            c.font = '700 34px Georgia, serif'; c.lineWidth = 6; c.fillStyle = '#ffd6e2';
+            c.strokeText('Patricia is angry: faster, with lightning', COMBAT_W / 2, 300 - PAT_FLOOR_SHIFT); c.fillText('Patricia is angry: faster, with lightning', COMBAT_W / 2, 300 - PAT_FLOOR_SHIFT);
+            c.restore();
+        }
         if (patSpeech) drawSpeechBubble(c, enemyX - 20, 178, patSpeech.text, nowMs - patSpeech.start, -250);   // bubble sits beside her head so it never covers her HP box
     }
     // V9.30: comic speech bubble above a character's head (tail points down at (x, tipY)).
@@ -3858,6 +3904,12 @@ export function createLevel1(ui) {
             chainStunLastHit = -1e9;
         }
         ui.combatName.textContent = bossFight ? 'PATRICIA • THE CLASSIC GOTH' : target?.name || 'ZOMBIE GOTH';
+        try {   // V9.34: a marker at 50% on Patricia's bar so the half-health point is visible
+            const bar = ui.enemyHp.parentElement; bar.style.position = 'relative'; bar.classList.remove('pat-enraged'); ui.enemyHp.style.background = '';
+            bar.querySelectorAll('.pat-half-tick').forEach(n => n.remove());
+            if (bossFight && !resume) { const t = document.createElement('div'); t.className = 'pat-half-tick'; t.style.cssText = 'position:absolute;left:50%;top:-2px;bottom:-2px;width:3px;margin-left:-1px;background:#fff;box-shadow:0 0 6px #fff;pointer-events:none;z-index:2'; bar.appendChild(t); }
+            else if (bossFight && resume) { ui.enemyHp.style.background = 'linear-gradient(90deg,#8e1230,#ff3d6e)'; }
+        } catch (e) {}
         ui.enemyHp.style.width = (combatHp / combatMax * 100) + '%';
         ui.enemyStunWrap.classList.toggle('hidden', target?.type !== 'chain');
         ui.enemyStun.style.width = '0%'; stunMeterW = ''; stunMeterFull = null;
@@ -3971,7 +4023,7 @@ export function createLevel1(ui) {
             triggerZombieHitReaction(nowMs, false, false);
         } else {
             ui.combatStatus.textContent = '👊 Too far. Get closer.';
-            if (isPatriciaFight()) patSay('trying-hard', { cd: 14000, chance: .45 });   // V9.31: his punch missed
+            if (isPatriciaFight()) patSay('trying-hard', { cd: 12000, chance: .6 });   // V9.31: his punch missed
             comboCount++;   // a miss still uses up a punch, so you can't spam to dodge the cooldown
         }
 
@@ -4636,16 +4688,40 @@ export function createLevel1(ui) {
         setGod: v => { cheatGod = !!v; },
         refillHp: () => { hp = maxHp; stats(); },
         unlockHeavy: () => { heavyUnlocked = true; stats(); },
+        inFight: () => mode === 'combat' && !playerDeathTriggered,
         winFight: () => {
-            if (mode !== 'combat' || playerDeathTriggered) return;
+            if (mode !== 'combat' || playerDeathTriggered) return false;
             const nowMs = gnow();
             combatHp = 0;
             ui.enemyHp.style.width = '0%';
             ui.enemyHpText.textContent = `0 / ${combatMax}`;
-            if (target?.type === 'shambler') triggerZombieDeath(nowMs);
+            if (isPatriciaFight()) { prefightToken++; prefight = null; prefightHold = false; zombieIntroActive = false; patSpeech = null; triggerPatriciaDefeat(nowMs); }
+            else if (target?.type === 'shambler') triggerZombieDeath(nowMs);
             else if (isChainFight()) triggerChainDeath(nowMs);
             else setTimeout(() => endCombat(true), 180);
-        }
+            return true;
+        },
+        // V9.32: knock Olly out (shows the KNOCKED OUT screen)
+        loseFight: () => {
+            if (mode !== 'combat' || playerDeathTriggered) return false;
+            if (isPatriciaFight()) { prefightToken++; prefight = null; prefightHold = false; zombieIntroActive = false; patSpeech = null; }
+            hp = 0; stats(); triggerPlayerKO(gnow());
+            return true;
+        },
+        // V9.32: start a fight straight from the map. kind: 'zombie' | 'chain' | 'patricia'. skipIntro (Patricia only) = no speech / potion scene.
+        startFight: (kind, skipIntro = false) => {
+            if (mode === 'bossintro' && kind === 'patricia') { startBoss(); }
+            else if (mode !== 'map') return false;
+            else if (kind === 'patricia') { startBoss(); }
+            else {
+                target = enemies[kind === 'zombie' ? 0 : 1];
+                combatCheckpoint = { x, y };
+                startCombat(false);
+            }
+            if (kind === 'patricia' && skipIntro) { prefightToken++; prefight = null; prefightHold = false; zombieIntroActive = false; patSpeech = null; zombieCombatState = 'chase'; zombieCombatStateStart = gnow(); zombieCombatNextDecision = gnow() + 300; ui.combatStatus.textContent = ''; setBagGlow(false); }
+            return true;
+        },
+        mode: () => mode
     };
 
     return {

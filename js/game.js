@@ -309,9 +309,9 @@ function mountLevel1(loadSaved=false){
         <div class="ironic-copy">Sometimes princesses have far too much going on in their heads to get their words out right. In cases like these one can either 1. try to be helpful or 2. take the piss. You chose the latter. Press WOULD YOU? at the correct time to complete the puzzle.</div>
         <div class="timing-track"><div id="timing-zone" class="timing-zone"></div><div id="timing-cursor" class="timing-cursor"></div></div>
         <div id="would-display" class="minigame-display">“Can I ask you a question... have you ever...”</div>
-        <div id="would-pips" class="would-pips" aria-label="Rounds completed"></div>
         <button id="would-tap" class="primary timing-button">WOULD YOU?</button>
         <p id="would-feedback" class="small">Listen for the phrase. The timing gets quicker each round.</p>
+        <div id="would-pips" class="would-pips" aria-label="Rounds completed"></div>
       </div></div>
 
       <div id="puzzle" class="overlay hidden"><div class="overlay-box center quiz-box">

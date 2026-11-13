@@ -47,12 +47,13 @@ export function playSfx(name, gain = 1, rate = 1) {
     const v = Math.max(0, Math.min(1, vol.master * vol.sfx * gain));
     if (v <= 0) return;
     const c = getCtx();
-    if (c && buffers[name]) {
+    // V9.34: if Safari has left the audio engine suspended, play the plain <audio> way instead of queueing silently.
+    if (c && buffers[name] && (c.state === 'running' || held)) {
         wake();
         const src = c.createBufferSource(), g = c.createGain();
         src.buffer = buffers[name]; src.playbackRate.value = rate; g.gain.value = v;
         src.connect(g); g.connect(sfxGain); src.start(0);
-    } else { loadBuffer(name); fallbackPlay(name, v); }
+    } else { if (c && c.state !== 'running') wake(); loadBuffer(name); fallbackPlay(name, v); }
 }
 export function playRandomSfx(names, gain = 1) { playSfx(names[Math.floor(Math.random() * names.length)], gain); }
 export function preloadSfx(names) { names.forEach(loadBuffer); }
@@ -65,7 +66,7 @@ const MUSIC = {
     menu: ['Menu.mp3'],
     map: ['BackgroundMusicTrack1.mp3', 'BackgroundTrack2.mp3', 'BackgroundTrack3.mp3', 'BackgroundTrack4.mp3'],
     fight: ['FightMusic1.mp3', 'FightMusic2.mp3'],
-    boss: ['PatriciaBoss.mp3', 'FightMusic1.mp3', 'FightMusic2.mp3']   // V9.30: put Patricia's own track at assets/audio/music/PatriciaBoss.mp3 (until it exists the normal fight music plays)
+    boss: ['BossFight1.mp3', 'FightMusic1.mp3', 'FightMusic2.mp3']   // V9.34: Patricia's fight starts with BossFight1, then alternates the two fight tracks
 };
 let musicEl = null, musicName = '', wantMusic = '', fadeTimer = null, musicToken = 0;
 function musicTarget() { return Math.max(0, Math.min(1, vol.master * vol.music)); }
@@ -77,12 +78,13 @@ function fadeTo(el, to, ms, done) {
         if (i >= steps) { clearInterval(fadeTimer); if (done) done(); }
     }, 50);
 }
+function nextIdx(name, list, i) { const n = (i + 1) % list.length; return (name === 'boss' && n === 0) ? 1 : n; }   // boss: the opening track plays once, then the two fight tracks alternate
 function startTrack(name, token, list, i) {
     if (token !== musicToken) return;
     const el = new Audio(`assets/audio/music/${list[i]}`);
     el.loop = list.length === 1; el.volume = 0; el.preload = 'auto';
-    el.addEventListener('ended', () => { if (token === musicToken && list.length > 1) { musicEl = null; startTrack(name, token, list, (i + 1) % list.length); } });
-    el.addEventListener('error', () => { if (token === musicToken && list.length > 1) startTrack(name, token, list, (i + 1) % list.length); });
+    el.addEventListener('ended', () => { if (token === musicToken && list.length > 1) { musicEl = null; startTrack(name, token, list, nextIdx(name, list, i)); } });
+    el.addEventListener('error', () => { if (token === musicToken && list.length > 1) startTrack(name, token, list, nextIdx(name, list, i)); });
     el.play().then(() => { if (token !== musicToken) { el.pause(); return; } musicEl = el; musicName = name; fadeTo(el, musicTarget(), 900); }).catch(() => {});
 }
 /* playMusic('menu' | 'map' | 'fight' | '') - '' stops the music. Browsers only allow sound after a click/tap, so this retries on the next one. */
@@ -94,7 +96,7 @@ export function playMusic(name, fadeMs = 500) {
         if (token !== musicToken) return;
         const list = MUSIC[name];
         if (!name || !list) { musicName = ''; return; }
-        const first = list.length > 1 ? Math.floor(Math.random() * list.length) : 0;
+        const first = name === 'boss' ? 0 : (list.length > 1 ? Math.floor(Math.random() * list.length) : 0);
         startTrack(name, token, list, first);
     };
     if (musicEl) {

@@ -139,6 +139,7 @@ export function initSettings() {
     window.addEventListener('keydown', ev => {
         if (ev.ctrlKey || ev.metaKey || ev.altKey || ev.repeat) return;
         if (ev.key !== 'o' && ev.key !== 'O') return;
+        if (ev.target && /^(INPUT|TEXTAREA)$/.test(ev.target.tagName) && ev.target.type !== 'checkbox' && ev.target.type !== 'range') return;   // V9.32: typing a cheat code must not open Settings
         if (overlay.classList.contains('open')) { if (!overlay.querySelector('.gg-slot.listening')) closeSettings(); return; }
         openSettings();
     }, true);
