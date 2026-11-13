@@ -894,3 +894,177 @@ body.gg-calm *, body.gg-calm *::before, body.gg-calm *::after { animation-durati
   #inventory .inventory-box { padding: 66px 22px 22px !important; border-radius: 120px 120px 28px 28px / 90px 90px 28px 28px !important; }
   #inventory .inventory-box::before { border-radius: 108px 108px 20px 20px / 80px 80px 20px 20px; inset: 11px; }
 }
+
+/* V9.42: the chest reward pop-up reuses the bag look */
+/* Follow-up polish: larger artwork (about 10% more vertical room) and a proper inventory grid. */
+#pat-reward-overlay .inventory-box {
+  width: min(900px, 94vw) !important;
+  max-width: 900px !important;
+  max-height: calc(100dvh - 36px) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  padding: clamp(18px, 2.6vw, 32px) !important;
+  background: #201822 !important;
+  border: 1px solid #684c61 !important;
+  border-radius: 16px !important;
+  box-shadow: 0 18px 55px rgba(0, 0, 0, .38) !important;
+}
+
+#pat-reward-overlay .inventory-kicker {
+  margin-bottom: 3px !important;
+  color: #c1aebb !important;
+  font-size: clamp(.78rem, 1.2vw, .95rem) !important;
+  letter-spacing: .12em !important;
+}
+
+#pat-reward-overlay .inventory-box > .story-title {
+  margin: 0 0 5px !important;
+}
+
+#pat-reward-overlay .inventory-capacity {
+  margin: 0 auto 8px !important;
+  color: #f3c6d6 !important;
+  font-size: .95rem !important;
+  font-weight: 700 !important;
+  letter-spacing: .04em !important;
+}
+
+#pat-reward-overlay .inventory-slots {
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: clamp(7px, 1.1vw, 12px) !important;
+  width: min(700px, 100%) !important;
+  margin: 16px auto 14px !important;
+  padding: 0 !important;
+}
+
+#pat-reward-overlay .inventory-slot {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  aspect-ratio: 1 / 1 !important;
+  padding: 5px !important;
+  border: 1px solid #684c61 !important;
+  border-radius: 11px !important;
+  background: linear-gradient(145deg, #2a1f2d 0%, #19121d 100%) !important;
+  color: #897b89 !important;
+  font: 700 clamp(.78rem, 1.3vw, 1rem) Georgia, serif !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .035) !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+#pat-reward-overlay .inventory-slot.inventory-filled {
+  border: 1px solid #ef8eaa !important;
+  background: linear-gradient(145deg, #51283f 0%, #2a1a2d 100%) !important;
+  color: #fff0f6 !important;
+  box-shadow: inset 0 0 0 1px rgba(239, 142, 170, .12), 0 0 16px rgba(239, 142, 170, .09) !important;
+  font-size: clamp(1.5rem, 3vw, 2.25rem) !important;
+}
+
+#pat-reward-overlay .inventory-slot.inventory-filled span {
+  max-width: 100% !important;
+  color: #ffe3ee !important;
+  font: 700 clamp(7px, .75vw, 10px) Georgia, serif !important;
+  line-height: 1.1 !important;
+  text-align: center !important;
+  overflow-wrap: anywhere !important;
+}
+
+#pat-reward-overlay .inventory-empty-copy {
+  margin: 6px auto 14px !important;
+  color: #c1aebb !important;
+  text-align: center !important;
+}
+
+#pat-reward-overlay .inventory-close-button {
+  min-width: 110px !important;
+}
+
+@media (max-width: 700px) {
+  #pat-reward-overlay .inventory-box {
+    width: 96vw !important;
+    padding: 14px !important;
+  }
+
+  #pat-reward-overlay .inventory-slots {
+    gap: 6px !important;
+    margin: 12px auto !important;
+  }
+
+  #pat-reward-overlay .inventory-slot {
+    padding: 3px !important;
+    border-radius: 8px !important;
+  }
+}
+
+
+
+/* ==========================================================================
+   V9.41: the inventory looks like a BACKPACK: domed top with a carry loop, canvas weave,
+   shoulder-strap edges with stitching, and a zipped front pocket that holds the slots.
+   ========================================================================== */
+#pat-reward-overlay .inventory-box {
+  position: relative !important;
+  width: min(860px, 94vw) !important;
+  padding: 74px clamp(40px, 6vw, 64px) 32px !important;
+  border: 3px solid #4a2c3d !important;
+  border-radius: 190px 190px 36px 36px / 130px 130px 36px 36px !important;
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, .022) 0 2px, transparent 2px 6px),
+    repeating-linear-gradient(-45deg, rgba(0, 0, 0, .12) 0 2px, transparent 2px 6px),
+    linear-gradient(180deg, #34202f 0%, #25172a 55%, #1b1220 100%) !important;
+  box-shadow: inset 0 0 0 7px #2b1a28, inset 0 0 0 9px rgba(216, 182, 106, .35), 0 24px 60px rgba(0, 0, 0, .55) !important;
+}
+/* stitched seam just inside the edge */
+#pat-reward-overlay .inventory-box::before {
+  content: "";
+  position: absolute; inset: 15px;
+  border: 2px dashed rgba(239, 142, 170, .38);
+  border-radius: 176px 176px 26px 26px / 118px 118px 26px 26px;
+  pointer-events: none;
+}
+/* carry loop at the top */
+#pat-reward-overlay .inventory-box::after {
+  content: "";
+  position: absolute; left: 50%; top: 10px; transform: translateX(-50%);
+  width: 118px; height: 40px;
+  border: 11px solid #4a2c3d; border-bottom: none;
+  border-radius: 64px 64px 0 0;
+  box-shadow: 0 0 0 2px rgba(216, 182, 106, .3);
+  pointer-events: none;
+}
+/* the slots live in the zipped front pocket */
+#pat-reward-overlay .inventory-slots {
+  position: relative !important;
+  width: min(660px, 100%) !important;
+  margin: 18px auto 14px !important;
+  padding: 26px 18px 18px !important;
+  border: 2px solid #5a3550 !important;
+  border-radius: 20px 20px 28px 28px !important;
+  background: linear-gradient(180deg, rgba(20, 12, 24, .55), rgba(36, 22, 38, .55)) !important;
+  box-shadow: inset 0 3px 8px rgba(0, 0, 0, .45) !important;
+}
+#pat-reward-overlay .inventory-slots::before {   /* zipper */
+  content: "";
+  position: absolute; left: 14px; right: 14px; top: 8px; height: 0;
+  border-top: 4px dashed #d8b66a; opacity: .75;
+}
+#pat-reward-overlay .inventory-slots::after {    /* zip pull */
+  content: "";
+  position: absolute; left: calc(50% - 8px); top: 2px; width: 16px; height: 22px;
+  border-radius: 5px 5px 9px 9px; background: linear-gradient(180deg, #f0d48a, #b78f3d); box-shadow: 0 2px 4px rgba(0, 0, 0, .5);
+}
+@media (max-width: 700px) {
+  #pat-reward-overlay .inventory-box { padding: 66px 22px 22px !important; border-radius: 120px 120px 28px 28px / 90px 90px 28px 28px !important; }
+  #pat-reward-overlay .inventory-box::before { border-radius: 108px 108px 20px 20px / 80px 80px 20px 20px; inset: 11px; }
+}
+
+#pat-reward-overlay .inventory-slots.gg-reward-slots { gap: 14px !important; padding: 30px 18px 20px !important; }
+#pat-reward-overlay .gg-reward { aspect-ratio: auto !important; min-height: 120px !important; }
+#pat-reward-overlay .inventory-close-button, #pat-reward-overlay .gg-reward-done { margin: 6px 8px 0 !important; }

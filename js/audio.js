@@ -93,15 +93,18 @@ function fadeTo(el, to, ms, done) {
     }, 50);
 }
 function nextIdx(name, list, i) { const n = (i + 1) % list.length; return (name === 'boss' && n === 0) ? 1 : n; }   // boss: the opening track plays once, then the two fight tracks alternate
+let startOffset = 0;   // V9.42: playMusicFrom() - start the next track this many seconds in
 function startTrack(name, token, list, i) {
     if (token !== musicToken) return;
     const el = new Audio(`assets/audio/music/${list[i]}`);
+    if (startOffset > 0) { const off = startOffset; startOffset = 0; el.addEventListener('loadedmetadata', () => { try { el.currentTime = off; } catch (e) {} }, { once: true }); }
     el.loop = list.length === 1; el.volume = 0; el.preload = 'auto';
     el.addEventListener('ended', () => { if (token === musicToken && list.length > 1) { musicEl = null; startTrack(name, token, list, nextIdx(name, list, i)); } });
     el.addEventListener('error', () => { if (token === musicToken && list.length > 1) startTrack(name, token, list, nextIdx(name, list, i)); });
     el.play().then(() => { if (token !== musicToken) { el.pause(); return; } musicEl = el; musicName = name; fadeTo(el, musicTarget(), 900); }).catch(() => {});
 }
 /* playMusic('menu' | 'map' | 'fight' | '') - '' stops the music. Browsers only allow sound after a click/tap, so this retries on the next one. */
+export function playMusicFrom(name, seconds, fadeMs = 300) { startOffset = seconds; playMusic(name, fadeMs); }
 export function playMusic(name, fadeMs = 500) {
     wantMusic = name;
     if (name === musicName && musicEl && !musicEl.paused) return;

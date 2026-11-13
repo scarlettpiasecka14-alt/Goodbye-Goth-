@@ -1,6 +1,6 @@
 /* Goodbye Goth V9.4 - Chain Goth fight (AI + all seven animations: intro, walk, swipe, spin, stun, hurt, death) on top of V9.0 map cleanup and the v8.11 Zombie Goth AI. */
-import { playSfx, playRandomSfx, playMusic, preloadSfx, setLoopSfx, setAudioHeld } from '../audio.js?v=9410';
-import { activeKey } from '../saves.js?v=9410';
+import { playSfx, playRandomSfx, playMusic, playMusicFrom, preloadSfx, setLoopSfx, setAudioHeld } from '../audio.js?v=9420';
+import { activeKey } from '../saves.js?v=9420';
 // Game clock: normal time, but it stands still while a tutorial pop-up is open (so nothing happens behind it).
 let pausedTotal = 0, pausedAt = 0;
 const gnow = () => (pausedAt || performance.now()) - pausedTotal;
@@ -115,7 +115,7 @@ function safeParseSave() {
 }
 
 const mapBackground = new Image();
-mapBackground.src = 'assets/environment/level1-map-bg-2x.webp?v=9410';   // V9.30: pre-sharpened 2x version (same picture, twice the pixels)
+mapBackground.src = 'assets/environment/level1-map-bg-2x.webp?v=9420';   // V9.30: pre-sharpened 2x version (same picture, twice the pixels)
 // V9.30: Settings options (window.ggPrefs is created by settings.js)
 const prefOn = k => !(window.ggPrefs && window.ggPrefs[k] === false);
 const SH = a => prefOn('shadows') ? `rgba(0,0,0,${a})` : 'rgba(0,0,0,0)';
@@ -215,8 +215,8 @@ const OLLY_DRAW_FOOT_OFFSET = 62;
 // These shared icon references can be reused by every level. Only the activity
 // behind the role changes from level to level.
 const ICON_LIBRARY = {
-    relationshipChallenge: 'assets/icons/relationship-challenge.webp?v=9410',
-    princessQuestion: 'assets/icons/princess-question.webp?v=9410'
+    relationshipChallenge: 'assets/icons/relationship-challenge.webp?v=9420',
+    princessQuestion: 'assets/icons/princess-question.webp?v=9420'
 };
 const relationshipChallengeIcon = new Image();
 relationshipChallengeIcon.src = ICON_LIBRARY.relationshipChallenge;
@@ -373,7 +373,7 @@ function loadPatriciaAssets() {
     patAssetsRequested = true;
     for (const [name, a] of Object.entries(patAtlas)) {
         const img = a.img;
-        img.src = `assets/characters/patricia/atlas/pat-${name}.webp?v=9410`;
+        img.src = `assets/characters/patricia/atlas/pat-${name}.webp?v=9420`;
         img.decode?.().then(() => {
             if (window.createImageBitmap) createImageBitmap(img).then(bmp => { a.bmp = bmp; }).catch(() => {});
         }).catch(() => {});
@@ -433,9 +433,9 @@ function loadCombatAssets() {
     zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.webp?v=7600`);
     zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i + 1}.webp?v=8600`);
     zombieCombatFrames.heavyKick.forEach((img, i) => img.src = `assets/characters/combat/zombie-ankle-biter-${String(i + 1).padStart(2, '0')}.webp?v=10100`);
-    zombieCombatFrames.hurt.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/hurt-${String(i + 1).padStart(3, '0')}.webp?v=9410`);
+    zombieCombatFrames.hurt.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/hurt-${String(i + 1).padStart(3, '0')}.webp?v=9420`);
     zombieCombatFrames.death.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/death-${String(i + 1).padStart(3, '0')}.webp?v=9240`);
-    zombieCombatFrames.intro2.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro2-${String(i + 1).padStart(3, '0')}.webp?v=9410`);
+    zombieCombatFrames.intro2.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro2-${String(i + 1).padStart(3, '0')}.webp?v=9420`);
     zombieCombatFrames.prep.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro-${String(i + 1).padStart(3, '0')}.webp?v=9240`);
     zombieCountdownFrames[3].src = 'assets/characters/combat/zombie-countdown-3.webp?v=8600';
     zombieCountdownFrames[2].src = 'assets/characters/combat/zombie-countdown-2.webp?v=8600';
@@ -443,7 +443,7 @@ function loadCombatAssets() {
     zombieCountdownFrames.fight.src = 'assets/characters/combat/zombie-countdown-fight.webp?v=8600';
     for (const [name, a] of Object.entries(chainAtlas)) {
         const img = a.img;
-        img.src = `assets/characters/combat/chain-goth/chain-${name}.webp?v=9410`;
+        img.src = `assets/characters/combat/chain-goth/chain-${name}.webp?v=9420`;
         // Decode the big sheets in the background so the first time she uses a move there is no hitch (Safari decodes lazily).
         img.decode?.().then(() => {
             try { const t = document.createElement('canvas'); t.width = t.height = 1; t.getContext('2d').drawImage(img, 0, 0, 1, 1); } catch (e) {}
@@ -1166,7 +1166,7 @@ export function createLevel1(ui) {
     const combatBackgroundImage = new Image();
     combatBackgroundImage.src = 'assets/environment/combat-background-level1.webp';
     const patriciaArenaImage = new Image();
-    patriciaArenaImage.src = 'assets/arenas/patricia-arena.webp?v=9410';   // V9.30: Patricia's own arena
+    patriciaArenaImage.src = 'assets/arenas/patricia-arena.webp?v=9420';   // V9.30: Patricia's own arena
 
     // v6.5.16e: start just below the upper-left church, close to Zombie Goth.
     let x = 240,
@@ -1186,6 +1186,7 @@ export function createLevel1(ui) {
         keyCollected = false,
         gateOpened = false,
         heavyUnlocked = false,
+        heavyCdMul = 1,   // V9.42: chest reward can lower this
         keySpawnAnnounced = false,
         inventory = {},
         checkpoint = 'cemetery-entrance',
@@ -1358,7 +1359,7 @@ export function createLevel1(ui) {
                 const item = items[i];
                 if (item) {
                     const info = ITEM_INFO[item];
-                    slot.innerHTML = `<img class="inv-item-img" src="${info.img}?v=9410" alt="${info.name}" draggable="false"><span>${info.label}</span>`;
+                    slot.innerHTML = `<img class="inv-item-img" src="${info.img}?v=9420" alt="${info.name}" draggable="false"><span>${info.label}</span>`;
                     slot.dataset.item = item;
                     slot.dataset.tip = info.tip;
                     slot.classList.add('inventory-filled');
@@ -1761,8 +1762,8 @@ export function createLevel1(ui) {
         let finished = false;
         let attemptedFallback = false;
         const sources = [
-            'assets/video/cutscene2/cutscene2.mp4?v=9410',
-            'assets/video/cutscene2/cutscene2.mov?v=9410'
+            'assets/video/cutscene2/cutscene2.mp4?v=9420',
+            'assets/video/cutscene2/cutscene2.mov?v=9420'
         ];
 
         const finish = () => {
@@ -1839,6 +1840,7 @@ export function createLevel1(ui) {
     }
 
 
+    ui.combatCanvas.addEventListener('pointerdown', () => { if (patReward) patChestInteract(); });   // V9.42: click the chest
     ui.canvas.addEventListener('pointerdown', e => {
         if (mode !== 'map')
             return;
@@ -2739,7 +2741,7 @@ export function createLevel1(ui) {
             try { video.pause(); video.removeAttribute('src'); video.load(); } catch (e) {}
             overlay.remove(); done();
         };
-        const sources = customSources || ['assets/video/cutscene3/ollytaken.mp4?v=9410', 'assets/video/cutscene3/olly-taken.mp4?v=9410', 'assets/video/cutscene3/ollytaken.mov?v=9410', 'assets/video/cutscene3/olly-taken.mov?v=9410'];
+        const sources = customSources || ['assets/video/cutscene3/ollytaken.mp4?v=9420', 'assets/video/cutscene3/olly-taken.mp4?v=9420', 'assets/video/cutscene3/ollytaken.mov?v=9420', 'assets/video/cutscene3/olly-taken.mov?v=9420'];
         let i = 0;
         const next = () => { if (i >= sources.length) { finish(); return; } video.src = sources[i++]; video.load(); video.play().catch(() => {}); };
         video.addEventListener('error', next);
@@ -3178,6 +3180,8 @@ export function createLevel1(ui) {
     function initPatricia(resume) {
         loadPatriciaAssets();
         patVoiceReset();
+        patDeathPrep();   // V9.42: load the death cutscene in the background so it can start the instant she falls
+        patReward = null;
         chainLastGood = null;   // V9.39: never show the Chain Goth's last frame (the dead chain on the floor) before Patricia's art has loaded
         patStage = resume ? 2 : 1;
         patStep = 0; patFace = 'left'; patHitsDone = 0; patDoneOnce = false;
@@ -3312,7 +3316,19 @@ export function createLevel1(ui) {
         enemyAttackPhase = 'death';
         zombieCombatNextDecision = Infinity;
         zombieDeathEndAt = nowMs + PAT_DEFEAT_HOLD_MS;
-        ui.combatStatus.textContent = '💀 PATRICIA HAS FALLEN.';
+        ui.combatStatus.textContent = 'Patricia is down.';
+        patReward = { phase: 'cutscene' };
+        held.up = held.down = held.left = held.right = false;
+        if (patVid && patVid.v.error) patVid.failed = true;
+        if (patVid && !patVid.failed) {   // the cutscene is (almost always) already loaded: straight in
+            patVid.ov.style.opacity = '1'; patVid.ov.style.pointerEvents = 'auto'; patVid.skip.style.display = 'block';
+            try { patVid.v.currentTime = 0; } catch (e) {}
+            patVid.v.muted = false;
+            patVid.v.play().catch(() => { patVid.v.muted = true; patVid.v.play().catch(() => {}); });
+            setTimeout(() => { if (patVid && patVid.started && !patVid.done && patVid.v.currentTime < .05) patCutsceneDone(); }, 3000);   // it never started: carry on rather than sit on black
+            playMusic('', 120);   // the video carries the boss music itself
+            patVid.started = true;
+        } else setTimeout(patCutsceneDone, 600);   // no cutscene file yet: skip it
     }
 
     function updatePatriciaAI(dt, nowMs) {
@@ -3333,10 +3349,7 @@ export function createLevel1(ui) {
             return;
         }
         if (st === 'death') {
-            if (nowMs >= zombieDeathEndAt && !patDoneOnce) {   // V9.41: straight into her death cutscene (assets/video/cutscene4/patricia-death.mp4); no file yet = it is skipped
-                patDoneOnce = true;
-                playTakenCutscene(() => endCombat(true), ['assets/video/cutscene4/patricia-death.mp4?v=9410', 'assets/video/cutscene4/patriciadeath.mp4?v=9410', 'assets/video/cutscene4/PatriciaDeath.mp4?v=9410', 'assets/video/cutscene4/patricia-death.mov?v=9410']);
-            }
+            // V9.42: the fight no longer ends here: cutscene -> chest -> rewards -> level complete (see patCutsceneDone / patChestInteract)
             return;
         }
         if (st === 'phurt') {
@@ -3466,7 +3479,7 @@ export function createLevel1(ui) {
         const n = patAtlas.idle.frames.length, cyc = (n - 1) * 2, k = Math.floor(nowMs / PAT_IDLE_FRAME_MS) % cyc;
         return { pack: patAtlas.idle, index: k < n ? k : cyc - k, flipArt: false };
     }
-    let patHurtMs = 500, patHurtSeg = 0, patHurtLast = -1;
+    let patHurtMs = 500, patHurtSeg = 0, patHurtLast = -1, patReward = null, patVid = null;
     // V9.36: every frame carries a "next" frame and how far we are towards it (frac), so the drawing can cross-fade: no more "bitty" steps.
     function getPatriciaFrame(nowMs) {
         const st = zombieCombatState;
@@ -3526,6 +3539,121 @@ export function createLevel1(ui) {
         return patIdle(nowMs);
     }
 
+    // ---- V9.42: Patricia's fall -> death cutscene (preloaded) -> chest in the arena -> reward pop-up -> Level 1 complete ----
+    // Cutscene file: assets/video/cutscene4/patricia-death.mp4 (the video carries the BossFight1 music; afterwards BossFight1 restarts 15 s in).
+    // REWARDS ARE PLACEHOLDERS: edit PAT_REWARDS (icon, name, description, what it does).
+    const PAT_REWARDS = [
+        { id: 'maxhp', icon: '❤', name: 'Max HP +20', desc: 'Olly can take a little more punishment. (Fully heals him too.)', apply() { maxHp += 20; hp = maxHp; stats(); } },
+        { id: 'heavycd', icon: '⚡', name: 'Heavy Attack recharge -20%', desc: 'Heavy Attack comes back faster (15s becomes 12s).', apply() { heavyCdMul = Math.max(.3, heavyCdMul * .8); } },
+    ];
+    const PAT_CUTSCENE_FILES = ['assets/video/cutscene4/patricia-death.mp4', 'assets/video/cutscene4/patriciadeath.mp4', 'assets/video/cutscene4/PatriciaDeath.mp4', 'assets/video/cutscene4/patricia-death.mov'];
+    function patDeathPrep() {
+        if (patVid) return;
+        const ov = document.createElement('div');
+        ov.id = 'pat-death-overlay';
+        ov.style.cssText = 'position:fixed;inset:0;z-index:10050;background:#000;opacity:0;pointer-events:none;transition:opacity .2s ease;display:flex;align-items:center;justify-content:center;';
+        const v = document.createElement('video');
+        v.playsInline = true; v.preload = 'auto'; v.controls = false;
+        v.style.cssText = 'width:100%;height:100%;object-fit:contain;background:#000;';
+        const skip = document.createElement('button');
+        skip.type = 'button'; skip.textContent = 'SKIP ▸'; skip.style.display = 'none';
+        skip.style.cssText += 'display:none;position:absolute;right:22px;bottom:22px;padding:8px 16px;border:1px solid rgba(255,255,255,.35);border-radius:10px;background:rgba(0,0,0,.55);color:#fff;font:700 13px Georgia,serif;cursor:pointer;opacity:.85;';
+        ov.appendChild(v); ov.appendChild(skip); document.body.appendChild(ov);
+        patVid = { ov, v, skip, ready: false, failed: false, started: false, done: false };
+        let i = 0;
+        const next = () => { if (i >= PAT_CUTSCENE_FILES.length) { patVid.failed = true; return; } v.src = PAT_CUTSCENE_FILES[i++] + '?v=9420'; v.load(); };
+        v.addEventListener('error', next);
+        v.addEventListener('canplaythrough', () => { patVid.ready = true; });
+        v.addEventListener('loadeddata', () => { patVid.ready = true; });
+        v.addEventListener('ended', () => patCutsceneDone());
+        skip.addEventListener('click', () => patCutsceneDone());
+        next();
+        // warm-up: a muted play/pause makes the browser really download and decode the first frames now (preload alone is only a hint)
+        v.muted = true;
+        v.play().then(() => { if (!patVid.started) { v.pause(); try { v.currentTime = 0; } catch (e) {} } v.muted = false; }).catch(() => { v.muted = false; });
+    }
+    function patDeathCleanup() {
+        if (patVid) { try { patVid.v.pause(); patVid.v.removeAttribute('src'); patVid.v.load(); } catch (e) {} patVid.ov.remove(); patVid = null; }
+        const ro = document.getElementById('pat-reward-overlay'); if (ro) ro.remove();
+        patReward = null;
+    }
+    function patCutsceneDone() {
+        if (!patReward || patReward.phase !== 'cutscene') return;
+        if (patVid) { patVid.done = true; try { patVid.v.pause(); } catch (e) {} patVid.ov.style.opacity = '0'; patVid.ov.style.pointerEvents = 'none'; patVid.skip.style.display = 'none'; }
+        playMusicFrom('boss', 15, 400);   // the cutscene music carries on from where the video left it
+        const dir = player.x < COMBAT_W / 2 ? 1 : -1;
+        patReward = { phase: 'chest', t0: gnow(), x: Math.max(240, Math.min(COMBAT_W - 240, player.x + dir * 320)) };
+        ui.combatStatus.textContent = 'A chest has appeared! Walk up to it and click it.';
+    }
+    function patChestInteract() {
+        if (!patReward || patReward.phase !== 'chest') return;
+        if (gnow() - patReward.t0 < 700) return;   // still dropping in
+        if (Math.abs(player.x - patReward.x) > 210) { ui.combatStatus.textContent = 'Walk up to the chest first.'; return; }
+        patReward.phase = 'open'; patReward.openAt = gnow();
+        playSfx('pickup', 1);
+        setTimeout(patShowRewards, 1100);
+    }
+    function patShowRewards() {
+        if (!patReward) return;
+        patReward.phase = 'rewards';
+        const taken = new Set();
+        const ov = document.createElement('div');
+        ov.id = 'pat-reward-overlay'; ov.className = 'overlay';
+        ov.style.cssText = 'position:fixed;inset:0;z-index:10040;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.6);';
+        const box = document.createElement('div');
+        box.className = 'overlay-box center inventory-box';
+        box.innerHTML = '<div class="inventory-kicker">THE CHEST OPENS</div><h2 class="story-title">REWARDS</h2><div class="inventory-capacity">Take what you earned.</div><div class="inventory-slots gg-reward-slots"></div><div class="inv-panel-note gg-reward-note"></div><button type="button" class="primary gg-reward-done" disabled>CONTINUE</button>';
+        const grid = box.querySelector('.gg-reward-slots'), note = box.querySelector('.gg-reward-note'), done = box.querySelector('.gg-reward-done');
+        grid.style.cssText = 'grid-template-columns:repeat(auto-fit,minmax(150px,210px)) !important;justify-content:center !important;';
+        const finish = () => { ov.remove(); patReward = null; endCombat(true); };
+        PAT_REWARDS.forEach(r => {
+            const b = document.createElement('button');
+            b.type = 'button'; b.className = 'inventory-slot inventory-filled gg-reward';
+            b.innerHTML = `<div style="font-size:2.3rem;line-height:1">${r.icon}</div><span style="font-size:.95rem!important;max-width:100%">${r.name}</span>`;
+            b.style.aspectRatio = 'auto'; b.style.padding = '14px 8px'; b.style.cursor = 'pointer';
+            b.addEventListener('mouseenter', () => { note.textContent = r.desc; });
+            b.addEventListener('click', () => {
+                if (taken.has(r.id)) return; taken.add(r.id); r.apply(); playSfx('pickup', 1);
+                b.style.opacity = '.45'; b.querySelector('span').textContent = r.name + ' ✓'; note.textContent = r.desc;
+                if (taken.size === PAT_REWARDS.length) done.disabled = false;
+            });
+            grid.appendChild(b);
+        });
+        const takeAll = document.createElement('button');
+        takeAll.type = 'button'; takeAll.textContent = 'TAKE ALL'; takeAll.className = 'inventory-close-button';
+        takeAll.addEventListener('click', () => { grid.querySelectorAll('.gg-reward').forEach(b => b.click()); });
+        box.insertBefore(takeAll, done);
+        done.addEventListener('click', finish);
+        ov.appendChild(box); document.body.appendChild(ov);
+    }
+    function drawPatChest(c, nowMs) {   // PLACEHOLDER chest, drawn with shapes until the real animation is ready
+        const R = patReward, t = nowMs - R.t0, cx = R.x, fy = CHAIN_FLOOR_Y;
+        const drop = Math.max(0, 1 - t / 650), bounce = t > 650 && t < 950 ? Math.sin((t - 650) / 300 * Math.PI) * 14 : 0;
+        const dy = -(drop * drop) * 520 - bounce;
+        const opening = R.phase === 'open' || R.phase === 'rewards', op = opening ? Math.min(1, (nowMs - R.openAt) / 700) : 0;
+        c.save();
+        c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(cx, fy + 6, 92 * (1 - drop * .5), 14, 0, 0, Math.PI * 2); c.fill();
+        c.translate(cx, fy + dy);
+        if (!opening && t > 700) { const g = c.createRadialGradient(0, -60, 10, 0, -60, 190); const a = .28 + .12 * Math.sin(nowMs / 260); g.addColorStop(0, `rgba(255,170,210,${a})`); g.addColorStop(1, 'rgba(255,120,190,0)'); c.fillStyle = g; c.fillRect(-200, -260, 400, 400); }
+        const W = 150, H = 82;
+        const body = c.createLinearGradient(0, -H, 0, 0); body.addColorStop(0, '#5a2f3c'); body.addColorStop(1, '#2b1620');
+        c.fillStyle = body; c.strokeStyle = '#d8b66a'; c.lineWidth = 4;
+        c.beginPath(); c.roundRect(-W / 2, -H, W, H, 8); c.fill(); c.stroke();
+        c.fillStyle = '#d8b66a'; c.fillRect(-W / 2 + 22, -H, 12, H); c.fillRect(W / 2 - 34, -H, 12, H);
+        // lid (tilts up when opening)
+        c.save(); c.translate(-W / 2, -H); c.rotate(-op * 1.15);
+        const lid = c.createLinearGradient(0, -44, 0, 0); lid.addColorStop(0, '#6d3846'); lid.addColorStop(1, '#40212c');
+        c.fillStyle = lid; c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(W / 2, -64, W, 0); c.closePath(); c.fill(); c.stroke();
+        c.fillStyle = '#d8b66a'; c.fillRect(22, -30, 12, 30); c.fillRect(W - 34, -30, 12, 30);
+        c.restore();
+        if (op < 1) { c.fillStyle = '#f0d48a'; c.beginPath(); c.roundRect(-11, -H - 6, 22, 26, 4); c.fill(); c.strokeStyle = '#7a5a1c'; c.lineWidth = 2; c.stroke(); }
+        if (opening) { const g = c.createRadialGradient(0, -H, 5, 0, -H, 40 + op * 220); g.addColorStop(0, `rgba(255,240,200,${.9 * (1 - op * .3)})`); g.addColorStop(1, 'rgba(255,200,120,0)'); c.fillStyle = g; c.fillRect(-300, -H - 260, 600, 340); }
+        c.restore();
+        if (R.phase === 'chest' && t > 800 && Math.abs(player.x - R.x) <= 210) {
+            c.save(); c.font = '700 30px "Cormorant Garamond", Georgia, serif'; c.textAlign = 'center'; c.lineWidth = 5; c.strokeStyle = '#1a0c18'; c.fillStyle = '#ffe3ee';
+            const by = fy - 150 + Math.sin(nowMs / 240) * 5; c.strokeText('CLICK TO OPEN', cx, by); c.fillText('CLICK TO OPEN', cx, by); c.restore();
+        }
+    }
     function patPuffs(c, x, y, p, nowMs, n) {
         if (p <= .01) return;
         c.save();
@@ -3540,6 +3668,7 @@ export function createLevel1(ui) {
         c.restore();
     }
     function drawPatriciaCombat(c, enemyX, enemyY, nowMs) {
+        if (patReward && patReward.phase !== 'cutscene') { drawPatChest(c, nowMs); return; }
         const st = zombieCombatState;
         const frame = getPatriciaFrame(nowMs);
         const locked = (st === 'lunge' || st === 'combo' || st === 'lightning' || st === 'vstrike' || st === 'smoke' || st === 'phurt' || st === 'stage2' || st === 'death');
@@ -4096,6 +4225,7 @@ export function createLevel1(ui) {
         playSfx('tutorial', .8);   // so the freeze reads as intentional, not a crash
     }
     function combatAttack() {
+        if (patReward) { patChestInteract(); return; }   // V9.42: after Patricia falls, attack / click = open the chest
         if (pausedAt) return;
         if (mode !== 'combat' || zombieIntroActive || patFrozen() || playerDeathTriggered)
             return;
@@ -4167,6 +4297,7 @@ export function createLevel1(ui) {
     }
 
     function combatHeavyAttack() {
+        if (patReward) return;
         if (pausedAt) return;
         if (mode !== 'combat' || zombieIntroActive || patFrozen() || playerDeathTriggered)
             return;
@@ -4194,7 +4325,7 @@ export function createLevel1(ui) {
             dx = enemyX - player.x;
         combatFacing = dx < 0 ? 'left' : 'right';
 
-        heavyAttackCooldownUntil = nowMs + 15000;
+        heavyAttackCooldownUntil = nowMs + 15000 * heavyCdMul;
         playSfx('olly-heavy-attack', 1);
         heavyAttackAnimUntil = nowMs + 620;
         combatAnimationState = 'heavy';
@@ -4246,6 +4377,7 @@ export function createLevel1(ui) {
         }
     }
     function combatDodge() {
+        if (patReward) return;
         if (pausedAt) return;
         if (mode !== 'combat' || zombieIntroActive || patFrozen() || playerDeathTriggered)
             return;
@@ -4344,6 +4476,7 @@ export function createLevel1(ui) {
     }
 
     function endCombat(won) {
+        patDeathCleanup();
         comboCount = 0; attackCooldownUntil = 0; lastAttackAt = 0;   // V9.28: combo resets when a fight ends
         { const ch = document.getElementById('combo-hud'); if (ch) ch.style.display = 'none'; comboHudKey = ''; }
         setLoopSfx('chain-drag', false);
@@ -4698,6 +4831,7 @@ export function createLevel1(ui) {
                 y,
                 hp,
                 maxHp,
+                heavyCdMul,
                 kills,
                 relationshipDone,
                 puzzleSolved,
@@ -4729,6 +4863,7 @@ export function createLevel1(ui) {
             y = Number.isFinite(state.y) ? Math.min(WORLD_H - 40, Math.max(40, state.y)) : y;
             { const safe = nearestWalkable(x, y); x = safe.x; y = safe.y; }   // V9.23: old saves may be on a spot that is now blocked
             maxHp = Number.isFinite(state.maxHp) ? Math.max(100, state.maxHp) : 100;
+            heavyCdMul = Number.isFinite(state.heavyCdMul) ? Math.max(.3, Math.min(1, state.heavyCdMul)) : 1;
             if (state.version >= 4) {
                 hp = Number.isFinite(state.hp) ? state.hp : maxHp;
             }
@@ -4808,8 +4943,7 @@ export function createLevel1(ui) {
     function primaryAction() {
         if (mode === 'encounter')
             startEncounterFight();
-        else if (mode === 'combat')
-            jump();
+        else if (mode === 'combat') { if (patReward) patChestInteract(); else jump(); }
         else if (mode === 'map')
             checkTriggers()
     }
