@@ -13,8 +13,9 @@ ANIMS = {
     'walk':  ('zgwalk2',  list(range(0, 33)), 0.47),
     'death': ('ZGdaeth2', list(range(0, 45)), 0.47),
     'intro': ('321fight', list(range(0, 61)), 0.52),
+    'intro2': ('ZombieGoth321New', list(range(0, 121)), 0.52, 640),   # V9.40: the second 3-2-1 clip (1280x720 canvas, centre ~640)
 }
-def build(repo, name, folder, frames, scale):
+def build(repo, name, folder, frames, scale, AX=AX):
     src = os.path.join(repo, 'assets/characters/combat', folder)
     ims = []
     for n in frames:
@@ -34,6 +35,8 @@ def build(repo, name, folder, frames, scale):
     return {'frames': len(frames), 'size': [W, H], 'margin': round(4 * scale)}
 if __name__ == '__main__':
     repo = sys.argv[1]; res = {}
-    for name, (folder, frames, sc) in ANIMS.items():
-        res[name] = build(repo, name, folder, frames, sc); print(name, res[name], file=sys.stderr)
+    only = sys.argv[2:] or list(ANIMS)
+    for name in only:
+        folder, frames, sc, *ax = ANIMS[name]
+        res[name] = build(repo, name, folder, frames, sc, *ax); print(name, res[name], file=sys.stderr)
     print(json.dumps(res))

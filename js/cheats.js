@@ -1,4 +1,4 @@
-/* Goodbye Goth - test cheats. Press Cmd+S (Ctrl+S on Windows) or the ` key to open the panel, then type a code and press Enter. Meant for testing, not for the story.
+/* Goodbye Goth - test cheats. Tap the Option key (Alt on Windows), or press Cmd+S (Ctrl+S) or the ` key to open the panel, then type a code and press Enter. Meant for testing, not for the story.
    The level hands us its hooks through level.cheat. */
 let panel, hooks = null, badge, godOn = false;
 const CSS = `
@@ -36,11 +36,11 @@ export function initCheats() {
       <button id="gg-cheat-win" type="button">Skip this fight (win now)</button>
       <button id="gg-cheat-hp" type="button">Refill Olly's HP</button>
       <button id="gg-cheat-heavy" type="button">Unlock Heavy Attack</button>
-      <button id="gg-cheat-close" type="button">Close (or press \`)</button>
-      <p>Cmd+S (Ctrl+S) or the \` key opens / closes this panel. Type <b>help</b> for the list of codes.</p>`;
+      <button id="gg-cheat-close" type="button">Close (or tap Option)</button>
+      <p>Tap the <b>Option</b> key (Alt) to open / close this panel (Cmd+S or the \` key also work). Type <b>help</b> for the list of codes.</p>`;
     document.body.appendChild(panel);
     for (const t of ['keydown', 'keyup', 'pointerdown', 'mousedown'])
-        panel.addEventListener(t, e => { if (t === 'keydown' && (e.key === '`' || e.key === 'Escape')) toggle(false); e.stopPropagation(); });
+        panel.addEventListener(t, e => { if (t === 'keydown' && (e.key === '`' || e.key === 'Escape' || e.key === 'Alt')) { if (e.key === 'Alt') return void e.stopPropagation(); toggle(false); } e.stopPropagation(); });
     panel.querySelector('#gg-cheat-god').addEventListener('click', () => { hooks?.setGod(!hooks.isGod()); sync(); });
     panel.querySelector('#gg-cheat-win').addEventListener('click', () => { hooks?.winFight(); toggle(false); });
     panel.querySelector('#gg-cheat-hp').addEventListener('click', () => hooks?.refillHp());
@@ -48,6 +48,10 @@ export function initCheats() {
     panel.querySelector('#gg-cheat-close').addEventListener('click', () => toggle(false));
     const cmd = panel.querySelector('#gg-cheat-cmd'), out = panel.querySelector('#gg-cheat-out');
     cmd.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); out.textContent = runCode(cmd.value); cmd.value = ''; sync(); } });
+    // V9.40: tap the OPTION key (Alt on Windows) on its own to open / close the cheat box. Safari swallows Cmd+S and many people don't know where the backtick is.
+    let altAlone = false;
+    window.addEventListener('keydown', e => { altAlone = (e.key === 'Alt' && !e.repeat); }, true);
+    window.addEventListener('keyup', e => { if (e.key === 'Alt' && altAlone) { altAlone = false; e.preventDefault(); toggle(); } }, true);
     window.addEventListener('keydown', e => {
         if (e.repeat) return;
         if (e.key === '`' && document.activeElement !== cmd) { e.preventDefault(); toggle(); }
@@ -60,7 +64,7 @@ function toggle(force) {
     panel.classList.toggle('open', open); if (open) { sync(); panel.querySelector('#gg-cheat-cmd').focus(); }
 }
 
-const HELP = 'Codes: patricia | patricia skip | patricia win | patricia loss | chain goth | chain win | chain loss | zombie goth | zombie win | zombie loss | win | loss | god | god off | heal | heavy | map';
+const HELP = 'Codes: patricia | patricia skip | patricia win | patricia loss | chain goth | chain win | chain loss | zombie goth | zombie win | zombie loss | win | loss | god | god off | heal | heavy | map | intro new | intro old | intro random (Zombie Goth 3-2-1 version)';
 function runCode(raw) {
     if (!hooks) return 'Start a game first.';
     const c = String(raw || '').toLowerCase().replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -70,6 +74,7 @@ function runCode(raw) {
     if (c === 'god off') { hooks.setGod(false); return 'No damage: OFF'; }
     if (c === 'heal' || c === 'hp') { hooks.refillHp(); return 'HP refilled.'; }
     if (c === 'heavy') { hooks.unlockHeavy(); return 'Heavy Attack unlocked.'; }
+    { const im = c.match(/^intro (new|old|random)$/); if (im) { hooks.setIntro?.(im[1]); return 'Zombie Goth 3-2-1: ' + im[1]; } }
     const m = c.match(/^(patricia|queen goth|chain goth|chain|zombie goth|zombie)(?: (skip|fight|start|win|loss|lose|lost))?$|^(win|loss|lose|lost)$/);
     if (!m) return 'Unknown code. Type help.';
     const who = m[1] ? (m[1].startsWith('chain') ? 'chain' : m[1].startsWith('zombie') ? 'zombie' : 'patricia') : null;

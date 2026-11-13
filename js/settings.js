@@ -1,8 +1,8 @@
 /* Goodbye Goth - settings screen (sound, brightness, fullscreen, controls list).
    Everything is built here and lives on <body>, so it survives the game swapping screens.
    Opened from the title menu (SETTINGS) or by pressing O anywhere outside a fight; closes with O, Esc or CLOSE. */
-import { getVolumes, setVolume } from './audio.js?v=9390';
-import { ACTIONS, DEFAULTS, getBindings, swapBindings, setBinding, resetBindings, keyLabel, isDefault } from './controls.js?v=9390';
+import { getVolumes, setVolume } from './audio.js?v=9400';
+import { ACTIONS, DEFAULTS, getBindings, swapBindings, setBinding, resetBindings, keyLabel, isDefault } from './controls.js?v=9400';
 
 // V9.30: display / accessibility preferences. Saved in the browser; the game reads window.ggPrefs.
 const PREFS_KEY = 'goodbyeGothPrefs_v1';

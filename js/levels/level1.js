@@ -1,6 +1,6 @@
 /* Goodbye Goth V9.4 - Chain Goth fight (AI + all seven animations: intro, walk, swipe, spin, stun, hurt, death) on top of V9.0 map cleanup and the v8.11 Zombie Goth AI. */
-import { playSfx, playRandomSfx, playMusic, preloadSfx, setLoopSfx, setAudioHeld } from '../audio.js?v=9390';
-import { activeKey } from '../saves.js?v=9390';
+import { playSfx, playRandomSfx, playMusic, preloadSfx, setLoopSfx, setAudioHeld } from '../audio.js?v=9400';
+import { activeKey } from '../saves.js?v=9400';
 // Game clock: normal time, but it stands still while a tutorial pop-up is open (so nothing happens behind it).
 let pausedTotal = 0, pausedAt = 0;
 const gnow = () => (pausedAt || performance.now()) - pausedTotal;
@@ -115,7 +115,7 @@ function safeParseSave() {
 }
 
 const mapBackground = new Image();
-mapBackground.src = 'assets/environment/level1-map-bg-2x.webp?v=9390';   // V9.30: pre-sharpened 2x version (same picture, twice the pixels)
+mapBackground.src = 'assets/environment/level1-map-bg-2x.webp?v=9400';   // V9.30: pre-sharpened 2x version (same picture, twice the pixels)
 // V9.30: Settings options (window.ggPrefs is created by settings.js)
 const prefOn = k => !(window.ggPrefs && window.ggPrefs[k] === false);
 const SH = a => prefOn('shadows') ? `rgba(0,0,0,${a})` : 'rgba(0,0,0,0)';
@@ -215,8 +215,8 @@ const OLLY_DRAW_FOOT_OFFSET = 62;
 // These shared icon references can be reused by every level. Only the activity
 // behind the role changes from level to level.
 const ICON_LIBRARY = {
-    relationshipChallenge: 'assets/icons/relationship-challenge.webp?v=9390',
-    princessQuestion: 'assets/icons/princess-question.webp?v=9390'
+    relationshipChallenge: 'assets/icons/relationship-challenge.webp?v=9400',
+    princessQuestion: 'assets/icons/princess-question.webp?v=9400'
 };
 const relationshipChallengeIcon = new Image();
 relationshipChallengeIcon.src = ICON_LIBRARY.relationshipChallenge;
@@ -306,8 +306,11 @@ const zombieCombatFrames = {
     hurt: Array.from({ length: 19 }, () => new Image()),
     death: Array.from({ length: 45 }, () => new Image()),   // V9.24: new detailed collapse (45 frames)
     // Countdown-only staring/prep animation. It is not an attack state.
-    prep: Array.from({ length: 61 }, () => new Image())   // V9.24: new 3-2-1 fight-stance animation (61 frames)
+    prep: Array.from({ length: 61 }, () => new Image()),   // V9.24: new 3-2-1 fight-stance animation (61 frames)
+    intro2: Array.from({ length: 121 }, () => new Image())   // V9.40: second 3-2-1 clip (121 frames, 24 fps)
 };
+let zombieIntroMode = 'random', zombieIntroNew = false;   // V9.40: which 3-2-1 she uses this fight (cheat: intro new / old / random)
+const ZOMBIE_INTRO2_FRAME_MS = 41.67;
 const zombieCountdownFrames = {
     3: new Image(),
     2: new Image(),
@@ -369,7 +372,7 @@ function loadPatriciaAssets() {
     patAssetsRequested = true;
     for (const [name, a] of Object.entries(patAtlas)) {
         const img = a.img;
-        img.src = `assets/characters/patricia/atlas/pat-${name}.webp?v=9390`;
+        img.src = `assets/characters/patricia/atlas/pat-${name}.webp?v=9400`;
         img.decode?.().then(() => {
             if (window.createImageBitmap) createImageBitmap(img).then(bmp => { a.bmp = bmp; }).catch(() => {});
         }).catch(() => {});
@@ -427,8 +430,9 @@ function loadCombatAssets() {
     zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.webp?v=7600`);
     zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i + 1}.webp?v=8600`);
     zombieCombatFrames.heavyKick.forEach((img, i) => img.src = `assets/characters/combat/zombie-ankle-biter-${String(i + 1).padStart(2, '0')}.webp?v=10100`);
-    zombieCombatFrames.hurt.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/hurt-${String(i + 1).padStart(3, '0')}.webp?v=9390`);
+    zombieCombatFrames.hurt.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/hurt-${String(i + 1).padStart(3, '0')}.webp?v=9400`);
     zombieCombatFrames.death.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/death-${String(i + 1).padStart(3, '0')}.webp?v=9240`);
+    zombieCombatFrames.intro2.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro2-${String(i + 1).padStart(3, '0')}.webp?v=9400`);
     zombieCombatFrames.prep.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro-${String(i + 1).padStart(3, '0')}.webp?v=9240`);
     zombieCountdownFrames[3].src = 'assets/characters/combat/zombie-countdown-3.webp?v=8600';
     zombieCountdownFrames[2].src = 'assets/characters/combat/zombie-countdown-2.webp?v=8600';
@@ -436,7 +440,7 @@ function loadCombatAssets() {
     zombieCountdownFrames.fight.src = 'assets/characters/combat/zombie-countdown-fight.webp?v=8600';
     for (const [name, a] of Object.entries(chainAtlas)) {
         const img = a.img;
-        img.src = `assets/characters/combat/chain-goth/chain-${name}.webp?v=9390`;
+        img.src = `assets/characters/combat/chain-goth/chain-${name}.webp?v=9400`;
         // Decode the big sheets in the background so the first time she uses a move there is no hitch (Safari decodes lazily).
         img.decode?.().then(() => {
             try { const t = document.createElement('canvas'); t.width = t.height = 1; t.getContext('2d').drawImage(img, 0, 0, 1, 1); } catch (e) {}
@@ -1159,7 +1163,7 @@ export function createLevel1(ui) {
     const combatBackgroundImage = new Image();
     combatBackgroundImage.src = 'assets/environment/combat-background-level1.webp';
     const patriciaArenaImage = new Image();
-    patriciaArenaImage.src = 'assets/arenas/patricia-arena.webp?v=9390';   // V9.30: Patricia's own arena
+    patriciaArenaImage.src = 'assets/arenas/patricia-arena.webp?v=9400';   // V9.30: Patricia's own arena
 
     // v6.5.16e: start just below the upper-left church, close to Zombie Goth.
     let x = 240,
@@ -1351,7 +1355,7 @@ export function createLevel1(ui) {
                 const item = items[i];
                 if (item) {
                     const info = ITEM_INFO[item];
-                    slot.innerHTML = `<img class="inv-item-img" src="${info.img}?v=9390" alt="${info.name}" draggable="false"><span>${info.label}</span>`;
+                    slot.innerHTML = `<img class="inv-item-img" src="${info.img}?v=9400" alt="${info.name}" draggable="false"><span>${info.label}</span>`;
                     slot.dataset.item = item;
                     slot.dataset.tip = info.tip;
                     slot.classList.add('inventory-filled');
@@ -1754,8 +1758,8 @@ export function createLevel1(ui) {
         let finished = false;
         let attemptedFallback = false;
         const sources = [
-            'assets/video/cutscene2/cutscene2.mp4?v=9390',
-            'assets/video/cutscene2/cutscene2.mov?v=9390'
+            'assets/video/cutscene2/cutscene2.mp4?v=9400',
+            'assets/video/cutscene2/cutscene2.mov?v=9400'
         ];
 
         const finish = () => {
@@ -1791,6 +1795,12 @@ export function createLevel1(ui) {
             });
         };
 
+        // V9.40: skip button for the gate cutscene
+        const gateSkip = document.createElement('button');
+        gateSkip.type = 'button'; gateSkip.textContent = 'SKIP CUTSCENE ▸';
+        gateSkip.style.cssText = 'position:absolute;right:22px;bottom:22px;padding:8px 16px;border:1px solid rgba(255,255,255,.35);border-radius:10px;background:rgba(0,0,0,.55);color:#fff;font:700 13px Georgia,serif;cursor:pointer;opacity:.85;z-index:5;';
+        gateSkip.addEventListener('click', finish);
+        overlay.appendChild(gateSkip);
         video.addEventListener('loadeddata', tryPlay, { once:false });
         video.addEventListener('canplay', tryPlay, { once:false });
         video.addEventListener('ended', finish, { once:true });
@@ -2171,7 +2181,10 @@ export function createLevel1(ui) {
 
         // v7.9: walking frames receive the new enlarged arena render and floor alignment.
 
-        if (zombieCombatState === 'intro') {
+        if (zombieCombatState === 'intro' && zombieIntroNew) {
+            frames = zombieCombatFrames.intro2; targetHeight = 400;
+            index = Math.min(frames.length - 1, Math.floor(elapsed / ZOMBIE_INTRO2_FRAME_MS));
+        } else if (zombieCombatState === 'intro') {
             frames = zombieCombatFrames.claw;   // V9.34: the 3-2-1 now uses her claw-swipe frames, spread slowly over the countdown (the old freeze was too quick)
             targetHeight = 315;
             // V9.24: the new 61-frame 3-2-1 animation plays once across the countdown, then holds its last pose.
@@ -2241,9 +2254,9 @@ export function createLevel1(ui) {
                 }
             }
         } else if (zombieCombatState === 'ready' || zombieCombatState === 'windup') {
-            frames = zombieCombatFrames.prep;   // V9.30: ready pose = settled stance of the new animation
+            frames = zombieIntroNew ? zombieCombatFrames.intro2 : zombieCombatFrames.prep;   // V9.30: ready pose = settled stance of the 3-2-1 animation
             targetHeight = 400;
-            index = 15;
+            index = zombieIntroNew ? 120 : 15;
         } else if (zombieCombatState === 'recover') {
             // After an attack, visibly walk/reposition instead of snapping back
             // into the crouch. The crouch returns before the next attack.
@@ -2268,9 +2281,9 @@ export function createLevel1(ui) {
         // Scales were matched by the size of her hair bow across the walk, crouch, claw and bite art.
         let scale = 0;
         if (zombieCombatState === 'chase' || zombieCombatState === 'recover') scale = .4595;   // V9.30: original walk art scale
-        else if (zombieCombatState === 'claw' || zombieCombatState === 'intro') scale = .62;
+        else if (zombieCombatState === 'claw' || (zombieCombatState === 'intro' && !zombieIntroNew)) scale = .62;
         else if (zombieCombatState === 'heavyKick') scale = .62;
-        else if (zombieCombatState === 'ready' || zombieCombatState === 'windup' || zombieCombatState === 'death' || zombieCombatState === 'hit') scale = 1;   // V9.24 frames are pre-scaled
+        else if (zombieCombatState === 'ready' || zombieCombatState === 'windup' || (zombieCombatState === 'intro' && zombieIntroNew) || zombieCombatState === 'death' || zombieCombatState === 'hit') scale = 1;   // V9.24 frames are pre-scaled
         return { img: frames[index], targetHeight, frameIndex: index, scale };
     }
 
@@ -2723,7 +2736,7 @@ export function createLevel1(ui) {
             try { video.pause(); video.removeAttribute('src'); video.load(); } catch (e) {}
             overlay.remove(); done();
         };
-        const sources = ['assets/video/cutscene3/ollytaken.mp4?v=9390', 'assets/video/cutscene3/olly-taken.mp4?v=9390', 'assets/video/cutscene3/ollytaken.mov?v=9390', 'assets/video/cutscene3/olly-taken.mov?v=9390'];
+        const sources = ['assets/video/cutscene3/ollytaken.mp4?v=9400', 'assets/video/cutscene3/olly-taken.mp4?v=9400', 'assets/video/cutscene3/ollytaken.mov?v=9400', 'assets/video/cutscene3/olly-taken.mov?v=9400'];
         let i = 0;
         const next = () => { if (i >= sources.length) { finish(); return; } video.src = sources[i++]; video.load(); video.play().catch(() => {}); };
         video.addEventListener('error', next);
@@ -3963,6 +3976,7 @@ export function createLevel1(ui) {
         if (bossFight) initPatricia(resume);
         if (!bossFight && (target?.type === 'shambler' || target?.type === 'chain')) {
             const introStart = gnow();
+            zombieIntroNew = target?.type === 'shambler' && (zombieIntroMode === 'new' || (zombieIntroMode === 'random' && Math.random() < .5));   // V9.40
             zombieCombatX = COMBAT_W - 320;
             zombieIntroActive = true;
             zombieIntroStart = introStart;
@@ -4763,6 +4777,7 @@ export function createLevel1(ui) {
     }
 
     const cheat = {
+        setIntro: m => { zombieIntroMode = m; },
         isGod: () => cheatGod,
         setGod: v => { cheatGod = !!v; },
         refillHp: () => { hp = maxHp; stats(); },
