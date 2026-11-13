@@ -25,9 +25,9 @@ SLAM_FRAMES = (list(range(37, 62, 2)) + list(range(62, 71)) + list(range(71, 84,
                list(range(84, 94, 2)) + list(range(94, 103)) + list(range(103, 118, 3)))
 ANIMS = {
     'intro': ('321 fight', list(range(0, 60)), 0.64, STD, 1.0),                 # frames 0-27 build up, 28-59 loop
-    'walk':  ('CGwalk2',   list(range(36, 51)), 0.56, STD, 1.0),                # V9.24: new creepier walk loop (frames 36-50)
+    'walk':  ('CGwalk2',   list(range(4, 19)), 0.56, STD, 1.0),                 # V9.30: the face-visible side of the walk (frames 4-18, native facing LEFT)
     'swipe': ('chaingothchainswipe', list(range(0, 20)), 0.56, STD, 1.0),       # 0-9 wind-up, 10-19 sweep
-    'death': ('ChainGothDeath-retry', list(range(8, 26)) + [60], 0.56, STD, 1.0),   # V9.24: 8-25 hit + fall, 60 = lying on the floor
+    'death': ('ChainGothDeath3', list(range(7, 29)) + [60], 0.56, STD, 1.0),   # V9.24: 8-25 hit + fall, 60 = lying on the floor
     'spin':  ('chainspinattack', list(range(0, 25, 2)) + list(range(25, 61)), 0.56, (539.5, 730), 1.634),   # 13 wind-up frames, then 36 spin frames
     'stun':  ('ChainGothStunned', list(range(0, 61)), 0.56, (750, 971), 1.163),
     'hurt':  ('HurtReactionChainGoth', list(range(0, 47)), 0.56, STD, 1.0),

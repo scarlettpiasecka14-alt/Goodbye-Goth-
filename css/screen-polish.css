@@ -745,7 +745,6 @@ body.gg-calm *, body.gg-calm *::before, body.gg-calm *::after { animation-durati
 .would-pips i { width: 11px; height: 11px; border-radius: 50%; border: 2px solid #b4668a; background: transparent; display: block; }
 .would-pips i.now { box-shadow: 0 0 10px rgba(255, 130, 180, .8); }
 .would-pips i.done { background: #ef8eaa; border-color: #ffc7dc; }
-#relationship.overlay .would-now, #relationship .minigame-display.would-now { background: #8f2459 !important; border-color: #ffc7dc !important; color: #fff !important; }
 .slot-picker { position: absolute; inset: 0; z-index: 40; display: grid; place-items: center; background: rgba(8,4,12,.8); }
 .slot-box { width: min(520px, 92vw); display: flex; flex-direction: column; gap: 10px; padding: 18px; color: #f0dde6; background: #140c18; border: 1px solid #8a4d6c; border-radius: 10px; }
 .slot-title { text-align: center; font-size: 1.15rem; letter-spacing: .08em; color: #ef87aa; }
@@ -760,5 +759,46 @@ body.gg-calm *, body.gg-calm *::before, body.gg-calm *::after { animation-durati
 .slot-confirm-btns button, .slot-back { padding: 8px 14px; border-radius: 8px; border: 1px solid #ef87aa; background: #5a2542; color: #fff; font: inherit; cursor: pointer; }
 .slot-back { align-self: center; background: #231329; }
 .slot-confirm-btns .slot-no { background: #231329; }
-#encounter.enc-rel .encounter-art { max-height: 50dvh !important; }
-#encounter.enc-rel .encounter-copy { font-size: clamp(.95rem, 1.5vw, 1.2rem) !important; }
+
+/* ===================== V9.34b ===================== */
+@font-face { font-family: 'Cormorant Garamond'; font-style: normal; font-weight: 600; src: url('../assets/fonts/CormorantGaramond-regular-600.woff') format('woff'); font-display: swap; }
+@font-face { font-family: 'Cormorant Garamond'; font-style: italic; font-weight: 600; src: url('../assets/fonts/CormorantGaramond-italic-600.woff') format('woff'); font-display: swap; }
+:root { --gg-font: 'Cormorant Garamond', Georgia, 'Times New Roman', serif; }
+
+/* Relationship challenge encounter: big picture (the picture already says the name, so no big title); lead line a bit bigger. */
+#encounter.enc-rel .encounter-art { max-height: 63dvh !important; }
+#encounter .encounter-copy .enc-lead { font-size: 1.12em; }
+
+/* Would You: the changing phrase sits right under the explanation, and the button is a normal size (no pink flash) */
+#relationship .timing-button { display: block !important; width: auto !important; min-width: 260px !important; max-width: 340px; margin: 12px auto 6px !important; }
+#relationship #would-display { margin: 4px auto 8px !important; }
+#relationship #would-display.would-now { background: #18121b !important; color: inherit !important; border-color: var(--line) !important; box-shadow: none !important; animation: none !important; transform: none !important; }
+#relationship #would-tap.flash, #relationship #would-tap:active { filter: none; }
+
+/* Font F (Cormorant Garamond) for all reading text. It is a small-looking face, so sizes are nudged up. */
+#dialogue, #combat .combat-note, .encounter-copy, .ironic-copy, .quiz-copy, .quiz-question, .quiz-answers button, .quiz-feedback,
+#relationship .minigame-display, #relationship #would-feedback, #relationship .story-copy, .story-copy, .patricia-card p, .intro-copy {
+  font-family: var(--gg-font) !important; font-weight: 600 !important; letter-spacing: .01em;
+}
+#dialogue { font-size: 19px !important; line-height: 1.35 !important; }
+#combat .combat-note { font-size: 20px !important; line-height: 1.3 !important; }
+.encounter-copy { font-size: clamp(1.3rem, 2.4vw, 1.8rem) !important; line-height: 1.3 !important; }
+.ironic-copy { font-size: clamp(1.05rem, 1.7vw, 1.3rem) !important; line-height: 1.3 !important; }
+#relationship .minigame-display { font-size: clamp(1.3rem, 2.3vw, 1.7rem) !important; font-style: italic; }
+.quiz-question { font-size: clamp(1.3rem, 2.2vw, 1.7rem) !important; }
+.quiz-answers button { font-size: clamp(1.05rem, 1.7vw, 1.35rem) !important; }
+
+/* Themed text boxes: ink-black card, a thin double pink line like a gothic window frame, and little stars on the top edge. */
+#dialogue, #combat .combat-note {
+  background: rgba(14, 6, 18, .94) !important; color: #ffe9f1 !important;
+  border: 1px solid #b4668a !important; border-radius: 3px !important;
+  box-shadow: inset 0 0 0 3px #0e0612, inset 0 0 0 4px rgba(239,135,170,.45), 0 4px 14px rgba(0,0,0,.6) !important;
+  backdrop-filter: none !important; position: relative;
+}
+#combat .combat-note { position: absolute !important; }
+#dialogue::before, #dialogue::after, #combat .combat-note::before, #combat .combat-note::after {
+  content: "\2726"; position: absolute; top: -11px; font-size: 14px; line-height: 1; color: #ef87aa; background: #0b050f; padding: 0 6px;
+}
+#dialogue::before, #combat .combat-note::before { left: 70px; }
+#dialogue::after, #combat .combat-note::after { right: 22px; }
+#relationship.overlay .ironic-copy { font-size: clamp(1.15rem, 1.9vw, 1.4rem) !important; line-height: 1.3 !important; max-width: 980px !important; text-align: center !important; }
