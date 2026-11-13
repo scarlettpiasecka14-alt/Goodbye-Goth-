@@ -1,6 +1,6 @@
 /* Goodbye Goth V9.4 - Chain Goth fight (AI + all seven animations: intro, walk, swipe, spin, stun, hurt, death) on top of V9.0 map cleanup and the v8.11 Zombie Goth AI. */
-import { playSfx, playRandomSfx, playMusic, preloadSfx, setLoopSfx, setAudioHeld } from '../audio.js?v=9310';
-import { activeKey } from '../saves.js?v=9310';
+import { playSfx, playRandomSfx, playMusic, preloadSfx, setLoopSfx, setAudioHeld } from '../audio.js?v=9370';
+import { activeKey } from '../saves.js?v=9370';
 // Game clock: normal time, but it stands still while a tutorial pop-up is open (so nothing happens behind it).
 let pausedTotal = 0, pausedAt = 0;
 const gnow = () => (pausedAt || performance.now()) - pausedTotal;
@@ -66,30 +66,36 @@ function showRingTutorial(kind, onClose) {
     setTimeout(() => b.focus({ preventScroll: true }), 50);
     return true;
 }
-function drawAttackRing(c, x, floorY, radius, kind, progress, active, nowMs) {
-    // V9.36: the ring is only a WARNING: it flashes twice during the wind-up (in the attack's colour), then disappears so the animation is clear.
+// V9.37: the warning flashes are the same length for EVERY attack: two flashes of ~220ms, finishing ~90ms before the hit lands.
+// progress = 0..1 through the wind-up, windupMs = how long that wind-up is.
+function ringFlashAlpha(progress, windupMs) {
+    if (tutorialHold) return 1;
+    const W = windupMs || 1000, t = Math.max(0, Math.min(1, progress)) * W;
+    let fd = Math.min(220, W * .28), gap = Math.min(120, W * .1);
+    const end2 = W - Math.min(90, W * .12);
+    if (end2 - 2 * fd - gap < 0) fd = Math.max(40, (end2 - gap) / 2);
+    const s2 = end2 - fd, s1 = s2 - gap - fd;
+    const f = (lo, hi) => (t >= lo && t < hi) ? Math.pow(Math.sin((t - lo) / (hi - lo) * Math.PI), .6) : 0;
+    return Math.max(f(s1, s1 + fd), f(s2, end2));
+}
+function drawAttackRing(c, x, floorY, radius, kind, progress, active, nowMs, windupMs) {
+    // The ring is only a WARNING: it flashes twice during the wind-up in the attack's colour, then disappears so the animation is clear.
     const rgb = ATTACK_RING_RGB[kind] || ATTACK_RING_RGB.pink;
-    const p = Math.max(0, Math.min(1, progress));
-    let a;
-    if (tutorialHold) a = 1;   // the ring tutorial freezes the fight with the ring visible
-    else if (active) return;
-    else {
-        const f = (lo, hi) => (p >= lo && p < hi) ? Math.sin((p - lo) / (hi - lo) * Math.PI) : 0;
-        a = Math.max(f(.02, .36), f(.40, .74));
-    }
+    if (active && !tutorialHold) return;
+    const a = ringFlashAlpha(progress, windupMs);
     if (a <= .03) return;
     c.save();
     c.translate(x, floorY);
     c.scale(1, .2);
     c.beginPath();
     c.arc(0, 0, radius, 0, Math.PI * 2);
-    c.fillStyle = `rgba(${rgb},${.30 * a})`;
+    c.fillStyle = `rgba(${rgb},${.34 * a})`;
     c.fill();
-    c.lineWidth = 11;
-    c.strokeStyle = `rgba(${rgb},${.95 * a})`;
+    c.lineWidth = 12;
+    c.strokeStyle = `rgba(${rgb},${.98 * a})`;
     c.stroke();
     c.beginPath(); c.arc(0, 0, radius * .94, 0, Math.PI * 2);
-    c.lineWidth = 4; c.strokeStyle = `rgba(255,255,255,${.5 * a})`; c.stroke();
+    c.lineWidth = 4; c.strokeStyle = `rgba(255,255,255,${.55 * a})`; c.stroke();
     c.restore();
 }
 // V9.23: how close the map camera is (was 1.42; 1.7 in V9.23). Bigger = closer, characters and objects look larger.
@@ -109,7 +115,7 @@ function safeParseSave() {
 }
 
 const mapBackground = new Image();
-mapBackground.src = 'assets/environment/level1-map-bg-2x.webp?v=9310';   // V9.30: pre-sharpened 2x version (same picture, twice the pixels)
+mapBackground.src = 'assets/environment/level1-map-bg-2x.webp?v=9370';   // V9.30: pre-sharpened 2x version (same picture, twice the pixels)
 // V9.30: Settings options (window.ggPrefs is created by settings.js)
 const prefOn = k => !(window.ggPrefs && window.ggPrefs[k] === false);
 const SH = a => prefOn('shadows') ? `rgba(0,0,0,${a})` : 'rgba(0,0,0,0)';
@@ -209,8 +215,8 @@ const OLLY_DRAW_FOOT_OFFSET = 62;
 // These shared icon references can be reused by every level. Only the activity
 // behind the role changes from level to level.
 const ICON_LIBRARY = {
-    relationshipChallenge: 'assets/icons/relationship-challenge.webp?v=9310',
-    princessQuestion: 'assets/icons/princess-question.webp?v=9310'
+    relationshipChallenge: 'assets/icons/relationship-challenge.webp?v=9370',
+    princessQuestion: 'assets/icons/princess-question.webp?v=9370'
 };
 const relationshipChallengeIcon = new Image();
 relationshipChallengeIcon.src = ICON_LIBRARY.relationshipChallenge;
@@ -363,7 +369,7 @@ function loadPatriciaAssets() {
     patAssetsRequested = true;
     for (const [name, a] of Object.entries(patAtlas)) {
         const img = a.img;
-        img.src = `assets/characters/patricia/atlas/pat-${name}.webp?v=9310`;
+        img.src = `assets/characters/patricia/atlas/pat-${name}.webp?v=9370`;
         img.decode?.().then(() => {
             if (window.createImageBitmap) createImageBitmap(img).then(bmp => { a.bmp = bmp; }).catch(() => {});
         }).catch(() => {});
@@ -421,7 +427,7 @@ function loadCombatAssets() {
     zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.webp?v=7600`);
     zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i + 1}.webp?v=8600`);
     zombieCombatFrames.heavyKick.forEach((img, i) => img.src = `assets/characters/combat/zombie-ankle-biter-${String(i + 1).padStart(2, '0')}.webp?v=10100`);
-    zombieCombatFrames.hurt.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/hurt-${String(i + 1).padStart(3, '0')}.webp?v=9310`);
+    zombieCombatFrames.hurt.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/hurt-${String(i + 1).padStart(3, '0')}.webp?v=9370`);
     zombieCombatFrames.death.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/death-${String(i + 1).padStart(3, '0')}.webp?v=9240`);
     zombieCombatFrames.prep.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro-${String(i + 1).padStart(3, '0')}.webp?v=9240`);
     zombieCountdownFrames[3].src = 'assets/characters/combat/zombie-countdown-3.webp?v=8600';
@@ -430,7 +436,7 @@ function loadCombatAssets() {
     zombieCountdownFrames.fight.src = 'assets/characters/combat/zombie-countdown-fight.webp?v=8600';
     for (const [name, a] of Object.entries(chainAtlas)) {
         const img = a.img;
-        img.src = `assets/characters/combat/chain-goth/chain-${name}.webp?v=9340`;
+        img.src = `assets/characters/combat/chain-goth/chain-${name}.webp?v=9370`;
         // Decode the big sheets in the background so the first time she uses a move there is no hitch (Safari decodes lazily).
         img.decode?.().then(() => {
             try { const t = document.createElement('canvas'); t.width = t.height = 1; t.getContext('2d').drawImage(img, 0, 0, 1, 1); } catch (e) {}
@@ -1152,7 +1158,7 @@ export function createLevel1(ui) {
     const combatBackgroundImage = new Image();
     combatBackgroundImage.src = 'assets/environment/combat-background-level1.webp';
     const patriciaArenaImage = new Image();
-    patriciaArenaImage.src = 'assets/arenas/patricia-arena.webp?v=9310';   // V9.30: Patricia's own arena
+    patriciaArenaImage.src = 'assets/arenas/patricia-arena.webp?v=9370';   // V9.30: Patricia's own arena
 
     // v6.5.16e: start just below the upper-left church, close to Zombie Goth.
     let x = 240,
@@ -1344,7 +1350,7 @@ export function createLevel1(ui) {
                 const item = items[i];
                 if (item) {
                     const info = ITEM_INFO[item];
-                    slot.innerHTML = `<img class="inv-item-img" src="${info.img}?v=9310" alt="${info.name}" draggable="false"><span>${info.label}</span>`;
+                    slot.innerHTML = `<img class="inv-item-img" src="${info.img}?v=9370" alt="${info.name}" draggable="false"><span>${info.label}</span>`;
                     slot.dataset.item = item;
                     slot.dataset.tip = info.tip;
                     slot.classList.add('inventory-filled');
@@ -1747,8 +1753,8 @@ export function createLevel1(ui) {
         let finished = false;
         let attemptedFallback = false;
         const sources = [
-            'assets/video/cutscene2/cutscene2.mp4?v=9310',
-            'assets/video/cutscene2/cutscene2.mov?v=9310'
+            'assets/video/cutscene2/cutscene2.mp4?v=9370',
+            'assets/video/cutscene2/cutscene2.mov?v=9370'
         ];
 
         const finish = () => {
@@ -2716,7 +2722,7 @@ export function createLevel1(ui) {
             try { video.pause(); video.removeAttribute('src'); video.load(); } catch (e) {}
             overlay.remove(); done();
         };
-        const sources = ['assets/video/cutscene3/ollytaken.mp4?v=9310', 'assets/video/cutscene3/olly-taken.mp4?v=9310', 'assets/video/cutscene3/ollytaken.mov?v=9310', 'assets/video/cutscene3/olly-taken.mov?v=9310'];
+        const sources = ['assets/video/cutscene3/ollytaken.mp4?v=9370', 'assets/video/cutscene3/olly-taken.mp4?v=9370', 'assets/video/cutscene3/ollytaken.mov?v=9370', 'assets/video/cutscene3/olly-taken.mov?v=9370'];
         let i = 0;
         const next = () => { if (i >= sources.length) { finish(); return; } video.src = sources[i++]; video.load(); video.play().catch(() => {}); };
         video.addEventListener('error', next);
@@ -2892,9 +2898,9 @@ export function createLevel1(ui) {
         };
         if (waveT < 0) {
             // danger zone: faint at first, lit up after the warning slam, pulsing faster as the real slam gets near
-            const lit = t > CHAIN_SLAM_WARN_AT_MS ? 1 : .8;
-            const pulse = .5 + .5 * Math.sin(nowMs / (110 - 60 * warnP));
-            strip(CHAIN_WAVE_REACH, (.16 + .22 * warnP) * (.65 + .35 * pulse) * lit, (.3 + .5 * warnP) * lit);
+            // V9.37: the danger strip flashes in time with the ring (two flashes), it is no longer a constant yellow wash
+            const fl = ringFlashAlpha(t / CHAIN_SLAM_HIT_AT_MS, CHAIN_SLAM_HIT_AT_MS);
+            if (fl > .03) strip(CHAIN_WAVE_REACH, .40 * fl, .85 * fl);
         } else if (waveT < CHAIN_WAVE_MS) {
             const grow = Math.min(1, waveT / CHAIN_WAVE_GROW_MS);
             const reach = CHAIN_WAVE_REACH * (1 - Math.pow(1 - grow, 2));
@@ -2986,10 +2992,10 @@ export function createLevel1(ui) {
         if (zombieCombatState === 'slam') {
             const st = nowMs - zombieCombatStateStart;
             if (st < CHAIN_SLAM_HIT_AT_MS)   // V9.28: the yellow ring the tutorial shows is now really drawn in the fight
-                drawAttackRing(c, enemyX, CHAIN_FLOOR_Y + 8, 300, 'yellow', Math.min(1, st / CHAIN_SLAM_HIT_AT_MS), false, nowMs);
+                drawAttackRing(c, enemyX, CHAIN_FLOOR_Y + 8, 300, 'yellow', Math.min(1, st / CHAIN_SLAM_HIT_AT_MS), false, nowMs, CHAIN_SLAM_HIT_AT_MS);
             drawChainSlamFloor(c, enemyX, face, st, nowMs);
         } else if (zombieCombatState === 'windup' && zombieCombatAttackType === 'swipe') {
-            drawAttackRing(c, enemyX, CHAIN_FLOOR_Y + 8, CHAIN_SWIPE_RANGE, 'red', Math.min(1, (nowMs - zombieCombatStateStart) / CHAIN_SWIPE_WINDUP_MS), false, nowMs);
+            drawAttackRing(c, enemyX, CHAIN_FLOOR_Y + 8, CHAIN_SWIPE_RANGE, 'red', Math.min(1, (nowMs - zombieCombatStateStart) / CHAIN_SWIPE_WINDUP_MS), false, nowMs, CHAIN_SWIPE_WINDUP_MS);
         } else if (zombieCombatState === 'swipe') {
             drawAttackRing(c, enemyX, CHAIN_FLOOR_Y + 8, CHAIN_SWIPE_RANGE, 'red', 1, true, nowMs);
         }
@@ -3045,6 +3051,28 @@ export function createLevel1(ui) {
                     const pt = table[key];
                     chainSparks.push({ t: nowMs, x: enemyX + offsetX + dirSign * pt[0] * frame.scale * CHAIN_WIDTH_STRETCH, y: CHAIN_FLOOR_Y + pt[1] * frame.scale });
                 }
+            }
+        }
+        // V9.37: while the chain swings between its two ground contacts in the 3-2-1, it DRAGS along the floor: a line of sparks between the two bursts
+        if (packName === 'intro') {
+            const table = CHAIN_CONTACTS.intro, keys = Object.keys(table).map(Number).sort((u, v) => u - v), cur = frame.index;
+            if (cur > keys[0] && cur <= keys[keys.length - 1]) {
+                let i0 = 0; for (let i = 0; i < keys.length - 1; i++) if (keys[i] <= cur) i0 = i;
+                const k0 = keys[i0], k1 = keys[i0 + 1], u = Math.max(0, Math.min(1, (cur - k0) / (k1 - k0)));
+                const x0l = table[k0][0], x1l = table[k1][0], tipL = x0l + (x1l - x0l) * u;
+                const wx = lx => enemyX + offsetX + dirSign * lx * frame.scale * CHAIN_WIDTH_STRETCH;
+                c.save(); c.globalCompositeOperation = 'lighter'; c.lineCap = 'round';
+                const N = 22;
+                for (let j = 0; j < N; j++) {
+                    const q = j / (N - 1), lx = x0l + (tipL - x0l) * q;      // from the contact it left, up to the chain's current position
+                    const ph = Math.sin(nowMs / 37 + j * 12.9) * .5 + .5, ph2 = Math.sin(nowMs / 53 + j * 7.3) * .5 + .5;
+                    const al = (.25 + .65 * q) * (.55 + .45 * ph);
+                    const px = wx(lx), py = CHAIN_FLOOR_Y - 33 * frame.scale + (ph2 - .5) * 7;
+                    const len = 5 + 14 * ph * (.4 + q), up = 3 + 16 * ph2 * (.3 + q);
+                    c.strokeStyle = j % 3 === 0 ? `rgba(255,248,220,${al})` : `rgba(255,201,94,${al})`; c.lineWidth = j % 3 === 0 ? 3.2 : 2.2;
+                    c.beginPath(); c.moveTo(px, py); c.lineTo(px - dirSign * (x1l >= x0l ? -1 : 1) * len * .6, py - up); c.stroke();
+                }
+                c.restore();
             }
         }
         chainLastPack = packName;
@@ -3470,13 +3498,13 @@ export function createLevel1(ui) {
         }
         // V9.36: warning rings flash twice during the wind-up, then go (red = dodge or jump, yellow = only jumping works, purple = special ability)
         const ringY = CHAIN_FLOOR_Y + 8, tt = nowMs - zombieCombatStateStart;
-        if (st === 'lunge') drawAttackRing(c, enemyX, ringY, PAT_LUNGE_RANGE - 40, 'red', tt / PAT_LUNGE_WINDUP_MS, tt >= PAT_LUNGE_WINDUP_MS, nowMs);
-        else if (st === 'combo') drawAttackRing(c, enemyX, ringY, PAT_COMBO_RANGE - 30, 'red', tt / PAT_COMBO_WINDUP_MS, tt >= PAT_COMBO_WINDUP_MS, nowMs);
-        else if (st === 'lightning') drawAttackRing(c, enemyX, ringY, PAT_LIGHT_RANGE, 'yellow', tt / PAT_LIGHT_WINDUP_MS, tt >= PAT_LIGHT_WINDUP_MS, nowMs);
+        if (st === 'lunge') drawAttackRing(c, enemyX, ringY, PAT_LUNGE_RANGE - 40, 'red', tt / PAT_LUNGE_WINDUP_MS, tt >= PAT_LUNGE_WINDUP_MS, nowMs, PAT_LUNGE_WINDUP_MS);
+        else if (st === 'combo') drawAttackRing(c, enemyX, ringY, PAT_COMBO_RANGE - 30, 'red', tt / PAT_COMBO_WINDUP_MS, tt >= PAT_COMBO_WINDUP_MS, nowMs, PAT_COMBO_WINDUP_MS);
+        else if (st === 'lightning') drawAttackRing(c, enemyX, ringY, PAT_LIGHT_RANGE, 'yellow', tt / PAT_LIGHT_WINDUP_MS, tt >= PAT_LIGHT_WINDUP_MS, nowMs, PAT_LIGHT_WINDUP_MS);
         else if (st === 'smoke') {
-            const pr = tt / PAT_SMOKE_REAPPEAR_AT_MS * .9;
-            if (tt < PAT_SMOKE_GONE_AT_MS) drawAttackRing(c, enemyX, ringY, 150, 'purple', pr, false, nowMs);   // her own ring: she is using a special ability
-            drawAttackRing(c, patVanishX, ringY, 230, 'purple', pr, false, nowMs);                                // where she will strike
+            const pr = tt / PAT_SMOKE_REAPPEAR_AT_MS;
+            if (tt < PAT_SMOKE_GONE_AT_MS) drawAttackRing(c, enemyX, ringY, 150, 'purple', pr, false, nowMs, PAT_SMOKE_REAPPEAR_AT_MS);   // her own ring: she is using a special ability
+            drawAttackRing(c, patVanishX, ringY, 230, 'purple', pr, false, nowMs, PAT_SMOKE_REAPPEAR_AT_MS);                                // where she will strike
         }
         const packName = Object.keys(patAtlas).find(k => patAtlas[k] === frame.pack);
         const rs = PAT_SCALE * PAT_SIZE_K * (PAT_PACK_K[packName] || 1);
@@ -3682,6 +3710,8 @@ export function createLevel1(ui) {
                 chainSlamWarned = true;
                 playSfx('chain-impact', .8);
                 ui.combatStatus.textContent = 'Warning slam... the next one is the real one. JUMP OVER HER!';
+                // V9.37: the warning slam still hurts if you are standing BEHIND her (the chain whips round)
+                if ((player.x - zombieCombatX) * aim < -10) applyZombieDamage(10, 300, 34, nowMs, 'CHAIN BACKSWING', false, false);
             }
             if (elapsed >= CHAIN_SLAM_HIT_AT_MS && elapsed < CHAIN_SLAM_HIT_AT_MS + CHAIN_WAVE_MS) {
                 const waveT = elapsed - CHAIN_SLAM_HIT_AT_MS;
@@ -3831,7 +3861,7 @@ export function createLevel1(ui) {
             const heavyRing = zombieCombatAttackType === 'heavyKick';
             const ringKind = heavyRing ? 'red' : 'pink', ringR = heavyRing ? 235 : 165, ringY = COMBAT_GROUND_Y + RING_FLOOR_OFFSET;
             if (zombieCombatState === 'windup')
-                drawAttackRing(cctx, enemyX, ringY, ringR, ringKind, (nowMs - zombieCombatStateStart) / (heavyRing ? BITE_WINDUP_MS : 560), false, nowMs);
+                drawAttackRing(cctx, enemyX, ringY, ringR, ringKind, (nowMs - zombieCombatStateStart) / (heavyRing ? BITE_WINDUP_MS : 560), false, nowMs, heavyRing ? BITE_WINDUP_MS : 560);
             else if (zombieCombatState === 'claw' || zombieCombatState === 'heavyKick')
                 drawAttackRing(cctx, enemyX, ringY, ringR, ringKind, 1, true, nowMs);
         }

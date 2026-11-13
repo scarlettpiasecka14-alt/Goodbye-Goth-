@@ -824,3 +824,13 @@ body.gg-calm *, body.gg-calm *::before, body.gg-calm *::after { animation-durati
 @media (max-width:560px){
   #puzzle.overlay .quiz-answers{ grid-template-columns:1fr !important; }
 }
+
+/* V9.37: "You've encountered a relationship challenge" uses the same bold serif as the big headings (e.g. CHALLENGE COMPLETE!) */
+#encounter .encounter-copy .enc-lead {
+  font-family: Georgia, "Times New Roman", serif !important;
+  font-weight: 900 !important;
+  letter-spacing: -.02em;
+  font-size: 1.5em !important;
+}
+/* V9.37: tiny build stamp so we can always tell which version is really running */
+#gg-ver { position: fixed; right: 8px; bottom: 6px; z-index: 15000; font: 700 11px/1 system-ui, sans-serif; letter-spacing: .08em; color: rgba(239,135,170,.55); pointer-events: none; }
