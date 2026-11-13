@@ -802,3 +802,25 @@ body.gg-calm *, body.gg-calm *::before, body.gg-calm *::after { animation-durati
 #dialogue::before, #combat .combat-note::before { left: 70px; }
 #dialogue::after, #combat .combat-note::after { right: 22px; }
 #relationship.overlay .ironic-copy { font-size: clamp(1.15rem, 1.9vw, 1.4rem) !important; line-height: 1.3 !important; max-width: 980px !important; text-align: center !important; }
+
+/* V9.36: Princess Question: the question is plain text (no box); the four answers sit in a 2x2 square (A B / C D). */
+#puzzle.overlay .quiz-box .quiz-question,
+#puzzle.overlay .quiz-question{
+  border:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+  padding:4px 14px !important;
+  text-align:center;
+}
+#puzzle.overlay .quiz-answers{
+  display:grid !important;
+  grid-template-columns:1fr 1fr !important;
+  gap:10px !important;
+  width:min(1080px,100%);
+  margin-left:auto !important;
+  margin-right:auto !important;
+}
+#puzzle.overlay .quiz-answers button{ text-align:left; }
+@media (max-width:560px){
+  #puzzle.overlay .quiz-answers{ grid-template-columns:1fr !important; }
+}
