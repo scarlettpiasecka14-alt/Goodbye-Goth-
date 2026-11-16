@@ -1,8 +1,8 @@
 /* Goodbye Goth - settings screen (sound, brightness, fullscreen, controls list).
    Everything is built here and lives on <body>, so it survives the game swapping screens.
    Opened from the title menu (SETTINGS) or by pressing O anywhere outside a fight; closes with O, Esc or CLOSE. */
-import { getVolumes, setVolume } from './audio.js?v=9420';
-import { ACTIONS, DEFAULTS, getBindings, swapBindings, setBinding, resetBindings, keyLabel, isDefault } from './controls.js?v=9420';
+import { getVolumes, setVolume } from './audio.js?v=9440';
+import { ACTIONS, DEFAULTS, getBindings, swapBindings, setBinding, resetBindings, keyLabel, isDefault } from './controls.js?v=9440';
 
 // V9.30: display / accessibility preferences. Saved in the browser; the game reads window.ggPrefs.
 const PREFS_KEY = 'goodbyeGothPrefs_v1';
@@ -93,7 +93,7 @@ function renderControls() {
     const b = getBindings();
     const def = overlay.querySelector('#gg-controls-default');
     const rows = ACTIONS.map(a => `<dt>${keyLabel(b[a.id])}</dt><dd>${a.label}</dd>`).join('');
-    def.innerHTML = `<dl class="gg-keys">${rows}<dt>LEFT CLICK</dt><dd>Attack</dd><dt>RIGHT CLICK</dt><dd>Dodge</dd><dt>ARROW KEYS</dt><dd>Also move</dd></dl>` +
+    def.innerHTML = `<dl class="gg-keys">${rows}<dt>LEFT CLICK</dt><dd>Attack</dd><dt>R</dt><dd>Dodge</dd><dt>ARROW KEYS</dt><dd>Also move</dd></dl>` +
         (isDefault() ? '' : '<p class="gg-note">These are your customised keys. Press RESET TO DEFAULT in Customise to go back.</p>');
     const slots = overlay.querySelector('#gg-slots'); slots.innerHTML = '';
     for (const a of ACTIONS) {
@@ -183,7 +183,7 @@ export function initSettings() {
           <div id="gg-controls-default"></div>
           <div id="gg-controls-custom" hidden>
             <div class="gg-slots" id="gg-slots"></div>
-            <p class="gg-note">Drag an action onto another box to swap keys, or click a key and press the one you want. Arrow keys always move, X punches, right click dodges.</p>
+            <p class="gg-note">Drag an action onto another box to swap keys, or click a key and press the one you want. Arrow keys always move, X punches, R dodges.</p>
             <div class="gg-btns"><button id="gg-reset-keys" class="gg-btn" type="button">RESET TO DEFAULT</button></div>
           </div>
         </div></details>

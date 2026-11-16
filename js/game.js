@@ -1,10 +1,10 @@
-import { StoryController } from './story.js?v=9420';
-import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9430';
-import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9420';
-import { initSettings, openSettings } from './settings.js?v=9420';
-import { actionForKey } from './controls.js?v=9420';
-import { initCheats, registerCheats } from './cheats.js?v=9420';
-import { SLOT_COUNT, getActiveSlot, setActiveSlot, readSlot, clearSlot, slotSummary, anySave } from './saves.js?v=9420';
+import { StoryController } from './story.js?v=9440';
+import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9440';
+import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9440';
+import { initSettings, openSettings } from './settings.js?v=9440';
+import { actionForKey } from './controls.js?v=9440';
+import { initCheats, registerCheats } from './cheats.js?v=9440';
+import { SLOT_COUNT, getActiveSlot, setActiveSlot, readSlot, clearSlot, slotSummary, anySave } from './saves.js?v=9440';
 
 const root = document.getElementById('game-root');
 
@@ -192,7 +192,7 @@ function showControls(){
         <div class="controls-list">
           <div class="control-item"><span class="control-key">WASD / ARROWS</span><span class="control-action">Move</span></div>
           <div class="control-item"><span class="control-key">SPACE</span><span class="control-action">Jump</span></div>
-          <div class="control-item"><span class="control-key">RIGHT CLICK</span><span class="control-action">Dodge</span></div>
+          <div class="control-item"><span class="control-key">R</span><span class="control-action">Dodge</span></div>
           <div class="control-item"><span class="control-key">X / LEFT CLICK</span><span class="control-action">Punch</span></div>
           <div class="control-item"><span class="control-key">Z</span><span class="control-action">Heavy attack (once earned)</span></div>
           <div class="control-item"><span class="control-key">LEFT CLICK / ENTER</span><span class="control-action">Pick up / interact</span></div>
@@ -248,9 +248,7 @@ function mountLevel1(loadSaved=false){
 
       <div id="inventory" class="overlay hidden" style="z-index:40">
         <div class="overlay-box center inventory-box">
-          <div class="inventory-kicker">OLLY'S BAG</div>
-          <div class="story-title">INVENTORY (BACKPACK)</div>
-          <div class="inventory-capacity"><span id="inventory-count-large">0 / 10 ITEMS</span></div>
+          <div class="story-title">OLLY'S BACKPACK</div>
           <div class="inventory-slots" aria-label="Inventory slots">
             <div class="inventory-slot">01</div><div class="inventory-slot">02</div><div class="inventory-slot">03</div><div class="inventory-slot">04</div><div class="inventory-slot">05</div>
             <div class="inventory-slot">06</div><div class="inventory-slot">07</div><div class="inventory-slot">08</div><div class="inventory-slot">09</div><div class="inventory-slot">10</div>

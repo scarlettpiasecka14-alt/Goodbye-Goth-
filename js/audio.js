@@ -82,14 +82,17 @@ const MUSIC = {
     fight: ['FightMusic1.mp3', 'FightMusic2.mp3'],
     boss: ['BossFight1.mp3', 'FightMusic1.mp3', 'FightMusic2.mp3']   // V9.34: Patricia's fight starts with BossFight1, then alternates the two fight tracks
 };
-let musicEl = null, musicName = '', wantMusic = '', fadeTimer = null, musicToken = 0;
+let musicEl = null, musicName = '', wantMusic = '', fadeTimer = null, musicToken = 0, musicBusy = false;
 function musicTarget() { return Math.max(0, Math.min(1, vol.master * vol.music)); }
+// V9.44: every song has its OWN fade timer. There used to be one shared timer, so when a new song started fading in while the old one was still fading out,
+// the old one's fade was cancelled half-way: it was never stopped, kept playing quietly for ever, and the Music slider could not reach it (the "intro music in the fight" bug).
 function fadeTo(el, to, ms, done) {
-    clearInterval(fadeTimer);
-    const from = el.volume, steps = Math.max(1, Math.round(ms / 50)); let i = 0;
-    fadeTimer = setInterval(() => {
-        i++; el.volume = Math.max(0, Math.min(1, from + (to - from) * (i / steps)));
-        if (i >= steps) { clearInterval(fadeTimer); if (done) done(); }
+    clearInterval(el._fade);
+    const from = el.volume, t0 = performance.now();   // timed by the clock, so a busy moment (a fight loading) cannot stretch the fade
+    el._fade = setInterval(() => {
+        const k = Math.min(1, (performance.now() - t0) / Math.max(1, ms));
+        el.volume = Math.max(0, Math.min(1, from + (to - from) * k));
+        if (k >= 1) { clearInterval(el._fade); if (done) done(); }
     }, 50);
 }
 function nextIdx(name, list, i) { const n = (i + 1) % list.length; return (name === 'boss' && n === 0) ? 1 : n; }   // boss: the opening track plays once, then the two fight tracks alternate
@@ -101,7 +104,7 @@ function startTrack(name, token, list, i) {
     el.loop = list.length === 1; el.volume = 0; el.preload = 'auto';
     el.addEventListener('ended', () => { if (token === musicToken && list.length > 1) { musicEl = null; startTrack(name, token, list, nextIdx(name, list, i)); } });
     el.addEventListener('error', () => { if (token === musicToken && list.length > 1) startTrack(name, token, list, nextIdx(name, list, i)); });
-    el.play().then(() => { if (token !== musicToken) { el.pause(); return; } musicEl = el; musicName = name; fadeTo(el, musicTarget(), 900); }).catch(() => {});
+    el.play().then(() => { musicBusy = false; if (token !== musicToken) { el.pause(); return; } musicEl = el; musicName = name; fadeTo(el, musicTarget(), 900); }).catch(() => { musicBusy = false; });
 }
 /* playMusic('menu' | 'map' | 'fight' | '') - '' stops the music. Browsers only allow sound after a click/tap, so this retries on the next one. */
 export function playMusicFrom(name, seconds, fadeMs = 300) { startOffset = seconds; playMusic(name, fadeMs); }
@@ -109,10 +112,11 @@ export function playMusic(name, fadeMs = 500) {
     wantMusic = name;
     if (name === musicName && musicEl && !musicEl.paused) return;
     const token = ++musicToken;
+    musicBusy = true;   // V9.44: true for the whole crossfade (old track fading out, new one starting); the unlock() retry below must not mistake the gap for "nothing is playing"
     const begin = () => {
-        if (token !== musicToken) return;
+        if (token !== musicToken) { musicBusy = false; return; }
         const list = MUSIC[name];
-        if (!name || !list) { musicName = ''; return; }
+        if (!name || !list) { musicName = ''; musicBusy = false; return; }
         const first = name === 'boss' ? 0 : (list.length > 1 ? Math.floor(Math.random() * list.length) : 0);
         startTrack(name, token, list, first);
     };
@@ -156,7 +160,7 @@ setInterval(refreshLoops, 1500);
 export function setVolume(kind, v) {
     vol[kind] = Math.max(0, Math.min(1, v));
     try { localStorage.setItem(VOL_KEY, JSON.stringify(vol)); } catch (e) {}
-    if (musicEl) { clearInterval(fadeTimer); musicEl.volume = musicTarget(); }
+    if (musicEl) { clearInterval(musicEl._fade); musicEl.volume = musicTarget(); }
     refreshLoops();
 }
 export function getVolumes() { return { ...vol }; }
@@ -165,10 +169,10 @@ let unlocked = false;
 const unlock = () => {
     getCtx(); wake();
     // (Re)start the wanted song if nothing is actually playing - e.g. after the page was reloaded, restored from the back button, or Safari paused it.
-    if (wantMusic && (!musicEl || musicEl.paused)) playMusic(wantMusic);
+    if (wantMusic && !musicBusy && (!musicEl || musicEl.paused)) playMusic(wantMusic);
     unlocked = true;
 };
-window.addEventListener('pageshow', () => { if (wantMusic && (!musicEl || musicEl.paused)) playMusic(wantMusic); });
+window.addEventListener('pageshow', () => { if (wantMusic && !musicBusy && (!musicEl || musicEl.paused)) playMusic(wantMusic); });
 export function audioNeedsClick() { return vol.master > 0 && !unlocked; }
 window.addEventListener('pointerdown', unlock, { once: false });
 window.addEventListener('keydown', unlock, { once: false });
