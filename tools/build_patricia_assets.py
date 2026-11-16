@@ -10,14 +10,15 @@ SCALE = 0.66            # default atlas scale (the arena draws her at 0.66 x her
 R = lambda a, b, s=1: list(range(a, b, s))
 # V9.39: (folder, frames, atlas scale). Frames are now (nearly) every video frame so she plays at the speed of your preview; the atlas is stored at a higher
 # resolution than the arena draws it, so on a big/retina screen she is sharp. (video is 24 fps: step 1 = 41.7 ms per frame)
+# V9.44: her body moves are now stored at FULL source resolution (1.0 = not shrunk at all); on a retina screen she is drawn bigger than her source art, so every shrink cost sharpness.
 ANIMS = {
-    'walk':      ('walk', R(32, 61), 0.9),
-    'idle':      ('321fight', R(0, 61, 2), 0.9),
-    'lunge':     ('SwordSwipe', R(0, 61), 0.8),
-    'combo':     ('Swordcombo', R(0, 61), 0.9),     # V9.41: her sword-combo art is ~20% smaller in its picture than her other moves, so it is stored at a higher resolution (and drawn bigger)
+    'walk':      ('walk', R(32, 61), 1.0),
+    'idle':      ('321fight', R(0, 61, 2), 1.0),
+    'lunge':     ('SwordSwipe', R(0, 61), 1.0),
+    'combo':     ('Swordcombo', R(0, 61), 1.0),     # V9.41: her sword-combo art is ~20% smaller in its picture than her other moves, so it is stored at a higher resolution (and drawn bigger)
     'lightning': ('Lightningstrike', R(0, 61, 2), 0.56),
     'smoke':     ('Purplesmoke', R(0, 61, 3), 0.66),
-    'salv':      ('Salvagable?', R(4, 53), 0.7),   # V9.41: the 'Salvagable?' jumps are now her four hurt reactions (frames 4-52); the old 'hurtand recover' clip is no longer used
+    'salv':      ('Salvagable?', R(4, 53), 0.85),   # V9.41: the 'Salvagable?' jumps are now her four hurt reactions (frames 4-52); the old 'hurtand recover' clip is no longer used
 }
 MAX_W = 4096
 def pack(repo, name, folder, frames, SCALE):
@@ -50,7 +51,7 @@ def pack(repo, name, folder, frames, SCALE):
         table.append([px, py, crop.width, crop.height, bb[0]-ANCHOR[0], bb[1]-ANCHOR[1]])   # offsets in SOURCE px (x SCALE at draw time)
     out_dir = os.path.join(repo, 'assets/characters/patricia/atlas'); os.makedirs(out_dir, exist_ok=True)
     out = os.path.join(out_dir, 'pat-%s.webp' % name)
-    atlas.save(out, 'WEBP', quality=88, alpha_quality=100, method=4)
+    atlas.save(out, 'WEBP', quality=92, alpha_quality=100, method=4)
     return out, atlas.size, table
 if __name__ == '__main__':
     repo = sys.argv[1]; names = sys.argv[2:] or list(ANIMS); res = {}
