@@ -40,15 +40,29 @@ function reviveAudio() {
 document.addEventListener('visibilitychange', () => { if (!document.hidden) reviveAudio(); });
 window.addEventListener('focus', reviveAudio);
 window.addEventListener('pageshow', reviveAudio);
-export function setAudioHeld(on) { held = !!on; if (!ctx) return; if (on) { if (ctx.state === 'running') ctx.suspend().catch(() => {}); } else ctx.resume().catch(() => {}); }
-function loadBuffer(name) {
+let heldMusic = null, heldLoops = [];
+export function setAudioHeld(on) {
+    held = !!on;
+    // V9.46: Settings now pauses the music and any plain <audio> loops too (before, only the Web Audio sounds stopped, so a fight "paused" but still had music and her dragging chain).
+    if (on) {
+        if (musicEl && !musicEl.paused) { heldMusic = musicEl; musicEl.pause(); }
+        heldLoops = []; for (const n of Object.keys(loops)) { const f = loops[n].fb; if (f && !f.paused) { heldLoops.push(f); f.pause(); } }
+    } else {
+        if (heldMusic) { if (heldMusic === musicEl) heldMusic.play().catch(() => {}); heldMusic = null; }
+        heldLoops.forEach(f => f.play().catch(() => {})); heldLoops = [];
+    }
+    if (!ctx) return;
+    if (on) { if (ctx.state === 'running') ctx.suspend().catch(() => {}); } else ctx.resume().catch(() => {});
+}
+function loadBuffer(name, tries = 0) {
     if (STREAM[name] || buffers[name] || loading[name]) return;
     const c = getCtx(); if (!c) return;
+    // V9.46: a sound that failed to download/decode used to be marked "loading" for ever, so it stayed silent for the whole session. Now it retries.
     loading[name] = fetch(`assets/audio/sfx/${name}.mp3?v=9910`)
         .then(r => { if (!r.ok) throw new Error('missing'); return r.arrayBuffer(); })
         .then(ab => new Promise((res, rej) => c.decodeAudioData(ab, res, rej)))
         .then(buf => { buffers[name] = buf; })
-        .catch(() => {});
+        .catch(() => { delete loading[name]; if (tries < 3) setTimeout(() => loadBuffer(name, tries + 1), 800 * (tries + 1)); });
 }
 const fallbackCache = {};
 function fallbackPlay(name, v) {
@@ -71,8 +85,15 @@ export function playSfx(name, gain = 1, rate = 1) {
 }
 export function playRandomSfx(names, gain = 1) { playSfx(names[Math.floor(Math.random() * names.length)], gain); }
 export function preloadSfx(names) { names.forEach(loadBuffer); }
-// Start downloading the common fight sounds straight away so the first punch is instant.
-['punch-1', 'punch-2', 'goth-hurt-1', 'goth-hurt-2', 'goth-hurt-3', 'goth-hurt-4', 'goth-pain', 'click', 'typing', 'footsteps'].forEach(n => setTimeout(() => loadBuffer(n), 0));
+// V9.46: download + decode EVERY sound effect straight away (about 1.3 MB in all). Before, only a handful were ready at the start, and any other sound that played before it had finished decoding went through
+// a much less reliable path that Safari often silences - that is why sound effects seemed to work "on and off" (first Chain Goth hits, countdown ticks, her chain sounds).
+const ALL_SFX = ['punch-1', 'punch-2', 'punch-3', 'goth-hurt-1', 'goth-hurt-2', 'goth-hurt-3', 'goth-hurt-4', 'goth-pain', 'click', 'typing', 'footsteps', 'interact', 'pickup',
+    'olly-attack', 'olly-heavy-attack', 'olly-dodge-grunt', 'olly-hurt', 'olly-hurt-heavy', 'olly-jump', 'olly-land', 'olly-ko', 'olly-thud',
+    'chain-clatter', 'chain-drag', 'chain-drop', 'chain-impact', 'chain-impact-spin', 'chain-rattle', 'chain-spin',
+    'breath-recovery', 'countdown-tick', 'fight-shout', 'zombie-death', 'tutorial', 'minigame-win', 'quiz-win', 'round-ok', 'wrong-buzz',
+    'patricia-check-backpack', 'patricia-hey', 'patricia-kill-you', 'patricia-nice-try-cutie', 'patricia-nice-try', 'patricia-not-funny', 'patricia-pay-for-that', 'patricia-trying-hard',
+    'patricia-ugh-stop-it', 'patricia-unfair-fight', 'patricia-who-do-you', 'patricia-grunt-1', 'patricia-grunt-3', 'patricia-grunt-4', 'patricia-grunt-5', 'patricia-grunt-6', 'patricia-grunt-7', 'patricia-grunt-8', 'patricia-grunt-9'];
+ALL_SFX.forEach((n, i) => setTimeout(() => loadBuffer(n), i * 15));
 
 /* Music "pools": each name plays one file (looping) or a playlist that moves to the next track when one ends.
    Files live in assets/audio/music/. Put the title-screen song at assets/audio/music/menu.mp3. */
@@ -128,6 +149,7 @@ export function playMusic(name, fadeMs = 500) {
 // Looping effects (footsteps, typing, intro ambience): start/stop by name. Safe to call every frame - it only acts on a change.
 const loops = {};
 export function setLoopSfx(name, on, gain = 1) {
+    if (held && on) { if (loops[name]) loops[name].want = true; return; }   // paused from Settings: do not (re)start loops behind it
     try {
         const v = Math.max(0, Math.min(1, vol.master * vol.sfx * gain));
         let L = loops[name];
@@ -138,6 +160,7 @@ export function setLoopSfx(name, on, gain = 1) {
             if (L.fb && !L.fb.paused) { L.fb.pause(); }
             if (on && v > 0) {
                 wake();
+                if (L.src && L.src.context !== c) { try { L.src.stop(); } catch (e) {} L.src = null; L.g = null; }   // the sound engine was rebuilt (Safari tab switch)
                 if (!L.src) {
                     L.src = c.createBufferSource(); L.g = c.createGain(); L.src.buffer = buffers[name]; L.src.loop = true;
                     L.src.connect(L.g); L.g.connect(sfxGain); L.src.start(0);
@@ -155,7 +178,7 @@ export function setLoopSfx(name, on, gain = 1) {
     } catch (e) {}
 }
 // Re-apply loops once their fast buffers have decoded or the volume changes.
-function refreshLoops() { for (const n of Object.keys(loops)) setLoopSfx(n, loops[n].want, loops[n].gain); }
+function refreshLoops() { if (held) return; for (const n of Object.keys(loops)) setLoopSfx(n, loops[n].want, loops[n].gain); }
 setInterval(refreshLoops, 1500);
 export function setVolume(kind, v) {
     vol[kind] = Math.max(0, Math.min(1, v));
