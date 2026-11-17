@@ -1,0 +1,5 @@
+Zombie Goth art pipeline (run in this order, always from the ORIGINAL frames - never twice on the same files):
+ 1. tools/blacken_zg_edges.py <all zombie-*.webp and zombie-v2/*.webp>      black outline, no green/olive
+ 2. tools/match_zg_tone.py .90 zombie-walk-N.webp | .82 zombie-claw-N.webp | .86 zombie-ankle-biter-NN.webp | .92 zombie-ready-crouch.webp    one shared brightness
+ 3. tools/glow_zg_eyes.py walk|claw|bite <those frames>, and "wide" on zombie-v2/death-001..004.webp      glowing eyes like the 3-2-1 intro
+(The original frames are kept in git history before V9.50.)

@@ -1,6 +1,6 @@
 /* Goodbye Goth V9.4 - Chain Goth fight (AI + all seven animations: intro, walk, swipe, spin, stun, hurt, death) on top of V9.0 map cleanup and the v8.11 Zombie Goth AI. */
-import { playSfx, playRandomSfx, playMusic, playMusicFrom, preloadSfx, setLoopSfx, setAudioHeld } from '../audio.js?v=9490';
-import { activeKey } from '../saves.js?v=9490';
+import { playSfx, playRandomSfx, playMusic, playMusicFrom, preloadSfx, setLoopSfx, setAudioHeld } from '../audio.js?v=9500';
+import { activeKey } from '../saves.js?v=9500';
 // Game clock: normal time, but it stands still while a tutorial pop-up is open (so nothing happens behind it).
 let pausedTotal = 0, pausedAt = 0;
 const gnow = () => (pausedAt || performance.now()) - pausedTotal;
@@ -375,7 +375,7 @@ function loadPatriciaAssets() {
     patAssetsRequested = true;
     for (const [name, a] of Object.entries(patAtlas)) {
         const img = a.img;
-        img.src = `assets/characters/patricia/atlas/pat-${name}.webp?v=9490`;
+        img.src = `assets/characters/patricia/atlas/pat-${name}.webp?v=9500`;
         img.decode?.().then(() => {
             if (window.createImageBitmap) createImageBitmap(img).then(bmp => { a.bmp = bmp; }).catch(() => {});
         }).catch(() => {});
@@ -434,18 +434,18 @@ function loadCombatAssets() {
     ollyCombatSprites.punch.forEach((img, i) => img.src = `assets/characters/combat/olly-punch-${i+1}.webp?v=6511`);
     ollyReactionSprites.hurt.forEach((img, i) => img.src = `assets/characters/combat/olly-hurt-${i + 1}.webp?v=8110`);
     ollyReactionSprites.ko.forEach((img, i) => img.src = `assets/characters/combat/olly-ko-${i + 1}.webp?v=8110`);
-    zombieCombatFrames.idle[0].src = 'assets/characters/combat/zombie-ready-crouch.webp?v=9490';
-    zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.webp?v=9490`);
-    zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i + 1}.webp?v=9490`);
-    zombieCombatFrames.heavyKick.forEach((img, i) => img.src = `assets/characters/combat/zombie-ankle-biter-${String(i + 1).padStart(2, '0')}.webp?v=9490`);
-    zombieCombatFrames.hurt.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/hurt-${String(i + 1).padStart(3, '0')}.webp?v=9490`);
-    zombieCombatFrames.death.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/death-${String(i + 1).padStart(3, '0')}.webp?v=9490`);
-    zombieCombatFrames.intro2.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro2-${String(i + 1).padStart(3, '0')}.webp?v=9490`);
-    zombieCombatFrames.prep.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro-${String(i + 1).padStart(3, '0')}.webp?v=9490`);
-    zombieCountdownFrames[3].src = 'assets/characters/combat/zombie-countdown-3.webp?v=9490';
-    zombieCountdownFrames[2].src = 'assets/characters/combat/zombie-countdown-2.webp?v=9490';
-    zombieCountdownFrames[1].src = 'assets/characters/combat/zombie-countdown-1.webp?v=9490';
-    zombieCountdownFrames.fight.src = 'assets/characters/combat/zombie-countdown-fight.webp?v=9490';
+    zombieCombatFrames.idle[0].src = 'assets/characters/combat/zombie-ready-crouch.webp?v=9500';
+    zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.webp?v=9500`);
+    zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i + 1}.webp?v=9500`);
+    zombieCombatFrames.heavyKick.forEach((img, i) => img.src = `assets/characters/combat/zombie-ankle-biter-${String(i + 1).padStart(2, '0')}.webp?v=9500`);
+    zombieCombatFrames.hurt.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/hurt-${String(i + 1).padStart(3, '0')}.webp?v=9500`);
+    zombieCombatFrames.death.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/death-${String(i + 1).padStart(3, '0')}.webp?v=9500`);
+    zombieCombatFrames.intro2.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro2-${String(i + 1).padStart(3, '0')}.webp?v=9500`);
+    zombieCombatFrames.prep.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro-${String(i + 1).padStart(3, '0')}.webp?v=9500`);
+    zombieCountdownFrames[3].src = 'assets/characters/combat/zombie-countdown-3.webp?v=9500';
+    zombieCountdownFrames[2].src = 'assets/characters/combat/zombie-countdown-2.webp?v=9500';
+    zombieCountdownFrames[1].src = 'assets/characters/combat/zombie-countdown-1.webp?v=9500';
+    zombieCountdownFrames.fight.src = 'assets/characters/combat/zombie-countdown-fight.webp?v=9500';
     for (const [name, a] of Object.entries(chainAtlas)) {
         const img = a.img;
         img.src = `assets/characters/combat/chain-goth/chain-${name}.webp?v=9440`;
@@ -2930,6 +2930,10 @@ export function createLevel1(ui) {
                 out.under = { pack: chainAtlas[hv.name], index: hv.index, scale: CHAIN_RENDER_SCALE * hv.k }; out.mix = m;
                 out.scale = CHAIN_RENDER_SCALE * (1 + (e.k - 1) * m);
             }
+            else if (i + 1 < seq.length) {   // V9.50: between two frames, blend into the next one so the fall is continuous movement instead of a few poses
+                const nx = seq[i + 1], span = Math.max(1, nx.t - e.t);
+                out.nxt = { pack: chainAtlas[nx.name], index: nx.index, scale: CHAIN_RENDER_SCALE * nx.k, mix: Math.max(0, Math.min(1, (pos - e.t) / span)) };
+            }
             return out;
         }
         // ready uses the neutral standing pose.
@@ -3072,6 +3076,7 @@ export function createLevel1(ui) {
         if (zombieCombatState === 'death') { const bt = nowMs - zombieCombatStateStart - CHAIN_DEATH_SEQ.impactAt; if (bt > 0 && bt < 300) deathBounce = -16 * Math.sin(Math.PI * bt / 300) * (1 - bt / 300); }
         if (frame.under) drawChainAtlasFrame(c, frame.under.pack, frame.under.index, enemyX, CHAIN_FLOOR_Y, drawFace, frame.under.scale, alpha * (1 - frame.mix * .6), rotation, offsetX);
         drawChainAtlasFrame(c, frame.pack, frame.index, enemyX, CHAIN_FLOOR_Y + deathBounce, drawFace, frame.scale, alpha * (frame.under ? frame.mix : 1), rotation, offsetX);
+        if (frame.nxt && frame.nxt.mix > .02) drawChainAtlasFrame(c, frame.nxt.pack, frame.nxt.index, enemyX, CHAIN_FLOOR_Y + deathBounce, drawFace, frame.nxt.scale, alpha * frame.nxt.mix, rotation, offsetX);
         if (slamGlow) c.restore();
         updateChainStunMeter(nowMs);
 
