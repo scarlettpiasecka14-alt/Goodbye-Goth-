@@ -40,17 +40,12 @@ function reviveAudio() {
 document.addEventListener('visibilitychange', () => { if (!document.hidden) reviveAudio(); });
 window.addEventListener('focus', reviveAudio);
 window.addEventListener('pageshow', reviveAudio);
-let heldMusic = null, heldLoops = [];
+let heldLoops = [];
 export function setAudioHeld(on) {
     held = !!on;
-    // V9.46: Settings now pauses the music and any plain <audio> loops too (before, only the Web Audio sounds stopped, so a fight "paused" but still had music and her dragging chain).
-    if (on) {
-        if (musicEl && !musicEl.paused) { heldMusic = musicEl; musicEl.pause(); }
-        heldLoops = []; for (const n of Object.keys(loops)) { const f = loops[n].fb; if (f && !f.paused) { heldLoops.push(f); f.pause(); } }
-    } else {
-        if (heldMusic) { if (heldMusic === musicEl) heldMusic.play().catch(() => {}); heldMusic = null; }
-        heldLoops.forEach(f => f.play().catch(() => {})); heldLoops = [];
-    }
+    // V9.46: Settings also pauses plain <audio> sound loops (her dragging chain). The MUSIC deliberately keeps playing while Settings is open.
+    if (on) { heldLoops = []; for (const n of Object.keys(loops)) { const f = loops[n].fb; if (f && !f.paused) { heldLoops.push(f); f.pause(); } } }
+    else { heldLoops.forEach(f => f.play().catch(() => {})); heldLoops = []; }
     if (!ctx) return;
     if (on) { if (ctx.state === 'running') ctx.suspend().catch(() => {}); } else ctx.resume().catch(() => {});
 }

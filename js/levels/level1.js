@@ -1,6 +1,6 @@
 /* Goodbye Goth V9.4 - Chain Goth fight (AI + all seven animations: intro, walk, swipe, spin, stun, hurt, death) on top of V9.0 map cleanup and the v8.11 Zombie Goth AI. */
-import { playSfx, playRandomSfx, playMusic, playMusicFrom, preloadSfx, setLoopSfx, setAudioHeld } from '../audio.js?v=9460';
-import { activeKey } from '../saves.js?v=9460';
+import { playSfx, playRandomSfx, playMusic, playMusicFrom, preloadSfx, setLoopSfx, setAudioHeld } from '../audio.js?v=9480';
+import { activeKey } from '../saves.js?v=9480';
 // Game clock: normal time, but it stands still while a tutorial pop-up is open (so nothing happens behind it).
 let pausedTotal = 0, pausedAt = 0;
 const gnow = () => (pausedAt || performance.now()) - pausedTotal;
@@ -344,7 +344,9 @@ const ZOMBIE_LONG_HURT_SEQUENCE = [0, 1, 2, 3, 4, 5, 5, 6, 7, 8, 9, 10, 11, 12, 
 const ZOMBIE_LONG_HURT_FRAME_MS = [50, 50, 55, 60, 80, 150, 400, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 120];
 const ZOMBIE_LONG_HURT_TOTAL_MS = ZOMBIE_LONG_HURT_FRAME_MS.reduce((a, b) => a + b, 0);
 // v8.7: slow the visible collapse by ~15%, then hold the final grounded pose for 5 seconds.
-const ZOMBIE_DEATH_FRAME_MS = Array(45).fill(45);
+// V9.46: the fall now lingers where she hits her knees (frames 26-29, about 0.85 s) instead of rushing through it; the rest is slightly quicker so the whole death is still ~2.7 s.
+const ZOMBIE_DEATH_FRAME_MS = Array.from({ length: 45 }, (_, i) => i < 18 ? 40 : i < 25 ? 60 : i === 25 ? 160 : i === 26 || i === 27 ? 260 : i === 28 ? 160 : 45);
+const ZOMBIE_DEATH_KNEES_AT_MS = ZOMBIE_DEATH_FRAME_MS.slice(0, 25).reduce((a, b) => a + b, 0);
 const ZOMBIE_DEATH_TOTAL_MS = ZOMBIE_DEATH_FRAME_MS.reduce((a, b) => a + b, 0);
 const ZOMBIE_DEATH_HOLD_FIXED = Math.max(300, 3000 - ZOMBIE_DEATH_TOTAL_MS);
 const ZOMBIE_DEATH_HOLD_MS = 3000;   // placeholder, recomputed below so animation + hold = 3s
@@ -373,7 +375,7 @@ function loadPatriciaAssets() {
     patAssetsRequested = true;
     for (const [name, a] of Object.entries(patAtlas)) {
         const img = a.img;
-        img.src = `assets/characters/patricia/atlas/pat-${name}.webp?v=9460`;
+        img.src = `assets/characters/patricia/atlas/pat-${name}.webp?v=9480`;
         img.decode?.().then(() => {
             if (window.createImageBitmap) createImageBitmap(img).then(bmp => { a.bmp = bmp; }).catch(() => {});
         }).catch(() => {});
@@ -432,18 +434,18 @@ function loadCombatAssets() {
     ollyCombatSprites.punch.forEach((img, i) => img.src = `assets/characters/combat/olly-punch-${i+1}.webp?v=6511`);
     ollyReactionSprites.hurt.forEach((img, i) => img.src = `assets/characters/combat/olly-hurt-${i + 1}.webp?v=8110`);
     ollyReactionSprites.ko.forEach((img, i) => img.src = `assets/characters/combat/olly-ko-${i + 1}.webp?v=8110`);
-    zombieCombatFrames.idle[0].src = 'assets/characters/combat/zombie-ready-crouch.webp?v=9460';
-    zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.webp?v=9460`);
-    zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i + 1}.webp?v=9460`);
-    zombieCombatFrames.heavyKick.forEach((img, i) => img.src = `assets/characters/combat/zombie-ankle-biter-${String(i + 1).padStart(2, '0')}.webp?v=9460`);
-    zombieCombatFrames.hurt.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/hurt-${String(i + 1).padStart(3, '0')}.webp?v=9460`);
-    zombieCombatFrames.death.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/death-${String(i + 1).padStart(3, '0')}.webp?v=9460`);
-    zombieCombatFrames.intro2.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro2-${String(i + 1).padStart(3, '0')}.webp?v=9460`);
-    zombieCombatFrames.prep.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro-${String(i + 1).padStart(3, '0')}.webp?v=9460`);
-    zombieCountdownFrames[3].src = 'assets/characters/combat/zombie-countdown-3.webp?v=9460';
-    zombieCountdownFrames[2].src = 'assets/characters/combat/zombie-countdown-2.webp?v=9460';
-    zombieCountdownFrames[1].src = 'assets/characters/combat/zombie-countdown-1.webp?v=9460';
-    zombieCountdownFrames.fight.src = 'assets/characters/combat/zombie-countdown-fight.webp?v=9460';
+    zombieCombatFrames.idle[0].src = 'assets/characters/combat/zombie-ready-crouch.webp?v=9480';
+    zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.webp?v=9480`);
+    zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i + 1}.webp?v=9480`);
+    zombieCombatFrames.heavyKick.forEach((img, i) => img.src = `assets/characters/combat/zombie-ankle-biter-${String(i + 1).padStart(2, '0')}.webp?v=9480`);
+    zombieCombatFrames.hurt.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/hurt-${String(i + 1).padStart(3, '0')}.webp?v=9480`);
+    zombieCombatFrames.death.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/death-${String(i + 1).padStart(3, '0')}.webp?v=9480`);
+    zombieCombatFrames.intro2.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro2-${String(i + 1).padStart(3, '0')}.webp?v=9480`);
+    zombieCombatFrames.prep.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro-${String(i + 1).padStart(3, '0')}.webp?v=9480`);
+    zombieCountdownFrames[3].src = 'assets/characters/combat/zombie-countdown-3.webp?v=9480';
+    zombieCountdownFrames[2].src = 'assets/characters/combat/zombie-countdown-2.webp?v=9480';
+    zombieCountdownFrames[1].src = 'assets/characters/combat/zombie-countdown-1.webp?v=9480';
+    zombieCountdownFrames.fight.src = 'assets/characters/combat/zombie-countdown-fight.webp?v=9480';
     for (const [name, a] of Object.entries(chainAtlas)) {
         const img = a.img;
         img.src = `assets/characters/combat/chain-goth/chain-${name}.webp?v=9440`;
@@ -507,13 +509,14 @@ const CHAIN_SPARK_MS = 230;
 const CHAIN_DEATH_K = .88;   // size of the new kneel/fall frames relative to fight size (their head is ~15% bigger in the source clip)
 const CHAIN_DEATH_FADE_MS = 220;
 const CHAIN_DEATH_SEQ = (() => {
-    const seq = []; let t = 0;
+    const seq = []; let t = 0, impactAt = 0;
     for (let i = 0; i <= 20; i++) { seq.push({ name: 'hurt', index: i, t, k: 1 }); t += 30; }       // 0.63 s: the hit
     for (let i = 9; i <= 16; i++) { seq.push({ name: 'death', index: i, t, k: 1 }); t += 70; }      // 0.56 s: hunching over
     const fadeAt = t;
     // she shrinks a little as she lies down: lying flat she was longer than she is tall
-    CHAIN_ATLAS_DATA.deathc.frames.forEach((f, n) => { seq.push({ name: 'deathc', index: n, t, k: CHAIN_DEATH_K - .1 * Math.min(1, Math.max(0, (n - 3) / 10)) }); t += n < 11 ? 70 : 80; });
-    return { seq, total: t, fadeAt };
+    CHAIN_ATLAS_DATA.deathc.frames.forEach((f, n) => { seq.push({ name: 'deathc', index: n, t, k: CHAIN_DEATH_K - .1 * Math.min(1, Math.max(0, (n - 3) / 10)) }); t += n <= 4 ? 70 : n <= 10 ? 45 : n === 11 ? 60 : n <= 13 ? 70 : 80;
+        if (n === 10) impactAt = t; });   // quick, accelerating topple (gravity), then a slower settle
+    return { seq, total: t, fadeAt, impactAt };
 })();
 const CHAIN_DEATH_FALL_MS = CHAIN_DEATH_SEQ.total, CHAIN_DEATH_HOLD_MS = 1300;
 
@@ -2302,11 +2305,14 @@ export function createLevel1(ui) {
 
         // One fixed scale per animation set (never per frame) so she stays the same size within and between animations.
         // Scales were matched by the size of her hair bow across the walk, crouch, claw and bite art.
+        // V9.46: re-matched by measuring the size of her hair bow in every set (it was 12.5 in the claw art up to 14.1 in the hurt art, about 12% apart); all are now ~13.2.
         let scale = 0;
-        if (zombieCombatState === 'chase' || zombieCombatState === 'recover') scale = .4595;   // V9.30: original walk art scale
-        else if (zombieCombatState === 'claw' || (zombieCombatState === 'intro' && !zombieIntroNew)) scale = .62;
-        else if (zombieCombatState === 'heavyKick') scale = .62;
-        else if (zombieCombatState === 'ready' || zombieCombatState === 'windup' || (zombieCombatState === 'intro' && zombieIntroNew) || zombieCombatState === 'death' || zombieCombatState === 'hit') scale = 1;   // V9.24 frames are pre-scaled
+        if (zombieCombatState === 'chase' || zombieCombatState === 'recover') scale = .473;
+        else if (zombieCombatState === 'claw' || (zombieCombatState === 'intro' && !zombieIntroNew)) scale = .655;
+        else if (zombieCombatState === 'heavyKick') scale = .593;
+        else if (zombieCombatState === 'ready' || zombieCombatState === 'windup' || (zombieCombatState === 'intro' && zombieIntroNew)) scale = .95;
+        else if (zombieCombatState === 'hit') scale = .936;
+        else if (zombieCombatState === 'death') scale = 1.05;
         return { img: frames[index], targetHeight, frameIndex: index, scale };
     }
 
@@ -2423,6 +2429,7 @@ export function createLevel1(ui) {
 
         zombieDeathStarted = true;
         playSfx('zombie-death', .9);
+        setTimeout(() => { if (mode === 'combat' && zombieDeathStarted) playSfx('olly-thud', .55, .8); }, ZOMBIE_DEATH_KNEES_AT_MS);   // the thud as her knees hit the floor
         zombieDeathEndAt = nowMs + ZOMBIE_DEATH_TOTAL_MS + ZOMBIE_DEATH_HOLD_FIXED;
         zombieCombatState = 'death';
         zombieCombatStateStart = nowMs;
@@ -3052,8 +3059,10 @@ export function createLevel1(ui) {
         if (slamGlow) {   // the yellow "ghost": she glows yellow while the slam is coming
             c.save(); c.shadowColor = 'rgba(255,214,60,1)'; c.shadowBlur = 34 + (prefOn('calm') ? 0 : 12 * Math.sin(nowMs / 70));
         }
+        let deathBounce = 0;   // V9.46: she hits the floor with weight: a small bounce, then still
+        if (zombieCombatState === 'death') { const bt = nowMs - zombieCombatStateStart - CHAIN_DEATH_SEQ.impactAt; if (bt > 0 && bt < 300) deathBounce = -16 * Math.sin(Math.PI * bt / 300) * (1 - bt / 300); }
         if (frame.under) drawChainAtlasFrame(c, frame.under.pack, frame.under.index, enemyX, CHAIN_FLOOR_Y, drawFace, frame.under.scale, alpha * (1 - frame.mix * .6), rotation, offsetX);
-        drawChainAtlasFrame(c, frame.pack, frame.index, enemyX, CHAIN_FLOOR_Y, drawFace, frame.scale, alpha * (frame.under ? frame.mix : 1), rotation, offsetX);
+        drawChainAtlasFrame(c, frame.pack, frame.index, enemyX, CHAIN_FLOOR_Y + deathBounce, drawFace, frame.scale, alpha * (frame.under ? frame.mix : 1), rotation, offsetX);
         if (slamGlow) c.restore();
         updateChainStunMeter(nowMs);
 
@@ -3783,7 +3792,8 @@ export function createLevel1(ui) {
         zombieDeathStarted = true;
         playSfx('zombie-death', .9, .85);   // her groan, pitched lower (no grunts of her own yet)
         playSfx('chain-drop', 1);
-        setTimeout(() => { if (mode === 'combat') playSfx('chain-clatter', .9); }, 1900);   // her chain falls and clatters as she hits the floor
+        setTimeout(() => { if (mode === 'combat' && zombieDeathStarted) { playSfx('olly-thud', .8, .7); kickShake(9, 300); } }, CHAIN_DEATH_SEQ.impactAt);   // the thud and a shake as she hits the floor
+        setTimeout(() => { if (mode === 'combat' && zombieDeathStarted) playSfx('chain-clatter', .9); }, CHAIN_DEATH_SEQ.impactAt + 220);   // her chain falls and clatters as she hits the floor
         zombieDeathEndAt = nowMs + CHAIN_DEATH_FALL_MS + CHAIN_DEATH_HOLD_MS;
         zombieCombatState = 'death';
         zombieCombatStateStart = nowMs;
