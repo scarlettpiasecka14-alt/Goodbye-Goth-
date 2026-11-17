@@ -14,6 +14,8 @@ def fix(path):
     lum0 = .3 * r + .59 * g + .11 * b
     warm = np.maximum(r, b) * .82   # dark pixels where red ~ green read as olive/green next to the pink arena, so green is held clearly below red/blue
     g2 = np.where(lum0 < 150, np.minimum(g, warm), np.where(band, np.minimum(g, np.maximum(r, b)), g))
+    # dark browns (red > green > blue) read as olive/green against the pink arena: push blue up to green's level so dark areas read maroon/black instead
+    b = np.where(.3 * r + .59 * g2 + .11 * b < 110, np.maximum(b, g2 * 1.08), b)
     luma = .3 * r + .59 * g2 + .11 * b
     dark = band & (luma < 200)
     k = np.where(dark, .3, 1.0)

@@ -1,6 +1,6 @@
 /* Goodbye Goth V9.4 - Chain Goth fight (AI + all seven animations: intro, walk, swipe, spin, stun, hurt, death) on top of V9.0 map cleanup and the v8.11 Zombie Goth AI. */
-import { playSfx, playRandomSfx, playMusic, playMusicFrom, preloadSfx, setLoopSfx, setAudioHeld } from '../audio.js?v=9480';
-import { activeKey } from '../saves.js?v=9480';
+import { playSfx, playRandomSfx, playMusic, playMusicFrom, preloadSfx, setLoopSfx, setAudioHeld } from '../audio.js?v=9490';
+import { activeKey } from '../saves.js?v=9490';
 // Game clock: normal time, but it stands still while a tutorial pop-up is open (so nothing happens behind it).
 let pausedTotal = 0, pausedAt = 0;
 const gnow = () => (pausedAt || performance.now()) - pausedTotal;
@@ -375,7 +375,7 @@ function loadPatriciaAssets() {
     patAssetsRequested = true;
     for (const [name, a] of Object.entries(patAtlas)) {
         const img = a.img;
-        img.src = `assets/characters/patricia/atlas/pat-${name}.webp?v=9480`;
+        img.src = `assets/characters/patricia/atlas/pat-${name}.webp?v=9490`;
         img.decode?.().then(() => {
             if (window.createImageBitmap) createImageBitmap(img).then(bmp => { a.bmp = bmp; }).catch(() => {});
         }).catch(() => {});
@@ -434,18 +434,18 @@ function loadCombatAssets() {
     ollyCombatSprites.punch.forEach((img, i) => img.src = `assets/characters/combat/olly-punch-${i+1}.webp?v=6511`);
     ollyReactionSprites.hurt.forEach((img, i) => img.src = `assets/characters/combat/olly-hurt-${i + 1}.webp?v=8110`);
     ollyReactionSprites.ko.forEach((img, i) => img.src = `assets/characters/combat/olly-ko-${i + 1}.webp?v=8110`);
-    zombieCombatFrames.idle[0].src = 'assets/characters/combat/zombie-ready-crouch.webp?v=9480';
-    zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.webp?v=9480`);
-    zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i + 1}.webp?v=9480`);
-    zombieCombatFrames.heavyKick.forEach((img, i) => img.src = `assets/characters/combat/zombie-ankle-biter-${String(i + 1).padStart(2, '0')}.webp?v=9480`);
-    zombieCombatFrames.hurt.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/hurt-${String(i + 1).padStart(3, '0')}.webp?v=9480`);
-    zombieCombatFrames.death.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/death-${String(i + 1).padStart(3, '0')}.webp?v=9480`);
-    zombieCombatFrames.intro2.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro2-${String(i + 1).padStart(3, '0')}.webp?v=9480`);
-    zombieCombatFrames.prep.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro-${String(i + 1).padStart(3, '0')}.webp?v=9480`);
-    zombieCountdownFrames[3].src = 'assets/characters/combat/zombie-countdown-3.webp?v=9480';
-    zombieCountdownFrames[2].src = 'assets/characters/combat/zombie-countdown-2.webp?v=9480';
-    zombieCountdownFrames[1].src = 'assets/characters/combat/zombie-countdown-1.webp?v=9480';
-    zombieCountdownFrames.fight.src = 'assets/characters/combat/zombie-countdown-fight.webp?v=9480';
+    zombieCombatFrames.idle[0].src = 'assets/characters/combat/zombie-ready-crouch.webp?v=9490';
+    zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.webp?v=9490`);
+    zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i + 1}.webp?v=9490`);
+    zombieCombatFrames.heavyKick.forEach((img, i) => img.src = `assets/characters/combat/zombie-ankle-biter-${String(i + 1).padStart(2, '0')}.webp?v=9490`);
+    zombieCombatFrames.hurt.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/hurt-${String(i + 1).padStart(3, '0')}.webp?v=9490`);
+    zombieCombatFrames.death.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/death-${String(i + 1).padStart(3, '0')}.webp?v=9490`);
+    zombieCombatFrames.intro2.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro2-${String(i + 1).padStart(3, '0')}.webp?v=9490`);
+    zombieCombatFrames.prep.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro-${String(i + 1).padStart(3, '0')}.webp?v=9490`);
+    zombieCountdownFrames[3].src = 'assets/characters/combat/zombie-countdown-3.webp?v=9490';
+    zombieCountdownFrames[2].src = 'assets/characters/combat/zombie-countdown-2.webp?v=9490';
+    zombieCountdownFrames[1].src = 'assets/characters/combat/zombie-countdown-1.webp?v=9490';
+    zombieCountdownFrames.fight.src = 'assets/characters/combat/zombie-countdown-fight.webp?v=9490';
     for (const [name, a] of Object.entries(chainAtlas)) {
         const img = a.img;
         img.src = `assets/characters/combat/chain-goth/chain-${name}.webp?v=9440`;
@@ -2200,6 +2200,7 @@ export function createLevel1(ui) {
 
     function getZombieCombatFrame(nowMs) {
         const elapsed = Math.max(0, nowMs - zombieCombatStateStart);
+        let deathNext = null, deathMix = 0;
         let frames = zombieCombatFrames.idle;
         let frameMs = 180;
         let index = 0;
@@ -2262,6 +2263,8 @@ export function createLevel1(ui) {
                 acc += ZOMBIE_DEATH_FRAME_MS[i];
                 if (elapsed < acc) {
                     index = i;
+                    // V9.48: blend into the next frame across the frame's time, so the fall is smooth movement instead of a slideshow of poses (the AI frames differ a lot from one to the next)
+                    if (i + 1 < frames.length) { deathNext = frames[i + 1]; deathMix = 1 - (acc - elapsed) / ZOMBIE_DEATH_FRAME_MS[i]; }
                     break;
                 }
             }
@@ -2313,7 +2316,7 @@ export function createLevel1(ui) {
         else if (zombieCombatState === 'ready' || zombieCombatState === 'windup' || (zombieCombatState === 'intro' && zombieIntroNew)) scale = .95;
         else if (zombieCombatState === 'hit') scale = .936;
         else if (zombieCombatState === 'death') scale = 1.05;
-        return { img: frames[index], targetHeight, frameIndex: index, scale };
+        return { img: frames[index], targetHeight, frameIndex: index, scale, nextImg: deathNext, mix: deathMix };
     }
 
     function drawCombatImage(c, img, x, groundY, targetHeight, face, maxWidth = 270, alpha = 1, offsetX = 0, rotation = 0, sourceFacing = 'right', offsetY = 0) {
@@ -2395,7 +2398,13 @@ export function createLevel1(ui) {
         const renderMaxWidth = 1400;
         const renderHeight = (frame.scale && frame.img && frame.img.naturalHeight) ? Math.round(frame.img.naturalHeight * frame.scale) : Math.round(frame.targetHeight);
         const deathFloorOffset = dying ? (ZOMBIE_DEATH_FLOOR_OFFSETS[frame.frameIndex] || 0) : 0;
-        drawCombatImage(c, frame.img, enemyX, renderGroundY, renderHeight, face, renderMaxWidth, alpha, offsetX, rotation, sourceFacing, deathFloorOffset);
+        let deathSink = 0;   // she sinks a little as her knees give way, then the body falls
+        if (dying) { const kt = nowMs - zombieCombatStateStart - ZOMBIE_DEATH_KNEES_AT_MS; if (kt > 0) deathSink = 7 * Math.min(1, kt / 700); }
+        drawCombatImage(c, frame.img, enemyX, renderGroundY, renderHeight, face, renderMaxWidth, alpha, offsetX, rotation, sourceFacing, deathFloorOffset + deathSink);
+        if (dying && frame.nextImg && frame.mix > .02) {
+            const nh = (frame.scale && frame.nextImg.naturalHeight) ? Math.round(frame.nextImg.naturalHeight * frame.scale) : renderHeight;
+            drawCombatImage(c, frame.nextImg, enemyX, renderGroundY, nh, face, renderMaxWidth, alpha * frame.mix, offsetX, rotation, sourceFacing, deathFloorOffset + deathSink);
+        }
 
         // Small impact sparks make the hit reaction readable without needing
         // another sprite sheet.
@@ -2429,7 +2438,7 @@ export function createLevel1(ui) {
 
         zombieDeathStarted = true;
         playSfx('zombie-death', .9);
-        setTimeout(() => { if (mode === 'combat' && zombieDeathStarted) playSfx('olly-thud', .55, .8); }, ZOMBIE_DEATH_KNEES_AT_MS);   // the thud as her knees hit the floor
+        setTimeout(() => { if (mode === 'combat' && zombieDeathStarted) { playSfx('olly-thud', .55, .8); kickShake(6, 220); } }, ZOMBIE_DEATH_KNEES_AT_MS);   // the thud as her knees hit the floor
         zombieDeathEndAt = nowMs + ZOMBIE_DEATH_TOTAL_MS + ZOMBIE_DEATH_HOLD_FIXED;
         zombieCombatState = 'death';
         zombieCombatStateStart = nowMs;
