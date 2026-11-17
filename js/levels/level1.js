@@ -1,6 +1,6 @@
 /* Goodbye Goth V9.4 - Chain Goth fight (AI + all seven animations: intro, walk, swipe, spin, stun, hurt, death) on top of V9.0 map cleanup and the v8.11 Zombie Goth AI. */
-import { playSfx, playRandomSfx, playMusic, playMusicFrom, preloadSfx, setLoopSfx, setAudioHeld } from '../audio.js?v=9530';
-import { activeKey } from '../saves.js?v=9530';
+import { playSfx, playRandomSfx, playMusic, playMusicFrom, preloadSfx, setLoopSfx, setAudioHeld } from '../audio.js?v=9540';
+import { activeKey } from '../saves.js?v=9540';
 // Game clock: normal time, but it stands still while a tutorial pop-up is open (so nothing happens behind it).
 let pausedTotal = 0, pausedAt = 0;
 const gnow = () => (pausedAt || performance.now()) - pausedTotal;
@@ -376,7 +376,7 @@ function loadPatriciaAssets() {
     patAssetsRequested = true;
     for (const [name, a] of Object.entries(patAtlas)) {
         const img = a.img;
-        img.src = `assets/characters/patricia/atlas/pat-${name}.webp?v=9530`;
+        img.src = `assets/characters/patricia/atlas/pat-${name}.webp?v=9540`;
         img.decode?.().then(() => {
             if (window.createImageBitmap) createImageBitmap(img).then(bmp => { a.bmp = bmp; }).catch(() => {});
         }).catch(() => {});
@@ -388,7 +388,7 @@ const PAT_STAND_OFF = 215, PAT_CHASE_SPEED = 130;   // V9.41: her legs were movi
 // V9.44: the 'Salvagable?' jump clip's bounding box balloons as her limbs/hair fly out mid-jump (measured up to ~44% taller
 // than her idle box by the box's final segment), which is why her hurt reactions looked "MASSIVE" compared to every other
 // move. .84 reins the worst of that in without shrinking the first (already-normal-sized) segment too much.
-const PAT_PACK_K = { walk: .885, combo: 1.23, salv: .84 };   // V9.41: combo art is smaller in its picture; 1.23 makes her the same height as in every other move
+const PAT_PACK_K = { walk: .885, combo: 1.11, salv: .84 };   // V9.54: combo 1.23 -> 1.11 (it was drawn ~11% bigger than her idle); salv also ramps up for its first frames (see patSalvK)   // V9.41: combo art is smaller in its picture; 1.23 makes her the same height as in every other move
 const PAT_SIZE_K = 1.0;   // V9.39: full size again (shrinking her blurred her)
 // V9.36: feet. How far (in source px) each grounded clip's feet sit below the idle pose's feet; the clip is shifted up/down by that so she never floats.
 const PAT_FOOT_SRC = { walk: 5, combo: -50, salv: 0 };
@@ -435,21 +435,21 @@ function loadCombatAssets() {
     ollyCombatSprites.punch.forEach((img, i) => img.src = `assets/characters/combat/olly-punch-${i+1}.webp?v=6511`);
     ollyReactionSprites.hurt.forEach((img, i) => img.src = `assets/characters/combat/olly-hurt-${i + 1}.webp?v=8110`);
     ollyReactionSprites.ko.forEach((img, i) => img.src = `assets/characters/combat/olly-ko-${i + 1}.webp?v=8110`);
-    zombieCombatFrames.idle[0].src = 'assets/characters/combat/zombie-ready-crouch.webp?v=9530';
-    zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.webp?v=9530`);
-    zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i + 1}.webp?v=9530`);
-    zombieCombatFrames.heavyKick.forEach((img, i) => img.src = `assets/characters/combat/zombie-ankle-biter-${String(i + 1).padStart(2, '0')}.webp?v=9530`);
-    zombieCombatFrames.hurt.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/hurt-${String(i + 1).padStart(3, '0')}.webp?v=9530`);
-    zombieCombatFrames.death.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/death2-${String(i + 1).padStart(3, '0')}.webp?v=9530`);
-    zombieCombatFrames.intro2.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro2-${String(i + 1).padStart(3, '0')}.webp?v=9530`);
-    zombieCombatFrames.prep.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro-${String(i + 1).padStart(3, '0')}.webp?v=9530`);
-    zombieCountdownFrames[3].src = 'assets/characters/combat/zombie-countdown-3.webp?v=9530';
-    zombieCountdownFrames[2].src = 'assets/characters/combat/zombie-countdown-2.webp?v=9530';
-    zombieCountdownFrames[1].src = 'assets/characters/combat/zombie-countdown-1.webp?v=9530';
-    zombieCountdownFrames.fight.src = 'assets/characters/combat/zombie-countdown-fight.webp?v=9530';
+    zombieCombatFrames.idle[0].src = 'assets/characters/combat/zombie-ready-crouch.webp?v=9540';
+    zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.webp?v=9540`);
+    zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i + 1}.webp?v=9540`);
+    zombieCombatFrames.heavyKick.forEach((img, i) => img.src = `assets/characters/combat/zombie-ankle-biter-${String(i + 1).padStart(2, '0')}.webp?v=9540`);
+    zombieCombatFrames.hurt.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/hurt-${String(i + 1).padStart(3, '0')}.webp?v=9540`);
+    zombieCombatFrames.death.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/death2-${String(i + 1).padStart(3, '0')}.webp?v=9540`);
+    zombieCombatFrames.intro2.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro2-${String(i + 1).padStart(3, '0')}.webp?v=9540`);
+    zombieCombatFrames.prep.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro-${String(i + 1).padStart(3, '0')}.webp?v=9540`);
+    zombieCountdownFrames[3].src = 'assets/characters/combat/zombie-countdown-3.webp?v=9540';
+    zombieCountdownFrames[2].src = 'assets/characters/combat/zombie-countdown-2.webp?v=9540';
+    zombieCountdownFrames[1].src = 'assets/characters/combat/zombie-countdown-1.webp?v=9540';
+    zombieCountdownFrames.fight.src = 'assets/characters/combat/zombie-countdown-fight.webp?v=9540';
     for (const [name, a] of Object.entries(chainAtlas)) {
         const img = a.img;
-        img.src = `assets/characters/combat/chain-goth/chain-${name}.webp?v=9530`;
+        img.src = `assets/characters/combat/chain-goth/chain-${name}.webp?v=9540`;
         // Decode the big sheets in the background so the first time she uses a move there is no hitch (Safari decodes lazily).
         img.decode?.().then(() => {
             try { const t = document.createElement('canvas'); t.width = t.height = 1; t.getContext('2d').drawImage(img, 0, 0, 1, 1); } catch (e) {}
@@ -3332,6 +3332,7 @@ export function createLevel1(ui) {
     function onPatriciaHit(nowMs, heavy) {
         // V9.30: no zombie groans for Patricia (her own hurt voice lines are still to come)
         zombieHitFlashUntil = nowMs + 120;
+        patHitKickAt = nowMs;
         if (patStage === 1 && combatHp <= PAT_STAGE2_HP && combatHp > 0) { patStartStage2(nowMs); return; }   // V9.36: the hit that takes her to half health
         const st = zombieCombatState;
         if (!heavy) { patNote(patPunchLog, nowMs); if (patRecent(patPunchLog, 3000, nowMs) >= 3 && (st === 'chase' || st === 'recover' || st === 'ready')) patCounter = true; }
@@ -3535,6 +3536,10 @@ export function createLevel1(ui) {
         return { pack: patAtlas.idle, index: k < n ? k : cyc - k, flipArt: false };
     }
     let patHurtMs = 500, patHurtSeg = 0, patHurtLast = -1, patReward = null, patVid = null;
+    // V9.54: no more freezing. While she stands still (waiting, recovering, between moves) she breathes and sways, and EVERY hit gives her a visible flinch (even during a strike's strike-frames, when no hurt clip plays).
+    let patHitKickAt = -1e9, patLastWalkIdx = -1, patWalkMovedAt = -1e9;
+    // her hurt clip starts ~15% smaller than the rest of it (the clip's camera pushes in), so its first frames are drawn bigger and ease down to the normal size
+    const patSalvK = (i) => i <= 2 ? .99 / .84 : i >= 12 ? 1 : 1 + (.99 / .84 - 1) * (12 - i) / 10;
     // V9.36: every frame carries a "next" frame and how far we are towards it (frac), so the drawing can cross-fade: no more "bitty" steps.
     function getPatriciaFrame(nowMs) {
         const st = zombieCombatState;
@@ -3765,9 +3770,18 @@ export function createLevel1(ui) {
             patPuffs(c, patVanishX, CHAIN_FLOOR_Y, cl((tt - (PAT_SMOKE_REAPPEAR_AT_MS - 700)) / 400) * (1 - cl((tt - PAT_SMOKE_REAPPEAR_AT_MS) / 400)), nowMs, 16);
         } else if (st === 'vstrike') patPuffs(c, enemyX, CHAIN_FLOOR_Y, 1 - Math.min(1, tt / 500), nowMs, 14);
         const packName = Object.keys(patAtlas).find(k => patAtlas[k] === frame.pack);
-        const rs = PAT_SCALE * PAT_SIZE_K * (PAT_PACK_K[packName] || 1);
+        const rs = PAT_SCALE * PAT_SIZE_K * (PAT_PACK_K[packName] || 1) * (packName === 'salv' ? patSalvK(frame.index) : 1);
         const dy = -((PAT_FOOT_SRC[packName] || 0) + (frame.dySrc || 0)) * rs;   // keeps her feet on the same line in every clip
-        c.save(); c.translate(0, dy);
+        // V9.54: breathing while she stands still + a flinch on every hit (scaled around her feet)
+        if (zombieCombatWalkIndex !== patLastWalkIdx) { patLastWalkIdx = zombieCombatWalkIndex; patWalkMovedAt = nowMs; }
+        let sx = 1, sy = 1, shx = 0;
+        if ((st === 'chase' || st === 'recover' || st === 'ready') && nowMs - patWalkMovedAt > 90) {
+            const ph = nowMs / 1000 * 2 * Math.PI / 2.4, b = Math.sin(ph);
+            sy = 1 + .014 * b; sx = 1 - .007 * b; shx = Math.sin(ph * .5) * 1.5;
+        }
+        const kd = nowMs - patHitKickAt;
+        if (kd >= 0 && kd < 200) { const kp = 1 - kd / 200; shx += Math.sin(kd * .09) * 8 * kp; sy *= 1 - .04 * kp; sx *= 1 + .025 * kp; }
+        c.save(); c.translate(shx, 0); c.translate(enemyX, CHAIN_FLOOR_Y); c.scale(sx, sy); c.translate(-enemyX, -CHAIN_FLOOR_Y); c.translate(0, dy);
         if (!frame.hide) drawChainAtlasFrame(c, frame.pack, frame.index, enemyX, CHAIN_FLOOR_Y, drawFace, rs, alpha, 0, 0);
         c.restore();
         if (patSpeech) drawSpeechBubble(c, enemyX - 20, 178, patSpeech.text, nowMs - patSpeech.start, -250);   // bubble sits beside her head so it never covers her HP box
