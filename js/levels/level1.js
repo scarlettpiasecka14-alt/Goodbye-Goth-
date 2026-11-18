@@ -401,8 +401,15 @@ const PAT_OLLY_SCALE = 0.95;   // V9.30: Olly was too big next to her
 const PAT_WALK_FRAME_MS = 78, PAT_IDLE_FRAME_MS = 83;   // V9.39: the walk/idle atlases hold (nearly) every video frame now; walk is ~2x slower than the video on purpose
 const PAT_LUNGE_WINDUP_FRAMES = 37, PAT_LUNGE_WINDUP_MS = 1500, PAT_LUNGE_STRIKE_FRAMES = 24, PAT_LUNGE_FRAME_MS = 48, PAT_LUNGE_HIT_AT_MS = 290;
 const PAT_LUNGE_DAMAGE = 12, PAT_LUNGE_RANGE = 360, PAT_LUNGE_PUSH = 36;
-const PAT_COMBO_WINDUP_MS = 950, PAT_COMBO_FRAME_MS = 41.67, PAT_COMBO_FRAMES = 61, PAT_COMBO_HITS_AT_MS = [664, 1328, 2325];
-const PAT_COMBO_DAMAGE = 8, PAT_COMBO_RANGE = 330, PAT_COMBO_PUSH = 26;
+const PAT_COMBO_WINDUP_MS = 950;
+// V9.55: the old 3-hit combo swung her sword to both sides although Olly is only ever on one. It is now THREE SEPARATE sword attacks (picked at random, never the same twice).
+// from/to = source frames of the 'combo' atlas, ms = per frame, hit = the frame where it lands. Slash/lunge cross-fade in from her standing pose at the end of the wind-up.
+const PAT_COMBO_VARS = {
+    thrust: { from: 0, to: 19, ms: 40, hit: 16 },
+    slash:  { from: 32, to: 41, ms: 75, hit: 39 },
+    lunge:  { from: 52, to: 60, ms: 62, hit: 55 }
+};
+const PAT_COMBO_DAMAGE = 10, PAT_COMBO_RANGE = 330, PAT_COMBO_PUSH = 26;
 const PAT_SMOKE_FRAME_MS = 125, PAT_SMOKE_FRAMES = 21, PAT_SMOKE_GONE_AT_MS = 560, PAT_SMOKE_REAPPEAR_AT_MS = 1600;   // V9.45: she vanishes twice as fast (was 1120 / 2100)
 const PAT_VSTRIKE_APPEAR_MS = 280, PAT_VSTRIKE_DAMAGE = 15;
 const PAT_LIGHT_WINDUP_FRAMES = 14, PAT_LIGHT_WINDUP_MS = 720, PAT_LIGHT_FRAMES = 9, PAT_LIGHT_FRAME_MS = 167;
@@ -411,6 +418,13 @@ const PAT_LIGHT_DAMAGE = 25, PAT_LIGHT_RANGE = 560;
 const PAT_LIGHT_LOOP_MS = 900, PAT_LIGHT_LOOP_FRAME_MS = 50, PAT_LIGHT_SETTLE_MS = 300, PAT_LIGHT_HIT_WINDOW_MS = 620;
 // V9.41: her four hurt reactions are the jumps in the 'Salvagable?' clip (atlas 'salv' = source frames 4-52). [first, last] indexes into that atlas.
 // PAT_HURT_DY = how far (source px) each piece's first frame sits below the standing line, so every reaction starts with her feet on the floor.
+// V9.55: hurt reactions. Light hit = a flinch on whatever she is doing (no animation: the crouch looked like a leap). Medium (several punches quickly) and Heavy use single poses of the 'Salvagable?' clip
+// as [atlas index, ms] steps that cross-fade into each other and HOLD the last pose (atlas index = source frame - 4). No hopping frames.
+const PAT_HURT_SEQS = {
+    medium: [[28, 100], [29, 100], [30, 100], [31, 100], [32, 100], [33, 120], [34, 900]],
+    heavy:  [[28, 100], [29, 100], [30, 100], [31, 100], [32, 330], [33, 105], [34, 105], [35, 105], [36, 105], [37, 130], [38, 1000]]
+};
+const patSeqMs = (q) => q.reduce((a, e) => a + e[1], 0);
 const PAT_HURT_SEGS = [[0, 10], [11, 21], [22, 34], [35, 48]], PAT_HURT_DY = [1, -9, 42, 119], PAT_HURT_FRAME_MS = 48, PAT_HURT_GRUNTS = ['grunt-4', 'grunt-7', 'grunt-3', 'grunt-8'];
 const PAT_DEFEAT_HOLD_MS = 450;   // no death animation any more: she freezes for a beat, then the death cutscene plays
 const PAT_PATTERN_1 = ['lunge', 'combo', 'vanish', 'combo', 'lunge'];
@@ -3262,6 +3276,7 @@ export function createLevel1(ui) {
     }
     function patInvuln() { return isPatriciaFight() && zombieCombatState === 'smoke'; }   // V9.41: she cannot be hurt at all while she is in her smoke cloud
     function patSide() { return player.x >= zombieCombatX ? 1 : -1; }
+    let patComboV = PAT_COMBO_VARS.thrust, patComboLast = '';
     function patBeginAttack(kind, nowMs) {
         if (kind !== 'vanish') patGrunt();   // V9.31: an effort grunt as she starts each attack
         patFace = patSide() < 0 ? 'left' : 'right';
@@ -3277,7 +3292,8 @@ export function createLevel1(ui) {
             ui.combatStatus.textContent = 'Patricia raises her sword. DODGE or JUMP!';
         } else if (kind === 'combo') {
             zombieCombatState = 'combo'; queueRingTutorial('red');
-            ui.combatStatus.textContent = 'A three-hit sword combo. Keep moving!';
+            { const ks = Object.keys(PAT_COMBO_VARS).filter(k => k !== patComboLast); patComboLast = ks[Math.floor(Math.random() * ks.length)]; patComboV = PAT_COMBO_VARS[patComboLast]; }
+            ui.combatStatus.textContent = 'A sword attack. Keep moving!';
         } else if (kind === 'lightning') {
             zombieCombatState = 'lightning'; queueRingTutorial('yellow');
             // (no chain noises for Patricia)
@@ -3343,12 +3359,11 @@ export function createLevel1(ui) {
         // V9.39: every hit makes her flinch (a punch = short flinch, Heavy = the long one). Mid-attack she only flinches during the WIND-UP (before the strike lands).
         const e = nowMs - zombieCombatStateStart;
         const canFlinch = st === 'chase' || st === 'recover' || st === 'ready' || (st === 'lunge' && e < PAT_LUNGE_WINDUP_MS) || (st === 'combo' && e < PAT_COMBO_WINDUP_MS);
-        if (canFlinch) {
-            // V9.41: pick one of the four reactions (never the same twice in a row); a Heavy always gets one of the two big ones
-            let k; do { k = heavy ? 2 + Math.floor(Math.random() * 2) : Math.floor(Math.random() * 4); } while (k === patHurtLast);
-            patHurtLast = patHurtSeg = k;
-            patHurtMs = (PAT_HURT_SEGS[k][1] - PAT_HURT_SEGS[k][0] + 1) * PAT_HURT_FRAME_MS;
-            if (nowMs >= patVoiceUntil) { patVoiceUntil = nowMs + 400; patVoiceIsGrunt = true; playSfx('patricia-' + PAT_HURT_GRUNTS[k], .95); }   // each reaction has its own noise
+        // V9.55: light hit = flinch only (patHitKickAt). Several punches in quick succession = medium; a Heavy = the big reaction.
+        const lvl = heavy ? 'heavy' : (patRecent(patPunchLog, 1800, nowMs) >= 3 ? 'medium' : null);
+        if (canFlinch && lvl) {
+            patHurtLvl = lvl; patHurtMs = patSeqMs(PAT_HURT_SEQS[lvl]);
+            if (nowMs >= patVoiceUntil) { patVoiceUntil = nowMs + 400; patVoiceIsGrunt = true; playSfx('patricia-' + PAT_HURT_GRUNTS[lvl === 'heavy' ? 2 : 1], .95); }
             zombieCombatState = 'phurt';
             zombieCombatStateStart = nowMs;
             enemyAttackPhase = 'hurt';
@@ -3469,20 +3484,20 @@ export function createLevel1(ui) {
             return;
         }
         if (st === 'combo') {
-            if (patHitsDone < PAT_COMBO_HITS_AT_MS.length && Math.abs(player.x - zombieCombatX) > 440) { patToRecover(nowMs, 250); return; }   // V9.39: Olly ran away: she stops swinging
+            if (patHitsDone < 1 && Math.abs(player.x - zombieCombatX) > 440) { patToRecover(nowMs, 250); return; }   // V9.39: Olly ran away: she stops swinging
             if (elapsed < PAT_COMBO_WINDUP_MS - 150) {   // V9.36: she tracks him through the wind-up
                 patFace = player.x < zombieCombatX ? 'left' : 'right';
                 const g = Math.abs(player.x - zombieCombatX);
                 if (g > 200) zombieCombatX += (patFace === 'left' ? -1 : 1) * Math.min(g - 200, 80 * dt);
             }
             const t = elapsed - PAT_COMBO_WINDUP_MS;
-            while (t >= 0 && patHitsDone < PAT_COMBO_HITS_AT_MS.length && t >= PAT_COMBO_HITS_AT_MS[patHitsDone]) {
+            while (t >= 0 && patHitsDone < 1 && t >= (patComboV.hit - patComboV.from) * patComboV.ms) {
                 patHitsDone++;
                 enemyAttackPhase = 'active';
                 playSfx('chain-impact', .8, 1.2);
-                patDamage(PAT_COMBO_DAMAGE, PAT_COMBO_RANGE, PAT_COMBO_PUSH, 'SWORD COMBO', nowMs);
+                patDamage(PAT_COMBO_DAMAGE, PAT_COMBO_RANGE, PAT_COMBO_PUSH, 'SWORD ATTACK', nowMs);
             }
-            if (t >= PAT_COMBO_FRAMES * PAT_COMBO_FRAME_MS + 80) patToRecover(nowMs, 700);
+            if (t >= (patComboV.to - patComboV.from + 1) * patComboV.ms + 260) patToRecover(nowMs, 700);
             return;
         }
         if (st === 'smoke') {
@@ -3535,12 +3550,22 @@ export function createLevel1(ui) {
         const n = patAtlas.idle.frames.length, cyc = (n - 1) * 2, k = Math.floor(nowMs / PAT_IDLE_FRAME_MS) % cyc;
         return { pack: patAtlas.idle, index: k < n ? k : cyc - k, flipArt: false };
     }
-    let patHurtMs = 500, patHurtSeg = 0, patHurtLast = -1, patReward = null, patVid = null;
+    let patHurtMs = 500, patHurtLvl = 'medium', patHurtSeg = 0, patHurtLast = -1, patReward = null, patVid = null;
     // V9.54: no more freezing. While she stands still (waiting, recovering, between moves) she breathes and sways, and EVERY hit gives her a visible flinch (even during a strike's strike-frames, when no hurt clip plays).
     let patHitKickAt = -1e9, patLastWalkIdx = -1, patWalkMovedAt = -1e9;
     // her hurt clip starts ~15% smaller than the rest of it (the clip's camera pushes in), so its first frames are drawn bigger and ease down to the normal size
     const patSalvK = (i) => i <= 2 ? .99 / .84 : i >= 12 ? 1 : 1 + (.99 / .84 - 1) * (12 - i) / 10;
     // V9.36: every frame carries a "next" frame and how far we are towards it (frac), so the drawing can cross-fade: no more "bitty" steps.
+    function patSeqFrame(q, el) {   // V9.55: step through [index, ms] poses, each cross-fading into the next over its last 55%; the final pose is held
+        let t = el;
+        for (let k = 0; k < q.length; k++) {
+            if (t < q[k][1] || k === q.length - 1) {
+                const last = k === q.length - 1, u = last ? 0 : Math.max(0, (t / q[k][1] - .45) / .55);
+                return { pack: patAtlas.salv, index: q[k][0], next: last ? q[k][0] : q[k + 1][0], frac: u * u * (3 - 2 * u), flipArt: false, dySrc: q[k][0] <= 34 ? 42 : 25 };
+            }
+            t -= q[k][1];
+        }
+    }
     function getPatriciaFrame(nowMs) {
         const st = zombieCombatState;
         const elapsed = Math.max(0, nowMs - zombieCombatStateStart);
@@ -3570,7 +3595,12 @@ export function createLevel1(ui) {
             return mk(patAtlas.lunge, (elapsed - wind) / PAT_LUNGE_FRAME_MS, PAT_LUNGE_STRIKE_FRAMES, false, PAT_LUNGE_WINDUP_FRAMES);
         }
         if (st === 'combo')
-            return mk(patAtlas.combo, (elapsed - PAT_COMBO_WINDUP_MS) / PAT_COMBO_FRAME_MS, PAT_COMBO_FRAMES, false);
+        {
+            const v = patComboV, n = v.to - v.from + 1;
+            if (elapsed < PAT_COMBO_WINDUP_MS - 260 || v.from === 0 && elapsed < PAT_COMBO_WINDUP_MS) return { pack: patAtlas.combo, index: 0, flipArt: false };
+            if (elapsed < PAT_COMBO_WINDUP_MS) { const u = (elapsed - (PAT_COMBO_WINDUP_MS - 260)) / 260; return { pack: patAtlas.combo, index: 0, next: v.from, frac: u * u * (3 - 2 * u), flipArt: false }; }
+            return mk(patAtlas.combo, (elapsed - PAT_COMBO_WINDUP_MS) / v.ms, n, false, v.from);
+        }
         if (st === 'smoke') {
             // V9.45: only the clean parts of the smoke clip are used. Pictures 0-6 = smoke gathers at her feet (she fades out over the last of them),
             // then pictures 16-20 = the empty purple plume dying away. The pictures in between had cut-off (square) and missing smoke.
@@ -3592,18 +3622,7 @@ export function createLevel1(ui) {
             const u = Math.min(.999, (t - PAT_LIGHT_LOOP_MS) / PAT_LIGHT_SETTLE_MS);   // settle: the rising frames played backwards
             return { pack: patAtlas.lightning, index: Math.max(0, 10 - Math.floor(u * 11)), flipArt: false };
         }
-        if (st === 'phurt') {
-            const sg = PAT_HURT_SEGS[patHurtSeg];
-            return { pack: patAtlas.salv, index: sg[0] + Math.min(sg[1] - sg[0], Math.floor(elapsed / PAT_HURT_FRAME_MS)), flipArt: false, dySrc: PAT_HURT_DY[patHurtSeg] };
-        }
-        if (st === 'stage2') {   // all four reactions one after another
-            let t = elapsed;
-            for (let k = 0; k < 4; k++) {
-                const sg = PAT_HURT_SEGS[k], n = sg[1] - sg[0] + 1;
-                if (t < n * PAT_HURT_FRAME_MS || k === 3) return { pack: patAtlas.salv, index: sg[0] + Math.min(n - 1, Math.floor(t / PAT_HURT_FRAME_MS)), flipArt: false, dySrc: PAT_HURT_DY[k] };
-                t -= n * PAT_HURT_FRAME_MS;
-            }
-        }
+        if (st === 'phurt' || st === 'stage2') return patSeqFrame(PAT_HURT_SEQS[st === 'stage2' ? 'heavy' : patHurtLvl], elapsed);
         if (st === 'death')
             return { pack: patAtlas.idle, index: 0, flipArt: false };   // V9.41: no death animation
         return patIdle(nowMs);
@@ -3783,6 +3802,11 @@ export function createLevel1(ui) {
         if (kd >= 0 && kd < 200) { const kp = 1 - kd / 200; shx += Math.sin(kd * .09) * 8 * kp; sy *= 1 - .04 * kp; sx *= 1 + .025 * kp; }
         c.save(); c.translate(shx, 0); c.translate(enemyX, CHAIN_FLOOR_Y); c.scale(sx, sy); c.translate(-enemyX, -CHAIN_FLOOR_Y); c.translate(0, dy);
         if (!frame.hide) drawChainAtlasFrame(c, frame.pack, frame.index, enemyX, CHAIN_FLOOR_Y, drawFace, rs, alpha, 0, 0);
+        // V9.55: blend into the next picture (the frames were being stepped through with no blending, which looked "bitty")
+        if (!frame.hide && frame.next != null && frame.next !== frame.index && frame.frac > .02 && (packName === 'combo' || packName === 'salv' || packName === 'lunge' || packName === 'lightning')) {
+            const rs2 = PAT_SCALE * PAT_SIZE_K * (PAT_PACK_K[packName] || 1) * (packName === 'salv' ? patSalvK(frame.next) : 1);
+            drawChainAtlasFrame(c, frame.pack, frame.next, enemyX, CHAIN_FLOOR_Y, drawFace, rs2, alpha * frame.frac, 0, 0);
+        }
         c.restore();
         if (patSpeech) drawSpeechBubble(c, enemyX - 20, 178, patSpeech.text, nowMs - patSpeech.start, -250);   // bubble sits beside her head so it never covers her HP box
     }
