@@ -1,0 +1,43 @@
+# Builds the Goodbye Goth desktop app (Mac + Windows). It runs ONLY when someone pushes to the branch 'app-build' (or presses Run workflow). Normal pushes to Testing5 do not build anything.
+name: Build desktop app
+on:
+  workflow_dispatch:
+  push:
+    branches: [app-build]
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Copy the game into the app (leaving out raw animation frames, source videos and tools)
+        shell: bash
+        run: |
+          mkdir -p desktop/game
+          cp index.html desktop/game/
+          cp -R css js assets desktop/game/
+          cd desktop/game/assets
+          rm -rf characters/combat/CGwalk2 characters/combat/chaingothchainswipe "characters/combat/321 fight" characters/combat/HurtReactionChainGoth characters/combat/zgwalk2 \
+                 characters/combat/321fight characters/combat/ChainGothStunned characters/combat/ZGdaeth2 characters/combat/chainspinattack characters/combat/ChainGothDeathNew characters/combat/ChainGothDeathV3 \
+                 "characters/patricia/Salvagable?" characters/patricia/Purplesmoke characters/patricia/Lightningstrike characters/patricia/321fight "characters/patricia/hurtand recover" \
+                 characters/patricia/SwordSwipe characters/patricia/walk characters/patricia/Swordcombo "video/cutscene 720p.mov" reference \
+                 characters/combat/zombie-walk-preview-v7.4.png characters/combat/zombie-walk-preview-v7.5.png
+          du -sh . 
+      - name: Install and build
+        working-directory: desktop
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: |
+          npm install
+          npx electron-builder --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: goodbye-goth-${{ matrix.os }}
+          path: |
+            desktop/dist/*.dmg
+            desktop/dist/*.exe
