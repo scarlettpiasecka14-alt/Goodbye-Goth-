@@ -162,7 +162,7 @@ html,body,#app{height:100%;overflow:hidden}
 /* v1.1: cinematic typed narration between the four approved cartoon story panels. */
 .typing-story-screen{padding:10px;overflow:hidden;background:#000}
 .typing-story-panel{position:relative;width:min(96vw,980px);height:100%;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:#000;color:#f8edf3;cursor:pointer}
-.typing-story-text{width:min(860px,88vw);font:700 clamp(1.25rem,3.2vw,2.15rem)/1.65 Georgia,"Times New Roman",serif;letter-spacing:.015em;text-wrap:balance;text-shadow:0 0 18px rgba(239,145,172,.14)}
+.typing-story-text{white-space:pre-line;width:min(860px,88vw);font:700 clamp(1.25rem,3.2vw,2.15rem)/1.65 Georgia,"Times New Roman",serif;letter-spacing:.015em;text-wrap:balance;text-shadow:0 0 18px rgba(239,145,172,.14)}
 .typing-story-cursor{width:.12em;height:1.15em;margin-top:8px;background:#ef91ac;animation:typing-blink .85s steps(1,end) infinite}
 .typing-story-next{margin-top:28px;min-width:190px;background:#241822;border-color:#684c61;color:#f8edf3;opacity:.88}
 .typing-story-next:not(:disabled):hover{background:#372636}

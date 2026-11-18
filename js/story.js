@@ -1,4 +1,4 @@
-import { playSfx, setLoopSfx } from './audio.js?v=9600';
+import { playSfx, setLoopSfx } from './audio.js?v=9610';
 
 export class StoryController {
   constructor(root, onComplete){
@@ -11,7 +11,7 @@ export class StoryController {
     this.steps = [
       {
         type:'text',
-        text:'It\'s 3:52 AM. Scarlett and Olly are just about to go to sleep...'
+        text:'3:52 AM. The world is quiet. Scarlett and Olly have finally gone to bed.\nSix hours after they said they would, but never you mind.'
       },
       {
         type:'image',
@@ -20,7 +20,7 @@ export class StoryController {
       },
       {
         type:'text',
-        text:'At 4:35 AM, a strange rustling wakes Olly from a dream about watching The Weeknd live...'
+        text:'Olly is having a rather excellent dream.\nThe Weeknd is on stage. The crowd is going wild. He has front-row seats.\nThen he hears... something.\nRustle. Rustle.'
       },
       {
         type:'image',
@@ -29,7 +29,7 @@ export class StoryController {
       },
       {
         type:'text',
-        text:'He looks around, and notices... Scarlett is GONE.'
+        text:'Olly opens his eyes.\nSomething isn\'t right.\nHe turns towards Scarlett\'s side of the bed.\nShe\'s GONE.'
       },
       {
         type:'image',
@@ -38,7 +38,7 @@ export class StoryController {
       },
       {
         type:'text-note',
-        text:'And in her place lies a simple note...'
+        text:'And in her place lies a simple, yet suspicious, note...'
       },
       {
         type:'image',
@@ -108,11 +108,12 @@ export class StoryController {
     };
 
     setLoopSfx('typing', true, .7);   // typing sound plays while the line is being written
+    const speed = s.text.length > 110 ? 40 : this.typeSpeed;   // V9.61: the longer screens type faster
     this.typingTimer = setInterval(() => {
       index += 1;
       textEl.textContent = s.text.slice(0,index);
       if(index >= s.text.length) finishTyping();
-    }, this.typeSpeed);
+    }, speed);
 
     const advance = () => {
       if(this.isTyping){
