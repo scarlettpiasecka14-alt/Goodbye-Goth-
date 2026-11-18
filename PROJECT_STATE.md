@@ -23,3 +23,8 @@ Vision: a standalone offline game like Slay the Spire (click the app icon and it
 - Controller: left stick/D-pad move (also in menus); A = select/interact/continue (and jump in fights, opens chests); B = dodge in fights, back/cancel in menus; X = punch; Y = heavy attack; Start = Settings; View/Select = inventory (backpack). Bumpers/triggers are kept free on purpose for the bow.
 - Bow (after Level 2.5 boss Chaos Fairy Goth: Olly takes her magic bow + arrows): controller = LT raises/aims, right stick fine aim, RT draws and fires (release RT = shoot; release LT = lower bow without shooting), left stick still moves. Keyboard/mouse = hold right mouse button to aim, move mouse, release to shoot. Right click is currently DODGE, so it only aims while the bow is equipped; dodge stays on R.
 - Testing: Scarlett has an Xbox controller; connect over Bluetooth (hold pairing button) or USB, check on gamepad-tester.com.
+
+## V9.57 (18 Nov)
+- New defeated art installed (Chain Goth = green with mace; Zombie Goth = pink with bow), cache-bust ?v=2.
+- Chain Goth 3-2-1 is now the new green-screen clip (tools/build_chain_intro_v2.py, 121 frames @45 ms, plays once then holds the standing pose). No code-added sparks on it (the clip has its own).
+- Removed the yellow glow around Chain Goth's whole body during the slam warning; the warning is the floor ring + danger strips only.
