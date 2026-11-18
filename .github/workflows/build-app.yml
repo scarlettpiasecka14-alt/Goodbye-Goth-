@@ -9,7 +9,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest]   # Windows is off: the repo has a folder called "Salvagable?" and Windows cannot check out a name with a question mark
+        os: [macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -24,7 +24,7 @@ jobs:
           cd desktop/game/assets
           rm -rf characters/combat/CGwalk2 characters/combat/chaingothchainswipe "characters/combat/321 fight" characters/combat/HurtReactionChainGoth characters/combat/zgwalk2 \
                  characters/combat/321fight characters/combat/ChainGothStunned characters/combat/ZGdaeth2 characters/combat/chainspinattack characters/combat/ChainGothDeathNew characters/combat/ChainGothDeathV3 \
-                 "characters/patricia/Salvagable?" characters/patricia/Purplesmoke characters/patricia/Lightningstrike characters/patricia/321fight "characters/patricia/hurtand recover" \
+                 characters/patricia/Salvagable characters/patricia/Purplesmoke characters/patricia/Lightningstrike characters/patricia/321fight "characters/patricia/hurtand recover" \
                  characters/patricia/SwordSwipe characters/patricia/walk characters/patricia/Swordcombo "video/cutscene 720p.mov" reference \
                  characters/combat/zombie-walk-preview-v7.4.png characters/combat/zombie-walk-preview-v7.5.png
           du -sh . 
