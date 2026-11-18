@@ -16,7 +16,18 @@ function createWindow() {
     win.loadURL('app://game/index.html');
     win.webContents.setWindowOpenHandler(({ url }) => { if (/^https?:/.test(url)) shell.openExternal(url); return { action: 'deny' }; });
     // F11 / Ctrl+Cmd+F toggle fullscreen (the Settings button does too)
-    win.webContents.on('before-input-event', (e, input) => { if (input.type === 'keyDown' && input.key === 'F11') { win.setFullScreen(!win.isFullScreen()); e.preventDefault(); } });
+    win.webContents.on('before-input-event', (e, input) => {
+        if (input.type !== 'keyDown') return;
+        if (input.key === 'F11') { win.setFullScreen(!win.isFullScreen()); e.preventDefault(); }
+        if (input.key === 'F3') {   // F3 = show / hide a small frame-rate counter (for finding out why the game feels slow)
+            win.webContents.executeJavaScript(`(() => { let el = document.getElementById('gg-fps'); if (el) { el.remove(); clearInterval(window.__ggFps); return; }
+              el = document.createElement('div'); el.id = 'gg-fps'; el.style.cssText = 'position:fixed;left:8px;top:8px;z-index:99999;background:rgba(0,0,0,.75);color:#7CFC00;font:bold 14px monospace;padding:4px 8px;border-radius:6px;pointer-events:none';
+              document.body.appendChild(el); let n = 0, worst = 0, last = performance.now(), t0 = last;
+              const tick = (t) => { n++; worst = Math.max(worst, t - last); last = t; requestAnimationFrame(tick); }; requestAnimationFrame(tick);
+              window.__ggFps = setInterval(() => { const now = performance.now(); el.textContent = Math.round(n / ((now - t0) / 1000)) + ' fps, worst frame ' + Math.round(worst) + ' ms'; n = 0; worst = 0; t0 = now; }, 1000); })()`);
+            e.preventDefault();
+        }
+    });
 }
 
 app.whenReady().then(() => {
