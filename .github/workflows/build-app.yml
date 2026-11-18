@@ -9,7 +9,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, windows-latest]
+        os: [macos-latest]   # Windows is off: the repo has a folder called "Salvagable?" and Windows cannot check out a name with a question mark
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
