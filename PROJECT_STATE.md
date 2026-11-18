@@ -32,3 +32,9 @@ Vision: a standalone offline game like Slay the Spire (click the app icon and it
 ## V9.58 (18 Nov)
 - Patricia's reward chest is now the real opening clip (tools/build_chest.py -> assets/environment/chest-open.webp, CHEST_ATLAS_DATA in level1.js, sound assets/audio/sfx/chest-open.mp3). Spike tips cut by the video's top edge are redrawn, bottom extruded, stray green glow removed; rewards pop up 2.9 s after clicking. Seen in a test browser: chest drops in and waits closed; opening not yet seen in game.
 - Desktop app (Electron): Mac builds are ad-hoc signed from now on. Scarlett reported on the first build: "damaged" warning (fixed by xattr -cr on the app) and INPUT LAG of about 3 s in the app (not in Safari). To investigate: x64 build run on an Apple-silicon Mac (Rosetta), app stored on iCloud Desktop, GPU/frame rate in Electron.
+
+## V9.65 controller support (built, tested only with a fake controller in a headless browser)
+- js/gamepad.js: Gamepad API -> synthesises the same key presses as the keyboard (uses current bindings), so fights/map follow the keyboard code. A jump/interact, B dodge, X punch, Y heavy, Start = Settings (or skips an intro/cutscene when a skip button is showing), View = backpack. Stick or D-pad moves.
+- Menus/pop-ups: D-pad/stick moves a pink highlight (.gg-pad-focus), A presses it, B goes back (closes Settings/backpack, BACK/NO on slot screens), left/right changes sliders. Skip buttons are never highlighted (Start only).
+- Highlight hides again when the mouse or keyboard is used. Toast shows the layout when a controller connects.
+- Not done: pad button prompts on screens ("Press Z" text still says keyboard keys), typing screens can't be skipped with A, bumpers/triggers reserved for the bow, no rebind UI for pad.

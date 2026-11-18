@@ -1,4 +1,4 @@
-import { playSfx, setLoopSfx } from './audio.js?v=9640';
+import { playSfx, setLoopSfx } from './audio.js?v=9650';
 
 export class StoryController {
   constructor(root, onComplete){
@@ -100,7 +100,7 @@ export class StoryController {
     nextBtn.disabled = true;
     nextBtn.setAttribute('aria-disabled','true');
 
-    // V9.64: an optional "small" tail (e.g. Rustle. Rustle.) is shown in a smaller size
+    // V9.65: an optional "small" tail (e.g. Rustle. Rustle.) is shown in a smaller size
     const smallAt = s.small ? s.text.lastIndexOf(s.small) : -1;
     const paint = (n) => {
       if(smallAt < 0){ textEl.textContent = s.text.slice(0,n); return; }
@@ -121,7 +121,7 @@ export class StoryController {
     };
 
     setLoopSfx('typing', true, .7);   // typing sound plays while the line is being written
-    const speed = s.text.length > 110 ? 48 : this.typeSpeed;   // V9.64: the longer screens type faster
+    const speed = s.text.length > 110 ? 48 : this.typeSpeed;   // V9.65: the longer screens type faster
     this.typingTimer = setInterval(() => {
       index += 1;
       paint(index);
