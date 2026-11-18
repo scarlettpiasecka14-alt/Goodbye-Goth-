@@ -851,3 +851,5 @@ html,body,#app{height:100%;overflow:hidden}
 .death-art{width:min(100%,760px);max-height:45vh}
 @media(max-width:600px){.completion-art{max-height:48vh}}
 
+
+.typing-story-text .typing-story-small{font-size:.62em;opacity:.85;letter-spacing:.04em}

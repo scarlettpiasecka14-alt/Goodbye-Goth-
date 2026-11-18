@@ -57,7 +57,7 @@ function loadBuffer(name, tries = 0) {
         .then(r => { if (!r.ok) throw new Error('missing'); return r.arrayBuffer(); })
         .then(ab => new Promise((res, rej) => c.decodeAudioData(ab, res, rej)))
         .then(buf => { buffers[name] = buf; })
-        .catch(() => { delete loading[name]; if (tries < 3) setTimeout(() => loadBuffer(name, tries + 1), 800 * (tries + 1)); });
+        .catch(() => { delete loading[name]; if (tries < 15) setTimeout(() => loadBuffer(name, tries + 1), Math.min(6000, 800 * (tries + 1))); });
 }
 const fallbackCache = {};
 function fallbackPlay(name, v) {

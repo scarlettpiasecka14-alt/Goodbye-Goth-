@@ -1,4 +1,4 @@
-import { playSfx, setLoopSfx } from './audio.js?v=9620';
+import { playSfx, setLoopSfx } from './audio.js?v=9630';
 
 export class StoryController {
   constructor(root, onComplete){
@@ -7,7 +7,7 @@ export class StoryController {
     this.step = 0;
     this.typingTimer = null;
     this.isTyping = false;
-    this.typeSpeed = 58;
+    this.typeSpeed = 66;
     this.steps = [
       {
         type:'text',
@@ -20,7 +20,8 @@ export class StoryController {
       },
       {
         type:'text',
-        text:'Olly is having a rather excellent dream.\nThe Weeknd is on stage. The crowd is going wild. He has front-row seats.\nThen he hears... something.\nRustle. Rustle.'
+        text:'Olly is having a rather excellent dream.\nThe Weeknd is on stage. The crowd is going wild. He has front-row seats.\nThen he hears... something.\nRustle. Rustle.',
+        small:'Rustle. Rustle.'
       },
       {
         type:'image',
@@ -99,19 +100,31 @@ export class StoryController {
     nextBtn.disabled = true;
     nextBtn.setAttribute('aria-disabled','true');
 
+    // V9.63: an optional "small" tail (e.g. Rustle. Rustle.) is shown in a smaller size
+    const smallAt = s.small ? s.text.lastIndexOf(s.small) : -1;
+    const paint = (n) => {
+      if(smallAt < 0){ textEl.textContent = s.text.slice(0,n); return; }
+      textEl.textContent = s.text.slice(0, Math.min(n, smallAt));
+      if(n > smallAt){
+        const sm = document.createElement('span');
+        sm.className = 'typing-story-small';
+        sm.textContent = s.text.slice(smallAt, n);
+        textEl.appendChild(sm);
+      }
+    };
     const finishTyping = () => {
       this.cleanupTyping();
-      textEl.textContent = s.text;
+      paint(s.text.length);
       nextBtn.disabled = false;
       nextBtn.removeAttribute('aria-disabled');
       nextBtn.focus();
     };
 
     setLoopSfx('typing', true, .7);   // typing sound plays while the line is being written
-    const speed = s.text.length > 110 ? 40 : this.typeSpeed;   // V9.62: the longer screens type faster
+    const speed = s.text.length > 110 ? 48 : this.typeSpeed;   // V9.63: the longer screens type faster
     this.typingTimer = setInterval(() => {
       index += 1;
-      textEl.textContent = s.text.slice(0,index);
+      paint(index);
       if(index >= s.text.length) finishTyping();
     }, speed);
 
