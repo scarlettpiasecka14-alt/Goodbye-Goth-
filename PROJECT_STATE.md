@@ -8,3 +8,13 @@ Vision: a standalone offline game like Slay the Spire (click the app icon and it
 4. Level 1 ending art/animations, missing sound effects, rewrite all text in the style of the original book, general bug fixing.
 5. High-end PC check: 120-144 Hz refresh (game speed must not change), 4K sharpness, ultrawide borders. AMD vs Nvidia does not matter (2D canvas).
 6. Optional: cheap visual polish (vignette, grain, colour grade, glows); real shaders (WebGL) skipped for now.
+
+## Notes 18 Nov (V9.56)
+- ZG fight confirmed complete. TODO (art only, not animation): change the "defeated" art for ZG and Chain Goth.
+- Chain Goth death: was shrinking during the animation -> k ramp flattened in V9.56 (1.0 -> .9 -> .86). Check in game.
+- Scarlett will regenerate the ZG 3-2-1 FIGHT clip (quality is below the rest of the fight).
+- Patricia: hurt reactions are the main problem; she freezes before attacks -> Scarlett will generate an "attack ready" side-on pose clip. She looks small / low contrast / thin, especially in her walk. Big sword attack is her best animation. Splitting the sword combo is approved.
+- Scarlett will generate for Patricia: (1) hurt reactions, (2) half-health cutscene on green screen (replaces the current half-HP sequence), (3) attack-ready animation. All need keying.
+- Patricia animations feel a bit SLOW (noted only, do not change yet; she is not 100% sure).
+- Chest bug: Olly could not walk up to the chest (Patricia's invisible body still blocked him). Fixed V9.56: no collision once she has fallen.
+- Then standardise Patricia size/contrast (walk is tiny and thin), brightness against the dark arena.

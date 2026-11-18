@@ -1,6 +1,6 @@
 /* Goodbye Goth V9.4 - Chain Goth fight (AI + all seven animations: intro, walk, swipe, spin, stun, hurt, death) on top of V9.0 map cleanup and the v8.11 Zombie Goth AI. */
-import { playSfx, playRandomSfx, playMusic, playMusicFrom, preloadSfx, setLoopSfx, setAudioHeld } from '../audio.js?v=9550';
-import { activeKey } from '../saves.js?v=9550';
+import { playSfx, playRandomSfx, playMusic, playMusicFrom, preloadSfx, setLoopSfx, setAudioHeld } from '../audio.js?v=9560';
+import { activeKey } from '../saves.js?v=9560';
 // Game clock: normal time, but it stands still while a tutorial pop-up is open (so nothing happens behind it).
 let pausedTotal = 0, pausedAt = 0;
 const gnow = () => (pausedAt || performance.now()) - pausedTotal;
@@ -376,7 +376,7 @@ function loadPatriciaAssets() {
     patAssetsRequested = true;
     for (const [name, a] of Object.entries(patAtlas)) {
         const img = a.img;
-        img.src = `assets/characters/patricia/atlas/pat-${name}.webp?v=9550`;
+        img.src = `assets/characters/patricia/atlas/pat-${name}.webp?v=9560`;
         img.decode?.().then(() => {
             if (window.createImageBitmap) createImageBitmap(img).then(bmp => { a.bmp = bmp; }).catch(() => {});
         }).catch(() => {});
@@ -402,7 +402,7 @@ const PAT_WALK_FRAME_MS = 78, PAT_IDLE_FRAME_MS = 83;   // V9.39: the walk/idle 
 const PAT_LUNGE_WINDUP_FRAMES = 37, PAT_LUNGE_WINDUP_MS = 1500, PAT_LUNGE_STRIKE_FRAMES = 24, PAT_LUNGE_FRAME_MS = 48, PAT_LUNGE_HIT_AT_MS = 290;
 const PAT_LUNGE_DAMAGE = 12, PAT_LUNGE_RANGE = 360, PAT_LUNGE_PUSH = 36;
 const PAT_COMBO_WINDUP_MS = 950;
-// V9.55: the old 3-hit combo swung her sword to both sides although Olly is only ever on one. It is now THREE SEPARATE sword attacks (picked at random, never the same twice).
+// V9.56: the old 3-hit combo swung her sword to both sides although Olly is only ever on one. It is now THREE SEPARATE sword attacks (picked at random, never the same twice).
 // from/to = source frames of the 'combo' atlas, ms = per frame, hit = the frame where it lands. Slash/lunge cross-fade in from her standing pose at the end of the wind-up.
 const PAT_COMBO_VARS = {
     thrust: { from: 0, to: 19, ms: 40, hit: 16 },
@@ -418,7 +418,7 @@ const PAT_LIGHT_DAMAGE = 25, PAT_LIGHT_RANGE = 560;
 const PAT_LIGHT_LOOP_MS = 900, PAT_LIGHT_LOOP_FRAME_MS = 50, PAT_LIGHT_SETTLE_MS = 300, PAT_LIGHT_HIT_WINDOW_MS = 620;
 // V9.41: her four hurt reactions are the jumps in the 'Salvagable?' clip (atlas 'salv' = source frames 4-52). [first, last] indexes into that atlas.
 // PAT_HURT_DY = how far (source px) each piece's first frame sits below the standing line, so every reaction starts with her feet on the floor.
-// V9.55: hurt reactions. Light hit = a flinch on whatever she is doing (no animation: the crouch looked like a leap). Medium (several punches quickly) and Heavy use single poses of the 'Salvagable?' clip
+// V9.56: hurt reactions. Light hit = a flinch on whatever she is doing (no animation: the crouch looked like a leap). Medium (several punches quickly) and Heavy use single poses of the 'Salvagable?' clip
 // as [atlas index, ms] steps that cross-fade into each other and HOLD the last pose (atlas index = source frame - 4). No hopping frames.
 const PAT_HURT_SEQS = {
     medium: [[28, 100], [29, 100], [30, 100], [31, 100], [32, 100], [33, 120], [34, 900]],
@@ -449,21 +449,21 @@ function loadCombatAssets() {
     ollyCombatSprites.punch.forEach((img, i) => img.src = `assets/characters/combat/olly-punch-${i+1}.webp?v=6511`);
     ollyReactionSprites.hurt.forEach((img, i) => img.src = `assets/characters/combat/olly-hurt-${i + 1}.webp?v=8110`);
     ollyReactionSprites.ko.forEach((img, i) => img.src = `assets/characters/combat/olly-ko-${i + 1}.webp?v=8110`);
-    zombieCombatFrames.idle[0].src = 'assets/characters/combat/zombie-ready-crouch.webp?v=9550';
-    zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.webp?v=9550`);
-    zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i + 1}.webp?v=9550`);
-    zombieCombatFrames.heavyKick.forEach((img, i) => img.src = `assets/characters/combat/zombie-ankle-biter-${String(i + 1).padStart(2, '0')}.webp?v=9550`);
-    zombieCombatFrames.hurt.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/hurt-${String(i + 1).padStart(3, '0')}.webp?v=9550`);
-    zombieCombatFrames.death.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/death2-${String(i + 1).padStart(3, '0')}.webp?v=9550`);
-    zombieCombatFrames.intro2.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro2-${String(i + 1).padStart(3, '0')}.webp?v=9550`);
-    zombieCombatFrames.prep.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro-${String(i + 1).padStart(3, '0')}.webp?v=9550`);
-    zombieCountdownFrames[3].src = 'assets/characters/combat/zombie-countdown-3.webp?v=9550';
-    zombieCountdownFrames[2].src = 'assets/characters/combat/zombie-countdown-2.webp?v=9550';
-    zombieCountdownFrames[1].src = 'assets/characters/combat/zombie-countdown-1.webp?v=9550';
-    zombieCountdownFrames.fight.src = 'assets/characters/combat/zombie-countdown-fight.webp?v=9550';
+    zombieCombatFrames.idle[0].src = 'assets/characters/combat/zombie-ready-crouch.webp?v=9560';
+    zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.webp?v=9560`);
+    zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i + 1}.webp?v=9560`);
+    zombieCombatFrames.heavyKick.forEach((img, i) => img.src = `assets/characters/combat/zombie-ankle-biter-${String(i + 1).padStart(2, '0')}.webp?v=9560`);
+    zombieCombatFrames.hurt.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/hurt-${String(i + 1).padStart(3, '0')}.webp?v=9560`);
+    zombieCombatFrames.death.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/death2-${String(i + 1).padStart(3, '0')}.webp?v=9560`);
+    zombieCombatFrames.intro2.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro2-${String(i + 1).padStart(3, '0')}.webp?v=9560`);
+    zombieCombatFrames.prep.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro-${String(i + 1).padStart(3, '0')}.webp?v=9560`);
+    zombieCountdownFrames[3].src = 'assets/characters/combat/zombie-countdown-3.webp?v=9560';
+    zombieCountdownFrames[2].src = 'assets/characters/combat/zombie-countdown-2.webp?v=9560';
+    zombieCountdownFrames[1].src = 'assets/characters/combat/zombie-countdown-1.webp?v=9560';
+    zombieCountdownFrames.fight.src = 'assets/characters/combat/zombie-countdown-fight.webp?v=9560';
     for (const [name, a] of Object.entries(chainAtlas)) {
         const img = a.img;
-        img.src = `assets/characters/combat/chain-goth/chain-${name}.webp?v=9550`;
+        img.src = `assets/characters/combat/chain-goth/chain-${name}.webp?v=9560`;
         // Decode the big sheets in the background so the first time she uses a move there is no hitch (Safari decodes lazily).
         img.decode?.().then(() => {
             try { const t = document.createElement('canvas'); t.width = t.height = 1; t.getContext('2d').drawImage(img, 0, 0, 1, 1); } catch (e) {}
@@ -531,7 +531,7 @@ const CHAIN_DEATH_SEQ = (() => {
     CHAIN_DEATH_SRC.forEach((src, n) => {
         if (src >= CHAIN_DEATH_KNEES_SRC && !kneesAt) kneesAt = t;
         if (src >= CHAIN_DEATH_IMPACT_SRC && !impactAt) impactAt = t;
-        seq.push({ name: 'death4', index: n, t, k: n <= 4 ? 1 - .035 * n : n <= 20 ? .86 - (n - 4) * .004 : .8 - (n - 20) * .0039 });   // V9.53: she shrinks as she goes down (the clip's camera gets closer): 1.0 standing -> .8 kneeling -> .68 lying flat
+        seq.push({ name: 'death4', index: n, t, k: n <= 4 ? 1 - .025 * n : .9 - (n - 4) * .0008 });   // V9.56: she visibly shrank (1.0 -> .68). Now 1.0 standing -> .9 -> .86 lying flat   // V9.53: she shrinks as she goes down (the clip's camera gets closer): 1.0 standing -> .8 kneeling -> .68 lying flat
         t += src < 100 ? 56 : src < CHAIN_DEATH_IMPACT_SRC ? 46 : src < 136 ? 52 : 80;
     });
     return { seq, total: t, fadeAt, fadeFrom, impactAt, kneesAt };
@@ -2017,7 +2017,7 @@ export function createLevel1(ui) {
 
             // On the ground, the Goth has a physical presence. During a jump or
             // dodge, Olly can cross her and reposition on the other side.
-            if (grounded && Math.abs(nextX - zombieCombatX) < gap) {
+            if (grounded && !patReward && Math.abs(nextX - zombieCombatX) < gap) {   // V9.56: once Patricia has fallen she no longer blocks Olly (the chest was often on the far side of her)
                 player.x = nextX < zombieCombatX
                     ? Math.max(playerMinX, zombieCombatX - gap)
                     : Math.min(playerMaxX, zombieCombatX + gap);
@@ -2074,7 +2074,7 @@ export function createLevel1(ui) {
         const playerMaxX = COMBAT_W - 140;
         const dx = player.x - zombieCombatX;
 
-        if (Math.abs(dx) < minGap) {
+        if (!patReward && Math.abs(dx) < minGap) {
             const side = dx === 0
                 ? (combatFacing === 'left' ? 1 : -1)
                 : (dx < 0 ? -1 : 1);
@@ -3359,7 +3359,7 @@ export function createLevel1(ui) {
         // V9.39: every hit makes her flinch (a punch = short flinch, Heavy = the long one). Mid-attack she only flinches during the WIND-UP (before the strike lands).
         const e = nowMs - zombieCombatStateStart;
         const canFlinch = st === 'chase' || st === 'recover' || st === 'ready' || (st === 'lunge' && e < PAT_LUNGE_WINDUP_MS) || (st === 'combo' && e < PAT_COMBO_WINDUP_MS);
-        // V9.55: light hit = flinch only (patHitKickAt). Several punches in quick succession = medium; a Heavy = the big reaction.
+        // V9.56: light hit = flinch only (patHitKickAt). Several punches in quick succession = medium; a Heavy = the big reaction.
         const lvl = heavy ? 'heavy' : (patRecent(patPunchLog, 1800, nowMs) >= 3 ? 'medium' : null);
         if (canFlinch && lvl) {
             patHurtLvl = lvl; patHurtMs = patSeqMs(PAT_HURT_SEQS[lvl]);
@@ -3556,7 +3556,7 @@ export function createLevel1(ui) {
     // her hurt clip starts ~15% smaller than the rest of it (the clip's camera pushes in), so its first frames are drawn bigger and ease down to the normal size
     const patSalvK = (i) => i <= 2 ? .99 / .84 : i >= 12 ? 1 : 1 + (.99 / .84 - 1) * (12 - i) / 10;
     // V9.36: every frame carries a "next" frame and how far we are towards it (frac), so the drawing can cross-fade: no more "bitty" steps.
-    function patSeqFrame(q, el) {   // V9.55: step through [index, ms] poses, each cross-fading into the next over its last 55%; the final pose is held
+    function patSeqFrame(q, el) {   // V9.56: step through [index, ms] poses, each cross-fading into the next over its last 55%; the final pose is held
         let t = el;
         for (let k = 0; k < q.length; k++) {
             if (t < q[k][1] || k === q.length - 1) {
@@ -3802,7 +3802,7 @@ export function createLevel1(ui) {
         if (kd >= 0 && kd < 200) { const kp = 1 - kd / 200; shx += Math.sin(kd * .09) * 8 * kp; sy *= 1 - .04 * kp; sx *= 1 + .025 * kp; }
         c.save(); c.translate(shx, 0); c.translate(enemyX, CHAIN_FLOOR_Y); c.scale(sx, sy); c.translate(-enemyX, -CHAIN_FLOOR_Y); c.translate(0, dy);
         if (!frame.hide) drawChainAtlasFrame(c, frame.pack, frame.index, enemyX, CHAIN_FLOOR_Y, drawFace, rs, alpha, 0, 0);
-        // V9.55: blend into the next picture (the frames were being stepped through with no blending, which looked "bitty")
+        // V9.56: blend into the next picture (the frames were being stepped through with no blending, which looked "bitty")
         if (!frame.hide && frame.next != null && frame.next !== frame.index && frame.frac > .02 && (packName === 'combo' || packName === 'salv' || packName === 'lunge' || packName === 'lightning')) {
             const rs2 = PAT_SCALE * PAT_SIZE_K * (PAT_PACK_K[packName] || 1) * (packName === 'salv' ? patSalvK(frame.next) : 1);
             drawChainAtlasFrame(c, frame.pack, frame.next, enemyX, CHAIN_FLOOR_Y, drawFace, rs2, alpha * frame.frac, 0, 0);
