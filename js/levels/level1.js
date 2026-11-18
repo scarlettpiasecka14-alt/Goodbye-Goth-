@@ -1,6 +1,6 @@
 /* Goodbye Goth V9.4 - Chain Goth fight (AI + all seven animations: intro, walk, swipe, spin, stun, hurt, death) on top of V9.0 map cleanup and the v8.11 Zombie Goth AI. */
-import { playSfx, playRandomSfx, playMusic, playMusicFrom, preloadSfx, setLoopSfx, setAudioHeld } from '../audio.js?v=9570';
-import { activeKey } from '../saves.js?v=9570';
+import { playSfx, playRandomSfx, playMusic, playMusicFrom, preloadSfx, setLoopSfx, setAudioHeld } from '../audio.js?v=9580';
+import { activeKey } from '../saves.js?v=9580';
 // Game clock: normal time, but it stands still while a tutorial pop-up is open (so nothing happens behind it).
 let pausedTotal = 0, pausedAt = 0;
 const gnow = () => (pausedAt || performance.now()) - pausedTotal;
@@ -360,6 +360,7 @@ const ZOMBIE_DEATH_FLOOR_OFFSET = 8.6;   // V9.51: the clip's boots sit ~9 px ab
    animator's 1440x1440 frames by tools/build_chain_assets.py). Every frame row is
    [packX, packY, packW, packH, offsetX, offsetY]; the offsets place the trimmed frame
    relative to her feet. The art faces LEFT, like the Zombie Goth art. */
+const CHEST_ATLAS_DATA = {"size":[3958,1448],"frames":[[0,0,262,205,-131,-200],[264,0,262,205,-131,-200],[528,0,262,205,-131,-200],[792,0,262,205,-131,-200],[1056,0,262,205,-131,-200],[1320,0,262,205,-131,-201],[1584,0,262,205,-131,-201],[1848,0,262,206,-131,-201],[2112,0,262,206,-131,-201],[2376,0,262,206,-131,-201],[2640,0,262,206,-131,-201],[2904,0,262,206,-131,-202],[3168,0,262,206,-131,-202],[3432,0,262,206,-131,-202],[3696,0,262,206,-130,-202],[0,208,262,206,-130,-202],[264,208,262,206,-130,-202],[528,208,262,206,-130,-202],[792,208,262,206,-130,-202],[1056,208,262,206,-130,-202],[1320,208,262,206,-130,-202],[1584,208,262,206,-130,-202],[1848,208,262,206,-130,-202],[2112,208,262,206,-129,-202],[2376,208,262,206,-129,-202],[2640,208,262,206,-129,-202],[2904,208,261,206,-129,-202],[3167,208,261,206,-128,-202],[3430,208,261,206,-128,-202],[3693,208,261,206,-128,-202],[0,416,260,206,-127,-202],[262,416,260,206,-127,-202],[524,416,260,206,-127,-202],[786,416,260,206,-126,-202],[1048,416,259,206,-125,-202],[1309,416,258,206,-125,-202],[1569,416,258,206,-125,-202],[1829,416,257,206,-124,-202],[2088,416,257,206,-123,-202],[2347,416,256,206,-122,-202],[2605,416,256,206,-122,-202],[2863,416,255,206,-121,-202],[3120,416,255,206,-121,-202],[3377,416,255,206,-121,-202],[3634,416,255,206,-121,-202],[0,624,255,206,-121,-202],[257,624,255,206,-121,-202],[514,624,255,206,-121,-202],[771,624,255,206,-121,-202],[1028,624,255,206,-121,-202],[1285,624,255,206,-121,-202],[1542,624,255,206,-121,-202],[1799,624,255,206,-121,-202],[2056,624,255,206,-121,-202],[2313,624,255,206,-121,-202],[2570,624,255,206,-121,-202],[2827,624,255,206,-121,-202],[3084,624,255,206,-121,-202],[3341,624,254,206,-121,-202],[3597,624,254,206,-121,-202],[0,832,254,206,-121,-202],[256,832,254,206,-121,-202],[512,832,253,206,-121,-202],[767,832,254,206,-121,-201],[1023,832,255,205,-121,-200],[1280,832,255,204,-121,-200],[1537,832,256,204,-121,-199],[1795,832,256,203,-121,-199],[2053,832,257,203,-121,-198],[2312,832,258,203,-121,-198],[2572,832,258,203,-121,-198],[2832,832,259,203,-121,-198],[3093,832,260,202,-121,-198],[3355,832,260,202,-121,-198],[3617,832,260,202,-121,-198],[0,1040,260,202,-121,-198],[262,1040,260,202,-121,-198],[524,1040,260,202,-121,-198],[786,1040,260,202,-121,-198],[1048,1040,260,202,-121,-198],[1310,1040,260,202,-121,-198],[1572,1040,260,202,-121,-198],[1834,1040,260,202,-121,-198],[2096,1040,260,202,-121,-198],[2358,1040,260,202,-121,-198],[2620,1040,260,202,-121,-198],[2882,1040,260,202,-121,-198],[3144,1040,260,202,-121,-198],[3406,1040,260,202,-121,-198],[3668,1040,260,202,-121,-198],[0,1244,260,202,-121,-198],[262,1244,260,202,-121,-198],[524,1244,260,202,-121,-198],[786,1244,260,202,-121,-198],[1048,1244,260,202,-121,-198],[1310,1244,260,202,-121,-198],[1572,1244,260,202,-121,-198]]};
 const CHAIN_ATLAS_DATA = {"intro":{"size":[4075,4431],"scale":0.64,"frames":[[0,0,261,398,-205,-619],[263,0,261,398,-205,-619],[526,0,261,398,-205,-619],[789,0,261,398,-205,-619],[1052,0,261,398,-205,-619],[1315,0,261,398,-205,-619],[1578,0,261,398,-205,-619],[1841,0,261,398,-205,-619],[2104,0,261,398,-205,-619],[2367,0,261,398,-205,-619],[2630,0,261,398,-205,-619],[2893,0,261,398,-205,-619],[3156,0,261,398,-205,-619],[3419,0,260,398,-204,-619],[3681,0,260,398,-204,-619],[0,400,260,398,-204,-619],[262,400,260,398,-204,-619],[524,400,261,398,-205,-619],[787,400,261,398,-205,-619],[1050,400,261,398,-205,-619],[1313,400,261,398,-205,-619],[1576,400,261,398,-205,-619],[1839,400,261,398,-205,-619],[2102,400,261,397,-205,-618],[2365,400,261,397,-205,-618],[2628,400,261,397,-205,-618],[2891,400,261,397,-205,-618],[3154,400,261,396,-205,-617],[3417,400,262,396,-206,-617],[3681,400,262,396,-206,-616],[0,800,262,396,-206,-616],[264,800,263,394,-206,-615],[529,800,263,394,-206,-615],[794,800,264,393,-207,-614],[1060,800,264,393,-207,-614],[1326,800,266,393,-207,-614],[1594,800,266,393,-208,-614],[1862,800,268,393,-209,-614],[2132,800,269,393,-209,-614],[2403,800,271,393,-208,-615],[2676,800,271,393,-208,-615],[2949,800,283,394,-207,-616],[3234,800,283,394,-207,-616],[3519,800,324,394,-207,-617],[0,1198,323,394,-207,-616],[325,1198,320,395,-207,-618],[647,1198,320,395,-207,-618],[969,1198,336,396,-247,-619],[1307,1198,336,396,-247,-619],[1645,1198,284,396,-306,-620],[1931,1198,284,397,-306,-620],[2217,1198,336,397,-378,-620],[2555,1198,336,397,-378,-620],[2893,1198,397,400,-466,-624],[3292,1198,398,400,-467,-624],[0,1600,425,402,-507,-627],[427,1600,425,402,-507,-627],[854,1600,420,404,-477,-627],[1276,1600,420,404,-477,-627],[1698,1600,337,404,-209,-627],[2037,1600,337,404,-209,-627],[2376,1600,340,402,-213,-624],[2718,1600,341,403,-214,-625],[3061,1600,339,406,-215,-627],[3402,1600,338,402,-215,-622],[0,2008,377,402,-215,-626],[379,2008,374,399,-212,-618],[755,2008,402,399,-213,-620],[1159,2008,400,397,-210,-614],[1561,2008,403,398,-209,-617],[1966,2008,401,395,-207,-612],[2369,2008,412,394,-207,-612],[2783,2008,412,395,-207,-612],[3197,2008,419,395,-207,-612],[3618,2008,419,395,-207,-612],[0,2412,389,396,-207,-614],[391,2412,389,396,-208,-614],[782,2412,391,397,-208,-616],[1175,2412,392,397,-209,-616],[1569,2412,256,398,-280,-618],[1827,2412,260,398,-280,-618],[2089,2412,336,399,-384,-620],[2427,2412,336,399,-384,-621],[2765,2412,404,399,-481,-620],[3171,2412,404,399,-481,-620],[3577,2412,424,403,-504,-627],[0,2817,424,403,-504,-627],[426,2817,425,404,-496,-627],[853,2817,425,404,-496,-627],[1280,2817,375,404,-397,-627],[1657,2817,376,404,-398,-627],[2035,2817,340,405,-210,-627],[2377,2817,340,405,-209,-627],[2719,2817,337,404,-213,-626],[3058,2817,337,404,-213,-627],[3397,2817,338,404,-215,-626],[3737,2817,338,402,-216,-621],[0,3224,369,403,-211,-623],[371,3224,369,399,-212,-618],[742,3224,391,398,-209,-618],[1135,3224,391,397,-210,-614],[1528,3224,408,396,-209,-614],[1938,3224,407,395,-208,-612],[2347,3224,417,395,-208,-612],[2766,3224,417,394,-208,-610],[3185,3224,403,394,-208,-611],[3590,3224,403,394,-208,-611],[0,3629,406,395,-208,-612],[408,3629,406,395,-208,-612],[816,3629,383,396,-208,-615],[1201,3629,383,396,-208,-615],[1586,3629,264,397,-207,-616],[1852,3629,264,397,-207,-616],[2118,3629,263,398,-207,-618],[2383,3629,262,398,-207,-618],[2647,3629,262,399,-207,-619],[2911,3629,262,399,-207,-619],[3175,3629,262,399,-207,-619],[3439,3629,262,399,-207,-619],[3703,3629,262,399,-207,-619],[0,4030,262,399,-207,-619]]},"walk":{"size":[3693,357],"scale":0.56,"frames":[[0,0,240,352,-172,-624],[242,0,246,354,-168,-630],[490,0,244,355,-188,-631],[736,0,264,352,-259,-628],[1002,0,245,347,-261,-618],[1249,0,237,340,-245,-609],[1488,0,223,343,-213,-614],[1713,0,216,348,-173,-623],[1931,0,218,353,-144,-630],[2151,0,225,355,-155,-633],[2378,0,236,352,-217,-632],[2616,0,275,347,-271,-625],[2893,0,278,345,-257,-614],[3173,0,267,347,-225,-614],[3442,0,251,352,-187,-622]]},"swipe":{"size":[4064,953],"scale":0.64,"frames":[[0,0,269,401,-211,-623],[271,0,269,401,-211,-623],[542,0,269,401,-211,-624],[813,0,269,401,-211,-624],[1084,0,268,403,-211,-626],[1354,0,263,403,-211,-627],[1619,0,253,408,-211,-630],[1874,0,251,404,-211,-627],[2127,0,268,396,-211,-614],[2397,0,291,396,-211,-614],[2690,0,300,401,-236,-622],[2992,0,356,419,-339,-650],[3350,0,341,398,-385,-619],[3693,0,371,394,-441,-620],[0,421,477,413,-457,-641],[479,421,502,463,-396,-690],[983,421,390,484,-180,-724],[1375,421,418,530,-182,-799],[1795,421,385,490,-122,-868],[2182,421,386,507,-97,-913]]},"death":{"size":[3913,2242],"scale":0.64,"frames":[[0,0,271,406,-212.5,-626.5625],[273,0,269,405,-212.5,-626.5625],[544,0,273,407,-214.0625,-628.125],[819,0,272,407,-212.5,-628.125],[1093,0,272,407,-214.0625,-628.125],[1367,0,274,407,-214.0625,-626.5625],[1643,0,275,408,-214.0625,-628.125],[1920,0,274,408,-214.0625,-628.125],[2196,0,275,411,-214.0625,-632.8125],[2473,0,274,411,-212.5,-634.375],[2749,0,274,407,-210.9375,-625.0],[3025,0,272,403,-209.375,-617.1875],[3299,0,273,396,-212.5,-606.25],[3574,0,276,390,-215.625,-596.875],[0,413,278,385,-218.75,-589.0625],[280,413,276,373,-217.1875,-571.875],[558,413,277,373,-218.75,-570.3125],[837,413,277,373,-218.75,-570.3125],[1116,413,277,371,-218.75,-568.75],[1395,413,571,373,-671.875,-573.4375],[1968,413,551,404,-671.875,-615.625],[2521,413,604,413,-671.875,-632.8125],[3127,413,371,380,-250.0,-584.375],[3500,413,391,386,-248.4375,-598.4375],[0,828,393,386,-248.4375,-596.875],[395,828,396,385,-248.4375,-593.75],[793,828,386,346,-246.875,-534.375],[1181,828,385,347,-246.875,-534.375],[1568,828,384,347,-246.875,-534.375],[1954,828,381,345,-245.3125,-532.8125],[2337,828,380,347,-246.875,-534.375],[2719,828,377,347,-246.875,-534.375],[3098,828,376,346,-246.875,-532.8125],[3476,828,378,350,-248.4375,-537.5],[0,1216,377,349,-248.4375,-537.5],[379,1216,342,360,-203.125,-551.5625],[723,1216,339,333,-200.0,-570.3125],[1064,1216,315,344,-187.5,-534.375],[1381,1216,336,331,-225.0,-507.8125],[1719,1216,375,321,-309.375,-487.5],[2096,1216,375,321,-306.25,-487.5],[2473,1216,371,321,-303.125,-487.5],[2846,1216,357,312,-284.375,-473.4375],[3205,1216,355,310,-281.25,-470.3125],[3562,1216,351,308,-276.5625,-467.1875],[0,1578,316,305,-223.4375,-464.0625],[318,1578,316,306,-221.875,-464.0625],[636,1578,315,305,-220.3125,-462.5],[953,1578,310,303,-212.5,-459.375],[1265,1578,310,308,-210.9375,-465.625],[1577,1578,308,309,-207.8125,-467.1875],[1887,1578,290,311,-181.25,-470.3125],[2179,1578,290,318,-179.6875,-479.6875],[2471,1578,289,323,-178.125,-487.5],[2762,1578,286,326,-173.4375,-493.75],[3050,1578,286,329,-170.3125,-496.875],[3338,1578,284,330,-167.1875,-498.4375],[3624,1578,280,330,-160.9375,-500.0],[0,1910,293,332,-181.25,-501.5625]],"ts":[0.0,1.0,1.5,2.0,3.0,4.0,5.0,6.0,6.5,7.0,7.333,7.667,8.0,8.333,8.667,9.0,9.333,9.667,10.0,11.0,12.0,13.0,14.0,15.0,15.333,15.667,16.0,16.333,16.667,17.0,17.333,17.667,18.0,18.5,19.0,20.0,21.0,22.0,23.0,24.0,24.333,24.667,25.0,25.333,25.667,26.0,26.333,26.667,27.0,27.333,27.667,28.0,28.333,28.667,29.0,29.333,29.667,30.0,30.333,30.667,31.0,31.333,31.667,32.0,32.5,33.0,33.5,34.0,34.333,34.667,35.0,35.333,35.667,36.0,36.333,36.667,37.0,37.333,37.667,38.0,38.333,38.667,39.0,39.333,39.667,40.0,40.333,40.667,41.0,41.333,41.667,42.0,43.0,44.0,45.0,45.333,45.667,46.0,46.333,46.667,47.0,47.333,47.667,48.0,48.5,49.0,49.5,50.0,51.0,52.0,53.0,54.0,55.0,56.0,57.0,58.0,59.0,60.0]},"deathb":{"size":[4031,1520],"scale":0.64,"frames":[[0,0,289,332,-175.0,-501.5625],[291,0,286,331,-173.4375,-501.5625],[579,0,288,332,-175.0,-501.5625],[869,0,288,332,-175.0,-501.5625],[1159,0,287,331,-173.4375,-500.0],[1448,0,289,333,-175.0,-501.5625],[1739,0,290,331,-176.5625,-500.0],[2031,0,291,333,-176.5625,-501.5625],[2324,0,288,332,-173.4375,-501.5625],[2614,0,287,336,-170.3125,-507.8125],[2903,0,283,339,-165.625,-512.5],[3188,0,280,341,-160.9375,-517.1875],[3470,0,279,343,-157.8125,-517.1875],[3751,0,280,344,-159.375,-517.1875],[0,346,284,343,-165.625,-515.625],[286,346,295,344,-181.25,-517.1875],[583,346,297,344,-184.375,-517.1875],[882,346,299,342,-187.5,-515.625],[1183,346,307,341,-198.4375,-514.0625],[1492,346,304,340,-193.75,-514.0625],[1798,346,300,337,-187.5,-512.5],[2100,346,307,336,-196.875,-512.5],[2409,346,311,335,-201.5625,-510.9375],[2722,346,308,333,-198.4375,-509.375],[3032,346,318,333,-200.0,-507.8125],[3352,346,317,330,-185.9375,-504.6875],[3671,346,315,330,-171.875,-501.5625],[0,692,313,332,-168.75,-503.125],[315,692,322,332,-184.375,-503.125],[639,692,330,331,-198.4375,-501.5625],[971,692,337,332,-214.0625,-503.125],[1310,692,343,333,-228.125,-504.6875],[1655,692,346,331,-240.625,-503.125],[2003,692,403,280,-298.4375,-417.1875],[2408,692,473,239,-318.75,-353.125],[2883,692,475,203,-301.5625,-300.0],[3360,692,478,198,-296.875,-290.625],[0,1027,477,190,-290.625,-278.125],[479,1027,477,170,-284.375,-248.4375],[958,1027,490,167,-285.9375,-243.75],[1450,1027,495,163,-285.9375,-237.5],[1947,1027,498,154,-284.375,-226.5625],[2447,1027,518,152,-285.9375,-220.3125],[2967,1027,521,149,-285.9375,-214.0625],[3490,1027,522,141,-284.375,-201.5625],[0,1219,547,149,-285.9375,-212.5],[549,1219,548,148,-284.375,-212.5],[1099,1219,550,149,-284.375,-214.0625],[1651,1219,548,149,-282.8125,-214.0625],[2201,1219,549,142,-284.375,-204.6875],[2752,1219,549,140,-284.375,-200.0],[3303,1219,549,142,-284.375,-203.125],[0,1370,549,143,-284.375,-204.6875],[551,1370,550,144,-285.9375,-206.25],[1103,1370,550,142,-285.9375,-203.125],[1655,1370,550,143,-285.9375,-204.6875],[2207,1370,550,150,-285.9375,-215.625],[2759,1370,550,148,-285.9375,-214.0625],[3311,1370,550,150,-285.9375,-215.625]]},"stun":{"size":[4074,1517],"scale":0.64,"frames":[[0,0,255,380,-235,-588],[257,0,255,380,-235,-590],[514,0,252,382,-235,-592],[768,0,249,383,-235,-594],[1019,0,243,383,-235,-594],[1264,0,238,387,-235,-600],[1504,0,230,389,-234,-604],[1736,0,223,394,-234,-607],[1961,0,217,402,-234,-607],[2180,0,214,402,-228,-601],[2396,0,211,400,-220,-597],[2609,0,216,391,-213,-583],[2827,0,220,380,-211,-570],[3049,0,234,369,-211,-559],[3285,0,251,356,-211,-550],[3538,0,265,353,-211,-545],[3805,0,269,350,-211,-541],[0,404,272,350,-211,-541],[274,404,266,351,-211,-542],[542,404,260,354,-211,-547],[804,404,253,356,-211,-550],[1059,404,249,358,-212,-554],[1310,404,243,359,-212,-556],[1555,404,241,364,-212,-559],[1798,404,243,367,-212,-561],[2043,404,248,365,-212,-558],[2293,404,252,361,-212,-555],[2547,404,262,355,-212,-550],[2811,404,266,352,-212,-545],[3079,404,269,349,-212,-540],[3350,404,266,348,-212,-538],[3618,404,261,350,-212,-541],[0,773,255,353,-213,-545],[257,773,249,355,-213,-549],[508,773,241,358,-212,-555],[751,773,237,362,-212,-561],[990,773,237,367,-212,-564],[1229,773,240,371,-213,-566],[1471,773,243,370,-212,-566],[1716,773,249,370,-212,-566],[1967,773,253,365,-212,-561],[2222,773,261,360,-212,-555],[2485,773,265,356,-212,-551],[2752,773,266,354,-212,-548],[3020,773,266,352,-212,-545],[3288,773,262,353,-212,-545],[3552,773,255,355,-212,-550],[3809,773,250,360,-212,-557],[0,1146,243,363,-212,-563],[245,1146,237,366,-212,-568],[484,1146,237,368,-212,-570],[723,1146,237,369,-212,-570],[962,1146,240,369,-212,-568],[1204,1146,246,365,-212,-562],[1452,1146,252,362,-212,-558],[1706,1146,260,360,-212,-554],[1968,1146,264,355,-212,-548],[2234,1146,266,354,-212,-547],[2502,1146,266,355,-212,-550],[2770,1146,261,359,-212,-556],[3033,1146,256,362,-212,-562]]},"hurt":{"size":[4073,2138],"scale":0.64,"frames":[[0,0,269,400,-211,-622],[271,0,262,400,-211,-622],[535,0,250,399,-211,-621],[787,0,241,402,-213,-625],[1030,0,239,406,-224,-632],[1271,0,243,411,-241,-638],[1516,0,253,415,-265,-645],[1771,0,253,420,-276,-652],[2026,0,248,422,-278,-656],[2276,0,239,426,-262,-660],[2517,0,225,429,-234,-662],[2744,0,220,435,-219,-662],[2966,0,218,433,-213,-657],[3186,0,223,426,-218,-645],[3411,0,234,420,-231,-635],[3647,0,247,413,-249,-625],[0,437,260,410,-263,-619],[262,437,276,407,-279,-615],[540,437,297,406,-295,-614],[839,437,320,410,-307,-619],[1161,437,335,410,-309,-620],[1498,437,349,404,-298,-611],[1849,437,349,396,-266,-597],[2200,437,367,388,-275,-585],[2569,437,366,387,-282,-584],[2937,437,351,391,-284,-590],[3290,437,332,398,-283,-601],[3624,437,312,404,-279,-611],[0,849,287,414,-273,-621],[289,849,257,422,-264,-631],[548,849,228,423,-254,-638],[778,849,213,426,-242,-646],[993,849,221,427,-222,-654],[1216,849,240,435,-218,-661],[1458,849,260,438,-215,-664],[1720,849,265,439,-202,-665],[1987,849,262,439,-190,-665],[2251,849,267,436,-182,-660],[2520,849,284,437,-178,-662],[2806,849,308,434,-177,-657],[3116,849,318,429,-168,-649],[3436,849,307,418,-154,-632],[3745,849,291,410,-150,-620],[0,1290,276,406,-150,-613],[278,1290,263,407,-150,-615],[543,1290,250,412,-150,-622],[795,1290,239,419,-150,-633],[1036,1290,231,424,-150,-641],[1269,1290,227,428,-150,-647],[1498,1290,221,428,-150,-648],[1721,1290,224,428,-150,-648],[1947,1290,231,427,-150,-646],[2180,1290,236,426,-150,-645],[2418,1290,236,425,-150,-643],[2656,1290,234,426,-150,-644],[2892,1290,232,426,-150,-645],[3126,1290,236,425,-150,-643],[3364,1290,236,424,-150,-641],[3602,1290,234,422,-150,-639],[3838,1290,235,419,-150,-634],[0,1720,236,416,-150,-629]],"bx":[3,8,12,16,20,25,30,35,38,42,45,49,51,50,45,39,33,26,20,16,14,14,15,15,20,29,39,46,51,53,58,59,55,51,50,52,57,60,61,63,65,66,66,67,68,69,69,69,69,69,69,67,67,67,70,73,76,78,80,83,85]},"slam":{"size":[4070,1455],"scale":0.56,"frames":[[0,0,236,353,-122,-626],[238,0,241,353,-130,-626],[481,0,243,353,-124,-626],[726,0,249,353,-116,-626],[977,0,286,354,-116,-627],[1265,0,283,355,-116,-629],[1550,0,305,356,-169,-630],[1857,0,258,357,-230,-631],[2117,0,303,357,-302,-632],[2422,0,358,359,-393,-634],[2782,0,388,360,-435,-636],[3172,0,379,362,-403,-636],[3553,0,305,363,-130,-636],[0,365,307,363,-134,-636],[309,365,307,363,-134,-636],[618,365,303,363,-136,-636],[923,365,303,361,-136,-633],[1228,365,335,361,-135,-636],[1565,365,333,359,-133,-629],[1900,365,361,359,-133,-632],[2263,365,360,357,-130,-626],[2625,365,363,357,-130,-627],[2990,365,359,355,-124,-622],[3351,365,372,355,-121,-624],[3725,365,345,355,-118,-625],[0,730,234,358,-202,-629],[236,730,303,358,-308,-632],[541,730,364,358,-409,-632],[907,730,384,361,-433,-636],[1293,730,384,362,-424,-636],[1679,730,338,362,-322,-636],[2019,730,307,363,-131,-636],[2328,730,304,363,-134,-636],[2634,730,304,363,-134,-636],[2940,730,303,363,-136,-636],[3245,730,302,361,-137,-633],[3549,730,332,360,-132,-634],[0,1095,332,358,-133,-628],[334,1095,351,357,-130,-628],[687,1095,351,356,-130,-625],[1040,1095,367,356,-130,-626],[1409,1095,366,355,-129,-623],[1777,1095,357,355,-119,-622],[2136,1095,360,356,-118,-624],[2498,1095,232,357,-118,-627],[2732,1095,230,357,-116,-628]]},"death4":{"size":[4067,1902],"scale":0.64,"frames":[[0,0,255,402,-277,-609],[257,0,264,402,-304,-609],[523,0,287,395,-341,-598],[812,0,310,371,-376,-560],[1124,0,333,361,-413,-545],[1459,0,366,357,-464,-538],[1827,0,377,354,-482,-534],[2206,0,377,353,-481,-532],[2585,0,374,354,-477,-534],[2961,0,371,357,-471,-537],[3334,0,366,360,-465,-542],[3702,0,365,362,-462,-545],[0,404,363,362,-459,-547],[365,404,362,363,-458,-548],[729,404,362,364,-458,-549],[1093,404,362,364,-458,-549],[1457,404,362,364,-458,-549],[1821,404,363,363,-459,-548],[2186,404,364,363,-461,-548],[2552,404,365,362,-463,-547],[2919,404,368,362,-467,-546],[3289,404,370,361,-470,-545],[3661,404,374,360,-477,-543],[0,770,379,358,-485,-541],[381,770,386,357,-496,-538],[769,770,395,354,-509,-534],[1166,770,407,348,-528,-525],[1575,770,423,339,-553,-510],[2000,770,438,328,-577,-492],[2440,770,451,315,-597,-470],[2893,770,455,303,-602,-452],[3350,770,459,303,-609,-451],[0,1130,463,304,-616,-454],[465,1130,466,304,-620,-454],[933,1130,469,304,-625,-454],[1404,1130,473,303,-631,-451],[1879,1130,479,299,-641,-446],[2360,1130,488,295,-654,-439],[2850,1130,500,291,-673,-433],[3352,1130,515,286,-697,-425],[0,1436,532,279,-724,-414],[534,1436,553,269,-756,-398],[1089,1436,575,250,-791,-367],[1666,1436,595,217,-823,-314],[2263,1436,599,197,-828,-284],[2864,1436,598,186,-827,-266],[3464,1436,597,181,-825,-258],[0,1717,611,181,-847,-258],[613,1717,618,183,-857,-261],[1233,1717,618,183,-858,-262],[1853,1717,618,183,-858,-262],[2473,1717,618,183,-858,-262]]},"deathc":{"size":[3889,795],"scale":0.64,"frames":[[0,0,314,336,-168,-507],[316,0,327,333,-183,-507],[645,0,331,332,-193,-507],[978,0,342,330,-212,-507],[1322,0,349,328,-226,-507],[1673,0,362,326,-243,-507],[2037,0,377,324,-260,-507],[2416,0,398,321,-283,-507],[2816,0,421,318,-310,-507],[3239,0,446,315,-340,-507],[0,338,486,302,-396,-490],[488,338,525,267,-450,-437],[1015,338,557,244,-493,-403],[1574,338,569,224,-502,-376],[2145,338,570,205,-500,-335],[2717,338,575,182,-500,-298],[3294,338,595,159,-527,-261],[0,642,609,150,-547,-244],[611,642,611,149,-550,-240],[1224,642,613,150,-553,-240],[1839,642,613,151,-553,-240],[2454,642,613,151,-553,-240]]}};
 // Video frame numbers of the kept slam frames (the slam pack index -> frame of the source video; 24 fps).
 const CHAIN_SLAM_VF = [37,39,41,43,45,47,49,51,53,55,57,59,61,62,63,64,65,66,67,68,69,70,71,74,77,80,83,84,86,88,90,92,94,95,96,97,98,99,100,101,102,103,106,109,112,115];
@@ -376,7 +377,7 @@ function loadPatriciaAssets() {
     patAssetsRequested = true;
     for (const [name, a] of Object.entries(patAtlas)) {
         const img = a.img;
-        img.src = `assets/characters/patricia/atlas/pat-${name}.webp?v=9570`;
+        img.src = `assets/characters/patricia/atlas/pat-${name}.webp?v=9580`;
         img.decode?.().then(() => {
             if (window.createImageBitmap) createImageBitmap(img).then(bmp => { a.bmp = bmp; }).catch(() => {});
         }).catch(() => {});
@@ -402,7 +403,7 @@ const PAT_WALK_FRAME_MS = 78, PAT_IDLE_FRAME_MS = 83;   // V9.39: the walk/idle 
 const PAT_LUNGE_WINDUP_FRAMES = 37, PAT_LUNGE_WINDUP_MS = 1500, PAT_LUNGE_STRIKE_FRAMES = 24, PAT_LUNGE_FRAME_MS = 48, PAT_LUNGE_HIT_AT_MS = 290;
 const PAT_LUNGE_DAMAGE = 12, PAT_LUNGE_RANGE = 360, PAT_LUNGE_PUSH = 36;
 const PAT_COMBO_WINDUP_MS = 950;
-// V9.57: the old 3-hit combo swung her sword to both sides although Olly is only ever on one. It is now THREE SEPARATE sword attacks (picked at random, never the same twice).
+// V9.58: the old 3-hit combo swung her sword to both sides although Olly is only ever on one. It is now THREE SEPARATE sword attacks (picked at random, never the same twice).
 // from/to = source frames of the 'combo' atlas, ms = per frame, hit = the frame where it lands. Slash/lunge cross-fade in from her standing pose at the end of the wind-up.
 const PAT_COMBO_VARS = {
     thrust: { from: 0, to: 19, ms: 40, hit: 16 },
@@ -418,7 +419,7 @@ const PAT_LIGHT_DAMAGE = 25, PAT_LIGHT_RANGE = 560;
 const PAT_LIGHT_LOOP_MS = 900, PAT_LIGHT_LOOP_FRAME_MS = 50, PAT_LIGHT_SETTLE_MS = 300, PAT_LIGHT_HIT_WINDOW_MS = 620;
 // V9.41: her four hurt reactions are the jumps in the 'Salvagable?' clip (atlas 'salv' = source frames 4-52). [first, last] indexes into that atlas.
 // PAT_HURT_DY = how far (source px) each piece's first frame sits below the standing line, so every reaction starts with her feet on the floor.
-// V9.57: hurt reactions. Light hit = a flinch on whatever she is doing (no animation: the crouch looked like a leap). Medium (several punches quickly) and Heavy use single poses of the 'Salvagable?' clip
+// V9.58: hurt reactions. Light hit = a flinch on whatever she is doing (no animation: the crouch looked like a leap). Medium (several punches quickly) and Heavy use single poses of the 'Salvagable?' clip
 // as [atlas index, ms] steps that cross-fade into each other and HOLD the last pose (atlas index = source frame - 4). No hopping frames.
 const PAT_HURT_SEQS = {
     medium: [[28, 100], [29, 100], [30, 100], [31, 100], [32, 100], [33, 120], [34, 900]],
@@ -429,6 +430,9 @@ const PAT_HURT_SEGS = [[0, 10], [11, 21], [22, 34], [35, 48]], PAT_HURT_DY = [1,
 const PAT_DEFEAT_HOLD_MS = 450;   // no death animation any more: she freezes for a beat, then the death cutscene plays
 const PAT_PATTERN_1 = ['lunge', 'combo', 'vanish', 'combo', 'lunge'];
 const PAT_PATTERN_2 = ['combo', 'lightning', 'vanish', 'lunge', 'combo', 'lightning', 'vanish'];
+// V9.58: the reward chest (Patricia's chest) opening clip, 97 frames at 24 fps (tools/build_chest.py)
+const chestPack = { img: new Image(), frames: CHEST_ATLAS_DATA.frames, scale: 0.28 };
+const CHEST_FRAME_MS = 1000 / 24, CHEST_REWARDS_AT_MS = 2900;
 const chainAtlas = {};
 for (const [name, data] of Object.entries(CHAIN_ATLAS_DATA)) {
     chainAtlas[name] = { img: new Image(), frames: data.frames, scale: data.scale, bx: data.bx, ts: data.ts };
@@ -449,21 +453,22 @@ function loadCombatAssets() {
     ollyCombatSprites.punch.forEach((img, i) => img.src = `assets/characters/combat/olly-punch-${i+1}.webp?v=6511`);
     ollyReactionSprites.hurt.forEach((img, i) => img.src = `assets/characters/combat/olly-hurt-${i + 1}.webp?v=8110`);
     ollyReactionSprites.ko.forEach((img, i) => img.src = `assets/characters/combat/olly-ko-${i + 1}.webp?v=8110`);
-    zombieCombatFrames.idle[0].src = 'assets/characters/combat/zombie-ready-crouch.webp?v=9570';
-    zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.webp?v=9570`);
-    zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i + 1}.webp?v=9570`);
-    zombieCombatFrames.heavyKick.forEach((img, i) => img.src = `assets/characters/combat/zombie-ankle-biter-${String(i + 1).padStart(2, '0')}.webp?v=9570`);
-    zombieCombatFrames.hurt.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/hurt-${String(i + 1).padStart(3, '0')}.webp?v=9570`);
-    zombieCombatFrames.death.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/death2-${String(i + 1).padStart(3, '0')}.webp?v=9570`);
-    zombieCombatFrames.intro2.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro2-${String(i + 1).padStart(3, '0')}.webp?v=9570`);
-    zombieCombatFrames.prep.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro-${String(i + 1).padStart(3, '0')}.webp?v=9570`);
-    zombieCountdownFrames[3].src = 'assets/characters/combat/zombie-countdown-3.webp?v=9570';
-    zombieCountdownFrames[2].src = 'assets/characters/combat/zombie-countdown-2.webp?v=9570';
-    zombieCountdownFrames[1].src = 'assets/characters/combat/zombie-countdown-1.webp?v=9570';
-    zombieCountdownFrames.fight.src = 'assets/characters/combat/zombie-countdown-fight.webp?v=9570';
+    zombieCombatFrames.idle[0].src = 'assets/characters/combat/zombie-ready-crouch.webp?v=9580';
+    zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.webp?v=9580`);
+    zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i + 1}.webp?v=9580`);
+    zombieCombatFrames.heavyKick.forEach((img, i) => img.src = `assets/characters/combat/zombie-ankle-biter-${String(i + 1).padStart(2, '0')}.webp?v=9580`);
+    zombieCombatFrames.hurt.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/hurt-${String(i + 1).padStart(3, '0')}.webp?v=9580`);
+    zombieCombatFrames.death.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/death2-${String(i + 1).padStart(3, '0')}.webp?v=9580`);
+    zombieCombatFrames.intro2.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro2-${String(i + 1).padStart(3, '0')}.webp?v=9580`);
+    zombieCombatFrames.prep.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro-${String(i + 1).padStart(3, '0')}.webp?v=9580`);
+    zombieCountdownFrames[3].src = 'assets/characters/combat/zombie-countdown-3.webp?v=9580';
+    zombieCountdownFrames[2].src = 'assets/characters/combat/zombie-countdown-2.webp?v=9580';
+    zombieCountdownFrames[1].src = 'assets/characters/combat/zombie-countdown-1.webp?v=9580';
+    zombieCountdownFrames.fight.src = 'assets/characters/combat/zombie-countdown-fight.webp?v=9580';
+    chestPack.img.src = 'assets/environment/chest-open.webp?v=9580';
     for (const [name, a] of Object.entries(chainAtlas)) {
         const img = a.img;
-        img.src = `assets/characters/combat/chain-goth/chain-${name}.webp?v=9570`;
+        img.src = `assets/characters/combat/chain-goth/chain-${name}.webp?v=9580`;
         // Decode the big sheets in the background so the first time she uses a move there is no hitch (Safari decodes lazily).
         img.decode?.().then(() => {
             try { const t = document.createElement('canvas'); t.width = t.height = 1; t.getContext('2d').drawImage(img, 0, 0, 1, 1); } catch (e) {}
@@ -478,7 +483,7 @@ const CHAIN_WIDTH_STRETCH = 1.05;         // she is drawn 5% wider than the art 
 const CHAIN_INTRO_SCALE = 0.64;          // 3-2-1 pose is drawn at full fighting size (no grow-in)
 const CHAIN_FLOOR_Y = 535;               // same floor line Olly and the Zombie stand on
 // Intro: 14 build-up frames, then a 15-frame chain-twirl loop that repeats until FIGHT.
-const CHAIN_INTRO_FRAME_MS = 45;   // V9.57: new 3-2-1 clip, 121 frames x 45 ms = 5.45 s, then she holds the standing pose to the end of the countdown (6 s). (Old build-up/loop constants removed.)
+const CHAIN_INTRO_FRAME_MS = 45;   // V9.58: new 3-2-1 clip, 121 frames x 45 ms = 5.45 s, then she holds the standing pose to the end of the countdown (6 s). (Old build-up/loop constants removed.)
 const CHAIN_INTRO_UNUSED = 0;   // each loop is about one countdown beat (1.5s)
 const CHAIN_INTRO_GROW_MS = 500;         // she eases from the intro size to her normal fighting size at the very end of the countdown
 const CHAIN_WALK_FRAME_MS = 56;   // V9.24: 15-frame walk loop
@@ -515,7 +520,7 @@ const CHAIN_PATTERN = ['swipe', 'swipe', 'slam'];
 // Frames where the mace touches the floor: [x, y] of the contact point, in animator pixels relative to her feet (negative x = toward Olly; measured from where the chain lies on the floor in your frames).
 // A little cream spark burst is drawn on those frames so the chain feels like it really hits the ground.
 const CHAIN_CONTACTS = {
-    intro: {},   // V9.57: the new 3-2-1 clip has its own sparks baked in: no extra sparks are drawn on top
+    intro: {},   // V9.58: the new 3-2-1 clip has its own sparks baked in: no extra sparks are drawn on top
     swipe: { 14: [-325, -30] }
 };
 const CHAIN_SPARK_MS = 230;
@@ -532,7 +537,7 @@ const CHAIN_DEATH_SEQ = (() => {
     CHAIN_DEATH_SRC.forEach((src, n) => {
         if (src >= CHAIN_DEATH_KNEES_SRC && !kneesAt) kneesAt = t;
         if (src >= CHAIN_DEATH_IMPACT_SRC && !impactAt) impactAt = t;
-        seq.push({ name: 'death4', index: n, t, k: n <= 4 ? 1 - .025 * n : .9 - (n - 4) * .0008 });   // V9.57: she visibly shrank (1.0 -> .68). Now 1.0 standing -> .9 -> .86 lying flat   // V9.53: she shrinks as she goes down (the clip's camera gets closer): 1.0 standing -> .8 kneeling -> .68 lying flat
+        seq.push({ name: 'death4', index: n, t, k: n <= 4 ? 1 - .025 * n : .9 - (n - 4) * .0008 });   // V9.58: she visibly shrank (1.0 -> .68). Now 1.0 standing -> .9 -> .86 lying flat   // V9.53: she shrinks as she goes down (the clip's camera gets closer): 1.0 standing -> .8 kneeling -> .68 lying flat
         t += src < 100 ? 56 : src < CHAIN_DEATH_IMPACT_SRC ? 46 : src < 136 ? 52 : 80;
     });
     return { seq, total: t, fadeAt, fadeFrom, impactAt, kneesAt };
@@ -2018,7 +2023,7 @@ export function createLevel1(ui) {
 
             // On the ground, the Goth has a physical presence. During a jump or
             // dodge, Olly can cross her and reposition on the other side.
-            if (grounded && !patReward && Math.abs(nextX - zombieCombatX) < gap) {   // V9.57: once Patricia has fallen she no longer blocks Olly (the chest was often on the far side of her)
+            if (grounded && !patReward && Math.abs(nextX - zombieCombatX) < gap) {   // V9.58: once Patricia has fallen she no longer blocks Olly (the chest was often on the far side of her)
                 player.x = nextX < zombieCombatX
                     ? Math.max(playerMinX, zombieCombatX - gap)
                     : Math.min(playerMaxX, zombieCombatX + gap);
@@ -2892,7 +2897,7 @@ export function createLevel1(ui) {
         const elapsed = Math.max(0, nowMs - zombieCombatStateStart);
         const walkFrames = chainAtlas.walk?.frames?.length || 1;
         if (zombieCombatState === 'intro') {
-            // V9.57: the 3-2-1 is the new clip (121 frames: she stands, swings the chain overhead, slams it down twice, stands ready). It plays once and then holds its last (standing) pose until FIGHT.
+            // V9.58: the 3-2-1 is the new clip (121 frames: she stands, swings the chain overhead, slams it down twice, stands ready). It plays once and then holds its last (standing) pose until FIGHT.
             const index = Math.min((chainAtlas.intro?.frames?.length || 1) - 1, Math.floor(elapsed / CHAIN_INTRO_FRAME_MS));
             return { pack: chainAtlas.intro, index, scale: CHAIN_RENDER_SCALE };
         }
@@ -3082,7 +3087,7 @@ export function createLevel1(ui) {
 
         // V9.28: the walk art was drawn facing RIGHT (every other chain animation faces left), so flip it or she walks backwards.
         const drawFace = face;   // V9.30: the walk art now natively faces left like the rest of her animations
-        const slamGlow = false;   // V9.57: no yellow glow around her whole body any more: the warning is only the floor ring + danger strips
+        const slamGlow = false;   // V9.58: no yellow glow around her whole body any more: the warning is only the floor ring + danger strips
         if (slamGlow) {   // the yellow "ghost": she glows yellow while the slam is coming
             c.save(); c.shadowColor = 'rgba(255,214,60,1)'; c.shadowBlur = 34 + (prefOn('calm') ? 0 : 12 * Math.sin(nowMs / 70));
         }
@@ -3355,7 +3360,7 @@ export function createLevel1(ui) {
         // V9.39: every hit makes her flinch (a punch = short flinch, Heavy = the long one). Mid-attack she only flinches during the WIND-UP (before the strike lands).
         const e = nowMs - zombieCombatStateStart;
         const canFlinch = st === 'chase' || st === 'recover' || st === 'ready' || (st === 'lunge' && e < PAT_LUNGE_WINDUP_MS) || (st === 'combo' && e < PAT_COMBO_WINDUP_MS);
-        // V9.57: light hit = flinch only (patHitKickAt). Several punches in quick succession = medium; a Heavy = the big reaction.
+        // V9.58: light hit = flinch only (patHitKickAt). Several punches in quick succession = medium; a Heavy = the big reaction.
         const lvl = heavy ? 'heavy' : (patRecent(patPunchLog, 1800, nowMs) >= 3 ? 'medium' : null);
         if (canFlinch && lvl) {
             patHurtLvl = lvl; patHurtMs = patSeqMs(PAT_HURT_SEQS[lvl]);
@@ -3552,7 +3557,7 @@ export function createLevel1(ui) {
     // her hurt clip starts ~15% smaller than the rest of it (the clip's camera pushes in), so its first frames are drawn bigger and ease down to the normal size
     const patSalvK = (i) => i <= 2 ? .99 / .84 : i >= 12 ? 1 : 1 + (.99 / .84 - 1) * (12 - i) / 10;
     // V9.36: every frame carries a "next" frame and how far we are towards it (frac), so the drawing can cross-fade: no more "bitty" steps.
-    function patSeqFrame(q, el) {   // V9.57: step through [index, ms] poses, each cross-fading into the next over its last 55%; the final pose is held
+    function patSeqFrame(q, el) {   // V9.58: step through [index, ms] poses, each cross-fading into the next over its last 55%; the final pose is held
         let t = el;
         for (let k = 0; k < q.length; k++) {
             if (t < q[k][1] || k === q.length - 1) {
@@ -3675,8 +3680,8 @@ export function createLevel1(ui) {
         if (gnow() - patReward.t0 < 700) return;   // still dropping in
         if (Math.abs(player.x - patReward.x) > 210) { ui.combatStatus.textContent = 'Walk up to the chest first.'; return; }
         patReward.phase = 'open'; patReward.openAt = gnow();
-        playSfx('pickup', 1);
-        setTimeout(patShowRewards, 1100);
+        playSfx('chest-open', 1);
+        setTimeout(patShowRewards, CHEST_REWARDS_AT_MS);   // V9.58: after the lid is up and the light is pouring out
     }
     function patShowRewards() {
         if (!patReward) return;
@@ -3711,8 +3716,31 @@ export function createLevel1(ui) {
         done.addEventListener('click', finish);
         ov.appendChild(box); document.body.appendChild(ov);
     }
-    function drawPatChest(c, nowMs) {   // PLACEHOLDER chest, drawn with shapes until the real animation is ready
+    function drawPatChest(c, nowMs) {
         const R = patReward, t = nowMs - R.t0, cx = R.x, fy = CHAIN_FLOOR_Y;
+        if (chestPack.img.complete && chestPack.img.naturalWidth) {   // V9.58: the real chest (falls in, waits closed, opens when clicked)
+            const drop = Math.max(0, 1 - t / 650), bounce = t > 650 && t < 950 ? Math.sin((t - 650) / 300 * Math.PI) * 14 : 0;
+            const dy = -(drop * drop) * 520 - bounce;
+            const opening = R.phase === 'open' || R.phase === 'rewards';
+            const oi = opening ? Math.min(chestPack.frames.length - 1, Math.floor((nowMs - R.openAt) / CHEST_FRAME_MS)) : 0;
+            c.save(); c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(cx, fy + 6, 120 * (1 - drop * .5), 15, 0, 0, Math.PI * 2); c.fill(); c.restore();
+            const glowK = opening ? Math.max(0, Math.min(1, (oi - 20) / 40)) : 0;
+            if (!opening && t > 700) {   // a soft pulsing pink glow while it waits
+                c.save(); c.translate(cx, fy + dy); const g = c.createRadialGradient(0, -90, 10, 0, -90, 210); const a = .28 + .12 * Math.sin(nowMs / 260);
+                g.addColorStop(0, `rgba(255,170,210,${a})`); g.addColorStop(1, 'rgba(255,120,190,0)'); c.fillStyle = g; c.fillRect(-230, -320, 460, 400); c.restore();
+            }
+            if (glowK > 0) {   // golden light pouring out of the open chest
+                c.save(); c.globalCompositeOperation = 'lighter'; const g = c.createRadialGradient(cx, fy - 120, 10, cx, fy - 120, 120 + glowK * 230);
+                g.addColorStop(0, `rgba(255,214,120,${.55 * glowK})`); g.addColorStop(1, 'rgba(255,170,60,0)'); c.fillStyle = g; c.fillRect(cx - 400, fy - 450, 800, 560); c.restore();
+            }
+            drawChainAtlasFrame(c, chestPack, oi, cx, fy + dy, 'left', chestPack.scale, 1, 0, 0);
+            if (R.phase === 'chest' && t > 800 && Math.abs(player.x - R.x) <= 210) {
+                c.save(); c.font = '700 30px "Cormorant Garamond", Georgia, serif'; c.textAlign = 'center'; c.lineWidth = 5; c.strokeStyle = '#1a0c18'; c.fillStyle = '#ffe3ee';
+                const by = fy - 250 + Math.sin(nowMs / 240) * 5; c.strokeText('CLICK TO OPEN', cx, by); c.fillText('CLICK TO OPEN', cx, by); c.restore();
+            }
+            return;
+        }
+        // (fallback while the sheet is still loading: the old shape-drawn chest)
         const drop = Math.max(0, 1 - t / 650), bounce = t > 650 && t < 950 ? Math.sin((t - 650) / 300 * Math.PI) * 14 : 0;
         const dy = -(drop * drop) * 520 - bounce;
         const opening = R.phase === 'open' || R.phase === 'rewards', op = opening ? Math.min(1, (nowMs - R.openAt) / 700) : 0;
@@ -3798,7 +3826,7 @@ export function createLevel1(ui) {
         if (kd >= 0 && kd < 200) { const kp = 1 - kd / 200; shx += Math.sin(kd * .09) * 8 * kp; sy *= 1 - .04 * kp; sx *= 1 + .025 * kp; }
         c.save(); c.translate(shx, 0); c.translate(enemyX, CHAIN_FLOOR_Y); c.scale(sx, sy); c.translate(-enemyX, -CHAIN_FLOOR_Y); c.translate(0, dy);
         if (!frame.hide) drawChainAtlasFrame(c, frame.pack, frame.index, enemyX, CHAIN_FLOOR_Y, drawFace, rs, alpha, 0, 0);
-        // V9.57: blend into the next picture (the frames were being stepped through with no blending, which looked "bitty")
+        // V9.58: blend into the next picture (the frames were being stepped through with no blending, which looked "bitty")
         if (!frame.hide && frame.next != null && frame.next !== frame.index && frame.frac > .02 && (packName === 'combo' || packName === 'salv' || packName === 'lunge' || packName === 'lightning')) {
             const rs2 = PAT_SCALE * PAT_SIZE_K * (PAT_PACK_K[packName] || 1) * (packName === 'salv' ? patSalvK(frame.next) : 1);
             drawChainAtlasFrame(c, frame.pack, frame.next, enemyX, CHAIN_FLOOR_Y, drawFace, rs2, alpha * frame.frac, 0, 0);

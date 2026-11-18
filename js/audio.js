@@ -83,7 +83,7 @@ export function preloadSfx(names) { names.forEach(loadBuffer); }
 // V9.46: download + decode EVERY sound effect straight away (about 1.3 MB in all). Before, only a handful were ready at the start, and any other sound that played before it had finished decoding went through
 // a much less reliable path that Safari often silences - that is why sound effects seemed to work "on and off" (first Chain Goth hits, countdown ticks, her chain sounds).
 const ALL_SFX = ['punch-1', 'punch-2', 'punch-3', 'goth-hurt-1', 'goth-hurt-2', 'goth-hurt-3', 'goth-hurt-4', 'goth-pain', 'click', 'typing', 'footsteps', 'interact', 'pickup',
-    'olly-attack', 'olly-heavy-attack', 'olly-dodge-grunt', 'olly-hurt', 'olly-hurt-heavy', 'olly-jump', 'olly-land', 'olly-ko', 'olly-thud',
+    'olly-attack', 'olly-heavy-attack', 'olly-dodge-grunt', 'olly-hurt', 'olly-hurt-heavy', 'olly-jump', 'olly-land', 'olly-ko', 'olly-thud', 'chest-open',
     'chain-clatter', 'chain-drag', 'chain-drop', 'chain-impact', 'chain-impact-spin', 'chain-rattle', 'chain-spin',
     'breath-recovery', 'countdown-tick', 'fight-shout', 'zombie-death', 'tutorial', 'minigame-win', 'quiz-win', 'round-ok', 'wrong-buzz',
     'patricia-check-backpack', 'patricia-hey', 'patricia-kill-you', 'patricia-nice-try-cutie', 'patricia-nice-try', 'patricia-not-funny', 'patricia-pay-for-that', 'patricia-trying-hard',

@@ -28,3 +28,7 @@ Vision: a standalone offline game like Slay the Spire (click the app icon and it
 - New defeated art installed (Chain Goth = green with mace; Zombie Goth = pink with bow), cache-bust ?v=2.
 - Chain Goth 3-2-1 is now the new green-screen clip (tools/build_chain_intro_v2.py, 121 frames @45 ms, plays once then holds the standing pose). No code-added sparks on it (the clip has its own).
 - Removed the yellow glow around Chain Goth's whole body during the slam warning; the warning is the floor ring + danger strips only.
+
+## V9.58 (18 Nov)
+- Patricia's reward chest is now the real opening clip (tools/build_chest.py -> assets/environment/chest-open.webp, CHEST_ATLAS_DATA in level1.js, sound assets/audio/sfx/chest-open.mp3). Spike tips cut by the video's top edge are redrawn, bottom extruded, stray green glow removed; rewards pop up 2.9 s after clicking. Seen in a test browser: chest drops in and waits closed; opening not yet seen in game.
+- Desktop app (Electron): Mac builds are ad-hoc signed from now on. Scarlett reported on the first build: "damaged" warning (fixed by xattr -cr on the app) and INPUT LAG of about 3 s in the app (not in Safari). To investigate: x64 build run on an Apple-silicon Mac (Rosetta), app stored on iCloud Desktop, GPU/frame rate in Electron.
