@@ -1,4 +1,4 @@
-import { playSfx, setLoopSfx } from './audio.js?v=9610';
+import { playSfx, setLoopSfx } from './audio.js?v=9620';
 
 export class StoryController {
   constructor(root, onComplete){
@@ -108,7 +108,7 @@ export class StoryController {
     };
 
     setLoopSfx('typing', true, .7);   // typing sound plays while the line is being written
-    const speed = s.text.length > 110 ? 40 : this.typeSpeed;   // V9.61: the longer screens type faster
+    const speed = s.text.length > 110 ? 40 : this.typeSpeed;   // V9.62: the longer screens type faster
     this.typingTimer = setInterval(() => {
       index += 1;
       textEl.textContent = s.text.slice(0,index);
