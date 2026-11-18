@@ -18,3 +18,8 @@ Vision: a standalone offline game like Slay the Spire (click the app icon and it
 - Patricia animations feel a bit SLOW (noted only, do not change yet; she is not 100% sure).
 - Chest bug: Olly could not walk up to the chest (Patricia's invisible body still blocked him). Fixed V9.56: no collision once she has fallen.
 - Then standardise Patricia size/contrast (walk is tiny and thin), brightness against the dark arena.
+
+## Controller layout (agreed 18 Nov) and bow plan
+- Controller: left stick/D-pad move (also in menus); A = select/interact/continue (and jump in fights, opens chests); B = dodge in fights, back/cancel in menus; X = punch; Y = heavy attack; Start = Settings; View/Select = inventory (backpack). Bumpers/triggers are kept free on purpose for the bow.
+- Bow (after Level 2.5 boss Chaos Fairy Goth: Olly takes her magic bow + arrows): controller = LT raises/aims, right stick fine aim, RT draws and fires (release RT = shoot; release LT = lower bow without shooting), left stick still moves. Keyboard/mouse = hold right mouse button to aim, move mouse, release to shoot. Right click is currently DODGE, so it only aims while the bow is equipped; dodge stays on R.
+- Testing: Scarlett has an Xbox controller; connect over Bluetooth (hold pairing button) or USB, check on gamepad-tester.com.
