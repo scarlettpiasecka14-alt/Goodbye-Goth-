@@ -875,8 +875,9 @@ html,body,#app{height:100%;overflow:hidden}
 /* V9.81: the disclaimer is no longer a boxed card - it's the whole screen, with the lines
    rolling up like film credits. .gg-boot centers things by default, so override that here. */
 .gg-disclaimer{position:fixed;overflow:hidden;justify-content:flex-start;align-items:stretch;padding:0}
-.gg-credits-roll{position:absolute;left:50%;top:100%;transform:translate(-50%,0);width:min(680px,88vw);display:flex;flex-direction:column;gap:26px;text-align:center;animation:ggCreditsRoll 15s linear forwards}
-@keyframes ggCreditsRoll{from{top:100%}to{top:-115%}}
+/* V9.82: rolls up from below and settles centered - it no longer keeps scrolling off the top, so there's time to actually read it */
+.gg-credits-roll{position:absolute;left:50%;top:50%;width:min(680px,88vw);display:flex;flex-direction:column;gap:26px;text-align:center;transform:translate(-50%,120vh);animation:ggCreditsRoll 2.6s ease-out forwards}
+@keyframes ggCreditsRoll{from{transform:translate(-50%,120vh)}to{transform:translate(-50%,-50%)}}
 .gg-disclaimer-title{margin:0;font:800 clamp(24px,3.4vw,38px) Georgia,serif;color:#f6d9e6}
 .gg-credits-roll p{margin:0;color:#e7d2e0;font:italic 500 clamp(14px,1.7vw,18px)/1.55 Georgia,serif}
 .gg-disclaimer-credit{color:#f3bcd3 !important;font-style:normal !important;font-weight:700 !important}

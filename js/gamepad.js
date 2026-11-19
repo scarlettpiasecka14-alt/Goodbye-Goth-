@@ -5,7 +5,7 @@
    Layout (Xbox style):  stick / D-pad = move (and move the highlight in menus)
      A = jump / interact / select      B = dodge / back      X = punch      Y = heavy attack
      Start = Settings      View (Back) = backpack      bumpers + triggers are kept free for the bow later. */
-import { getBindings, getPadBindings, setUsingPad } from './controls.js?v=9810';
+import { getBindings, getPadBindings, setUsingPad } from './controls.js?v=9820';
 
 const DEAD = 0.5;                 // stick dead zone
 const BTN = { A: 0, B: 1, X: 2, Y: 3, VIEW: 8, START: 9, UP: 12, DOWN: 13, LEFT: 14, RIGHT: 15 };

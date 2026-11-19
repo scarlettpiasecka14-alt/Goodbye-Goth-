@@ -1,11 +1,11 @@
-import { StoryController } from './story.js?v=9810';
-import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9810';
-import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9810';
-import { initSettings, openSettings } from './settings.js?v=9810';
-import { actionForKey, hintHTML } from './controls.js?v=9810';
-import { initCheats, registerCheats } from './cheats.js?v=9810';
-import { initGamepad } from './gamepad.js?v=9810';
-import { SLOT_COUNT, getActiveSlot, setActiveSlot, readSlot, clearSlot, slotSummary, anySave } from './saves.js?v=9810';
+import { StoryController } from './story.js?v=9820';
+import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9820';
+import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9820';
+import { initSettings, openSettings } from './settings.js?v=9820';
+import { actionForKey, hintHTML } from './controls.js?v=9820';
+import { initCheats, registerCheats } from './cheats.js?v=9820';
+import { initGamepad } from './gamepad.js?v=9820';
+import { SLOT_COUNT, getActiveSlot, setActiveSlot, readSlot, clearSlot, slotSummary, anySave } from './saves.js?v=9820';
 
 const root = document.getElementById('game-root');
 
@@ -103,6 +103,7 @@ function showBoot(){
 function showDisclaimer(){
   // V9.81: no more boxed card - full-screen rolling credits (the lines scroll up like a film's),
   // and the closing line no longer says "go find your princess" (it was spoiling the later kidnap reveal).
+  // V9.82: it now rolls up and SETTLES centered instead of continuing to scroll off the top, so there's time to read it.
   root.innerHTML = `
     <section class="gg-boot gg-disclaimer" aria-label="Disclaimer">
       <div class="gg-credits-roll" id="gg-credits-roll">
@@ -116,7 +117,6 @@ function showDisclaimer(){
   const go = () => { window.removeEventListener('keydown', onKey); showTitle(); };
   const onKey = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } };
   document.getElementById('gg-disclaimer-go').addEventListener('click', go, { once:true });
-  document.getElementById('gg-credits-roll')?.addEventListener('animationend', go, { once:true });
   window.addEventListener('keydown', onKey);
 }
 
@@ -374,7 +374,7 @@ function mountLevel1(loadSaved=false){
       </div>
 
       <div id="win" class="overlay hidden" style="z-index:60;background:#07040a;align-items:center;justify-content:center;overflow:auto"><div class="level-complete">
-        <img class="level-complete-art" src="assets/story/level1-complete.webp?v=9810" alt="Level 1 complete: Olly stands victorious while Patricia sits defeated on the cobbles.">
+        <img class="level-complete-art" src="assets/story/level1-complete.webp?v=9820" alt="Level 1 complete: Olly stands victorious while Patricia sits defeated on the cobbles.">
         <div class="level-complete-text" id="win-text"><h2 class="lc-big">Congratulations</h2><p class="lc-sub">You've defeated 1 (one) absolutely terrifying, fishnet-clad, eyeliner-obsessed menace of a woman. At least she didn't make you listen to The Cure. You're one step closer to finding your princess... maybe.</p><p class="lc-ask">Ready for Level 2?</p></div>
         <div class="level-complete-btns"><button id="win-ready" class="primary" type="button">Ready</button><button id="win-save-quit" type="button">Save and Quit</button></div>
       </div></div>

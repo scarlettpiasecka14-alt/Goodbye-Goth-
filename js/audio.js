@@ -3,7 +3,7 @@
    assets/audio/music/FightMusic1.mp3 and FightMusic2.mp3 (fights). A missing file is simply silent, so nothing breaks while files are still being added.
    Volumes are saved in the browser (a settings screen can use setVolume later). */
 const VOL_KEY = 'goodbyeGothVolume_v1';
-const vol = { master: 0, music: 0.35, sfx: 0.8 };   // master 0 = sound OFF until the player turns it on in Settings
+const vol = { master: 1, music: 0.35, sfx: 0.8 };   // V9.82: sound is ON by default now; turn it off in Settings if you want
 try { Object.assign(vol, JSON.parse(localStorage.getItem(VOL_KEY) || '{}')); } catch (e) {}
 
 /* Sound effects use the Web Audio API: each file is downloaded + decoded once, then plays with almost no delay
