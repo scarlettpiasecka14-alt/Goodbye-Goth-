@@ -58,7 +58,7 @@ export function keyLabel(key) {
     return k.length === 1 ? k.toUpperCase() : k.toUpperCase();
 }
 
-/* ---- V9.77: controller buttons (Gamepad API "standard" numbering) ---- */
+/* ---- V9.78: controller buttons (Gamepad API "standard" numbering) ---- */
 const PAD_KEY = 'goodbyeGothPad_v1';
 export const PAD_ACTIONS = ['jump', 'dodge', 'attack', 'heavy', 'inventory'];
 export const PAD_DEFAULTS = { jump: 0, dodge: 1, attack: 2, heavy: 3, inventory: 8 };
