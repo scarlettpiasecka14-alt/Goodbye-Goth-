@@ -9,7 +9,7 @@ try { Object.assign(vol, JSON.parse(localStorage.getItem(VOL_KEY) || '{}')); } c
 /* Sound effects use the Web Audio API: each file is downloaded + decoded once, then plays with almost no delay
    (the old <audio> clones lagged behind the punch). Until a file has finished decoding, the old method is the fallback. */
 let ctx = null, sfxGain = null;
-const buffers = {}, loading = {};
+const buffers = {}, loading = {}, raw = {};   // raw = the downloaded file bytes, kept so every sound can be decoded again if the sound engine has to be rebuilt
 // Long loops are streamed like music (decoding a 10-minute file into memory would be ~225MB). name -> file in assets/audio/sfx/
 const STREAM = { ambience: 'Ambiance' };
 function getCtx() {
@@ -37,7 +37,24 @@ function reviveAudio() {
         if (ctx) ctx.resume().catch(() => {});
     }, 500);
 }
-document.addEventListener('visibilitychange', () => { if (!document.hidden) reviveAudio(); });
+// V9.72: coming back to the tab after a while, Safari can report the sound engine as 'running' while it makes no sound at all. So after more than a couple of seconds away we always build a fresh engine and decode every sound into it again from the saved bytes.
+let hiddenAt = 0;
+function rebuildAudio() {
+    if (held) return;
+    try { if (ctx) ctx.close(); } catch (e) {}
+    ctx = null; sfxGain = null;
+    const c = getCtx(); if (!c) return;
+    c.resume().catch(() => {});
+    for (const n of Object.keys(raw)) {
+        delete buffers[n];
+        try { c.decodeAudioData(raw[n].slice(0), b => { buffers[n] = b; }, () => {}); } catch (e) {}
+    }
+}
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { hiddenAt = performance.now(); return; }
+    if (hiddenAt && performance.now() - hiddenAt > 2000) rebuildAudio(); else reviveAudio();
+    hiddenAt = 0;
+});
 window.addEventListener('focus', reviveAudio);
 window.addEventListener('pageshow', reviveAudio);
 let heldLoops = [];
@@ -55,7 +72,7 @@ function loadBuffer(name, tries = 0) {
     // V9.46: a sound that failed to download/decode used to be marked "loading" for ever, so it stayed silent for the whole session. Now it retries.
     loading[name] = fetch(`assets/audio/sfx/${name}.mp3?v=9910`)
         .then(r => { if (!r.ok) throw new Error('missing'); return r.arrayBuffer(); })
-        .then(ab => new Promise((res, rej) => c.decodeAudioData(ab, res, rej)))
+        .then(ab => { raw[name] = ab.slice(0); return new Promise((res, rej) => c.decodeAudioData(ab, res, rej)); })
         .then(buf => { buffers[name] = buf; })
         .catch(() => { delete loading[name]; if (tries < 15) setTimeout(() => loadBuffer(name, tries + 1), Math.min(6000, 800 * (tries + 1))); });
 }
@@ -113,14 +130,21 @@ function fadeTo(el, to, ms, done) {
 }
 function nextIdx(name, list, i) { const n = (i + 1) % list.length; return (name === 'boss' && n === 0) ? 1 : n; }   // boss: the opening track plays once, then the two fight tracks alternate
 let startOffset = 0;   // V9.42: playMusicFrom() - start the next track this many seconds in
+const preloaded = {};   // V9.72: the NEXT song is downloaded while the current one plays, so there is no silent gap (it was ~6 s of waiting for the download)
+function preloadTrack(file) {
+    if (!file || preloaded[file]) return;
+    try { const a = new Audio(`assets/audio/music/${file}`); a.preload = 'auto'; a.load(); preloaded[file] = a; } catch (e) {}
+}
 function startTrack(name, token, list, i) {
     if (token !== musicToken) return;
-    const el = new Audio(`assets/audio/music/${list[i]}`);
+    const file = list[i];
+    const el = preloaded[file] || new Audio(`assets/audio/music/${file}`);
+    delete preloaded[file];
     if (startOffset > 0) { const off = startOffset; startOffset = 0; el.addEventListener('loadedmetadata', () => { try { el.currentTime = off; } catch (e) {} }, { once: true }); }
     el.loop = list.length === 1; el.volume = 0; el.preload = 'auto';
     el.addEventListener('ended', () => { if (token === musicToken && list.length > 1) { musicEl = null; startTrack(name, token, list, nextIdx(name, list, i)); } });
     el.addEventListener('error', () => { if (token === musicToken && list.length > 1) startTrack(name, token, list, nextIdx(name, list, i)); });
-    el.play().then(() => { musicBusy = false; if (token !== musicToken) { el.pause(); return; } musicEl = el; musicName = name; fadeTo(el, musicTarget(), 900); }).catch(() => { musicBusy = false; });
+    el.play().then(() => { musicBusy = false; if (token !== musicToken) { el.pause(); return; } musicEl = el; musicName = name; fadeTo(el, musicTarget(), 900); if (list.length > 1) preloadTrack(list[nextIdx(name, list, i)]); }).catch(() => { musicBusy = false; });
 }
 /* playMusic('menu' | 'map' | 'fight' | '') - '' stops the music. Browsers only allow sound after a click/tap, so this retries on the next one. */
 export function playMusicFrom(name, seconds, fadeMs = 300) { startOffset = seconds; playMusic(name, fadeMs); }
@@ -136,10 +160,12 @@ export function playMusic(name, fadeMs = 500) {
         const first = name === 'boss' ? 0 : (list.length > 1 ? Math.floor(Math.random() * list.length) : 0);
         startTrack(name, token, list, first);
     };
+    // V9.72: the new song starts RIGHT NOW (inside the click that asked for it) while the old one fades out beside it. Waiting for the fade-out first meant Safari had already forgotten the click and refused to play the new song until the next click (the boss music only started after Olly drank the potion).
     if (musicEl) {
         const old = musicEl; musicEl = null; musicName = '';
-        fadeTo(old, 0, fadeMs, () => { old.pause(); begin(); });
-    } else begin();
+        fadeTo(old, 0, fadeMs, () => { old.pause(); });
+    }
+    begin();
 }
 // Looping effects (footsteps, typing, intro ambience): start/stop by name. Safe to call every frame - it only acts on a change.
 const loops = {};

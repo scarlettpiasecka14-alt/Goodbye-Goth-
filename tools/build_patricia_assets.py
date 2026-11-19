@@ -15,10 +15,8 @@ ANIMS = {
     'walk':      ('walk', R(32, 61), 1.0),
     'idle':      ('321fight', R(0, 61, 2), 1.0),
     'lunge':     ('SwordSwipe', R(0, 61), 1.0),
-    'combo':     ('Swordcombo', R(0, 61), 1.0),     # V9.41: her sword-combo art is ~20% smaller in its picture than her other moves, so it is stored at a higher resolution (and drawn bigger)
     'lightning': ('Lightningstrike', R(0, 61, 2), 0.56),
     'smoke':     ('Purplesmoke', R(0, 61, 3), 0.66),
-    'salv':      ('Salvagable', R(4, 53), 0.85),   # V9.41: the 'Salvagable?' jumps are now her four hurt reactions (frames 4-52); the old 'hurtand recover' clip is no longer used
 }
 MAX_W = 4096
 def pack(repo, name, folder, frames, SCALE):
