@@ -1,11 +1,11 @@
-import { StoryController } from './story.js?v=9680';
-import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9680';
-import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9680';
-import { initSettings, openSettings } from './settings.js?v=9680';
-import { actionForKey, hintHTML } from './controls.js?v=9680';
-import { initCheats, registerCheats } from './cheats.js?v=9680';
-import { initGamepad } from './gamepad.js?v=9680';
-import { SLOT_COUNT, getActiveSlot, setActiveSlot, readSlot, clearSlot, slotSummary, anySave } from './saves.js?v=9680';
+import { StoryController } from './story.js?v=9690';
+import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9690';
+import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9690';
+import { initSettings, openSettings } from './settings.js?v=9690';
+import { actionForKey, hintHTML } from './controls.js?v=9690';
+import { initCheats, registerCheats } from './cheats.js?v=9690';
+import { initGamepad } from './gamepad.js?v=9690';
+import { SLOT_COUNT, getActiveSlot, setActiveSlot, readSlot, clearSlot, slotSummary, anySave } from './saves.js?v=9690';
 
 const root = document.getElementById('game-root');
 
@@ -335,8 +335,10 @@ function mountLevel1(loadSaved=false){
         </div>
       </div>
 
-      <div id="win" class="overlay hidden"><div class="overlay-box center">
-        <div class="win-title">LEVEL 1 COMPLETE 🖤</div><p>The Classic Goth has been defeated.</p><p><strong>Level 2 is unlocked.</strong></p><button id="replay" class="primary">PLAY LEVEL 1 AGAIN</button>
+      <div id="win" class="overlay hidden" style="z-index:60;background:#07040a;align-items:center;justify-content:center;overflow:auto"><div class="level-complete">
+        <img class="level-complete-art" src="assets/story/level1-complete.webp?v=9690" alt="Level 1 complete: Olly stands victorious while Patricia sits defeated on the cobbles.">
+        <p class="level-complete-text" id="win-text">Congratulations, you've defeated 1 (one) absolutely terrifying, fishnet-clad, eyeliner-obsessed menace of a woman. At least she didn't make you listen to The Cure.<br>You're one step closer to finding your princess... maybe.<br><strong>Ready for Level 2?</strong></p>
+        <div class="level-complete-btns"><button id="win-ready" class="primary" type="button">Ready</button><button id="win-save-quit" type="button">Save and Quit</button></div>
       </div></div>
     </section>`;
 
@@ -363,7 +365,12 @@ function mountLevel1(loadSaved=false){
   ui.wouldTap.addEventListener('click',()=>level.completeRelationship());
   ui.bossStart.addEventListener('click',()=>level.startBoss());
   document.getElementById('boss-save-quit')?.addEventListener('click',()=>level.saveAndQuit());
-  ui.replay.addEventListener('click',()=>mountLevel1());
+  document.getElementById('win-save-quit')?.addEventListener('click',()=>level.saveAndQuit());
+  document.getElementById('win-ready')?.addEventListener('click',()=>{   // Level 2 is not built yet
+    const t = document.getElementById('win-text');
+    if(t) t.innerHTML = 'Level 2 is still being dug up from the crypt.<br><strong>Come back soon, or press Save and Quit to keep your place.</strong>';
+    document.getElementById('win-ready').style.display = 'none';
+  });
   document.querySelectorAll('[data-answer]').forEach(b=>b.addEventListener('click',()=>level.answerPuzzle(b.dataset.answer)));
   ui.combatCanvas.addEventListener('mousedown',e=>{
     if(e.button!==2) return;   // V9.31: punching is the X key only (left-click is kept free for shooting arrows later)
