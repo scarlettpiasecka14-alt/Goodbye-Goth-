@@ -1,5 +1,6 @@
 import { StoryController } from './story.js?v=9820';
 import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9830';
+import { createLevel2 } from './levels/level2.js?v=9830';
 import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9820';
 import { initSettings, openSettings } from './settings.js?v=9820';
 import { actionForKey, hintHTML } from './controls.js?v=9820';
@@ -477,6 +478,60 @@ function mountLevel1(loadSaved=false){
   }
 }
 
+// V9.84-preview: Level 2 scaffolding, debug-only (see the ?level=2 entry point near the
+// bottom of this file). Deliberately its OWN html shell + its OWN event wiring, separate
+// from mountLevel1() - most of mountLevel1's listeners above are bound directly to ui.*
+// elements without optional chaining (ui.encounterReady.addEventListener etc.), so if this
+// reused that block verbatim it would throw the moment it hit an overlay Level 2 doesn't
+// have yet (no combat/encounter/puzzle/relationship/boss-intro content exists for it).
+// Not reachable from the title screen or the real "win-ready" Level 1 completion button -
+// those are untouched. This stays local; nothing here is committed/pushed until reviewed.
+function mountLevel2(){
+  root.innerHTML = `
+    <section class="panel game-screen" style="position:relative">
+      <div class="game-head">
+        <div><strong>LEVEL 2 (PREVIEW)</strong><div class="small">THE WHISPERING HOLLOW - work in progress, not reachable from normal play</div></div>
+      </div>
+      <div class="game-layout">
+        <div class="play-column">
+          <div class="world-wrap">
+            <canvas id="world2" width="1536" height="1024" tabindex="0" aria-label="Level 2 preview map"></canvas>
+          </div>
+          <div id="dialogue2" class="dialogue" aria-live="polite">Loading the hollow...</div>
+        </div>
+      </div>
+      <div style="position:absolute;top:10px;right:10px;z-index:50">
+        <button id="l2-exit" type="button" style="min-height:34px;padding:6px 10px;font-size:12px;">EXIT PREVIEW</button>
+      </div>
+    </section>`;
+
+  const ui2 = { canvas: document.getElementById('world2'), dialogue: document.getElementById('dialogue2') };
+  const level2 = createLevel2(ui2);
+
+  const MOVE_KEY2 = { up:'w', down:'s', left:'a', right:'d' };
+  function onKeyDown2(e){
+    if(e.ctrlKey || e.metaKey || e.altKey) return;
+    const act = actionForKey(e.key);
+    if(!act) return;
+    if(MOVE_KEY2[act]){ e.preventDefault(); level2.setMoveKey(MOVE_KEY2[act], true); return; }
+    if(act==='jump'){ e.preventDefault(); level2.primaryAction(); return; }
+  }
+  function onKeyUp2(e){
+    const act = actionForKey(e.key);
+    if(MOVE_KEY2[act]) level2.setMoveKey(MOVE_KEY2[act], false);
+  }
+  window.addEventListener('keydown', onKeyDown2);
+  window.addEventListener('keyup', onKeyUp2);
+  document.getElementById('l2-exit')?.addEventListener('click', () => {
+    level2.stop();
+    window.removeEventListener('keydown', onKeyDown2);
+    window.removeEventListener('keyup', onKeyUp2);
+    showBoot();
+  });
+
+  level2.start();
+}
+
 // One click sound for every menu / story / dialogue button. Map icons, pickups and fights have their own sounds.
 document.addEventListener('click', e => {
   const b = e.target.closest && e.target.closest('button, [role="button"]');
@@ -496,4 +551,12 @@ if (audioNeedsClick()) {
   window.addEventListener('keydown', () => hint.remove(), { once: true });
 }
 playMusic('menu');   // title song: assets/audio/music/menu.mp3 (starts after the first click)
-showBoot();   // V9.80: loading bat -> disclaimer -> title
+// V9.84-preview: debug-only entry straight into the Level 2 scaffolding via ?level=2 in
+// the URL, so Scarlett can look at it without this touching the real title -> Level 1 ->
+// "Coming Soon" flow at all. Remove this (and mountLevel2/level2.js) once Level 2 is ready
+// to be the real handoff target.
+if (new URLSearchParams(location.search).get('level') === '2') {
+  mountLevel2();
+} else {
+  showBoot();   // V9.80: loading bat -> disclaimer -> title
+}
