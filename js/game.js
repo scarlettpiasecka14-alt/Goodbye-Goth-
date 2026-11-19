@@ -1,11 +1,11 @@
-import { StoryController } from './story.js?v=9740';
-import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9740';
-import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9740';
-import { initSettings, openSettings } from './settings.js?v=9740';
-import { actionForKey, hintHTML } from './controls.js?v=9740';
-import { initCheats, registerCheats } from './cheats.js?v=9740';
-import { initGamepad } from './gamepad.js?v=9740';
-import { SLOT_COUNT, getActiveSlot, setActiveSlot, readSlot, clearSlot, slotSummary, anySave } from './saves.js?v=9740';
+import { StoryController } from './story.js?v=9750';
+import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9750';
+import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9750';
+import { initSettings, openSettings } from './settings.js?v=9750';
+import { actionForKey, hintHTML } from './controls.js?v=9750';
+import { initCheats, registerCheats } from './cheats.js?v=9750';
+import { initGamepad } from './gamepad.js?v=9750';
+import { SLOT_COUNT, getActiveSlot, setActiveSlot, readSlot, clearSlot, slotSummary, anySave } from './saves.js?v=9750';
 
 const root = document.getElementById('game-root');
 
@@ -336,8 +336,8 @@ function mountLevel1(loadSaved=false){
       </div>
 
       <div id="win" class="overlay hidden" style="z-index:60;background:#07040a;align-items:center;justify-content:center;overflow:auto"><div class="level-complete">
-        <img class="level-complete-art" src="assets/story/level1-complete.webp?v=9740" alt="Level 1 complete: Olly stands victorious while Patricia sits defeated on the cobbles.">
-        <div class="level-complete-text" id="win-text"><p class="lc-lead"><b>Congratulations,</b> you've defeated 1 (one) absolutely terrifying, fishnet-clad, eyeliner-obsessed menace of a woman.</p><p>At least she didn't make you listen to The Cure.</p><p>You're one step closer to finding your princess... maybe.</p><p class="lc-ask">Ready for Level 2?</p></div>
+        <img class="level-complete-art" src="assets/story/level1-complete.webp?v=9750" alt="Level 1 complete: Olly stands victorious while Patricia sits defeated on the cobbles.">
+        <div class="level-complete-text" id="win-text"><h2 class="lc-big">Congratulations</h2><p class="lc-sub">You've defeated 1 (one) absolutely terrifying, fishnet-clad, eyeliner-obsessed menace of a woman. At least she didn't make you listen to The Cure. You're one step closer to finding your princess... maybe.</p><p class="lc-ask">Ready for Level 2?</p></div>
         <div class="level-complete-btns"><button id="win-ready" class="primary" type="button">Ready</button><button id="win-save-quit" type="button">Save and Quit</button></div>
       </div></div>
     </section>`;
@@ -368,7 +368,7 @@ function mountLevel1(loadSaved=false){
   document.getElementById('win-save-quit')?.addEventListener('click',()=>level.saveAndQuit());
   document.getElementById('win-ready')?.addEventListener('click',()=>{   // Level 2 is not built yet
     const t = document.getElementById('win-text');
-    if(t) t.innerHTML = '<p class="lc-lead"><b>Level 2</b> is still being dug up from the crypt.</p><p class="lc-ask">Come back soon, or press Save and Quit to keep your place.</p>';
+    if(t) t.innerHTML = '<h2 class="lc-big">Coming Soon</h2><p class="lc-sub">Level 2 is still being dug up from the crypt. Come back soon, or press Save and Quit to keep your place.</p>';
     document.getElementById('win-ready').style.display = 'none';
   });
   document.querySelectorAll('[data-answer]').forEach(b=>b.addEventListener('click',()=>level.answerPuzzle(b.dataset.answer)));
