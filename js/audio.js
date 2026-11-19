@@ -37,7 +37,7 @@ function reviveAudio() {
         if (ctx) ctx.resume().catch(() => {});
     }, 500);
 }
-// V9.73: coming back to the tab after a while, Safari can report the sound engine as 'running' while it makes no sound at all. So after more than a couple of seconds away we always build a fresh engine and decode every sound into it again from the saved bytes.
+// V9.74: coming back to the tab after a while, Safari can report the sound engine as 'running' while it makes no sound at all. So after more than a couple of seconds away we always build a fresh engine and decode every sound into it again from the saved bytes.
 let hiddenAt = 0;
 function rebuildAudio() {
     if (held) return;
@@ -130,7 +130,7 @@ function fadeTo(el, to, ms, done) {
 }
 function nextIdx(name, list, i) { const n = (i + 1) % list.length; return (name === 'boss' && n === 0) ? 1 : n; }   // boss: the opening track plays once, then the two fight tracks alternate
 let startOffset = 0;   // V9.42: playMusicFrom() - start the next track this many seconds in
-const preloaded = {};   // V9.73: the NEXT song is downloaded while the current one plays, so there is no silent gap (it was ~6 s of waiting for the download)
+const preloaded = {};   // V9.74: the NEXT song is downloaded while the current one plays, so there is no silent gap (it was ~6 s of waiting for the download)
 function preloadTrack(file) {
     if (!file || preloaded[file]) return;
     try { const a = new Audio(`assets/audio/music/${file}`); a.preload = 'auto'; a.load(); preloaded[file] = a; } catch (e) {}
@@ -160,7 +160,7 @@ export function playMusic(name, fadeMs = 500) {
         const first = name === 'boss' ? 0 : (list.length > 1 ? Math.floor(Math.random() * list.length) : 0);
         startTrack(name, token, list, first);
     };
-    // V9.73: the new song starts RIGHT NOW (inside the click that asked for it) while the old one fades out beside it. Waiting for the fade-out first meant Safari had already forgotten the click and refused to play the new song until the next click (the boss music only started after Olly drank the potion).
+    // V9.74: the new song starts RIGHT NOW (inside the click that asked for it) while the old one fades out beside it. Waiting for the fade-out first meant Safari had already forgotten the click and refused to play the new song until the next click (the boss music only started after Olly drank the potion).
     if (musicEl) {
         const old = musicEl; musicEl = null; musicName = '';
         fadeTo(old, 0, fadeMs, () => { old.pause(); });
@@ -221,4 +221,4 @@ export function audioNeedsClick() { return vol.master > 0 && !unlocked; }
 window.addEventListener('pointerdown', unlock, { once: false });
 window.addEventListener('keydown', unlock, { once: false });
 
-export function kickAudio() { try { rebuildAudio(); } catch (e) {} }   // V9.73: force-rebuild after a death/retry so SFX don't vanish
+export function kickAudio() { try { rebuildAudio(); } catch (e) {} }   // V9.74: force-rebuild after a death/retry so SFX don't vanish
