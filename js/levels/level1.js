@@ -1,7 +1,7 @@
 /* Goodbye Goth V9.4 - Chain Goth fight (AI + all seven animations: intro, walk, swipe, spin, stun, hurt, death) on top of V9.0 map cleanup and the v8.11 Zombie Goth AI. */
-import { playSfx, playRandomSfx, playMusic, playMusicFrom, preloadSfx, setLoopSfx, setAudioHeld, kickAudio } from '../audio.js?v=9800';
-import { activeKey } from '../saves.js?v=9800';
-import { actionHint, hintHTML } from '../controls.js?v=9800';
+import { playSfx, playVoiceLine, playMagicZap, playThunder, playRandomSfx, playMusic, playMusicFrom, preloadSfx, setLoopSfx, setAudioHeld, kickAudio } from '../audio.js?v=9810';
+import { activeKey } from '../saves.js?v=9810';
+import { actionHint, hintHTML } from '../controls.js?v=9810';
 // Game clock: normal time, but it stands still while a tutorial pop-up is open (so nothing happens behind it).
 let pausedTotal = 0, pausedAt = 0;
 const gnow = () => (pausedAt || performance.now()) - pausedTotal;
@@ -48,7 +48,7 @@ function showRingTutorial(kind, onClose) {
     const wide = window.innerWidth > 760;
     card.style.cssText = 'max-width:min(1320px,97vw);max-height:94vh;overflow:auto;display:flex;flex-direction:'+(wide?'row':'column')+';align-items:center;gap:'+(wide?'30px':'16px')+';padding:'+(wide?'24px 34px':'20px 22px')+';border:1px solid rgba(239,135,170,.55);border-radius:16px;background:#1a0f1c;box-shadow:0 0 40px rgba(239,90,130,.25);text-align:center;font-family:Georgia,serif;color:#fbeef4;';
     const img = document.createElement('img');
-    img.src = `assets/tutorial/ring-${kind}.webp?v=9800`; img.alt = '';
+    img.src = `assets/tutorial/ring-${kind}.webp?v=9810`; img.alt = '';
     img.style.cssText = (wide?'flex:1.25 1 0;min-width:0;max-width:62%;max-height:80vh;':'max-width:100%;max-height:52vh;')+'border-radius:10px;border:1px solid rgba(255,255,255,.12);object-fit:contain;';
     img.onerror = () => img.remove();
     const lab = document.createElement('div'); lab.textContent = info.label; lab.style.cssText = 'font:700 13px Georgia,serif;letter-spacing:.14em;color:#ef87aa;opacity:.9;';
@@ -390,7 +390,7 @@ function loadPatriciaAssets() {
     patAssetsRequested = true;
     for (const [name, a] of Object.entries(patAtlas)) {
         const img = a.img;
-        img.src = `assets/characters/patricia/atlas/pat-${name}.webp?v=9800`;
+        img.src = `assets/characters/patricia/atlas/pat-${name}.webp?v=9810`;
         img.decode?.().then(() => {
             if (window.createImageBitmap) createImageBitmap(img).then(bmp => { a.bmp = bmp; }).catch(() => {});
         }).catch(() => {});
@@ -406,8 +406,15 @@ const PAT_PACK_K = { walk: .885 };   // V9.54: combo 1.23 -> 1.11 (it was drawn 
 const PAT_SIZE_K = 1.18;   // V9.80: she reads as a boss now (was 1.0 and looked small next to Olly)
 // V9.36: feet. How far (in source px) each grounded clip's feet sit below the idle pose's feet; the clip is shifted up/down by that so she never floats.
 const PAT_FOOT_SRC = { walk: 5 };
-const PAT_STAGE2_MS = 4000;   // V9.80: the half-health cutscene length
-const PAT_STAGE2_FRAME_MS = 61;   // 65 frames across the beat
+const PAT_STAGE2_SPEAK_AT = 1700;   // she starts saying the line once she's down on her knees
+const PAT_STAGE2_SPLIT_FRAME = Math.round(PAT_STAGE2_SPEAK_AT / 61);   // where in the 65-frame clip that moment falls at its native pace
+// V9.81: the voice line ('pay-for-that', ~2900ms) runs longer than the clip's remaining frames did at
+// their native pace, which made her mouth finish long before the line did ("mouth moves way faster than
+// the words"). Stretch just the kneeling/talking/rising frames (everything after the split) to comfortably
+// cover the full line, instead of speeding visually through it. The impact-to-knees frames keep their original pace.
+const PAT_STAGE2_FRAME_MS = 61;   // 65 frames across the beat, at the clip's native pace (used for the pre-split frames only)
+const PAT_STAGE2_TAIL_FRAME_MS = 95;
+const PAT_STAGE2_MS = PAT_STAGE2_SPLIT_FRAME * PAT_STAGE2_FRAME_MS + (65 - PAT_STAGE2_SPLIT_FRAME) * PAT_STAGE2_TAIL_FRAME_MS + 300;   // + a short beat held after she finishes
 const PAT_HP = 300, PAT_STAGE2_HP = 150;
 const PAT_FLOOR_SHIFT = 105;   // V9.31: Patricia's arena floor is lower than the Level 1 arena, so both fighters were floating; everything is drawn this far lower there
 const PAT_OLLY_SCALE = 0.95;   // V9.30: Olly was too big next to her
@@ -421,7 +428,7 @@ const PAT_JAB_DAMAGE = 9, PAT_JAB_RANGE = 340, PAT_JAB_PUSH = 22;
 const PAT_SMOKE_FRAME_MS = 125, PAT_SMOKE_FRAMES = 21, PAT_SMOKE_GONE_AT_MS = 560, PAT_SMOKE_REAPPEAR_AT_MS = 1600;   // V9.45: she vanishes twice as fast (was 1120 / 2100)
 const PAT_VSTRIKE_APPEAR_MS = 280, PAT_VSTRIKE_DAMAGE = 15;
 const PAT_LIGHT_WINDUP_FRAMES = 14, PAT_LIGHT_WINDUP_MS = 720, PAT_LIGHT_FRAMES = 9, PAT_LIGHT_FRAME_MS = 167;
-const PAT_LIGHT_DAMAGE = 25, PAT_LIGHT_RANGE = 900;   // V9.80: covers most of the floor - stand still and it WILL hit; jump or leave range to avoid   // V9.80: 560 -> 500
+const PAT_LIGHT_DAMAGE = 25, PAT_LIGHT_RANGE = 520;   // V9.81: 900 covered basically the whole arena floor (no way to escape it at all) - the real fix for "doesn't hit a stationary player" was the single-instant hit check below, not a huge range, so this is back down to a range you can actually run clear of
 // V9.34: the lightning clip ends with her floating, so the discharge frames now loop for a while, then she settles back down (windup frames played in reverse).
 const PAT_LIGHT_LOOP_MS = 900, PAT_LIGHT_LOOP_FRAME_MS = 50, PAT_LIGHT_SETTLE_MS = 300, PAT_LIGHT_HIT_WINDOW_MS = 620;
 // V9.41: her four hurt reactions are the jumps in the 'Salvagable?' clip (atlas 'salv' = source frames 4-52). [first, last] indexes into that atlas.
@@ -440,7 +447,7 @@ const PAT_PATTERN_2 = ['jab', 'lightning', 'vanish', 'lunge', 'jab', 'lightning'
 // V9.80: the reward chest (Patricia's chest) opening clip, 97 frames at 24 fps (tools/build_chest.py)
 const chestPack = { img: new Image(), frames: CHEST_ATLAS_DATA.frames.map(f => [f[0], f[1], f[2], f[3], f[4] / 0.28, f[5] / 0.28]), scale: 0.28 };   // V9.80: the table's offsets are in atlas pixels; the draw multiplies by the scale, so they are pre-divided (the chest used to sit too low and off to one side)
 const CHEST_FRAME_MS = 1000 / 24, CHEST_REWARDS_AT_MS = 2900;
-const chestVinesImg = new Image(); chestVinesImg.src = 'assets/environment/chest-vines.webp?v=9800';   // V9.80: wisteria vine art to drape over the chest's cut-off base
+const chestVinesImg = new Image(); chestVinesImg.src = 'assets/environment/chest-vines.webp?v=9810';   // V9.80: wisteria vine art to drape over the chest's cut-off base
 const chainAtlas = {};
 for (const [name, data] of Object.entries(CHAIN_ATLAS_DATA)) {
     chainAtlas[name] = { img: new Image(), frames: data.frames, scale: data.scale, bx: data.bx, ts: data.ts };
@@ -461,23 +468,23 @@ function loadCombatAssets() {
     ollyCombatSprites.punch.forEach((img, i) => img.src = `assets/characters/combat/olly-punch-${i+1}.webp?v=6511`);
     ollyReactionSprites.hurt.forEach((img, i) => img.src = `assets/characters/combat/olly-hurt-${i + 1}.webp?v=8110`);
     ollyReactionSprites.ko.forEach((img, i) => img.src = `assets/characters/combat/olly-ko-${i + 1}.webp?v=8110`);
-    zombieCombatFrames.idle[0].src = 'assets/characters/combat/zombie-ready-crouch.webp?v=9800';
-    zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.webp?v=9800`);
-    zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i + 1}.webp?v=9800`);
-    zombieCombatFrames.heavyKick.forEach((img, i) => img.src = `assets/characters/combat/zombie-ankle-biter-${String(i + 1).padStart(2, '0')}.webp?v=9800`);
-    zombieCombatFrames.hurt.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/hurt-${String(i + 1).padStart(3, '0')}.webp?v=9800`);
-    zombieCombatFrames.death.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/death2-${String(i + 1).padStart(3, '0')}.webp?v=9800`);
-    zombieCombatFrames.intro2.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro2-${String(i + 1).padStart(3, '0')}.webp?v=9800`);
-    zombieCombatFrames.prep.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro-${String(i + 1).padStart(3, '0')}.webp?v=9800`);
-    zombieCountdownFrames[3].src = 'assets/characters/combat/zombie-countdown-3.webp?v=9800';
-    zombieCountdownFrames[2].src = 'assets/characters/combat/zombie-countdown-2.webp?v=9800';
-    zombieCountdownFrames[1].src = 'assets/characters/combat/zombie-countdown-1.webp?v=9800';
-    zombieCountdownFrames.fight.src = 'assets/characters/combat/zombie-countdown-fight.webp?v=9800';
-    chestPack.img.src = 'assets/environment/chest-open.webp?v=9800';
+    zombieCombatFrames.idle[0].src = 'assets/characters/combat/zombie-ready-crouch.webp?v=9810';
+    zombieCombatFrames.walk.forEach((img, i) => img.src = `assets/characters/combat/zombie-walk-${i + 1}.webp?v=9810`);
+    zombieCombatFrames.claw.forEach((img, i) => img.src = `assets/characters/combat/zombie-claw-${i + 1}.webp?v=9810`);
+    zombieCombatFrames.heavyKick.forEach((img, i) => img.src = `assets/characters/combat/zombie-ankle-biter-${String(i + 1).padStart(2, '0')}.webp?v=9810`);
+    zombieCombatFrames.hurt.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/hurt-${String(i + 1).padStart(3, '0')}.webp?v=9810`);
+    zombieCombatFrames.death.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/death2-${String(i + 1).padStart(3, '0')}.webp?v=9810`);
+    zombieCombatFrames.intro2.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro2-${String(i + 1).padStart(3, '0')}.webp?v=9810`);
+    zombieCombatFrames.prep.forEach((img, i) => img.src = `assets/characters/combat/zombie-v2/intro-${String(i + 1).padStart(3, '0')}.webp?v=9810`);
+    zombieCountdownFrames[3].src = 'assets/characters/combat/zombie-countdown-3.webp?v=9810';
+    zombieCountdownFrames[2].src = 'assets/characters/combat/zombie-countdown-2.webp?v=9810';
+    zombieCountdownFrames[1].src = 'assets/characters/combat/zombie-countdown-1.webp?v=9810';
+    zombieCountdownFrames.fight.src = 'assets/characters/combat/zombie-countdown-fight.webp?v=9810';
+    chestPack.img.src = 'assets/environment/chest-open.webp?v=9810';
     for (const [name, a] of Object.entries(chainAtlas)) {
         if (name === 'death' || name === 'deathb' || name === 'deathc') continue;   // V9.80: old death sheets are unused (about 72 MB of decoded pictures)
         const img = a.img;
-        img.src = `assets/characters/combat/chain-goth/chain-${name}.webp?v=9800`;
+        img.src = `assets/characters/combat/chain-goth/chain-${name}.webp?v=9810`;
         // Decode the big sheets in the background so the first time she uses a move there is no hitch (Safari decodes lazily).
         img.decode?.().then(() => {
             try { const t = document.createElement('canvas'); t.width = t.height = 1; t.getContext('2d').drawImage(img, 0, 0, 1, 1); } catch (e) {}
@@ -1275,6 +1282,8 @@ export function createLevel1(ui) {
         zombieHitDirection = 1,
         zombieHitStrength = 0,
         zombieHitFlashUntil = 0,
+        zombieLastDrawImg = null,
+        zombieXfade = null,   // V9.81: soften the claw-attack frame flicker (each AI frame is its own image, sized slightly differently)
         zombieDeathStarted = false,
         zombieDeathEndAt = 0,
         playerHurtUntil = 0,
@@ -1995,6 +2004,8 @@ export function createLevel1(ui) {
         zombieHitStrength = 0;
         zombieHitFlashUntil = 0;
         zombieHitLong = false;
+        zombieLastDrawImg = null;
+        zombieXfade = null;
         zombieIntroActive = false;
         zombieIntroStart = 0;
         zombieIntroEndAt = 0;
@@ -2457,8 +2468,24 @@ export function createLevel1(ui) {
         const renderHeight = (frame.scale && frame.img && frame.img.naturalHeight) ? Math.round(frame.img.naturalHeight * frame.scale) : Math.round(frame.targetHeight);
         const deathFloorOffset = dying ? ZOMBIE_DEATH_FLOOR_OFFSET : 0;
         let deathSink = 0;   // she sinks a little as her knees give way, then the body falls
-        
-        drawCombatImage(c, frame.img, enemyX, renderGroundY, renderHeight, face, renderMaxWidth, alpha, offsetX, rotation, sourceFacing, deathFloorOffset + deathSink);
+
+        // V9.81: her attack frames are separate AI-generated images that each come out a
+        // slightly different size/crop, which reads as a flicker/flash when they swap hard
+        // on the claw/bite attacks. Crossfade across the swap to soften it.
+        const xfadeState = (zombieCombatState === 'claw' || zombieCombatState === 'heavyKick');
+        if (xfadeState && zombieLastDrawImg && zombieLastDrawImg.img !== frame.img && nowMs - zombieLastDrawImg.t < 140) {
+            zombieXfade = { ...zombieLastDrawImg, start: nowMs };
+        } else if (!xfadeState) {
+            zombieXfade = null;
+        }
+        const xk = zombieXfade ? Math.min(1, (nowMs - zombieXfade.start) / 90) : 1;
+        if (zombieXfade && xk < 1) {
+            drawCombatImage(c, zombieXfade.img, enemyX, zombieXfade.groundY, zombieXfade.h, zombieXfade.face, renderMaxWidth, alpha * (1 - xk), zombieXfade.offsetX, zombieXfade.rotation, sourceFacing, deathFloorOffset + deathSink);
+        } else {
+            zombieXfade = null;
+        }
+        drawCombatImage(c, frame.img, enemyX, renderGroundY, renderHeight, face, renderMaxWidth, alpha * (zombieXfade ? Math.min(1, xk * 1.5) : 1), offsetX, rotation, sourceFacing, deathFloorOffset + deathSink);
+        if (xfadeState) zombieLastDrawImg = { img: frame.img, groundY: renderGroundY, h: renderHeight, face, offsetX, rotation, t: nowMs };
         if (dying && frame.nextImg && frame.mix > .02) {
             const nh = (frame.scale && frame.nextImg.naturalHeight) ? Math.round(frame.nextImg.naturalHeight * frame.scale) : renderHeight;
             drawCombatImage(c, frame.nextImg, enemyX, renderGroundY, nh, face, renderMaxWidth, alpha * frame.mix, offsetX, rotation, sourceFacing, deathFloorOffset + deathSink);
@@ -2629,7 +2656,7 @@ export function createLevel1(ui) {
                 if (zombieBiteCaughtAt === 0) {   // V9.30: keeps chasing even after a dodge (she just can't bite him)
                     const trackingDx = player.x - zombieCombatX;
                     const trackingDirection = trackingDx < 0 ? -1 : 1;
-                    const trackingGap = 112;
+                    const trackingGap = 32;   // V9.81: she now crawls right up onto Olly instead of stopping short
                     const desiredX = player.x - trackingDirection * trackingGap;
                     const targetX = Math.max(170, Math.min(COMBAT_W - 170, desiredX));
                     const crawlStep = Math.min(Math.abs(targetX - zombieCombatX), (zombieBiteEvaded ? 300 : 400) * dt);
@@ -2641,7 +2668,7 @@ export function createLevel1(ui) {
 
                     const catchDistance = Math.abs(player.x - zombieCombatX);
                     const canCatch = nowMs >= dodgeUntil && !(jumping || jumpOffset < -20);   // V9.80: if she crawls right onto Olly while he's grounded she bites - you must be mid-dodge or airborne AT contact
-                    if (canCatch && catchDistance <= 215) {   // V9.28: longer red-attack reach (was 155)
+                    if (canCatch && catchDistance <= 85) {   // V9.81: must actually be on top of him, not just nearby (was 215, way too generous)
                         zombieBiteCaughtAt = nowMs || 1;
                         zombieBiteHoldX = player.x;
                         zombieBiteHoldUntil = nowMs + 1000;
@@ -3270,13 +3297,13 @@ export function createLevel1(ui) {
         if (opts.chance !== undefined && Math.random() > opts.chance) return false;
         if (opts.once) patVoiceOnce[opts.once] = 1;
         patVoiceLast[name] = nowMs; patVoiceUntil = nowMs + (PAT_VOICE_MS[name] || 1500); patVoiceIsGrunt = false; patLastAnyLine = nowMs;
-        playSfx('patricia-' + name, 1);
+        playVoiceLine('patricia-' + name, 1);   // V9.81: exclusive voice channel - never overlaps a still-playing line
         return true;
     }
     function patGrunt() {
         if (!isPatriciaFight() || zombieDeathStarted || gnow() < patVoiceUntil) return;
         let g; do { g = PAT_GRUNTS[Math.floor(Math.random() * PAT_GRUNTS.length)]; } while (g === patLastGrunt && PAT_GRUNTS.length > 1);
-        patLastGrunt = g; patVoiceUntil = gnow() + PAT_VOICE_MS[g]; patVoiceIsGrunt = true; playSfx('patricia-' + g, .95);
+        patLastGrunt = g; patVoiceUntil = gnow() + PAT_VOICE_MS[g]; patVoiceIsGrunt = true; playVoiceLine('patricia-' + g, .95);
     }
     function initPatricia(resume) {
         loadPatriciaAssets();
@@ -3419,6 +3446,12 @@ export function createLevel1(ui) {
     }
     function patStartStage2(nowMs) {   // V9.36: the fight pauses, the camera pushes in on her, she reacts and warns him; then she goes straight into lightning
         patStage = 2; patCheckpoint = true; patStep = 0; patCounter = false;
+        // V9.81: the hit that triggers this can land with her almost on top of Olly - step her back first so the
+        // two of them aren't visibly overlapping through the whole knees/speech beat (reads as a knockback, which fits the hit anyway).
+        {
+            const dir = zombieCombatX >= player.x ? 1 : -1;
+            zombieCombatX = Math.max(170, Math.min(COMBAT_W - 170, player.x + dir * 300));
+        }
         zombieCombatState = 'stage2'; zombieCombatStateStart = nowMs; enemyAttackPhase = 'hurt';
         zombieCombatNextDecision = Infinity; zombieCombatAttackType = 'none'; patStage2At = nowMs;
         patVoiceUntil = 0; patStage2Spoke = false;
@@ -3476,7 +3509,7 @@ export function createLevel1(ui) {
         }
         if (st === 'stage2') {
             patFace = player.x < zombieCombatX ? 'left' : 'right';
-            if (!patStage2Spoke && elapsed >= 1700) { patStage2Spoke = true; patVoiceIsGrunt = true; patSay('pay-for-that', { gap: 0 }); }   // V9.80: she says it as she's down on her knees
+            if (!patStage2Spoke && elapsed >= PAT_STAGE2_SPEAK_AT) { patStage2Spoke = true; patVoiceIsGrunt = true; patSay('pay-for-that', { gap: 0 }); }   // V9.80: she says it as she's down on her knees
             if (elapsed >= PAT_STAGE2_MS) patBeginAttack('lightning', nowMs);   // then she rises and the fight resumes (lightning)
             return;
         }
@@ -3538,11 +3571,13 @@ export function createLevel1(ui) {
                 const g = Math.abs(player.x - zombieCombatX);
                 if (g > 220) zombieCombatX += (patFace === 'left' ? -1 : 1) * Math.min(g - 220, 90 * dt);
             }
+            if (patJabChargeSoundAt < zombieCombatStateStart) { patJabChargeSoundAt = zombieCombatStateStart; playMagicZap('charge', .8); }   // V9.81: rising charge-up zap so the attack is audible from the first instant of the windup
             const t = elapsed - PAT_JAB_WINDUP_MS;
             if (t >= 0 && patHitsDone < 1 && t >= PAT_JAB_HIT_IDX * PAT_JAB_FRAME_MS) {
                 patHitsDone++;
                 enemyAttackPhase = 'active';
                 playSfx('chain-impact-spin', .7, 1.5);   // a sharp little zap as the sparks leave the umbrella
+                playMagicZap('launch', .9);   // V9.81: a clear descending zap right as the orb fires, distinct from any other attack sound
                 const dir = patFace === 'left' ? -1 : 1;
                 // V9.80: a big purple orb lobs out of the umbrella, skips off the floor and bounces up at Olly - jump over the bounce, or interrupt her in the wind-up
                 patSpark = { x: zombieCombatX + dir * 95, y: CHAIN_FLOOR_Y - 155, vx: dir * 560, vy: 240, dir, born: nowMs, bounced: false, hit: false, dead: false };
@@ -3581,7 +3616,7 @@ export function createLevel1(ui) {
         if (st === 'lightning') {
             const strikeAt = PAT_LIGHT_WINDUP_MS;
             if (elapsed >= strikeAt && !zombieCombatAttackHit) {   // V9.80: the slam lands at ONE moment (it used to check for 620 ms, longer than a whole jump, so nobody could dodge it)
-                zombieCombatAttackHit = true; patHitsDone = 1; playSfx('chain-impact-spin', 1, .7);
+                zombieCombatAttackHit = true; patHitsDone = 1; playThunder(1);   // V9.81: was the Chain Goth's rattly chain-impact-spin sound, which made no sense here
                 const airborne = jumping || jumpOffset < -20;
                 if (Math.abs(player.x - zombieCombatX) <= PAT_LIGHT_RANGE && !airborne && !(player.invuln > nowMs)) {   // a jump, or a well-timed dodge, avoids it
                     patDamage(PAT_LIGHT_DAMAGE, 1e5, 44, 'LIGHTNING SLAM', nowMs, true, true);
@@ -3600,6 +3635,7 @@ export function createLevel1(ui) {
         return { pack: patAtlas.idle, index: k < n ? k : cyc - k, flipArt: false };
     }
     let patSpark = null;
+    let patJabChargeSoundAt = -1e9;   // V9.81: one-shot charge-up zap so you can HEAR the orb attack coming, not just see it
     let patLastDraw = null, patXfade = null, patStunning = false, patHurtMs = 500, patHurtLvl = 'medium', patHurtSeg = 0, patHurtLast = -1, patReward = null, patVid = null;
     // V9.54: no more freezing. While she stands still (waiting, recovering, between moves) she breathes and sways, and EVERY hit gives her a visible flinch (even during a strike's strike-frames, when no hurt clip plays).
     let patHitKickAt = -1e9, patLastWalkIdx = -1, patWalkMovedAt = -1e9;
@@ -3674,7 +3710,14 @@ export function createLevel1(ui) {
             const u = Math.min(.999, (t - PAT_LIGHT_LOOP_MS) / PAT_LIGHT_SETTLE_MS);   // settle: the rising frames played backwards
             return { pack: patAtlas.lightning, index: Math.max(0, 10 - Math.floor(u * 11)), flipArt: false };
         }
-        if (st === 'stage2' && patAtlas.stage2?.img?.complete && patAtlas.stage2.img.naturalWidth) return mk(patAtlas.stage2, Math.min(patAtlas.stage2.frames.length - 1, (nowMs - zombieCombatStateStart) / PAT_STAGE2_FRAME_MS), patAtlas.stage2.frames.length, false);
+        if (st === 'stage2' && patAtlas.stage2?.img?.complete && patAtlas.stage2.img.naturalWidth) {
+            // V9.81: pre-split frames (impact -> knees) at native pace, post-split (kneeling/talking/rising) stretched - see PAT_STAGE2_TAIL_FRAME_MS.
+            const n = patAtlas.stage2.frames.length;
+            const t = elapsed;
+            const splitMs = PAT_STAGE2_SPLIT_FRAME * PAT_STAGE2_FRAME_MS;
+            const fIdx = t < splitMs ? (t / PAT_STAGE2_FRAME_MS) : (PAT_STAGE2_SPLIT_FRAME + (t - splitMs) / PAT_STAGE2_TAIL_FRAME_MS);
+            return mk(patAtlas.stage2, Math.min(n - 1, fIdx), n, false);
+        }
         if (st === 'phurt' || st === 'stage2') return patSeqFrame(PAT_HURT_SEQ, elapsed);
         if (st === 'death')
             return { pack: patAtlas.idle, index: 0, flipArt: false };   // V9.41: no death animation
@@ -3686,7 +3729,7 @@ export function createLevel1(ui) {
     // REWARDS ARE PLACEHOLDERS: edit PAT_REWARDS (icon, name, description, what it does).
     const PAT_REWARDS = [
         { id: 'maxhp', icon: '❤', name: 'Max HP +20', desc: 'Olly can take a little more punishment. (Fully heals him too.)', apply() { maxHp += 20; hp = maxHp; stats(); } },
-        { id: 'heavycd', icon: '⚡', name: 'Heavy Attack recharge -20%', desc: 'Heavy Attack comes back faster (15s becomes 12s).', apply() { heavyCdMul = Math.max(.3, heavyCdMul * .8); } },
+        { id: 'heavycd', icon: '⚡', name: 'Heavy Attack recharge -20%', desc: 'Heavy Attack comes back faster (20s becomes 16s).', apply() { heavyCdMul = Math.max(.3, heavyCdMul * .8); } },
     ];
     const PAT_CUTSCENE_FILES = ['assets/video/cutscene4/patricia-death.mp4', 'assets/video/cutscene4/patriciadeath.mp4', 'assets/video/cutscene4/PatriciaDeath.mp4', 'assets/video/cutscene4/patricia-death.mov'];
     function patDeathPrep() {
@@ -3889,7 +3932,8 @@ export function createLevel1(ui) {
         if (kd >= 0 && kd < 200) { const kp = 1 - kd / 200; shx += Math.sin(kd * .09) * 8 * kp; sy *= 1 - .04 * kp; sx *= 1 + .025 * kp; }
         c.save(); c.translate(shx, 0); c.translate(enemyX, CHAIN_FLOOR_Y); c.scale(sx, sy); c.translate(-enemyX, -CHAIN_FLOOR_Y); c.translate(0, dy);
         // V9.80: when her picture set changes (walk -> stand, stand -> attack, attack -> stand...) the old picture dissolves into the new one over ~200 ms instead of snapping (that was the "flash into a different pose").
-        if (!frame.hide && patLastDraw && patLastDraw.pack !== frame.pack && nowMs - patLastDraw.t < 150) patXfade = { ...patLastDraw, start: nowMs };
+        // V9.81: EXCEPT into/out of her 3-2-1 intro clip - that pose is so different from everything else that blending the two together just looked like two Patricias on screen at once. Cut cleanly there instead.
+        if (!frame.hide && patLastDraw && patLastDraw.pack !== frame.pack && nowMs - patLastDraw.t < 150 && frame.pack !== patAtlas.intro && patLastDraw.pack !== patAtlas.intro) patXfade = { ...patLastDraw, start: nowMs };
         const xk = patXfade ? (nowMs - patXfade.start) / 200 : 1;
         if (patXfade && xk < 1 && !frame.hide) {
             c.save(); c.translate(0, patXfade.dy - dy);
@@ -3920,7 +3964,7 @@ export function createLevel1(ui) {
             if (!s.bounced) { s.vy = -770; s.bounced = true; playSfx('chain-impact', .55, 1.7); patSparkPuff = { x: s.x, t: nowMs }; }
             else s.dead = true;                    // second landing: it fizzles out
         }
-        if (!s.hit && Math.abs(s.x - player.x) < 58 && s.y > CHAIN_FLOOR_Y - 250) {
+        if (!s.hit && Math.abs(s.x - player.x) < 66 && s.y > CHAIN_FLOOR_Y - 250) {   // V9.81: matches the now-bigger orb
             const airborne = jumping || jumpOffset < -20;
             if (airborne || player.invuln > nowMs) { /* jumped over / dodged: it sails past */ }
             else { s.hit = true; s.dead = true; patDamage(PAT_JAB_DAMAGE, 1e5, PAT_JAB_PUSH, 'UMBRELLA SPARK', nowMs); }
@@ -3936,18 +3980,26 @@ export function createLevel1(ui) {
             c.restore();
         }
         if (!patSpark || patSpark.dead) return;
-        const x = patSpark.x, y = patSpark.y, R = 46;   // V9.80: bigger, slower orb
+        const x = patSpark.x, y = patSpark.y, R = 62;   // V9.81: bigger still, and given a hard bright edge so it reads against any background, not just a dark one
+        // a trailing comet tail opposite the travel direction (drawn first, underneath)
+        c.save(); c.globalCompositeOperation = 'lighter';
+        const tg = c.createLinearGradient(x - patSpark.dir * 130, y, x, y);
+        tg.addColorStop(0, 'rgba(150,60,210,0)'); tg.addColorStop(1, 'rgba(216,150,255,.65)');
+        c.fillStyle = tg; c.beginPath(); c.ellipse(x - patSpark.dir * 62, y, 76, 22, 0, 0, Math.PI * 2); c.fill();
+        c.restore();
         c.save(); c.globalCompositeOperation = 'lighter';
         const g = c.createRadialGradient(x, y, 3, x, y, R);
-        g.addColorStop(0, 'rgba(236,190,255,.98)'); g.addColorStop(.45, 'rgba(176,90,236,.6)'); g.addColorStop(1, 'rgba(120,40,190,0)');
+        g.addColorStop(0, 'rgba(242,210,255,1)'); g.addColorStop(.4, 'rgba(196,110,246,.85)'); g.addColorStop(.75, 'rgba(150,50,210,.45)'); g.addColorStop(1, 'rgba(120,40,190,0)');
         c.fillStyle = g; c.beginPath(); c.arc(x, y, R, 0, Math.PI * 2); c.fill();
-        // a trailing comet tail opposite the travel direction
-        const tg = c.createLinearGradient(x - patSpark.dir * 70, y, x, y);
-        tg.addColorStop(0, 'rgba(150,60,210,0)'); tg.addColorStop(1, 'rgba(206,140,250,.5)');
-        c.fillStyle = tg; c.beginPath(); c.ellipse(x - patSpark.dir * 36, y, 42, 15, 0, 0, Math.PI * 2); c.fill();
         c.strokeStyle = 'rgba(236,190,255,.9)'; c.lineWidth = 2.5;
-        for (let i = 0; i < 6; i++) { const a = nowMs / 55 + i * 1.1; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * (18 + Math.random() * 20), y + Math.sin(a) * (18 + Math.random() * 20)); c.stroke(); }
-        c.fillStyle = '#fff'; c.beginPath(); c.arc(x, y, 9, 0, Math.PI * 2); c.fill();
+        for (let i = 0; i < 7; i++) { const a = nowMs / 55 + i * 1.1; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * (22 + Math.random() * 26), y + Math.sin(a) * (22 + Math.random() * 26)); c.stroke(); }
+        c.restore();
+        // V9.81: a crisp, fully-opaque white-purple ring + core drawn WITHOUT additive blending, on top -
+        // the 'lighter' glow above can wash out against a bright patch of background; this hard edge never does.
+        c.save();
+        c.strokeStyle = '#f6def2'; c.lineWidth = 4; c.beginPath(); c.arc(x, y, R * .62, 0, Math.PI * 2); c.stroke();
+        c.strokeStyle = '#b25bea'; c.lineWidth = 2; c.beginPath(); c.arc(x, y, R * .62 + 5, 0, Math.PI * 2); c.stroke();
+        c.fillStyle = '#fff'; c.beginPath(); c.arc(x, y, 11, 0, Math.PI * 2); c.fill();
         c.restore();
     }
     // V9.80: purple sparks gather at the umbrella tip during the jab wind-up, as a charge-up telegraph
@@ -3957,13 +4009,15 @@ export function createLevel1(ui) {
         const k = el / PAT_JAB_WINDUP_MS; const dir = patFace === 'left' ? -1 : 1;
         const tx = enemyX + dir * 120, ty = CHAIN_FLOOR_Y - 150;
         c.save(); c.globalCompositeOperation = 'lighter';
-        const g = c.createRadialGradient(tx, ty, 1, tx, ty, 10 + k * 26);
-        g.addColorStop(0, `rgba(236,190,255,${.5 + .4 * k})`); g.addColorStop(1, 'rgba(150,60,210,0)');
-        c.fillStyle = g; c.beginPath(); c.arc(tx, ty, 10 + k * 26, 0, Math.PI * 2); c.fill();
-        c.strokeStyle = `rgba(222,160,250,${.4 + .5 * k})`; c.lineWidth = 2;
-        const n = 3 + Math.floor(k * 5);
-        for (let i = 0; i < n; i++) { const a = nowMs / 45 + i * (6.28 / n); const r = (14 + k * 30) * (.6 + Math.random() * .4); c.beginPath(); c.moveTo(tx, ty); c.lineTo(tx + Math.cos(a) * r, ty + Math.sin(a) * r); c.stroke(); }
+        const g = c.createRadialGradient(tx, ty, 1, tx, ty, 14 + k * 40);   // V9.81: bigger charge glow, easier to clock from across the arena
+        g.addColorStop(0, `rgba(236,190,255,${.55 + .4 * k})`); g.addColorStop(1, 'rgba(150,60,210,0)');
+        c.fillStyle = g; c.beginPath(); c.arc(tx, ty, 14 + k * 40, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = `rgba(222,160,250,${.45 + .5 * k})`; c.lineWidth = 2.5;
+        const n = 4 + Math.floor(k * 7);
+        for (let i = 0; i < n; i++) { const a = nowMs / 45 + i * (6.28 / n); const r = (18 + k * 44) * (.6 + Math.random() * .4); c.beginPath(); c.moveTo(tx, ty); c.lineTo(tx + Math.cos(a) * r, ty + Math.sin(a) * r); c.stroke(); }
         c.restore();
+        // V9.81: a solid (non-additive) bright dot at the gathering point so the charge-up is visible even over a light background patch
+        c.save(); c.globalAlpha = .35 + .5 * k; c.fillStyle = '#f3d6ff'; c.beginPath(); c.arc(tx, ty, 4 + k * 7, 0, Math.PI * 2); c.fill(); c.restore();
     }
     // V9.30: comic speech bubble above a character's head (tail points down at (x, tipY)).
     function drawSpeechBubble(c, x, tipY, text, age, shiftX = 0) {
@@ -4585,7 +4639,7 @@ export function createLevel1(ui) {
             dx = enemyX - player.x;
         combatFacing = dx < 0 ? 'left' : 'right';
 
-        heavyAttackCooldownUntil = nowMs + 15000 * heavyCdMul;
+        heavyAttackCooldownUntil = nowMs + 20000 * heavyCdMul;
         playSfx('olly-heavy-attack', 1);
         heavyAttackAnimUntil = nowMs + 620;
         combatAnimationState = 'heavy';
@@ -4697,7 +4751,7 @@ export function createLevel1(ui) {
         box.appendChild(img);
 
         const copy = document.createElement('div');   // V9.80: compacted
-        copy.innerHTML = '<em>Well, look at you \u2014 you\'ve finally learnt to put some weight behind those swings.</em><br>Big damage, slower swing. <strong>Press ' + hintHTML('heavy') + '</strong> &middot; 20 damage &middot; 15s cooldown.';
+        copy.innerHTML = '<em>Well, look at you \u2014 you\'ve finally learnt to put some weight behind those swings.</em><br><strong>Press ' + hintHTML('heavy') + '</strong> to unleash your heavy attack. It\u2019s got some <em>kick</em> to it \u2014 20 damage &middot; 20s cooldown.';
         copy.style.cssText = 'color:#f5eaf0;font:700 clamp(16px,2vw,21px) Georgia,serif;text-align:center;line-height:1.55;max-width:860px;';
         box.appendChild(copy);
 
@@ -5013,10 +5067,10 @@ export function createLevel1(ui) {
         // V9.30: she speaks in a bubble over her head. 2 s after the fight loads she says line 1; line 2 only starts once line 1 has finished (they used to overlap).
         const L1 = 2690, L2 = 1910, GAP = 450, PAT_SPEECH_DELAY = 2000;   // V9.31: 2 s after the fight loads (was 1 s)
         patSpeech = null;
-        later(PAT_SPEECH_DELAY, () => { patSpeech = { text: 'I wouldn\'t enjoy an unfair fight...', start: gnow(), until: Infinity }; ui.combatStatus.textContent = ''; playSfx('patricia-unfair-fight', 1); });
+        later(PAT_SPEECH_DELAY, () => { patSpeech = { text: 'I wouldn\'t enjoy an unfair fight...', start: gnow(), until: Infinity }; ui.combatStatus.textContent = ''; playVoiceLine('patricia-unfair-fight', 1); });
         later(PAT_SPEECH_DELAY + L1 + GAP, () => {
             patSpeech = { text: 'Check your backpack.', start: gnow(), until: Infinity };
-            playSfx('patricia-check-backpack', 1);
+            playVoiceLine('patricia-check-backpack', 1);
             if (!inventory.potion) inventory.potion = 1;
             refreshInventoryUI();
         });

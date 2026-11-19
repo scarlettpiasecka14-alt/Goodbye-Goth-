@@ -872,8 +872,12 @@ html,body,#app{height:100%;overflow:hidden}
 .gg-boot-bat{width:min(340px,60vw);height:auto;filter:drop-shadow(0 8px 30px rgba(236,135,174,.25));animation:ggBatFloat 2.4s ease-in-out infinite}
 @keyframes ggBatFloat{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-10px) rotate(1deg)}}
 .gg-boot-loading{color:#c98bb0;font:italic 500 clamp(14px,2vw,18px) Georgia,serif;letter-spacing:.08em;opacity:.85;animation:ggPulse 1.6s ease-in-out infinite}
-.gg-disclaimer-card{max-width:min(680px,92vw);display:flex;flex-direction:column;gap:14px;background:#140e1b;border:1px solid rgba(239,135,170,.4);border-radius:18px;padding:30px 32px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
-.gg-disclaimer-title{margin:0 0 4px;font:800 clamp(24px,3.4vw,38px) Georgia,serif;color:#f6d9e6}
-.gg-disclaimer-card p{margin:0;color:#e7d2e0;font:italic 500 clamp(14px,1.7vw,18px)/1.55 Georgia,serif}
-.gg-disclaimer-credit{color:#f3bcd3 !important;font-style:normal !important;font-weight:700 !important;margin-top:6px !important}
-.gg-disclaimer-card .primary{margin-top:12px;align-self:center;padding:12px 28px;border:1px solid #d98ba8;border-radius:12px;background:#382132;color:#f8eaf0;font:800 15px Georgia,serif;letter-spacing:.1em;cursor:pointer}
+/* V9.81: the disclaimer is no longer a boxed card - it's the whole screen, with the lines
+   rolling up like film credits. .gg-boot centers things by default, so override that here. */
+.gg-disclaimer{position:fixed;overflow:hidden;justify-content:flex-start;align-items:stretch;padding:0}
+.gg-credits-roll{position:absolute;left:50%;top:100%;transform:translate(-50%,0);width:min(680px,88vw);display:flex;flex-direction:column;gap:26px;text-align:center;animation:ggCreditsRoll 15s linear forwards}
+@keyframes ggCreditsRoll{from{top:100%}to{top:-115%}}
+.gg-disclaimer-title{margin:0;font:800 clamp(24px,3.4vw,38px) Georgia,serif;color:#f6d9e6}
+.gg-credits-roll p{margin:0;color:#e7d2e0;font:italic 500 clamp(14px,1.7vw,18px)/1.55 Georgia,serif}
+.gg-disclaimer-credit{color:#f3bcd3 !important;font-style:normal !important;font-weight:700 !important}
+.gg-disclaimer-skip{position:fixed;left:50%;bottom:max(28px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:2;padding:12px 28px;border:1px solid #d98ba8;border-radius:12px;background:#382132;color:#f8eaf0;font:800 15px Georgia,serif;letter-spacing:.1em;cursor:pointer}

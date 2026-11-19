@@ -95,6 +95,77 @@ export function playSfx(name, gain = 1, rate = 1) {
         src.connect(g); g.connect(sfxGain); src.start(0);
     } else { if (c && c.state !== 'running') wake(); loadBuffer(name); fallbackPlay(name, v); }
 }
+// V9.81: Patricia's spoken lines share one exclusive "voice channel" - starting a new
+// line always stops whatever she was still saying, so a duration guess that runs long
+// can never overlap the next line (reported as "her lines overlap" during the fight intro).
+let voiceSrc = null;
+export function playVoiceLine(name, gain = 1) {
+    const v = Math.max(0, Math.min(1, vol.master * vol.sfx * gain));
+    const c = getCtx();
+    if (voiceSrc) { try { voiceSrc.stop(); } catch (e) {} voiceSrc = null; }
+    if (v <= 0) return;
+    if (c && buffers[name] && (c.state === 'running' || held)) {
+        wake();
+        const src = c.createBufferSource(), g = c.createGain();
+        src.buffer = buffers[name]; g.gain.value = v;
+        src.connect(g); g.connect(sfxGain); src.start(0);
+        voiceSrc = src;
+        src.onended = () => { if (voiceSrc === src) voiceSrc = null; };
+    } else {
+        if (c && c.state !== 'running') wake();
+        loadBuffer(name);
+        fallbackPlay(name, v);
+    }
+}
+// V9.81: a tiny synthesized "magic" cue for Patricia's purple orb - there's no recorded
+// SFX for it, and a generic impact sound wasn't reading as "watch out, something's coming".
+// A quick rising zap on the charge-up, then a brighter descending one on launch.
+export function playMagicZap(kind = 'launch', gain = 1) {
+    const c = getCtx();
+    if (!c || (c.state !== 'running' && !held)) return;
+    wake();
+    const v = Math.max(0, Math.min(1, vol.master * vol.sfx * gain));
+    if (v <= 0) return;
+    const t0 = c.currentTime;
+    const osc = c.createOscillator(), g = c.createGain();
+    const filt = c.createBiquadFilter(); filt.type = 'bandpass'; filt.Q.value = 6;
+    osc.type = 'sawtooth';
+    if (kind === 'charge') {
+        osc.frequency.setValueAtTime(260, t0); osc.frequency.exponentialRampToValueAtTime(900, t0 + .5);
+        filt.frequency.setValueAtTime(400, t0); filt.frequency.exponentialRampToValueAtTime(2200, t0 + .5);
+        g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(v * .22, t0 + .08); g.gain.linearRampToValueAtTime(v * .3, t0 + .5); g.gain.linearRampToValueAtTime(0, t0 + .55);
+        osc.connect(filt); filt.connect(g); g.connect(sfxGain); osc.start(t0); osc.stop(t0 + .56);
+    } else {
+        osc.frequency.setValueAtTime(1500, t0); osc.frequency.exponentialRampToValueAtTime(260, t0 + .3);
+        filt.frequency.setValueAtTime(2600, t0); filt.frequency.exponentialRampToValueAtTime(500, t0 + .3);
+        g.gain.setValueAtTime(v * .38, t0); g.gain.exponentialRampToValueAtTime(.001, t0 + .32);
+        osc.connect(filt); filt.connect(g); g.connect(sfxGain); osc.start(t0); osc.stop(t0 + .33);
+    }
+}
+// V9.81: Patricia's yellow lightning slam was reusing the Chain Goth's rattly "chain-impact-spin"
+// sound, which read as an odd/out-of-place noise with no chain anywhere on screen. This is a
+// synthesized crack-of-thunder instead: a short noise burst plus a low rumbling tail.
+export function playThunder(gain = 1) {
+    const c = getCtx();
+    if (!c || (c.state !== 'running' && !held)) return;
+    wake();
+    const v = Math.max(0, Math.min(1, vol.master * vol.sfx * gain));
+    if (v <= 0) return;
+    const t0 = c.currentTime;
+    // crack: short filtered noise burst
+    const dur = .18, buf = c.createBuffer(1, Math.round(c.sampleRate * dur), c.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+    const noise = c.createBufferSource(); noise.buffer = buf;
+    const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 900;
+    const ng = c.createGain(); ng.gain.setValueAtTime(v * .7, t0); ng.gain.exponentialRampToValueAtTime(.001, t0 + dur);
+    noise.connect(hp); hp.connect(ng); ng.connect(sfxGain); noise.start(t0); noise.stop(t0 + dur);
+    // rumble: low sine tail
+    const osc = c.createOscillator(); osc.type = 'sine';
+    osc.frequency.setValueAtTime(140, t0 + .03); osc.frequency.exponentialRampToValueAtTime(42, t0 + .6);
+    const og = c.createGain(); og.gain.setValueAtTime(0, t0); og.gain.linearRampToValueAtTime(v * .55, t0 + .05); og.gain.exponentialRampToValueAtTime(.001, t0 + .65);
+    osc.connect(og); og.connect(sfxGain); osc.start(t0 + .02); osc.stop(t0 + .66);
+}
 export function playRandomSfx(names, gain = 1) { playSfx(names[Math.floor(Math.random() * names.length)], gain); }
 export function preloadSfx(names) { names.forEach(loadBuffer); }
 // V9.46: download + decode EVERY sound effect straight away (about 1.3 MB in all). Before, only a handful were ready at the start, and any other sound that played before it had finished decoding went through

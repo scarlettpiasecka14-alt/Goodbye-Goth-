@@ -1,11 +1,11 @@
-import { StoryController } from './story.js?v=9800';
-import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9800';
-import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9800';
-import { initSettings, openSettings } from './settings.js?v=9800';
-import { actionForKey, hintHTML } from './controls.js?v=9800';
-import { initCheats, registerCheats } from './cheats.js?v=9800';
-import { initGamepad } from './gamepad.js?v=9800';
-import { SLOT_COUNT, getActiveSlot, setActiveSlot, readSlot, clearSlot, slotSummary, anySave } from './saves.js?v=9800';
+import { StoryController } from './story.js?v=9810';
+import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9810';
+import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9810';
+import { initSettings, openSettings } from './settings.js?v=9810';
+import { actionForKey, hintHTML } from './controls.js?v=9810';
+import { initCheats, registerCheats } from './cheats.js?v=9810';
+import { initGamepad } from './gamepad.js?v=9810';
+import { SLOT_COUNT, getActiveSlot, setActiveSlot, readSlot, clearSlot, slotSummary, anySave } from './saves.js?v=9810';
 
 const root = document.getElementById('game-root');
 
@@ -101,19 +101,22 @@ function showBoot(){
 }
 
 function showDisclaimer(){
+  // V9.81: no more boxed card - full-screen rolling credits (the lines scroll up like a film's),
+  // and the closing line no longer says "go find your princess" (it was spoiling the later kidnap reveal).
   root.innerHTML = `
     <section class="gg-boot gg-disclaimer" aria-label="Disclaimer">
-      <div class="gg-disclaimer-card">
+      <div class="gg-credits-roll" id="gg-credits-roll">
         <h1 class="gg-disclaimer-title">A Few Solemn Words</h1>
         <p>Goodbye Goth is a work of fiction. Any resemblance to real goths &mdash; living, undead, or merely misunderstood &mdash; is purely coincidental.</p>
         <p>No eyeliner was wasted in the making of this game. Side effects may include an unexpected urge to listen to The Cure, mild fishnet envy, and shouting at an umbrella. Play responsibly.</p>
-        <p class="gg-disclaimer-credit">Lovingly handcrafted for Olly. Now go find your princess. &#128420;</p>
-        <button id="gg-disclaimer-go" class="primary" type="button">ENTER THE ABYSS &#9654;</button>
+        <p class="gg-disclaimer-credit">Lovingly handcrafted for Olly.<br>Now go prove your love. &#128420;</p>
       </div>
+      <button id="gg-disclaimer-go" class="primary gg-disclaimer-skip" type="button">ENTER THE ABYSS &#9654;</button>
     </section>`;
   const go = () => { window.removeEventListener('keydown', onKey); showTitle(); };
   const onKey = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } };
   document.getElementById('gg-disclaimer-go').addEventListener('click', go, { once:true });
+  document.getElementById('gg-credits-roll')?.addEventListener('animationend', go, { once:true });
   window.addEventListener('keydown', onKey);
 }
 
@@ -371,7 +374,7 @@ function mountLevel1(loadSaved=false){
       </div>
 
       <div id="win" class="overlay hidden" style="z-index:60;background:#07040a;align-items:center;justify-content:center;overflow:auto"><div class="level-complete">
-        <img class="level-complete-art" src="assets/story/level1-complete.webp?v=9800" alt="Level 1 complete: Olly stands victorious while Patricia sits defeated on the cobbles.">
+        <img class="level-complete-art" src="assets/story/level1-complete.webp?v=9810" alt="Level 1 complete: Olly stands victorious while Patricia sits defeated on the cobbles.">
         <div class="level-complete-text" id="win-text"><h2 class="lc-big">Congratulations</h2><p class="lc-sub">You've defeated 1 (one) absolutely terrifying, fishnet-clad, eyeliner-obsessed menace of a woman. At least she didn't make you listen to The Cure. You're one step closer to finding your princess... maybe.</p><p class="lc-ask">Ready for Level 2?</p></div>
         <div class="level-complete-btns"><button id="win-ready" class="primary" type="button">Ready</button><button id="win-save-quit" type="button">Save and Quit</button></div>
       </div></div>
