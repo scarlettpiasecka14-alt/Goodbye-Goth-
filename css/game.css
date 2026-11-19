@@ -876,9 +876,10 @@ html,body,#app{height:100%;overflow:hidden}
    rolling up like film credits. .gg-boot centers things by default, so override that here. */
 .gg-disclaimer{position:fixed;overflow:hidden;justify-content:flex-start;align-items:stretch;padding:0}
 /* V9.82: rolls up from below and settles centered - it no longer keeps scrolling off the top, so there's time to actually read it */
-.gg-credits-roll{position:absolute;left:50%;top:50%;width:min(680px,88vw);display:flex;flex-direction:column;gap:26px;text-align:center;transform:translate(-50%,120vh);animation:ggCreditsRoll 2.6s ease-out forwards}
+/* V9.83: rolls in slower (2.6s felt rushed) and every line is bigger - still felt small at the old sizes */
+.gg-credits-roll{position:absolute;left:50%;top:50%;width:min(760px,90vw);display:flex;flex-direction:column;gap:30px;text-align:center;transform:translate(-50%,120vh);animation:ggCreditsRoll 4.6s ease-out forwards}
 @keyframes ggCreditsRoll{from{transform:translate(-50%,120vh)}to{transform:translate(-50%,-50%)}}
-.gg-disclaimer-title{margin:0;font:800 clamp(24px,3.4vw,38px) Georgia,serif;color:#f6d9e6}
-.gg-credits-roll p{margin:0;color:#e7d2e0;font:italic 500 clamp(14px,1.7vw,18px)/1.55 Georgia,serif}
+.gg-disclaimer-title{margin:0;font:800 clamp(30px,4.2vw,48px) Georgia,serif;color:#f6d9e6}
+.gg-credits-roll p{margin:0;color:#e7d2e0;font:italic 500 clamp(18px,2.2vw,23px)/1.6 Georgia,serif}
 .gg-disclaimer-credit{color:#f3bcd3 !important;font-style:normal !important;font-weight:700 !important}
 .gg-disclaimer-skip{position:fixed;left:50%;bottom:max(28px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:2;padding:12px 28px;border:1px solid #d98ba8;border-radius:12px;background:#382132;color:#f8eaf0;font:800 15px Georgia,serif;letter-spacing:.1em;cursor:pointer}

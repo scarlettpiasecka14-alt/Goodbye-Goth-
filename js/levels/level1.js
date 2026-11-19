@@ -17,6 +17,24 @@ window.addEventListener('gg-settings', ev => {
         setAudioHeld(false);
     }
 });
+// V9.83: an M1 MacBook Air (Scarlett's main test machine) throttles/suspends a backgrounded Safari tab, but
+// real wall-clock time (performance.now(), which gnow() is built on) keeps ticking the whole time it's away.
+// Every elapsed-time check in a fight - stage2's kneel/speak/stand timing, the half-health voice line, the
+// 3-2-1 countdowns - reads straight off that clock, so tabbing away mid-cutscene and back made its timer leap
+// forward the instant the tab became active again: a whole beat (sometimes the kneel AND the voice line AND
+// the following attack) could fire in one frame, which looked like "the voice line just started playing" out
+// of nowhere, with nothing having visibly happened first. Freeze the same clock Settings already freezes,
+// while the tab itself is hidden, so nothing times out while nobody's watching.
+let tabFroze = false;
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        if (!pausedAt) { pausedAt = performance.now(); tabFroze = true; }
+        setAudioHeld(true);
+    } else if (tabFroze) {
+        tabFroze = false;
+        if (!settingsFroze && pausedAt) { pausedTotal += performance.now() - pausedAt; pausedAt = 0; setAudioHeld(false); }
+    }
+});
 const GOTH_HURT_SFX = ['goth-hurt-1', 'goth-hurt-2', 'goth-hurt-3', 'goth-hurt-4'];
 // Floor warning rings. pink = attack incoming (jump or dodge), yellow = must JUMP it, red = must DODGE it (jumping won't help).
 const COMBO_PUNCHES = 3;   // V9.80: three swings then a rest (the HUD shows 3 pips)
@@ -31,6 +49,12 @@ const RING_TUTORIAL = {   // V9.80: new wording. title = big heading, paras = on
     stun: { label: 'Dazed', title: 'Some Enemies Can Be Stunned!', paras: ['A few well-placed hits might leave an enemy seeing stars.', "Keep an eye on their stun bar. Once they're stunned, they'll be briefly vulnerable, giving you a chance to strike.", "But don't get too comfortable. Not every enemy goes down so easily!"] },
     yellow: { label: 'Yellow Ring', title: 'A Little More Personal Space, Please?', paras: ['This attack covers a much larger area, so you\'ll need to think carefully about where you dodge or jump.', 'Some attacks may require more than one well-timed movement.', 'And don\'t bother trying to interrupt it. Enemies are completely invincible in yellow attacks.', 'Your best bet? Jump out of the way.'] }
 };
+const RING_TUTORIAL_ASPECT = { pink: '1672/941', red: '1672/941', purple: '1672/941', yellow: '1672/941', stun: '1280/801' };
+// V9.83: these were never preloaded, so the FIRST time each ring showed, the card rendered small/squarish (no intrinsic
+// image size yet) and then visibly reflowed to its real shape once the webp finished loading a moment later ("pops up
+// as a dark square, then changes shape, then actually pops up"). Kick off the real download the instant the game loads.
+const ringTutorialImgs = {};
+for (const k of Object.keys(RING_TUTORIAL_ASPECT)) { const im = new Image(); im.src = `assets/tutorial/ring-${k}.webp?v=9820`; ringTutorialImgs[k] = im; }
 const TUTORIAL_KEY = 'goodbyeGothRingTutorial_v1';
 function ringTutorialSeen(kind) { try { return !!(JSON.parse(localStorage.getItem(TUTORIAL_KEY) || '{}'))[kind]; } catch (e) { return false; } }
 function markRingTutorialSeen(kind) { try { const o = JSON.parse(localStorage.getItem(TUTORIAL_KEY) || '{}'); o[kind] = 1; localStorage.setItem(TUTORIAL_KEY, JSON.stringify(o)); } catch (e) {} }
@@ -46,17 +70,18 @@ function showRingTutorial(kind, onClose) {
     overlay.style.cssText = 'position:fixed;inset:0;z-index:10040;background:rgba(6,3,10,.72);display:flex;align-items:center;justify-content:center;padding:18px;';
     const card = document.createElement('div');
     const wide = window.innerWidth > 760;
-    card.style.cssText = 'max-width:min(1320px,97vw);max-height:94vh;overflow:auto;display:flex;flex-direction:'+(wide?'row':'column')+';align-items:center;gap:'+(wide?'30px':'16px')+';padding:'+(wide?'24px 34px':'20px 22px')+';border:1px solid rgba(239,135,170,.55);border-radius:16px;background:#1a0f1c;box-shadow:0 0 40px rgba(239,90,130,.25);text-align:center;font-family:Georgia,serif;color:#fbeef4;';
+    // V9.83: bigger again - still felt small at the old sizes (max-width 1320px, 62% image, 28px title, 19px body)
+    card.style.cssText = 'max-width:min(1480px,98vw);max-height:96vh;overflow:auto;display:flex;flex-direction:'+(wide?'row':'column')+';align-items:center;gap:'+(wide?'34px':'18px')+';padding:'+(wide?'28px 38px':'22px 24px')+';border:1px solid rgba(239,135,170,.55);border-radius:16px;background:#1a0f1c;box-shadow:0 0 40px rgba(239,90,130,.25);text-align:center;font-family:Georgia,serif;color:#fbeef4;';
     const img = document.createElement('img');
-    img.src = `assets/tutorial/ring-${kind}.webp?v=9820`; img.alt = '';
-    img.style.cssText = (wide?'flex:1.25 1 0;min-width:0;max-width:62%;max-height:80vh;':'max-width:100%;max-height:52vh;')+'border-radius:10px;border:1px solid rgba(255,255,255,.12);object-fit:contain;';
+    img.src = `assets/tutorial/ring-${kind}.webp?v=9820`; img.alt = '';   // V9.83: same URL as the preload above, so this is served from cache
+    img.style.cssText = (wide?'flex:1.3 1 0;min-width:0;max-width:66%;max-height:86vh;':'max-width:100%;max-height:56vh;')+`aspect-ratio:${RING_TUTORIAL_ASPECT[kind] || '1672/941'};border-radius:10px;border:1px solid rgba(255,255,255,.12);object-fit:contain;`;
     img.onerror = () => img.remove();
-    const lab = document.createElement('div'); lab.textContent = info.label; lab.style.cssText = 'font:700 13px Georgia,serif;letter-spacing:.14em;color:#ef87aa;opacity:.9;';
-    const h = document.createElement('div'); h.textContent = info.title; h.style.cssText = 'font:700 28px/1.25 Georgia,serif;color:#ffd9e8;margin-top:2px;';
-    const t = document.createElement('div'); t.style.cssText = 'font:500 italic 19px/1.6 Georgia,serif;max-width:700px;display:flex;flex-direction:column;gap:14px;margin-bottom:4px;';
+    const lab = document.createElement('div'); lab.textContent = info.label; lab.style.cssText = 'font:700 14px Georgia,serif;letter-spacing:.14em;color:#ef87aa;opacity:.9;';
+    const h = document.createElement('div'); h.textContent = info.title; h.style.cssText = 'font:700 32px/1.25 Georgia,serif;color:#ffd9e8;margin-top:2px;';
+    const t = document.createElement('div'); t.style.cssText = 'font:500 italic 21px/1.6 Georgia,serif;max-width:760px;display:flex;flex-direction:column;gap:14px;margin-bottom:4px;';
     for (const para of info.paras) { const pe = document.createElement('p'); pe.textContent = para; pe.style.cssText = 'margin:0;'; t.appendChild(pe); }
     const b = document.createElement('button'); b.type = 'button'; b.textContent = 'GOT IT  ▸';
-    b.style.cssText = 'padding:9px 26px;border-radius:10px;border:1px solid rgba(239,135,170,.7);background:#3a1a30;color:#fff;font:800 14px Georgia,serif;letter-spacing:.14em;cursor:pointer;';
+    b.style.cssText = 'padding:11px 30px;border-radius:10px;border:1px solid rgba(239,135,170,.7);background:#3a1a30;color:#fff;font:800 15px Georgia,serif;letter-spacing:.14em;cursor:pointer;';
     if (wide) { const col = document.createElement('div'); col.style.cssText = 'flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:12px;'; t.style.textAlign='left'; col.append(lab, h, t, b); card.append(img, col); } else card.append(img, lab, h, t, b);
     overlay.appendChild(card); document.body.appendChild(overlay);
     let closed = false;
@@ -181,8 +206,15 @@ const ollyMapWalkSprites = {
 };
 ollyMapWalkSprites.front.src = 'assets/characters/map/olly-walk-front.webp?v=7700';
 ollyMapWalkSprites.back.src = 'assets/characters/map/olly-walk-back.webp?v=7700';
-ollyMapWalkSprites.left.src = 'assets/characters/map/olly-walk-left.webp?v=7700';
-ollyMapWalkSprites.right.src = 'assets/characters/map/olly-walk-right.webp?v=7700';
+// V9.83: these two files were assigned to the direction matching their filename, but the actual art
+// is a single 3/4 combat-ready pose mirrored into a pair - "olly-walk-right.webp" leans/looks toward
+// image-LEFT, and "olly-walk-left.webp" (its mirror) leans/looks toward image-RIGHT. Used by filename
+// that put his body language backwards from his travel direction (walking right while leaning/looking
+// left, and vice versa) - the "backwards" walk reported. Swap which file each direction loads so his
+// lean matches the way he's actually moving; the shirt text reading backwards in the mirror is not
+// noticeable at map-sprite size.
+ollyMapWalkSprites.left.src = 'assets/characters/map/olly-walk-right.webp?v=7700';
+ollyMapWalkSprites.right.src = 'assets/characters/map/olly-walk-left.webp?v=7700';
 
 // Combat animation frames are cropped from the supplied sprite sheet so each
 // pose keeps its own aspect ratio and stray sprite-sheet labels never render.
@@ -333,7 +365,14 @@ const zombieCountdownFrames = {
 // V9.28: the 33-frame walk clip is not a loop (starts upright, ends crouched), which made her flash every cycle. Play it forwards then backwards.
 const ZOMBIE_WALK_SEQUENCE = Array.from({ length: 12 }, (_, i) => i);   // V9.30: original walk restored
 // v8.7: speed up the animation cycle itself by ~15% without changing Zombie's movement speed.
-const ZOMBIE_WALK_FRAME_MS = Array(12).fill(100);
+// V9.83: frames 1, 2, 7 and 12 of the supplied walk clip show her arm raised with the claws fully
+// extended - a natural "shambling with claws out" gait, but one that shares its silhouette with her
+// real claw-attack reach. At an even 100ms/frame, frames 12->1->2 play back-to-back (300ms) with the
+// claw held up the whole time, which reads as a deliberate attack windup that then "changes its mind"
+// since no ring/attack ever follows. Cut those frames' exposure way down (and frame 7's a bit) and
+// hand the saved time to the clearly arm-down frames, so the claw-raise flickers past as part of the
+// walk instead of holding long enough to look like an aborted swipe.
+const ZOMBIE_WALK_FRAME_MS = [50, 50, 100, 120, 120, 100, 60, 120, 120, 100, 110, 50];
 const ZOMBIE_WALK_CYCLE_MS = ZOMBIE_WALK_FRAME_MS.reduce((a, b) => a + b, 0);
 // Use the dedicated crouched ready pose. The attack frames belong
 // exclusively to the heavy attack and must not appear as the neutral/telegraph pose.
@@ -670,8 +709,18 @@ function drawWalkDebug(ctx) {
 
 function drawOlly(ctx, x, y, s=.78, t=0, front=true, dir='right', moving=false, mapDir='down') {
     ctx.save();
-    const bob = moving ? Math.sin(t * 18) * 1.5 : Math.sin(t * 2) * .35;
-    ctx.translate(x, y - bob);
+    // V9.83: the map sprites are a single static pose per direction (no real stride frames), so a
+    // plain side-to-side sine bob floated him up AND down evenly, which reads as hovering rather than
+    // walking. Use an always-downward "step dip" instead (true to a footstep landing), and for the
+    // left/right walk add a small forward lean into the travel direction plus a tiny stride sway, so
+    // moving reads as forward momentum instead of a float.
+    const stepPhase = moving ? Math.sin(t * 9) : 0;
+    const bob = moving ? Math.abs(stepPhase) * 3.2 : Math.sin(t * 2) * .35;
+    const sideways = moving && (mapDir === 'left' || mapDir === 'right');
+    const leanSign = mapDir === 'left' ? -1 : 1;
+    const lean = sideways ? leanSign * .055 : 0;
+    const strideSway = sideways ? stepPhase * 2 * leanSign : 0;
+    ctx.translate(x + strideSway, y - bob);
     ctx.fillStyle = SH(.34);
     ctx.beginPath();
     ctx.ellipse(0, 38 * s, 23 * s, 6 * s, 0, 0, Math.PI * 2);
@@ -691,6 +740,7 @@ function drawOlly(ctx, x, y, s=.78, t=0, front=true, dir='right', moving=false, 
         const h = 144 * s;
         const w = h * (img.naturalWidth / img.naturalHeight);
         ctx.save();
+        ctx.transform(1, 0, lean, 1, 0, 0);
         if (flipX) ctx.scale(-1, 1);
         ctx.drawImage(img, -w / 2, -114 * s, w, h);
         ctx.restore();
@@ -3340,8 +3390,14 @@ export function createLevel1(ui) {
         patLightStandMs = 0; patLightTickAt = -1e9; playerStunUntil = 0;
         chainLastGood = null;   // V9.39: never show the Chain Goth's last frame (the dead chain on the floor) before Patricia's art has loaded
         patStage = resume ? 2 : 1;
-        patStep = 0; patFace = 'left'; patHitsDone = 0; patDoneOnce = false;
+        patStep = 0; patHitsDone = 0; patDoneOnce = false;
         zombieCombatX = COMBAT_W - 320;
+        // V9.83: this used to hardcode patFace = 'left' here, no matter where Olly actually stood.
+        // 'intro' is a locked facing state (V9.82) so she no longer flips mid-clip, but that also means
+        // whatever she's facing the instant the intro starts is what she's stuck with for the whole
+        // clip - and 'left' is only right if Olly happens to already be left of her. Base it on his
+        // real position instead, so the intro starts facing the right way instead of a coin flip.
+        patFace = player.x < zombieCombatX ? 'left' : 'right';
         zombieCombatState = 'intro';
         zombieCombatStateStart = gnow();
         zombieCombatNextDecision = Infinity;
@@ -3480,6 +3536,10 @@ export function createLevel1(ui) {
             const dir = zombieCombatX >= player.x ? 1 : -1;
             zombieCombatX = Math.max(170, Math.min(COMBAT_W - 170, player.x + dir * 300));
         }
+        // V9.83: facing is decided once, right here, instead of being recomputed every frame during the
+        // locked 'stage2' state (see updatePatriciaAI) - she should be facing back toward Olly after
+        // stepping away from him above.
+        patFace = player.x < zombieCombatX ? 'left' : 'right';
         zombieCombatState = 'stage2'; zombieCombatStateStart = nowMs; enemyAttackPhase = 'hurt';
         zombieCombatNextDecision = Infinity; zombieCombatAttackType = 'none'; patStage2At = nowMs;
         patVoiceUntil = 0; patStage2Spoke = false;
@@ -3536,7 +3596,11 @@ export function createLevel1(ui) {
             return;
         }
         if (st === 'stage2') {
-            patFace = player.x < zombieCombatX ? 'left' : 'right';
+            // V9.83: 'stage2' is one of the locked-facing states (drawPatriciaCombat only reads patFace,
+            // never recomputes it, while locked) specifically so she can't flip mid-cutscene - but this
+            // line kept reassigning the underlying variable every frame anyway, live off Olly's position,
+            // which defeated that lock the moment he took even one step during the kneel/speak/stand beat.
+            // Facing for this state is decided once, when patStartStage2() steps her back into place.
             if (!patStage2Spoke && elapsed >= PAT_STAGE2_SPEAK_AT) { patStage2Spoke = true; patVoiceIsGrunt = true; patSay('pay-for-that', { gap: 0 }); }   // V9.80: she says it as she's down on her knees
             if (elapsed >= PAT_STAGE2_MS) patBeginAttack('lightning', nowMs);   // then she rises and the fight resumes (lightning)
             return;
@@ -3830,7 +3894,12 @@ export function createLevel1(ui) {
         if (!patReward || patReward.phase !== 'cutscene') return;
         if (patVid) { patVid.done = true; try { patVid.v.pause(); } catch (e) {} patVid.ov.style.opacity = '0'; patVid.ov.style.pointerEvents = 'none'; patVid.skip.style.display = 'none'; }
         playMusicFrom('boss', 15, 400);   // the cutscene music carries on from where the video left it
-        const dir = player.x < COMBAT_W / 2 ? -1 : 1;   // V9.80: on the OTHER side of Olly
+        // V9.83: this picked a side from Olly's position against the ARENA's center, not from where
+        // Patricia's body actually is - so depending only on which half of the arena he happened to be
+        // standing in, the chest could just as easily land on the same side as her corpse as the other
+        // side, which is the "wrong side again" regression. Put it on the side of Olly that's away from
+        // where she fell (zombieCombatX stays put through the death + cutscene) instead.
+        const dir = zombieCombatX >= player.x ? -1 : 1;   // V9.80: on the OTHER side of Olly
         patReward = { phase: 'chest', t0: gnow(), x: Math.max(260, Math.min(COMBAT_W - 260, player.x + dir * 220)) };   // V9.82: sat too far forward/away from him at 320
         ui.combatStatus.textContent = 'A chest has appeared! Walk up to it and click it.';
     }
@@ -4010,7 +4079,13 @@ export function createLevel1(ui) {
         if (!frame.hide) drawChainAtlasFrame(c, frame.pack, frame.index, enemyX, CHAIN_FLOOR_Y, drawFace, rs, alpha * (patXfade ? Math.min(1, xk * 1.6) : 1), 0, 0);
         if (!frame.hide) patLastDraw = { pack: frame.pack, index: frame.index, rs, dy, face: drawFace, t: nowMs };
         // V9.80: blend into the next picture (the frames were being stepped through with no blending, which looked "bitty")
-        if (!frame.hide && frame.next != null && frame.next !== frame.index && frame.frac > .02 && (packName === 'jab' || packName === 'hurtm' || packName === 'lunge' || packName === 'lightning' || packName === 'intro')) {
+        // V9.83: getPatriciaFrame() already hands 'stage2' a fractional frame index (fIdx) with real
+        // next/frac data - same as jab/lunge/etc - but 'stage2' was left off this whitelist, so every
+        // frame of the half-health kneel/speak/stand clip was a hard cut with no blend. The "talking
+        // while rising" segment stretches 15 frames across ~2.9s to match the voice line, so without
+        // the blend each frame held long enough to look like it froze between cuts. Blending it in
+        // like every other clip fixes that without having to touch the segment's timing at all.
+        if (!frame.hide && frame.next != null && frame.next !== frame.index && frame.frac > .02 && (packName === 'jab' || packName === 'hurtm' || packName === 'lunge' || packName === 'lightning' || packName === 'intro' || packName === 'stage2')) {
             const rs2 = PAT_SCALE * PAT_SIZE_K * (PAT_PACK_K[packName] || 1) * 1;
             drawChainAtlasFrame(c, frame.pack, frame.next, enemyX, CHAIN_FLOOR_Y, drawFace, rs2, alpha * frame.frac, 0, 0);
         }

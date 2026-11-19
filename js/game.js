@@ -1,5 +1,5 @@
 import { StoryController } from './story.js?v=9820';
-import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9820';
+import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9830';
 import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9820';
 import { initSettings, openSettings } from './settings.js?v=9820';
 import { actionForKey, hintHTML } from './controls.js?v=9820';
@@ -108,9 +108,9 @@ function showDisclaimer(){
     <section class="gg-boot gg-disclaimer" aria-label="Disclaimer">
       <div class="gg-credits-roll" id="gg-credits-roll">
         <h1 class="gg-disclaimer-title">A Few Solemn Words</h1>
-        <p>Goodbye Goth is a work of fiction. Any resemblance to real goths &mdash; living, undead, or merely misunderstood &mdash; is purely coincidental.</p>
-        <p>No eyeliner was wasted in the making of this game. Side effects may include an unexpected urge to listen to The Cure, mild fishnet envy, and shouting at an umbrella. Play responsibly.</p>
-        <p class="gg-disclaimer-credit">Lovingly handcrafted for Olly.<br>Now go prove your love. &#128420;</p>
+        <p>Goodbye Goth is a work of fiction. Any resemblance to real goths, people or puffles is purely coincidental.</p>
+        <p>No eyeliner was wasted in the making of this game. Side effects may include an unexpected urge to listen to The Cure, mild fishnet envy, and a seemingly irrational fear of pale women. Play responsibly.</p>
+        <p class="gg-disclaimer-credit">Lovingly handcrafted for Olly.</p>
       </div>
       <button id="gg-disclaimer-go" class="primary gg-disclaimer-skip" type="button">ENTER THE ABYSS &#9654;</button>
     </section>`;
