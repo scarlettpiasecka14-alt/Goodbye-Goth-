@@ -57,3 +57,44 @@ export function keyLabel(key) {
     if (k === ' ') return 'SPACE';
     return k.length === 1 ? k.toUpperCase() : k.toUpperCase();
 }
+
+/* ---- V9.66: controller buttons (Gamepad API "standard" numbering) ---- */
+const PAD_KEY = 'goodbyeGothPad_v1';
+export const PAD_ACTIONS = ['jump', 'dodge', 'attack', 'heavy', 'inventory'];
+export const PAD_DEFAULTS = { jump: 0, dodge: 1, attack: 2, heavy: 3, inventory: 8 };
+export const PAD_NAMES = { 0: 'A', 1: 'B', 2: 'X', 3: 'Y', 4: 'LB', 5: 'RB', 6: 'LT', 7: 'RT', 8: 'VIEW', 9: 'START' };
+export const PAD_ALLOWED = [0, 1, 2, 3, 4, 5, 6, 7, 8];     // Start, D-pad and sticks stay fixed
+let padMap = { ...PAD_DEFAULTS };
+try {
+    const saved = JSON.parse(localStorage.getItem(PAD_KEY) || 'null');
+    if (saved && typeof saved === 'object') {
+        const merged = { ...PAD_DEFAULTS };
+        for (const a of PAD_ACTIONS) if (PAD_ALLOWED.includes(saved[a])) merged[a] = saved[a];
+        if (new Set(Object.values(merged)).size === PAD_ACTIONS.length) padMap = merged;
+    }
+} catch (e) {}
+function persistPad() { try { localStorage.setItem(PAD_KEY, JSON.stringify(padMap)); } catch (e) {} }
+export function getPadBindings() { return { ...padMap }; }
+export function isPadDefault() { return PAD_ACTIONS.every(a => padMap[a] === PAD_DEFAULTS[a]); }
+export function padLabel(i) { return PAD_NAMES[i] || ('BTN ' + i); }
+/* Give `action` the button `btn`; if another action has it, the two swap. */
+export function setPadBinding(action, btn) {
+    if (!PAD_ACTIONS.includes(action) || !PAD_ALLOWED.includes(btn)) return false;
+    const other = PAD_ACTIONS.find(a => a !== action && padMap[a] === btn);
+    if (other) padMap[other] = padMap[action];
+    padMap[action] = btn; persistPad(); return true;
+}
+export function resetPad() { padMap = { ...PAD_DEFAULTS }; persistPad(); }
+
+/* On-screen prompts: show the keyboard key, or the controller button once a controller is being used. */
+let padOn = false;
+const EXTRA = { move: ['WASD / ARROWS', 'STICK / D-PAD'], settings: ['O', 'START'], interact: ['LEFT CLICK / ENTER', 'A'] };
+export function actionHint(act) {
+    if (EXTRA[act]) return EXTRA[act][padOn ? 1 : 0];
+    if (padOn && PAD_ACTIONS.includes(act)) return padLabel(padMap[act]);
+    return keyLabel(map[act]);
+}
+export function hintHTML(act) { return '<span class="gg-hint" data-act="' + act + '">' + actionHint(act) + '</span>'; }
+export function refreshHints() { document.querySelectorAll('.gg-hint').forEach(e => { e.textContent = actionHint(e.dataset.act); }); }
+export function setUsingPad(v) { v = !!v; if (padOn === v) return; padOn = v; refreshHints(); }
+export function isUsingPad() { return padOn; }

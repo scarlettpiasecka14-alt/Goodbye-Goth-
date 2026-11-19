@@ -1,8 +1,9 @@
 /* Goodbye Goth - settings screen (sound, brightness, fullscreen, controls list).
    Everything is built here and lives on <body>, so it survives the game swapping screens.
    Opened from the title menu (SETTINGS) or by pressing O anywhere outside a fight; closes with O, Esc or CLOSE. */
-import { getVolumes, setVolume } from './audio.js?v=9650';
-import { ACTIONS, DEFAULTS, getBindings, swapBindings, setBinding, resetBindings, keyLabel, isDefault } from './controls.js?v=9650';
+import { getVolumes, setVolume } from './audio.js?v=9660';
+import { ACTIONS, DEFAULTS, getBindings, swapBindings, setBinding, resetBindings, keyLabel, isDefault, PAD_ACTIONS, getPadBindings, setPadBinding, resetPad, padLabel, isPadDefault } from './controls.js?v=9660';
+import { listenForPadButton, padConnected } from './gamepad.js?v=9660';
 
 // V9.30: display / accessibility preferences. Saved in the browser; the game reads window.ggPrefs.
 const PREFS_KEY = 'goodbyeGothPrefs_v1';
@@ -116,7 +117,37 @@ function renderControls() {
         slot.append(cap, chip); slots.appendChild(slot);
     }
 }
+let cancelPadListen = null;
+function renderPad() {
+    if (cancelPadListen) { cancelPadListen(); cancelPadListen = null; }
+    const box = overlay.querySelector('#gg-pad-slots'); box.innerHTML = '';
+    const pb = getPadBindings();
+    for (const id of PAD_ACTIONS) {
+        const a = ACTIONS.find(x => x.id === id);
+        const row = document.createElement('div'); row.className = 'gg-slot'; row.dataset.action = id;
+        const cap = document.createElement('button'); cap.type = 'button'; cap.className = 'gg-keycap'; cap.textContent = padLabel(pb[id]); cap.title = 'Click, then press a controller button';
+        const lab = document.createElement('div'); lab.className = 'gg-chip'; lab.style.cursor = 'default'; lab.textContent = a.label;
+        cap.addEventListener('click', () => {
+            if (cancelPadListen) cancelPadListen();
+            row.classList.add('listening'); cap.textContent = 'press…';
+            cancelPadListen = listenForPadButton(btn => { cancelPadListen = null; setPadBinding(id, btn); renderPad(); });
+        });
+        row.append(cap, lab); box.appendChild(row);
+    }
+    overlay.querySelector('#gg-pad-note').textContent = padConnected()
+        ? 'Click a button name, then press the controller button you want. Two actions never share a button: they swap.'
+        : 'No controller found yet. Plug one in and press any button on it, then come back here.';
+}
 function showControlsTab(custom) {
+    const mode = custom === 'pad' ? 'pad' : (custom ? 'custom' : 'default');
+    overlay.querySelector('#gg-controls-pad').hidden = mode !== 'pad';
+    overlay.querySelector('#gg-tab-pad').setAttribute('aria-selected', String(mode === 'pad'));
+    if (mode === 'pad') {
+        overlay.querySelector('#gg-controls-default').hidden = true; overlay.querySelector('#gg-controls-custom').hidden = true;
+        overlay.querySelector('#gg-tab-default').setAttribute('aria-selected', 'false'); overlay.querySelector('#gg-tab-custom').setAttribute('aria-selected', 'false');
+        renderPad(); return;
+    }
+    custom = mode === 'custom';
     overlay.querySelector('#gg-controls-default').hidden = custom;
     overlay.querySelector('#gg-controls-custom').hidden = !custom;
     overlay.querySelector('#gg-tab-default').setAttribute('aria-selected', String(!custom));
@@ -179,8 +210,15 @@ export function initSettings() {
           <div class="gg-tabs" role="tablist">
             <button class="gg-tab" id="gg-tab-default" role="tab" type="button">DEFAULT</button>
             <button class="gg-tab" id="gg-tab-custom" role="tab" type="button">CUSTOMISE</button>
+            <button class="gg-tab" id="gg-tab-pad" role="tab" type="button">CONTROLLER</button>
           </div>
           <div id="gg-controls-default"></div>
+          <div id="gg-controls-pad" hidden>
+            <div class="gg-slots" id="gg-pad-slots"></div>
+            <p class="gg-note">Stick or D-pad moves. Start opens Settings (or skips a cutscene). In menus A selects and B goes back.</p>
+            <p class="gg-note" id="gg-pad-note"></p>
+            <div class="gg-btns"><button id="gg-reset-pad" class="gg-btn" type="button">RESET TO DEFAULT</button></div>
+          </div>
           <div id="gg-controls-custom" hidden>
             <div class="gg-slots" id="gg-slots"></div>
             <p class="gg-note">Drag an action onto another box to swap keys, or click a key and press the one you want. Arrow keys always move, X punches, R dodges.</p>
@@ -247,6 +285,8 @@ export function initSettings() {
     overlay.querySelector('#gg-close').addEventListener('click', closeSettings);
     overlay.querySelector('#gg-tab-default').addEventListener('click', () => showControlsTab(false));
     overlay.querySelector('#gg-tab-custom').addEventListener('click', () => showControlsTab(true));
+    overlay.querySelector('#gg-tab-pad').addEventListener('click', () => showControlsTab('pad'));
+    overlay.querySelector('#gg-reset-pad').addEventListener('click', () => { resetPad(); renderPad(); });
     overlay.querySelector('#gg-reset-keys').addEventListener('click', () => { resetBindings(); renderControls(); });
     showControlsTab(false);
 }

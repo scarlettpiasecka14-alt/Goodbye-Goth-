@@ -1,11 +1,11 @@
-import { StoryController } from './story.js?v=9650';
-import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9650';
-import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9650';
-import { initSettings, openSettings } from './settings.js?v=9650';
-import { actionForKey } from './controls.js?v=9650';
-import { initCheats, registerCheats } from './cheats.js?v=9650';
-import { initGamepad } from './gamepad.js?v=9650';
-import { SLOT_COUNT, getActiveSlot, setActiveSlot, readSlot, clearSlot, slotSummary, anySave } from './saves.js?v=9650';
+import { StoryController } from './story.js?v=9660';
+import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9660';
+import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9660';
+import { initSettings, openSettings } from './settings.js?v=9660';
+import { actionForKey, hintHTML } from './controls.js?v=9660';
+import { initCheats, registerCheats } from './cheats.js?v=9660';
+import { initGamepad } from './gamepad.js?v=9660';
+import { SLOT_COUNT, getActiveSlot, setActiveSlot, readSlot, clearSlot, slotSummary, anySave } from './saves.js?v=9660';
 
 const root = document.getElementById('game-root');
 
@@ -191,16 +191,16 @@ function showControls(){
         <div class="controls-decor" aria-hidden="true">☠ ♥ ☠</div>
         <h1>CONTROLS</h1>
         <div class="controls-list">
-          <div class="control-item"><span class="control-key">WASD / ARROWS</span><span class="control-action">Move</span></div>
-          <div class="control-item"><span class="control-key">SPACE</span><span class="control-action">Jump</span></div>
-          <div class="control-item"><span class="control-key">R</span><span class="control-action">Dodge</span></div>
-          <div class="control-item"><span class="control-key">X / LEFT CLICK</span><span class="control-action">Punch</span></div>
-          <div class="control-item"><span class="control-key">Z</span><span class="control-action">Heavy attack (once earned)</span></div>
-          <div class="control-item"><span class="control-key">LEFT CLICK / ENTER</span><span class="control-action">Pick up / interact</span></div>
-          <div class="control-item"><span class="control-key">Y</span><span class="control-action">Open inventory (backpack)</span></div>
-          <div class="control-item"><span class="control-key">O</span><span class="control-action">Settings (or the ⚙ button)</span></div>
+          <div class="control-item"><span class="control-key">${hintHTML('move')}</span><span class="control-action">Move</span></div>
+          <div class="control-item"><span class="control-key">${hintHTML('jump')}</span><span class="control-action">Jump</span></div>
+          <div class="control-item"><span class="control-key">${hintHTML('dodge')}</span><span class="control-action">Dodge</span></div>
+          <div class="control-item"><span class="control-key">${hintHTML('attack')}</span><span class="control-action">Punch</span></div>
+          <div class="control-item"><span class="control-key">${hintHTML('heavy')}</span><span class="control-action">Heavy attack (once earned)</span></div>
+          <div class="control-item"><span class="control-key">${hintHTML('interact')}</span><span class="control-action">Pick up / interact</span></div>
+          <div class="control-item"><span class="control-key">${hintHTML('inventory')}</span><span class="control-action">Open inventory (backpack)</span></div>
+          <div class="control-item"><span class="control-key">${hintHTML('settings')}</span><span class="control-action">Settings (or the ⚙ button)</span></div>
         </div>
-        <p class="controls-note">Every key can be changed in Settings, under Controls &gt; Customise. Saving your game is in Settings too.</p>
+        <p class="controls-note">Keys and controller buttons can be changed in Settings, under Controls. Saving your game is in Settings too.</p>
         <button id="controls-next" class="controls-next" type="button">CLICK TO CONTINUE →</button>
       </div>
     </section>`;

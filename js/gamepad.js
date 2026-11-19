@@ -1,18 +1,19 @@
-/* Goodbye Goth - controller support (V9.65).
+/* Goodbye Goth - controller support (V9.66).
    Works by turning controller buttons into the same key presses the keyboard makes, so every fight and map move
    follows the keyboard bindings. In menus / pop-ups the D-pad or left stick moves a pink highlight, A presses it, B goes back.
 
    Layout (Xbox style):  stick / D-pad = move (and move the highlight in menus)
      A = jump / interact / select      B = dodge / back      X = punch      Y = heavy attack
      Start = Settings      View (Back) = backpack      bumpers + triggers are kept free for the bow later. */
-import { getBindings } from './controls.js?v=9650';
+import { getBindings, getPadBindings, setUsingPad } from './controls.js?v=9660';
 
 const DEAD = 0.5;                 // stick dead zone
 const BTN = { A: 0, B: 1, X: 2, Y: 3, VIEW: 8, START: 9, UP: 12, DOWN: 13, LEFT: 14, RIGHT: 15 };
 const SKIP = '.story-skip-intro, .skip-cutscene-btn, [class*="skip"]';
 const HUD_IDS = new Set(['inventory-button', 'hud-gear', 'gg-gear']);   // always on screen on the map: they do not count as a menu
-const CAND = 'button:not(:disabled), [role="button"], input[type="range"]:not(:disabled), input[type="checkbox"]:not(:disabled), select:not(:disabled)';
+const CAND = 'summary, button:not(:disabled), [role="button"], input[type="range"]:not(:disabled), input[type="checkbox"]:not(:disabled), select:not(:disabled)';
 
+let capture = null;
 let padIndex = -1, rafId = 0;
 const held = new Set();           // movement keys we are currently holding down for the game
 const prev = { A: false, B: false, X: false, Y: false, VIEW: false, START: false, dir: { up: false, down: false, left: false, right: false } };
@@ -123,9 +124,19 @@ function frame(now) {
     const now2 = {
         A: b(BTN.A), B: b(BTN.B), X: b(BTN.X), Y: b(BTN.Y), VIEW: b(BTN.VIEW), START: b(BTN.START)
     };
+    const raw = gp.buttons.map(x => !!(x && x.pressed));
+    const rawPrev = prev.raw || [];
+    prev.raw = raw;
+    if (capture) {                                                   // Settings is waiting for a button to give to an action
+        const hit = raw.findIndex((v, i) => v && !rawPrev[i]);
+        if (hit >= 0 && hit !== BTN.START && hit < 12) { const cb = capture; capture = null; cb(hit); }
+        Object.assign(prev, now2); prev.dir = dir; return;
+    }
     const anyInput = now2.A || now2.B || now2.X || now2.Y || now2.VIEW || now2.START || dir.up || dir.down || dir.left || dir.right;
-    if (anyInput && !usingPad) { usingPad = true; document.documentElement.classList.add('gg-using-pad'); }
+    if (anyInput && !usingPad) { usingPad = true; document.documentElement.classList.add('gg-using-pad'); setUsingPad(true); }
     if (!usingPad) return;
+    const pb = getPadBindings();
+    const edgeBtn = i => !!raw[i] && !rawPrev[i];
     const edge = k => now2[k] && !prev[k];
 
     const list = menuCandidates();
@@ -136,7 +147,7 @@ function frame(now) {
         const skip = [...document.querySelectorAll(SKIP)].find(visible);
         if (skip) skip.click(); else tapKey('o');                      // Start skips an intro / cutscene, otherwise opens Settings
     }
-    if (edge('VIEW') && (!menu || document.querySelector('#inventory:not(.hidden)'))) tapAction('inventory');
+    if (edgeBtn(pb.inventory) && (!menu || document.querySelector('#inventory:not(.hidden)'))) tapAction('inventory');
 
     if (menu) {
         // Highlight moves with D-pad / stick (repeats while held).
@@ -153,10 +164,7 @@ function frame(now) {
     } else {
         // Playing: stick / D-pad = move, buttons = actions.
         for (const d of ['up', 'down', 'left', 'right']) setMove(d, dir[d]);
-        if (edge('A')) tapAction('jump');
-        if (edge('B')) tapAction('dodge');
-        if (edge('X')) tapAction('attack');
-        if (edge('Y')) tapAction('heavy');
+        for (const act of ['jump', 'dodge', 'attack', 'heavy']) if (edgeBtn(pb[act])) tapAction(act);
     }
     Object.assign(prev, now2); prev.dir = dir;
 }
@@ -172,6 +180,14 @@ function toast(msg) {
     clearTimeout(toast.t); toast.t = setTimeout(() => { t.style.opacity = '0'; }, 6000);
 }
 
+/* Settings > Controls > Controller: wait for the next controller button press. Returns a cancel function. */
+export function listenForPadButton(cb) {
+    capture = cb;
+    if (!rafId) rafId = requestAnimationFrame(frame);
+    return () => { if (capture === cb) capture = null; };
+}
+export function padConnected() { return !!(navigator.getGamepads && [...navigator.getGamepads()].some(p => p && p.connected)); }
+
 export function initGamepad() {
     const css = document.createElement('style');
     css.textContent = '.gg-pad-focus{outline:3px solid #ff7fb5 !important;outline-offset:3px;box-shadow:0 0 18px rgba(255,127,181,.7) !important}';
@@ -184,14 +200,14 @@ export function initGamepad() {
     window.addEventListener('gamepaddisconnected', e => {
         if (!e.gamepad || e.gamepad.index !== padIndex) return;
         releaseAll(); clearFocus(); padIndex = -1; usingPad = false;
-        document.documentElement.classList.remove('gg-using-pad');
+        document.documentElement.classList.remove('gg-using-pad'); setUsingPad(false);
         const left = [...(navigator.getGamepads ? navigator.getGamepads() : [])].some(p => p && p.connected);
         if (!left && rafId) { cancelAnimationFrame(rafId); rafId = 0; }
         toast('🎮 Controller disconnected');
     });
     window.addEventListener('blur', releaseAll);
     // Using the keyboard or mouse again hides the highlight.
-    const back = () => { if (usingPad) { usingPad = false; document.documentElement.classList.remove('gg-using-pad'); clearFocus(); releaseAll(); } };
+    const back = () => { if (usingPad) { usingPad = false; document.documentElement.classList.remove('gg-using-pad'); setUsingPad(false); clearFocus(); releaseAll(); } };
     window.addEventListener('mousemove', back, { passive: true });
     window.addEventListener('keydown', e => { if (e.isTrusted) back(); }, true);
     if (navigator.getGamepads && [...navigator.getGamepads()].some(p => p && p.connected)) rafId = requestAnimationFrame(frame);
