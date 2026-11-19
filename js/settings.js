@@ -1,9 +1,9 @@
 /* Goodbye Goth - settings screen (sound, brightness, fullscreen, controls list).
    Everything is built here and lives on <body>, so it survives the game swapping screens.
    Opened from the title menu (SETTINGS) or by pressing O anywhere outside a fight; closes with O, Esc or CLOSE. */
-import { getVolumes, setVolume } from './audio.js?v=9720';
-import { ACTIONS, DEFAULTS, getBindings, swapBindings, setBinding, resetBindings, keyLabel, isDefault, PAD_ACTIONS, getPadBindings, setPadBinding, resetPad, padLabel, isPadDefault } from './controls.js?v=9720';
-import { listenForPadButton, padConnected } from './gamepad.js?v=9720';
+import { getVolumes, setVolume } from './audio.js?v=9730';
+import { ACTIONS, DEFAULTS, getBindings, swapBindings, setBinding, resetBindings, keyLabel, isDefault, PAD_ACTIONS, getPadBindings, setPadBinding, resetPad, padLabel, isPadDefault } from './controls.js?v=9730';
+import { listenForPadButton, padConnected } from './gamepad.js?v=9730';
 
 // V9.30: display / accessibility preferences. Saved in the browser; the game reads window.ggPrefs.
 const PREFS_KEY = 'goodbyeGothPrefs_v1';
@@ -26,7 +26,7 @@ try { const b = parseInt(localStorage.getItem(BRIGHT_KEY), 10); if (b >= 50 && b
 
 const CSS = `
 .gg-bright{position:fixed;inset:0;z-index:20000;pointer-events:none;opacity:0}
-.gg-settings{position:fixed;inset:0;z-index:10000;display:none;align-items:center;justify-content:center;background:rgba(6,4,10,.82);
+.gg-settings{position:fixed;inset:0;z-index:10060;display:none;align-items:center;justify-content:center;background:rgba(6,4,10,.82);
   font-family:Georgia,serif;color:#f6eaf0}
 .gg-settings.open{display:flex}
 .gg-card{width:min(600px,92vw);max-height:92vh;overflow:auto;background:#17101c;border:1px solid rgba(239,183,201,.45);border-radius:18px;padding:22px 26px;
@@ -87,7 +87,8 @@ function refreshSoundBtn() {
 }
 // V9.26: opening Settings pauses the game (the fight clock + sound effects); closing it carries on exactly where it stopped.
 function announce(open) { try { window.dispatchEvent(new CustomEvent('gg-settings', { detail: { open } })); } catch (e) {} }
-export function openSettings() { if (!overlay) initSettings(); const was = overlay.classList.contains('open'); overlay.classList.add('open'); refreshSoundBtn(); overlay.querySelector('#gg-close').focus(); if (!was) announce(true); }
+export function openSettings() { if (window.__ggTutorialOpen) return;
+    if (!overlay) initSettings(); const was = overlay.classList.contains('open'); overlay.classList.add('open'); refreshSoundBtn(); overlay.querySelector('#gg-close').focus(); if (!was) announce(true); }
 export function closeSettings() { const was = overlay?.classList.contains('open'); overlay?.classList.remove('open'); if (was) announce(false); }
 
 function renderControls() {
