@@ -1,11 +1,11 @@
-import { StoryController } from './story.js?v=9700';
-import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9700';
-import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9700';
-import { initSettings, openSettings } from './settings.js?v=9700';
-import { actionForKey, hintHTML } from './controls.js?v=9700';
-import { initCheats, registerCheats } from './cheats.js?v=9700';
-import { initGamepad } from './gamepad.js?v=9700';
-import { SLOT_COUNT, getActiveSlot, setActiveSlot, readSlot, clearSlot, slotSummary, anySave } from './saves.js?v=9700';
+import { StoryController } from './story.js?v=9710';
+import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9710';
+import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9710';
+import { initSettings, openSettings } from './settings.js?v=9710';
+import { actionForKey, hintHTML } from './controls.js?v=9710';
+import { initCheats, registerCheats } from './cheats.js?v=9710';
+import { initGamepad } from './gamepad.js?v=9710';
+import { SLOT_COUNT, getActiveSlot, setActiveSlot, readSlot, clearSlot, slotSummary, anySave } from './saves.js?v=9710';
 
 const root = document.getElementById('game-root');
 
@@ -336,7 +336,7 @@ function mountLevel1(loadSaved=false){
       </div>
 
       <div id="win" class="overlay hidden" style="z-index:60;background:#07040a;align-items:center;justify-content:center;overflow:auto"><div class="level-complete">
-        <img class="level-complete-art" src="assets/story/level1-complete.webp?v=9700" alt="Level 1 complete: Olly stands victorious while Patricia sits defeated on the cobbles.">
+        <img class="level-complete-art" src="assets/story/level1-complete.webp?v=9710" alt="Level 1 complete: Olly stands victorious while Patricia sits defeated on the cobbles.">
         <p class="level-complete-text" id="win-text">Congratulations, you've defeated 1 (one) absolutely terrifying, fishnet-clad, eyeliner-obsessed menace of a woman. At least she didn't make you listen to The Cure.<br>You're one step closer to finding your princess... maybe.<br><strong>Ready for Level 2?</strong></p>
         <div class="level-complete-btns"><button id="win-ready" class="primary" type="button">Ready</button><button id="win-save-quit" type="button">Save and Quit</button></div>
       </div></div>
