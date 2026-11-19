@@ -1,4 +1,4 @@
-import { playSfx, setLoopSfx } from './audio.js?v=9780';
+import { playSfx, setLoopSfx } from './audio.js?v=9790';
 
 export class StoryController {
   constructor(root, onComplete){
@@ -108,7 +108,7 @@ export class StoryController {
     nextBtn.disabled = true;
     nextBtn.setAttribute('aria-disabled','true');
 
-    // V9.78: an optional "small" tail (e.g. Rustle. Rustle.) is shown in a smaller size
+    // V9.79: an optional "small" tail (e.g. Rustle. Rustle.) is shown in a smaller size
     const smallAt = s.small ? s.text.lastIndexOf(s.small) : -1;
     const paint = (n) => {
       if(smallAt < 0){ textEl.textContent = s.text.slice(0,n); return; }
@@ -129,7 +129,7 @@ export class StoryController {
     };
 
     setLoopSfx('typing', true, .7);   // typing sound plays while the line is being written
-    const speed = s.slow ? 70 : (s.text.length > 110 ? 70 : Math.max(58, this.typeSpeed));   // V9.78: first two slides only a touch slower than the rest
+    const speed = s.slow ? 70 : (s.text.length > 110 ? 70 : Math.max(58, this.typeSpeed));   // V9.79: first two slides only a touch slower than the rest
     this.typingTimer = setInterval(() => {
       index += 1;
       paint(index);
@@ -147,7 +147,7 @@ export class StoryController {
     };
 
     nextBtn.addEventListener('click', advance);
-    // V9.78: Space / Enter (and the controller's A) skip the typing while it is running, and move on once it has finished.
+    // V9.79: Space / Enter (and the controller's A) skip the typing while it is running, and move on once it has finished.
     this.keyHandler = (e) => {
       if(e.repeat || (e.key !== ' ' && e.key !== 'Enter')) return;
       if(e.target && e.target.closest && e.target.closest('button, a, input, select, textarea')) return;   // a focused button does its own thing

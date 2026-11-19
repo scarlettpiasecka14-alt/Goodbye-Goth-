@@ -1,11 +1,11 @@
-import { StoryController } from './story.js?v=9780';
-import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9780';
-import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9780';
-import { initSettings, openSettings } from './settings.js?v=9780';
-import { actionForKey, hintHTML } from './controls.js?v=9780';
-import { initCheats, registerCheats } from './cheats.js?v=9780';
-import { initGamepad } from './gamepad.js?v=9780';
-import { SLOT_COUNT, getActiveSlot, setActiveSlot, readSlot, clearSlot, slotSummary, anySave } from './saves.js?v=9780';
+import { StoryController } from './story.js?v=9790';
+import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9790';
+import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9790';
+import { initSettings, openSettings } from './settings.js?v=9790';
+import { actionForKey, hintHTML } from './controls.js?v=9790';
+import { initCheats, registerCheats } from './cheats.js?v=9790';
+import { initGamepad } from './gamepad.js?v=9790';
+import { SLOT_COUNT, getActiveSlot, setActiveSlot, readSlot, clearSlot, slotSummary, anySave } from './saves.js?v=9790';
 
 const root = document.getElementById('game-root');
 
@@ -82,9 +82,9 @@ function showTitleMessage(message){
   }
 }
 
-// V9.78: new boot flow -> loading bat -> funny disclaimer/credits -> title screen
+// V9.79: new boot flow -> loading bat -> funny disclaimer/credits -> title screen
 function showBoot(){
-  // V9.78: only show the loading bat + disclaimer on the first load of the session.
+  // V9.79: only show the loading bat + disclaimer on the first load of the session.
   // Save & Quit reloads the page, and should drop straight to the title screen.
   try { if (sessionStorage.getItem('gg_booted')) { showTitle(); return; } sessionStorage.setItem('gg_booted', '1'); } catch (e) {}
   setLoopSfx('ambience', false);
@@ -371,7 +371,7 @@ function mountLevel1(loadSaved=false){
       </div>
 
       <div id="win" class="overlay hidden" style="z-index:60;background:#07040a;align-items:center;justify-content:center;overflow:auto"><div class="level-complete">
-        <img class="level-complete-art" src="assets/story/level1-complete.webp?v=9780" alt="Level 1 complete: Olly stands victorious while Patricia sits defeated on the cobbles.">
+        <img class="level-complete-art" src="assets/story/level1-complete.webp?v=9790" alt="Level 1 complete: Olly stands victorious while Patricia sits defeated on the cobbles.">
         <div class="level-complete-text" id="win-text"><h2 class="lc-big">Congratulations</h2><p class="lc-sub">You've defeated 1 (one) absolutely terrifying, fishnet-clad, eyeliner-obsessed menace of a woman. At least she didn't make you listen to The Cure. You're one step closer to finding your princess... maybe.</p><p class="lc-ask">Ready for Level 2?</p></div>
         <div class="level-complete-btns"><button id="win-ready" class="primary" type="button">Ready</button><button id="win-save-quit" type="button">Save and Quit</button></div>
       </div></div>
@@ -493,4 +493,4 @@ if (audioNeedsClick()) {
   window.addEventListener('keydown', () => hint.remove(), { once: true });
 }
 playMusic('menu');   // title song: assets/audio/music/menu.mp3 (starts after the first click)
-showBoot();   // V9.78: loading bat -> disclaimer -> title
+showBoot();   // V9.79: loading bat -> disclaimer -> title
