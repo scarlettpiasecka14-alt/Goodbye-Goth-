@@ -1,11 +1,11 @@
-import { StoryController } from './story.js?v=9750';
-import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9750';
-import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9750';
-import { initSettings, openSettings } from './settings.js?v=9750';
-import { actionForKey, hintHTML } from './controls.js?v=9750';
-import { initCheats, registerCheats } from './cheats.js?v=9750';
-import { initGamepad } from './gamepad.js?v=9750';
-import { SLOT_COUNT, getActiveSlot, setActiveSlot, readSlot, clearSlot, slotSummary, anySave } from './saves.js?v=9750';
+import { StoryController } from './story.js?v=9760';
+import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9760';
+import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9760';
+import { initSettings, openSettings } from './settings.js?v=9760';
+import { actionForKey, hintHTML } from './controls.js?v=9760';
+import { initCheats, registerCheats } from './cheats.js?v=9760';
+import { initGamepad } from './gamepad.js?v=9760';
+import { SLOT_COUNT, getActiveSlot, setActiveSlot, readSlot, clearSlot, slotSummary, anySave } from './saves.js?v=9760';
 
 const root = document.getElementById('game-root');
 
@@ -80,6 +80,38 @@ function showTitleMessage(message){
     el.textContent=message;
     root.querySelector('.perfect-title-wrap')?.appendChild(el);
   }
+}
+
+// V9.76: new boot flow -> loading bat -> funny disclaimer/credits -> title screen
+function showBoot(){
+  setLoopSfx('ambience', false);
+  root.innerHTML = `
+    <section class="gg-boot" aria-label="Loading">
+      <img class="gg-boot-bat" src="assets/story/loading-bat.webp" alt="">
+      <p class="gg-boot-loading">loading the abyss...</p>
+    </section>`;
+  let done = false;
+  const go = () => { if (done) return; done = true; showDisclaimer(); };
+  // advance once the key art is ready (or after a short beat, whichever comes first)
+  const bat = root.querySelector('.gg-boot-bat');
+  if (bat && bat.complete) setTimeout(go, 1300); else { bat?.addEventListener('load', () => setTimeout(go, 900)); setTimeout(go, 2600); }
+}
+
+function showDisclaimer(){
+  root.innerHTML = `
+    <section class="gg-boot gg-disclaimer" aria-label="Disclaimer">
+      <div class="gg-disclaimer-card">
+        <h1 class="gg-disclaimer-title">A Few Solemn Words</h1>
+        <p>Goodbye Goth is a work of fiction. Any resemblance to real goths &mdash; living, undead, or merely misunderstood &mdash; is purely coincidental.</p>
+        <p>No eyeliner was wasted in the making of this game. Side effects may include an unexpected urge to listen to The Cure, mild fishnet envy, and shouting at an umbrella. Play responsibly.</p>
+        <p class="gg-disclaimer-credit">Lovingly handcrafted for Olly. Now go find your princess. &#128420;</p>
+        <button id="gg-disclaimer-go" class="primary" type="button">ENTER THE ABYSS &#9654;</button>
+      </div>
+    </section>`;
+  const go = () => { window.removeEventListener('keydown', onKey); showTitle(); };
+  const onKey = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } };
+  document.getElementById('gg-disclaimer-go').addEventListener('click', go, { once:true });
+  window.addEventListener('keydown', onKey);
 }
 
 function showTitle(){
@@ -336,7 +368,7 @@ function mountLevel1(loadSaved=false){
       </div>
 
       <div id="win" class="overlay hidden" style="z-index:60;background:#07040a;align-items:center;justify-content:center;overflow:auto"><div class="level-complete">
-        <img class="level-complete-art" src="assets/story/level1-complete.webp?v=9750" alt="Level 1 complete: Olly stands victorious while Patricia sits defeated on the cobbles.">
+        <img class="level-complete-art" src="assets/story/level1-complete.webp?v=9760" alt="Level 1 complete: Olly stands victorious while Patricia sits defeated on the cobbles.">
         <div class="level-complete-text" id="win-text"><h2 class="lc-big">Congratulations</h2><p class="lc-sub">You've defeated 1 (one) absolutely terrifying, fishnet-clad, eyeliner-obsessed menace of a woman. At least she didn't make you listen to The Cure. You're one step closer to finding your princess... maybe.</p><p class="lc-ask">Ready for Level 2?</p></div>
         <div class="level-complete-btns"><button id="win-ready" class="primary" type="button">Ready</button><button id="win-save-quit" type="button">Save and Quit</button></div>
       </div></div>
@@ -458,4 +490,4 @@ if (audioNeedsClick()) {
   window.addEventListener('keydown', () => hint.remove(), { once: true });
 }
 playMusic('menu');   // title song: assets/audio/music/menu.mp3 (starts after the first click)
-showTitle();
+showBoot();   // V9.76: loading bat -> disclaimer -> title

@@ -866,3 +866,14 @@ html,body,#app{height:100%;overflow:hidden}
 #would-feedback .wy-miss{color:#ff82c9}
 .level-complete-btns{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
 .level-complete-btns button{min-width:170px}
+
+/* V9.76: boot splash + disclaimer */
+.gg-boot{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:#0a0710;text-align:center;padding:24px}
+.gg-boot-bat{width:min(340px,60vw);height:auto;filter:drop-shadow(0 8px 30px rgba(236,135,174,.25));animation:ggBatFloat 2.4s ease-in-out infinite}
+@keyframes ggBatFloat{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-10px) rotate(1deg)}}
+.gg-boot-loading{color:#c98bb0;font:italic 500 clamp(14px,2vw,18px) Georgia,serif;letter-spacing:.08em;opacity:.85;animation:ggPulse 1.6s ease-in-out infinite}
+.gg-disclaimer-card{max-width:min(680px,92vw);display:flex;flex-direction:column;gap:14px;background:#140e1b;border:1px solid rgba(239,135,170,.4);border-radius:18px;padding:30px 32px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.gg-disclaimer-title{margin:0 0 4px;font:800 clamp(24px,3.4vw,38px) Georgia,serif;color:#f6d9e6}
+.gg-disclaimer-card p{margin:0;color:#e7d2e0;font:italic 500 clamp(14px,1.7vw,18px)/1.55 Georgia,serif}
+.gg-disclaimer-credit{color:#f3bcd3 !important;font-style:normal !important;font-weight:700 !important;margin-top:6px !important}
+.gg-disclaimer-card .primary{margin-top:12px;align-self:center;padding:12px 28px;border:1px solid #d98ba8;border-radius:12px;background:#382132;color:#f8eaf0;font:800 15px Georgia,serif;letter-spacing:.1em;cursor:pointer}
