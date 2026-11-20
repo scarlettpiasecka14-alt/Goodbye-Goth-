@@ -62,16 +62,21 @@ const SCARLETT_CHIP = { id: 'scarlett', label: 'SCARLETT', color: '#caa6ff' };
 // that is NOT checked - v1 just needs the right set of ingredients, not the exact
 // click sequence, to keep "remember what was asked for" the actual challenge rather
 // than also demanding a precise click order.
+// Customers are generic people, not named cast members - there's no portrait/sprite
+// shown for whoever's ordering, so naming them Patricia/Tom/etc. would read as those
+// characters without anything on screen actually being them. If/when this gets real
+// customer art or sprites, swap these back to named cast and the in-character jokes
+// (Tom's football banter, Patricia's "don't disappoint me, Olly") can come back too.
 const BURRITO_ORDERS = [
-    { round: 1, customer: 'Zombie Goth', line: "One Scarlett... with cheese. Mmmrgh.", items: ['scarlett', 'cheese'] },
-    { round: 2, customer: 'Chain Goth', line: "Scarlett, sour cream, no tomato. I'm watching my figure.", items: ['scarlett', 'sourcream'] },
-    { round: 2, customer: 'Tom', line: "Scarlett and tomato, please. Tottenham would never skip their veg.", items: ['scarlett', 'tomato'] },
-    { round: 2, customer: 'Patricia', line: "Surprise me. Cheese AND sour cream. Don't disappoint me, Olly.", items: ['scarlett', 'cheese', 'sourcream'] },
-    { round: 3, customer: 'Zombie Goth', line: "Cheese, tomato, extra love. I'm feeling sentimental.", items: ['scarlett', 'cheese', 'tomato', 'love'] },
-    { round: 3, customer: 'Chain Goth', line: "Just love. Hold everything else.", items: ['scarlett', 'love'] },
-    { round: 3, customer: 'Tom', line: "Everything except sour cream - I'm lactose intolerant, obviously.", items: ['scarlett', 'cheese', 'tomato', 'love'] },
-    { round: 3, customer: 'Patricia', line: "All four. Impress me.", items: ['scarlett', 'cheese', 'sourcream', 'tomato', 'love'] },
-    { round: 3, customer: 'Chaos Fairy Goth', line: "Just Scarlett. I don't share.", items: ['scarlett'] }
+    { round: 1, customer: 'Hungry Customer', line: "One Scarlett... with cheese. Make it quick.", items: ['scarlett', 'cheese'] },
+    { round: 2, customer: 'Picky Customer', line: "Scarlett, sour cream, no tomato. I'm watching my figure.", items: ['scarlett', 'sourcream'] },
+    { round: 2, customer: 'Polite Customer', line: "Scarlett and tomato, please. Can't skip my veg.", items: ['scarlett', 'tomato'] },
+    { round: 2, customer: 'Demanding Customer', line: "Surprise me. Cheese AND sour cream. Don't disappoint me.", items: ['scarlett', 'cheese', 'sourcream'] },
+    { round: 3, customer: 'Sentimental Customer', line: "Cheese, tomato, extra love. I'm feeling sentimental.", items: ['scarlett', 'cheese', 'tomato', 'love'] },
+    { round: 3, customer: 'Hopeless Romantic', line: "Just love. Hold everything else.", items: ['scarlett', 'love'] },
+    { round: 3, customer: 'Fussy Customer', line: "Everything except sour cream - I'm lactose intolerant, apparently.", items: ['scarlett', 'cheese', 'tomato', 'love'] },
+    { round: 3, customer: 'Big Spender', line: "All four. Impress me.", items: ['scarlett', 'cheese', 'sourcream', 'tomato', 'love'] },
+    { round: 3, customer: 'Mysterious Customer', line: "Just Scarlett. I don't share.", items: ['scarlett'] }
 ];
 // Seconds the order is shown for before it's hidden, and seconds allowed to assemble
 // it from memory after that. Tightens each round - tune freely, these are first-draft guesses.
