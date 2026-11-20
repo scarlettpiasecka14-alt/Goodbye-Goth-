@@ -84,6 +84,12 @@ const REVEAL_SECONDS = 1.6;   // how long Scarlett is shown peeking out before t
 const mapBackground = new Image();
 mapBackground.src = 'assets/environment/level2-map-bg.webp';
 
+// Find Scarlett's background - cropped straight from the fairy ring that's already
+// sitting on the Level 2 map art at roughly the mini-game spot's own position (Scarlett's
+// idea), rather than needing new art. Source crop: level2-map-bg.webp (380,600)-(970,1024).
+const shellGameBackground = new Image();
+shellGameBackground.src = 'assets/environment/find-scarlett-bg.webp';
+
 const ollySprite = {
     front: new Image(), back: new Image(), left: new Image(), right: new Image()
 };
@@ -406,36 +412,53 @@ export function createLevel2(ui) {
         ctx.save();
         ctx.scale(sx, sy);
 
-        ctx.fillStyle = '#17241c';
-        ctx.fillRect(0, 0, vw, vh);
+        // Background: the fairy ring cropped from the real Level 2 map art (Scarlett's
+        // idea), drawn "cover"-style so it fills the screen at any window size without
+        // distorting. Falls back to a flat fill if the image hasn't loaded yet.
+        if (shellGameBackground.complete && shellGameBackground.naturalWidth) {
+            const iw = shellGameBackground.naturalWidth, ih = shellGameBackground.naturalHeight;
+            const scale = Math.max(vw / iw, vh / ih);
+            const dw = iw * scale, dh = ih * scale;
+            ctx.drawImage(shellGameBackground, vw / 2 - dw / 2, vh / 2 - dh / 2, dw, dh);
+            ctx.fillStyle = 'rgba(10,14,10,.32)';
+            ctx.fillRect(0, 0, vw, vh);
+        } else {
+            ctx.fillStyle = '#17241c';
+            ctx.fillRect(0, 0, vw, vh);
+        }
 
         const { exitRect } = shellLayout();
 
         // exit button
-        ctx.fillStyle = 'rgba(255,255,255,.1)';
+        ctx.fillStyle = 'rgba(255,255,255,.14)';
         roundRect(exitRect.x, exitRect.y, exitRect.w, exitRect.h, 8); ctx.fill();
         ctx.fillStyle = '#e4f0df'; ctx.font = '600 13px Georgia'; ctx.textAlign = 'center';
         ctx.fillText('‹ Back to the Hollow', exitRect.x + exitRect.w / 2, exitRect.y + exitRect.h / 2 + 4);
 
         ctx.textAlign = 'left';
         ctx.fillStyle = '#e4f0df';
+        ctx.shadowColor = 'rgba(0,0,0,.7)'; ctx.shadowBlur = 8;
         ctx.font = '700 20px Georgia';
         ctx.fillText('FIND SCARLETT', 24, 70);
+        ctx.shadowBlur = 0;
 
         if (fsPhase === 'gameEnd') {
             ctx.textAlign = 'center';
+            ctx.shadowColor = 'rgba(0,0,0,.7)'; ctx.shadowBlur = 10;
             ctx.fillStyle = '#e4f0df'; ctx.font = '700 28px Georgia';
             ctx.fillText('That\'s the lot!', vw / 2, vh * .4);
             ctx.font = '600 17px Georgia';
             ctx.fillText(`You found her ${fsScore} / ${SHELL_ROUNDS.length} times.`, vw / 2, vh * .4 + 36);
-            ctx.font = '600 13px Georgia'; ctx.fillStyle = '#a8c2a0';
+            ctx.font = '600 13px Georgia'; ctx.fillStyle = '#d8e8d0';
             ctx.fillText('Click anywhere to go again, or Back to the Hollow to leave.', vw / 2, vh * .4 + 64);
+            ctx.shadowBlur = 0;
             ctx.restore();
             return;
         }
 
         const r = currentRound();
-        ctx.font = '600 13px Georgia'; ctx.fillStyle = '#a8c2a0';
+        ctx.shadowColor = 'rgba(0,0,0,.7)'; ctx.shadowBlur = 6;
+        ctx.font = '600 13px Georgia'; ctx.fillStyle = '#d8e8d0';
         ctx.fillText(`Round ${fsRoundIdx + 1}/${SHELL_ROUNDS.length} • ${r.count} mushrooms • Score ${fsScore}/${SHELL_ROUNDS.length}`, 24, 92);
 
         ctx.textAlign = 'center';
@@ -445,19 +468,11 @@ export function createLevel2(ui) {
                 : fsPhase === 'guess' ? 'Which mushroom is she under now? Click one.'
                     : fsResolveOk ? 'Found her!' : "That wasn't her...";
         ctx.fillText(prompt, vw / 2, 130);
+        ctx.shadowBlur = 0;
 
-        // misty forest floor the mushrooms stand on
-        const floorY = vh * .62, floorBandH = Math.max(80, vh * .16);
-        ctx.save();
-        ctx.beginPath(); ctx.rect(0, floorY - floorBandH * .6, vw, floorBandH); ctx.clip();
-        ctx.fillStyle = '#243a2c';
-        ctx.fillRect(0, floorY - floorBandH * .6, vw, floorBandH);
-        ctx.strokeStyle = 'rgba(255,255,255,.07)'; ctx.lineWidth = 10;
-        const stripe = 46;
-        for (let bx = -stripe + (mistScroll % stripe); bx < vw + stripe; bx += stripe) {
-            ctx.beginPath(); ctx.moveTo(bx, floorY - floorBandH * .6); ctx.lineTo(bx - floorBandH * .4, floorY + floorBandH * .4); ctx.stroke();
-        }
-        ctx.restore();
+        // The fairy ring's own stone circle (already baked into the background art) is
+        // the "floor" the mushrooms sit on now - no separate drawn floor band needed.
+        const floorY = vh * .66;
 
         const activeSwap = (fsPhase === 'shuffle' && fsSwapIdx < fsSwapQueue.length) ? fsSwapQueue[fsSwapIdx] : null;
         const swapT = activeSwap ? Math.min(1, fsPhaseT / r.swapTime) : 0;
@@ -504,7 +519,7 @@ export function createLevel2(ui) {
         if (fsPhase === 'gameEnd') { enterMushroomGame(); return; }
         if (fsPhase !== 'guess') return;
         const r = currentRound();
-        const floorY = vh * .62;
+        const floorY = vh * .66;   // must match drawMushroomGame()'s floorY
         for (const m of fsMushrooms) {
             const cx = slotX(m.slot, r.count, vw);
             if (Math.hypot(p.x - cx, p.y - floorY) < 46) { guessSlot(m.slot); return; }
