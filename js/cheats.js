@@ -64,12 +64,15 @@ function toggle(force) {
     panel.classList.toggle('open', open); if (open) { sync(); panel.querySelector('#gg-cheat-cmd').focus(); }
 }
 
-const HELP = 'Codes: patricia | patricia skip | patricia win | patricia loss | chain goth | chain win | chain loss | zombie goth | zombie win | zombie loss | win | loss | god | god off | heal | heavy | map | intro new | intro old | intro random (Zombie Goth 3-2-1 version)';
+const HELP = 'Codes: patricia | patricia skip | patricia win | patricia loss | chain goth | chain win | chain loss | zombie goth | zombie win | zombie loss | win | loss | god | god off | heal | heavy | map | intro new | intro old | intro random (Zombie Goth 3-2-1 version) | level2 (jump to the end-of-Level-1 screen)';
 function runCode(raw) {
     if (!hooks) return 'Start a game first.';
     const c = String(raw || '').toLowerCase().replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim();
     if (!c) return '';
     if (c === 'help' || c === '?') return HELP;
+    // V9.84-preview: types as "level2", but the digit gets stripped by the sanitiser
+    // above (same as every other code here), so it lands here as "level".
+    if (c === 'level' || c === 'level2') { return hooks.showWinScreen?.() ? 'Jumped to the end-of-Level-1 screen.' : 'Could not do that right now.'; }
     if (c === 'god' || c === 'god on') { hooks.setGod(true); return 'No damage: ON'; }
     if (c === 'god off') { hooks.setGod(false); return 'No damage: OFF'; }
     if (c === 'heal' || c === 'hp') { hooks.refillHp(); return 'HP refilled.'; }

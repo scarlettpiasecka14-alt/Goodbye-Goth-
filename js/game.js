@@ -405,11 +405,13 @@ function mountLevel1(loadSaved=false){
   ui.bossStart.addEventListener('click',()=>level.startBoss());
   document.getElementById('boss-save-quit')?.addEventListener('click',()=>level.saveAndQuit());
   document.getElementById('win-save-quit')?.addEventListener('click',()=>level.saveAndQuit());
-  document.getElementById('win-ready')?.addEventListener('click',()=>{   // Level 2 is not built yet
-    const t = document.getElementById('win-text');
-    if(t) t.innerHTML = '<h2 class="lc-big">Coming Soon</h2><p class="lc-sub">Level 2 is still being dug up from the crypt. Come back soon, or press Save and Quit to keep your place.</p>';
-    document.getElementById('win-ready').style.display = 'none';
-  });
+  // V9.84-preview: Ready now genuinely progresses into the Level 2 preview (mountLevel2,
+  // same screen the ?level=2 debug entry point shows) instead of the old "Coming Soon"
+  // stub - Scarlett asked to test the real end-of-Level-1 handoff itself, cheat-triggered
+  // via "level2" in the cheat console rather than only reachable by beating Patricia.
+  // Note this swaps the REAL win-ready button too, not just the cheat path, since they're
+  // the same button - so actually finishing Level 1 for real now leads here as well.
+  document.getElementById('win-ready')?.addEventListener('click',()=>{ level.stop(); mountLevel2(); });
   document.querySelectorAll('[data-answer]').forEach(b=>b.addEventListener('click',()=>level.answerPuzzle(b.dataset.answer)));
   ui.combatCanvas.addEventListener('mousedown',e=>{
     if(e.button!==2) return;   // V9.31: punching is the X key only (left-click is kept free for shooting arrows later)

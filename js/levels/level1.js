@@ -5489,12 +5489,43 @@ export function createLevel1(ui) {
             if (kind === 'patricia' && skipIntro) { prefightToken++; prefight = null; prefightHold = false; zombieIntroActive = false; patSpeech = null; zombieCombatState = 'chase'; zombieCombatStateStart = gnow(); zombieCombatNextDecision = gnow() + 300; ui.combatStatus.textContent = ''; setBagGlow(false); }
             return true;
         },
-        mode: () => mode
+        mode: () => mode,
+        // V9.84-preview: jump straight to the real end-of-Level-1 screen (Congratulations /
+        // Ready for Level 2? / Save and Quit) without playing out Patricia's death
+        // cutscene, chest and reward popup first - for testing the Level 1 -> Level 2
+        // handoff itself, quickly and repeatably.
+        showWinScreen: () => {
+            cancelAnimationFrame(combatRaf);
+            clearInterval(enemyTimer); enemyTimer = null;
+            ui.combat.classList.add('hidden');
+            ui.encounter.classList.add('hidden');
+            ui.completion.classList.add('hidden');
+            ui.puzzle.classList.add('hidden');
+            ui.bossIntro.classList.add('hidden');
+            mode = 'map';
+            hp = maxHp; stats();
+            playMusic('map');
+            ui.win.classList.remove('hidden');
+            return true;
+        }
     };
+
+    // V9.84-preview: stops Level 1's own map loop and timers. Level 1 was never built to
+    // be torn down mid-session (it used to be the only level, running until a page
+    // reload) - this exists so the new win-ready -> mountLevel2() handoff doesn't leave
+    // a second full map-draw loop quietly burning CPU in the background forever after.
+    function stop() {
+        cancelAnimationFrame(raf); raf = 0;
+        cancelAnimationFrame(relationshipRAF);
+        cancelAnimationFrame(combatRaf);
+        clearInterval(enemyTimer); enemyTimer = null;
+        clearInterval(autosaveTimer); autosaveTimer = null;
+    }
 
     return {
         cheat,
         start,
+        stop,
         move,
         setMoveKey,
         primaryAction,
