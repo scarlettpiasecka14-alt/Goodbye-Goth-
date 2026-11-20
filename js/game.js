@@ -1,6 +1,7 @@
 import { StoryController } from './story.js?v=9820';
 import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9830';
 import { createLevel2 } from './levels/level2.js?v=9830';
+import { createLevel3 } from './levels/level3.js?v=9850';
 import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9820';
 import { initSettings, openSettings } from './settings.js?v=9820';
 import { actionForKey, hintHTML } from './controls.js?v=9820';
@@ -534,6 +535,41 @@ function mountLevel2(){
   level2.start();
 }
 
+// V9.85-preview: Level 3 has no theme/map of its own yet, so this is just the relocated
+// "Princess Burrito" minigame (see level3.js) shown full-screen, reachable the same
+// debug-only way as Level 2 (?level=3). Not reachable from normal play, nothing here is
+// committed/pushed until reviewed.
+function mountLevel3(){
+  root.innerHTML = `
+    <section class="panel game-screen" style="position:relative">
+      <div class="game-head">
+        <div><strong>LEVEL 3 (PREVIEW)</strong><div class="small">THEME TBD - the relocated Princess Burrito minigame, work in progress</div></div>
+      </div>
+      <div class="game-layout">
+        <div class="play-column">
+          <div class="world-wrap">
+            <canvas id="world3" width="1536" height="1024" tabindex="0" aria-label="Level 3 preview minigame"></canvas>
+          </div>
+        </div>
+      </div>
+      <div style="position:absolute;top:10px;right:10px;z-index:50">
+        <button id="l3-exit" type="button" style="min-height:34px;padding:6px 10px;font-size:12px;">EXIT PREVIEW</button>
+      </div>
+    </section>`;
+
+  const ui3 = { canvas: document.getElementById('world3'), onExit: () => exitLevel3() };
+  const level3 = createLevel3(ui3);
+
+  function exitLevel3(){
+    level3.stop();
+    document.getElementById('l3-exit')?.removeEventListener('click', exitLevel3);
+    showBoot();
+  }
+  document.getElementById('l3-exit')?.addEventListener('click', exitLevel3);
+
+  level3.start();
+}
+
 // One click sound for every menu / story / dialogue button. Map icons, pickups and fights have their own sounds.
 document.addEventListener('click', e => {
   const b = e.target.closest && e.target.closest('button, [role="button"]');
@@ -557,8 +593,9 @@ playMusic('menu');   // title song: assets/audio/music/menu.mp3 (starts after th
 // the URL, so Scarlett can look at it without this touching the real title -> Level 1 ->
 // "Coming Soon" flow at all. Remove this (and mountLevel2/level2.js) once Level 2 is ready
 // to be the real handoff target.
-if (new URLSearchParams(location.search).get('level') === '2') {
-  mountLevel2();
-} else {
-  showBoot();   // V9.80: loading bat -> disclaimer -> title
+{
+  const debugLevel = new URLSearchParams(location.search).get('level');
+  if (debugLevel === '2') mountLevel2();
+  else if (debugLevel === '3') mountLevel3();
+  else showBoot();   // V9.80: loading bat -> disclaimer -> title
 }

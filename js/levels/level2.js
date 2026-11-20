@@ -1,9 +1,17 @@
-/* Goodbye Goth - Level 2 scaffolding ("The Whispering Hollow").
-   V9.84-preview: map + movement + Tom's hollow/journal meeting + a first playable draft
-   of the "Princess Burrito" minigame. NOT wired into the real Level 1 -> Level 2 handoff
+/* Goodbye Goth - Level 2 scaffolding ("The Whispering Hollow", part of the Mystical Forest).
+   V9.85-preview: map + movement + Tom's hollow/journal meeting + a first playable draft
+   of the "Mushroom Reading" minigame. NOT wired into the real Level 1 -> Level 2 handoff
    yet (see js/game.js mountLevel2 + the ?level=2 debug entry point). Scope deliberately
    stops here per Scarlett's "don't implement all of this at once" - no real content for
    the princess-question icon yet, no mushroom-jump traversal, no Latin names.
+
+   The "Princess Burrito" minigame that used to live at this spot was moved wholesale to
+   level3.js - it didn't fit once Scarlett remembered Level 2 is the Mystical Forest
+   (mushroom country), not a food-themed level. Mushroom Reading replaces it here,
+   themed on the real little ritual where Olly touches Scarlett's head in different ways
+   and tells her which "mushroom" she is (mushroom / tall mushroom / huge mushroom) -
+   reusing the same proven reveal -> hide -> answer-before-timer engine, just a single
+   pick instead of assembling a set.
 
    Reuses the same camera/world-size constants as level1.js (WORLD_W/H = 1536x1024,
    which is the native resolution of the new map art) so the two levels feel consistent,
@@ -26,7 +34,7 @@ const TOM_JOURNAL = { x: 255, y: 505 };
 // Scarlett named these two activities for Level 2 in level1.js's LEVEL_ACTIVITY_DATA[2]
 // (not live there yet, but the names are hers) so the flavour text lines up once the
 // real content goes in.
-const MINI_GAME_SPOT = { x: 650, y: 790, name: 'PRINCESS BURRITO' };
+const MINI_GAME_SPOT = { x: 650, y: 790, name: 'MUSHROOM READING' };
 const PRINCESS_Q_SPOT = { x: 1300, y: 230, name: 'Chaos Fairy Goth clue' };
 
 const PLAYER_START = { x: 700, y: 830 };
@@ -45,41 +53,35 @@ const TOM_INTRO_SCRIPT = [
     "Tom will keep his journal with him from now on. You can hear him shuffling along behind you."
 ];
 
-// --- Princess Burrito minigame data -----------------------------------------------
-// First-draft content. Station-based (no running-around-the-kitchen Olly, per
-// Scarlett), click-only, placeholder "programmer art" chips instead of real
-// ingredient illustrations so this plays and reads cleanly before any new art exists.
-// Swap the colours/labels for real icon art later without touching the game logic.
-const INGREDIENTS = [
-    { id: 'cheese', label: 'CHEESE', color: '#f4c54d' },
-    { id: 'sourcream', label: 'SOUR CREAM', color: '#f6f1e6' },
-    { id: 'tomato', label: 'TOMATO', color: '#e2503c' },
-    { id: 'love', label: 'LOVE', color: '#ef6fa8' }
+// --- Mushroom Reading minigame data -------------------------------------------------
+// First-draft content, swapped in for the old "Princess Burrito" game (moved to
+// level3.js). Themed on Olly's real head-touch ritual with Scarlett: a touch happens,
+// gets described, then hidden - the player has to remember which of the three mushroom
+// "sizes" it was and click the matching answer before the timer runs out. Same engine
+// as the burrito game (reveal -> hide -> answer-before-timer, 1 -> 3 -> 5 rounds), just
+// a single pick instead of assembling a set. Placeholder "programmer art" mushroom
+// shapes instead of real illustrations - swap colours/art later without touching logic.
+const MUSHROOM_TYPES = [
+    { id: 'small', label: 'MUSHROOM', color: '#c48a52', capR: 22, stemH: 16 },
+    { id: 'tall', label: 'TALL MUSHROOM', color: '#7fae5a', capR: 26, stemH: 34 },
+    { id: 'huge', label: 'HUGE MUSHROOM', color: '#caa6ff', capR: 40, stemH: 30 }
 ];
-const SCARLETT_CHIP = { id: 'scarlett', label: 'SCARLETT', color: '#caa6ff' };
-
-// Scarlett must always be placed first (she's the wrap, not a topping); order after
-// that is NOT checked - v1 just needs the right set of ingredients, not the exact
-// click sequence, to keep "remember what was asked for" the actual challenge rather
-// than also demanding a precise click order.
-// Customers are generic people, not named cast members - there's no portrait/sprite
-// shown for whoever's ordering, so naming them Patricia/Tom/etc. would read as those
-// characters without anything on screen actually being them. If/when this gets real
-// customer art or sprites, swap these back to named cast and the in-character jokes
-// (Tom's football banter, Patricia's "don't disappoint me, Olly") can come back too.
-const BURRITO_ORDERS = [
-    { round: 1, customer: 'Hungry Customer', line: "One Scarlett... with cheese. Make it quick.", items: ['scarlett', 'cheese'] },
-    { round: 2, customer: 'Picky Customer', line: "Scarlett, sour cream, no tomato. I'm watching my figure.", items: ['scarlett', 'sourcream'] },
-    { round: 2, customer: 'Polite Customer', line: "Scarlett and tomato, please. Can't skip my veg.", items: ['scarlett', 'tomato'] },
-    { round: 2, customer: 'Demanding Customer', line: "Surprise me. Cheese AND sour cream. Don't disappoint me.", items: ['scarlett', 'cheese', 'sourcream'] },
-    { round: 3, customer: 'Sentimental Customer', line: "Cheese, tomato, extra love. I'm feeling sentimental.", items: ['scarlett', 'cheese', 'tomato', 'love'] },
-    { round: 3, customer: 'Hopeless Romantic', line: "Just love. Hold everything else.", items: ['scarlett', 'love'] },
-    { round: 3, customer: 'Fussy Customer', line: "Everything except sour cream - I'm lactose intolerant, apparently.", items: ['scarlett', 'cheese', 'tomato', 'love'] },
-    { round: 3, customer: 'Big Spender', line: "All four. Impress me.", items: ['scarlett', 'cheese', 'sourcream', 'tomato', 'love'] },
-    { round: 3, customer: 'Mysterious Customer', line: "Just Scarlett. I don't share.", items: ['scarlett'] }
+// Each cue is a little in-the-moment description of the touch itself (quick pat, two
+// fingers held, whole palm) with the mushroom size it's "supposed" to mean - Scarlett's
+// own wording for these can replace the lines any time without touching the logic.
+const MUSHROOM_CUES = [
+    { round: 1, line: "Olly gives the top of your head one quick little pat.", answer: 'small' },
+    { round: 2, line: "Olly presses two fingers on your head and holds for a second.", answer: 'tall' },
+    { round: 2, line: "Olly taps your head twice, fast.", answer: 'small' },
+    { round: 2, line: "Olly rests his whole hand on your head and doesn't move.", answer: 'huge' },
+    { round: 3, line: "Olly gives your head a long, gentle press with two fingers.", answer: 'tall' },
+    { round: 3, line: "Olly just barely brushes the top of your head.", answer: 'small' },
+    { round: 3, line: "Olly presses his whole palm down slowly - that's a big one.", answer: 'huge' },
+    { round: 3, line: "Olly holds two fingers there a beat longer than usual.", answer: 'tall' },
+    { round: 3, line: "Olly's hand covers your whole head this time.", answer: 'huge' }
 ];
-// Seconds the order is shown for before it's hidden, and seconds allowed to assemble
-// it from memory after that. Tightens each round - tune freely, these are first-draft guesses.
+// Seconds the cue is shown for before it's hidden, and seconds allowed to answer from
+// memory after that. Tightens each round - tune freely, these are first-draft guesses.
 const ROUND_TIMING = { 1: { reveal: 4, assemble: 9 }, 2: { reveal: 3, assemble: 7.5 }, 3: { reveal: 2, assemble: 6.5 } };
 
 const mapBackground = new Image();
@@ -123,22 +125,22 @@ export function createLevel2(ui) {
     let dialogueQueue = null, dialogueIdx = 0;
     let raf = 0, lastT = 0;
 
-    // 'map' | 'burrito'
+    // 'map' | 'mushroom'
     let mode = 'map';
 
-    // --- Princess Burrito runtime state ---
-    let bgOrderIdx = 0;
-    let bgPhase = 'reveal';   // 'reveal' | 'assemble' | 'resolve' | 'gameEnd'
-    let bgPhaseT = 0;
-    let bgPlaced = [];
-    let bgScore = 0;
-    let bgResolveOk = false;
-    let beltScroll = 0;
+    // --- Mushroom Reading runtime state ---
+    let mrCueIdx = 0;
+    let mrPhase = 'reveal';   // 'reveal' | 'assemble' | 'resolve' | 'gameEnd'
+    let mrPhaseT = 0;
+    let mrPicked = null;
+    let mrScore = 0;
+    let mrResolveOk = false;
+    let mistScroll = 0;
 
     function near(px, py, r) { return Math.hypot(x - px, y - py) < r; }
 
     function setMoveKey(key, down) {
-        if (mode === 'burrito') return;
+        if (mode === 'mushroom') return;
         const k = (key || '').toLowerCase();
         if (dialogueQueue) return;   // can't walk mid-cutscene
         if (down) {
@@ -191,87 +193,82 @@ export function createLevel2(ui) {
     }
 
     function primaryAction() {
-        if (mode === 'burrito') return;
+        if (mode === 'mushroom') return;
         if (dialogueQueue) { advanceDialogue(); return; }
         if (!metTom && near(TOM_JOURNAL.x, TOM_JOURNAL.y, 70)) { startTomMeeting(); return; }
-        if (near(MINI_GAME_SPOT.x, MINI_GAME_SPOT.y, 70)) { enterBurritoGame(); return; }
+        if (near(MINI_GAME_SPOT.x, MINI_GAME_SPOT.y, 70)) { enterMushroomGame(); return; }
         if (near(PRINCESS_Q_SPOT.x, PRINCESS_Q_SPOT.y, 70)) {
             ui.dialogue.textContent = `${PRINCESS_Q_SPOT.name} - nothing here yet.`;
             return;
         }
     }
 
-    // --- Princess Burrito: game logic ---
-    function currentOrder() { return BURRITO_ORDERS[bgOrderIdx]; }
-    function currentTiming() { return ROUND_TIMING[currentOrder().round]; }
-    function orderNumberInRound() {
-        const order = currentOrder();
-        const roundOrders = BURRITO_ORDERS.filter(o => o.round === order.round);
-        return `${roundOrders.indexOf(order) + 1}/${roundOrders.length}`;
+    // --- Mushroom Reading: game logic ---
+    function currentCue() { return MUSHROOM_CUES[mrCueIdx]; }
+    function currentTiming() { return ROUND_TIMING[currentCue().round]; }
+    function cueNumberInRound() {
+        const cue = currentCue();
+        const roundCues = MUSHROOM_CUES.filter(c => c.round === cue.round);
+        return `${roundCues.indexOf(cue) + 1}/${roundCues.length}`;
     }
-    function labelFor(id) { return id === 'scarlett' ? SCARLETT_CHIP.label : (INGREDIENTS.find(i => i.id === id)?.label || id); }
+    function typeFor(id) { return MUSHROOM_TYPES.find(m => m.id === id); }
 
-    function enterBurritoGame() {
-        mode = 'burrito';
-        bgOrderIdx = 0;
-        bgScore = 0;
-        startBurritoOrder();
+    function enterMushroomGame() {
+        mode = 'mushroom';
+        mrCueIdx = 0;
+        mrScore = 0;
+        startMushroomCue();
     }
-    function exitBurritoGame() {
+    function exitMushroomGame() {
         mode = 'map';
-        ui.dialogue.textContent = `${MINI_GAME_SPOT.name} is quiet again. Last shift: ${bgScore}/${BURRITO_ORDERS.length} orders right.`;
+        ui.dialogue.textContent = `${MINI_GAME_SPOT.name} is quiet again. Last reading: ${mrScore}/${MUSHROOM_CUES.length} right.`;
     }
-    function startBurritoOrder() {
-        bgPhase = 'reveal';
-        bgPhaseT = 0;
-        bgPlaced = [];
+    function startMushroomCue() {
+        mrPhase = 'reveal';
+        mrPhaseT = 0;
+        mrPicked = null;
     }
-    function resolveBurritoOrder(ok) {
-        bgResolveOk = ok;
-        bgPhase = 'resolve';
-        bgPhaseT = 0;
-        if (ok) { bgScore++; playSfx('round-ok'); } else playSfx('wrong-buzz');
+    function resolveMushroomCue(ok) {
+        mrResolveOk = ok;
+        mrPhase = 'resolve';
+        mrPhaseT = 0;
+        if (ok) { mrScore++; playSfx('round-ok'); } else playSfx('wrong-buzz');
     }
-    function advanceBurritoOrder() {
-        bgOrderIdx++;
-        if (bgOrderIdx >= BURRITO_ORDERS.length) {
-            bgPhase = 'gameEnd';
-            bgPhaseT = 0;
+    function advanceMushroomCue() {
+        mrCueIdx++;
+        if (mrCueIdx >= MUSHROOM_CUES.length) {
+            mrPhase = 'gameEnd';
+            mrPhaseT = 0;
             playSfx('minigame-win');
             return;
         }
-        startBurritoOrder();
+        startMushroomCue();
     }
-    function placeBurritoItem(id) {
-        if (bgPhase !== 'assemble') return;
-        if (bgPlaced.length === 0 && id !== 'scarlett') { playSfx('wrong-buzz'); return; }   // she has to go on first
-        if (bgPlaced.includes(id)) { playSfx('wrong-buzz'); return; }   // no duplicates
-        const order = currentOrder();
+    function pickMushroom(id) {
+        if (mrPhase !== 'assemble') return;
         playSfx('click');
-        if (!order.items.includes(id)) { resolveBurritoOrder(false); return; }   // wrong ingredient entirely
-        bgPlaced.push(id);
-        if (bgPlaced.length === order.items.length) resolveBurritoOrder(true);   // right set, right length -> done
+        mrPicked = id;
+        resolveMushroomCue(id === currentCue().answer);
     }
-    function updateBurrito(dt) {
-        if (bgPhase === 'gameEnd') return;
-        bgPhaseT += dt;
-        beltScroll += dt * 60;
+    function updateMushroom(dt) {
+        if (mrPhase === 'gameEnd') return;
+        mrPhaseT += dt;
+        mistScroll += dt * 60;
         const timing = currentTiming();
-        if (bgPhase === 'reveal' && bgPhaseT >= timing.reveal) { bgPhase = 'assemble'; bgPhaseT = 0; }
-        else if (bgPhase === 'assemble' && bgPhaseT >= timing.assemble) resolveBurritoOrder(false);
-        else if (bgPhase === 'resolve' && bgPhaseT >= 1.1) advanceBurritoOrder();
+        if (mrPhase === 'reveal' && mrPhaseT >= timing.reveal) { mrPhase = 'assemble'; mrPhaseT = 0; }
+        else if (mrPhase === 'assemble' && mrPhaseT >= timing.assemble) resolveMushroomCue(false);
+        else if (mrPhase === 'resolve' && mrPhaseT >= 1.1) advanceMushroomCue();
     }
 
-    function burritoLayout(vw, vh) {
-        const chipW = Math.min(150, (vw - 80) / 5), chipH = 54, gap = 12;
-        const trayTotalW = INGREDIENTS.length * chipW + (INGREDIENTS.length - 1) * gap;
-        const tray = INGREDIENTS.map((ing, i) => ({
-            ...ing,
-            rect: { x: vw / 2 - trayTotalW / 2 + i * (chipW + gap), y: vh - 80, w: chipW, h: chipH }
+    function mushroomLayout(vw, vh) {
+        const chipW = Math.min(190, (vw - 100) / 3.3), chipH = 60, gap = 16;
+        const trayTotalW = MUSHROOM_TYPES.length * chipW + (MUSHROOM_TYPES.length - 1) * gap;
+        const tray = MUSHROOM_TYPES.map((m, i) => ({
+            ...m,
+            rect: { x: vw / 2 - trayTotalW / 2 + i * (chipW + gap), y: vh - 90, w: chipW, h: chipH }
         }));
-        const scarlettChip = { ...SCARLETT_CHIP, rect: { x: 24, y: vh * 0.56, w: Math.min(140, chipW + 10), h: chipH } };
         const exitRect = { x: 20, y: 14, w: 168, h: 34 };
-        return { tray, scarlettChip, exitRect };
+        return { tray, exitRect };
     }
 
     function roundRect(px, py, w, h, r) {
@@ -307,7 +304,7 @@ export function createLevel2(ui) {
         ctx.fillStyle = chip.color;
         roundRect(r.x, r.y, r.w, r.h, 10);
         ctx.fill();
-        if (state === 'placed') {
+        if (state === 'picked') {
             ctx.strokeStyle = '#fff'; ctx.lineWidth = 3;
             roundRect(r.x, r.y, r.w, r.h, 10);
             ctx.stroke();
@@ -318,40 +315,41 @@ export function createLevel2(ui) {
         ctx.fillText(chip.label, r.x + r.w / 2, r.y + r.h / 2 + 5);
         ctx.restore();
     }
-    function drawTortilla(cx, cy) {
+    // The mushroom "growing" on the pedestal in the middle of the screen - a simple
+    // stem + cap shape, sized per MUSHROOM_TYPES.capR/stemH. Grows into shape on reveal,
+    // and does the same shrink-and-fade-on-success / shake-on-fail resolve animation the
+    // old tortilla fold used.
+    function drawMushroom(cx, cy) {
+        const type = typeFor(currentCue().answer);
         ctx.save();
         ctx.translate(cx, cy);
         let scale = 1, rot = 0, alpha = 1;
-        if (bgPhase === 'resolve') {
-            const p = Math.min(1, bgPhaseT / .9);
-            if (bgResolveOk) { scale = 1 - p * .9; alpha = 1 - p; }
-            else rot = Math.sin(bgPhaseT * 40) * (1 - p) * .14;
+        if (mrPhase === 'resolve') {
+            const p = Math.min(1, mrPhaseT / .9);
+            if (mrResolveOk) { scale = 1 - p * .9; alpha = 1 - p; }
+            else rot = Math.sin(mrPhaseT * 40) * (1 - p) * .14;
         }
         ctx.globalAlpha = alpha;
         ctx.rotate(rot);
         ctx.scale(scale, scale);
-        ctx.fillStyle = '#e8c383';
-        ctx.beginPath(); ctx.ellipse(0, 0, 80, 46, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = '#c79b52'; ctx.lineWidth = 3; ctx.stroke();
-        bgPlaced.forEach((id, i) => {
-            const ing = id === 'scarlett' ? SCARLETT_CHIP : INGREDIENTS.find(ii => ii.id === id);
-            ctx.fillStyle = ing.color;
-            ctx.beginPath(); ctx.arc(-54 + i * 24, -2, 9, 0, Math.PI * 2); ctx.fill();
-            ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.lineWidth = 1.5; ctx.stroke();
-        });
+        ctx.fillStyle = '#efe3d6';
+        roundRect(-7, 0, 14, type.stemH, 5); ctx.fill();
+        ctx.fillStyle = type.color;
+        ctx.beginPath(); ctx.ellipse(0, 0, type.capR, type.capR * .62, 0, Math.PI, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.lineWidth = 2; ctx.stroke();
         ctx.restore();
     }
 
-    function drawBurrito() {
+    function drawMushroomGame() {
         const vw = ui.canvas.clientWidth || 1000;
         // V9.84-preview: the #world2 canvas sizes its own CSS box from its width/height
         // HTML attributes' aspect ratio (1536:1024) against whatever width it's given,
         // which comes out taller than the .world-wrap container actually allows - the
         // wrapper clips the overflow (so Level 1/2's map still looks right, since the
         // map's own camera math doesn't care), but it means ui.canvas.clientHeight is
-        // NOT the visible height. Lay out the burrito UI against the WRAPPER's height
-        // instead, so nothing (the ingredient tray especially) ends up positioned in
-        // the clipped-off strip below what's actually on screen.
+        // NOT the visible height. Lay out the UI against the WRAPPER's height instead,
+        // so nothing (the answer tray especially) ends up positioned in the clipped-off
+        // strip below what's actually on screen.
         const canvasVh = ui.canvas.clientHeight || 600;
         const wrap = ui.canvas.parentElement;
         const vh = (wrap && wrap.clientHeight) || canvasVh;
@@ -363,93 +361,90 @@ export function createLevel2(ui) {
         ctx.save();
         ctx.scale(sx, sy);
 
-        ctx.fillStyle = '#271822';
+        ctx.fillStyle = '#17241c';
         ctx.fillRect(0, 0, vw, vh);
 
-        const { tray, scarlettChip, exitRect } = burritoLayout(vw, vh);
+        const { tray, exitRect } = mushroomLayout(vw, vh);
 
         // exit button
         ctx.fillStyle = 'rgba(255,255,255,.1)';
         roundRect(exitRect.x, exitRect.y, exitRect.w, exitRect.h, 8); ctx.fill();
-        ctx.fillStyle = '#f3dce8'; ctx.font = '600 13px Georgia'; ctx.textAlign = 'center';
+        ctx.fillStyle = '#e4f0df'; ctx.font = '600 13px Georgia'; ctx.textAlign = 'center';
         ctx.fillText('‹ Back to the Hollow', exitRect.x + exitRect.w / 2, exitRect.y + exitRect.h / 2 + 4);
 
         ctx.textAlign = 'left';
-        ctx.fillStyle = '#f3dce8';
+        ctx.fillStyle = '#e4f0df';
         ctx.font = '700 20px Georgia';
-        ctx.fillText('PRINCESS BURRITO', 24, 70);
+        ctx.fillText('MUSHROOM READING', 24, 70);
 
-        if (bgPhase === 'gameEnd') {
+        if (mrPhase === 'gameEnd') {
             ctx.textAlign = 'center';
-            ctx.fillStyle = '#f3dce8'; ctx.font = '700 28px Georgia';
-            ctx.fillText('Service Done!', vw / 2, vh * .4);
+            ctx.fillStyle = '#e4f0df'; ctx.font = '700 28px Georgia';
+            ctx.fillText('Reading Done!', vw / 2, vh * .4);
             ctx.font = '600 17px Georgia';
-            ctx.fillText(`You got ${bgScore} / ${BURRITO_ORDERS.length} orders right.`, vw / 2, vh * .4 + 36);
-            ctx.font = '600 13px Georgia'; ctx.fillStyle = '#c9a3b8';
-            ctx.fillText('Click anywhere to run another shift, or Back to the Hollow to leave.', vw / 2, vh * .4 + 64);
+            ctx.fillText(`You got ${mrScore} / ${MUSHROOM_CUES.length} right.`, vw / 2, vh * .4 + 36);
+            ctx.font = '600 13px Georgia'; ctx.fillStyle = '#a8c2a0';
+            ctx.fillText('Click anywhere to go again, or Back to the Hollow to leave.', vw / 2, vh * .4 + 64);
             ctx.restore();
             return;
         }
 
-        const order = currentOrder();
-        ctx.font = '600 13px Georgia'; ctx.fillStyle = '#c9a3b8';
-        ctx.fillText(`Round ${order.round} • Order ${orderNumberInRound()} • Score ${bgScore}/${BURRITO_ORDERS.length}`, 24, 92);
+        const cue = currentCue();
+        ctx.font = '600 13px Georgia'; ctx.fillStyle = '#a8c2a0';
+        ctx.fillText(`Round ${cue.round} • Touch ${cueNumberInRound()} • Score ${mrScore}/${MUSHROOM_CUES.length}`, 24, 92);
 
-        // order banner
+        // touch-description banner
         ctx.textAlign = 'center';
-        ctx.fillStyle = '#1c1118';
+        ctx.fillStyle = '#10180f';
         roundRect(vw / 2 - 260, 110, 520, 60, 10); ctx.fill();
-        ctx.fillStyle = '#f9e3ee'; ctx.font = '600 14px Georgia';
-        ctx.fillText(order.customer + ':', vw / 2, 130);
-        ctx.font = 'italic 13px Georgia'; ctx.fillStyle = '#e3b9cf';
-        wrapText(`"${order.line}"`, vw / 2, 148, 480, 15);
+        ctx.fillStyle = '#eef9e8'; ctx.font = 'italic 14px Georgia';
+        wrapText(cue.line, vw / 2, 136, 480, 17);
 
-        // reveal / hidden ingredient list + timer bar
+        // reveal / hidden answer + timer bar
         const timing = currentTiming();
         ctx.font = '700 15px Georgia';
-        if (bgPhase === 'reveal') {
+        if (mrPhase === 'reveal') {
             ctx.fillStyle = '#ffe9b8';
-            ctx.fillText(order.items.map(labelFor).join(' + '), vw / 2, 198);
-            drawTimerBar(vw / 2 - 120, 206, 240, 6, 1 - bgPhaseT / timing.reveal, '#ffe9b8');
+            ctx.fillText(typeFor(cue.answer).label, vw / 2, 198);
+            drawTimerBar(vw / 2 - 120, 206, 240, 6, 1 - mrPhaseT / timing.reveal, '#ffe9b8');
         } else {
-            ctx.fillStyle = '#8a6b78';
-            ctx.fillText('? ? ?  (remember the order!)', vw / 2, 198);
-            if (bgPhase === 'assemble') drawTimerBar(vw / 2 - 120, 206, 240, 6, 1 - bgPhaseT / timing.assemble, '#ff9ab0');
+            ctx.fillStyle = '#6e8a68';
+            ctx.fillText('? ? ?  (which mushroom was that?)', vw / 2, 198);
+            if (mrPhase === 'assemble') drawTimerBar(vw / 2 - 120, 206, 240, 6, 1 - mrPhaseT / timing.assemble, '#ff9ab0');
         }
 
-        // conveyor belt
-        const beltY = vh * .34, beltH = Math.max(90, vh * .18);
+        // misty forest floor behind the growing mushroom
+        const floorY = vh * .34, floorH = Math.max(90, vh * .18);
         ctx.save();
-        ctx.beginPath(); ctx.rect(0, beltY, vw, beltH); ctx.clip();
-        ctx.fillStyle = '#4a3340';
-        ctx.fillRect(0, beltY, vw, beltH);
-        ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 10;
+        ctx.beginPath(); ctx.rect(0, floorY, vw, floorH); ctx.clip();
+        ctx.fillStyle = '#243a2c';
+        ctx.fillRect(0, floorY, vw, floorH);
+        ctx.strokeStyle = 'rgba(255,255,255,.07)'; ctx.lineWidth = 10;
         const stripe = 46;
-        for (let bx = -stripe + (beltScroll % stripe); bx < vw + stripe; bx += stripe) {
-            ctx.beginPath(); ctx.moveTo(bx, beltY); ctx.lineTo(bx - beltH * .6, beltY + beltH); ctx.stroke();
+        for (let bx = -stripe + (mistScroll % stripe); bx < vw + stripe; bx += stripe) {
+            ctx.beginPath(); ctx.moveTo(bx, floorY); ctx.lineTo(bx - floorH * .6, floorY + floorH); ctx.stroke();
         }
         ctx.restore();
 
-        drawTortilla(vw / 2, beltY + beltH / 2);
+        drawMushroom(vw / 2, floorY + floorH * .8);
 
-        drawChip(scarlettChip, bgPlaced.includes('scarlett') ? 'placed' : 'normal');
-        tray.forEach(c => {
-            const state = bgPlaced.includes(c.id) ? 'placed' : (bgPlaced.length === 0 ? 'disabled' : 'normal');
-            drawChip(c, state);
+        tray.forEach(m => {
+            const state = mrPicked === m.id ? 'picked' : (mrPhase !== 'assemble' ? 'disabled' : 'normal');
+            drawChip(m, state);
         });
 
-        if (bgPhase === 'resolve') {
-            ctx.fillStyle = bgResolveOk ? 'rgba(130,220,150,.94)' : 'rgba(230,100,120,.94)';
-            roundRect(vw / 2 - 140, beltY + beltH + 16, 280, 44, 10); ctx.fill();
-            ctx.fillStyle = '#1c1118'; ctx.font = '700 16px Georgia'; ctx.textAlign = 'center';
-            ctx.fillText(bgResolveOk ? 'SERVED!' : 'MISSED!', vw / 2, beltY + beltH + 16 + 29);
+        if (mrPhase === 'resolve') {
+            ctx.fillStyle = mrResolveOk ? 'rgba(130,220,150,.94)' : 'rgba(230,100,120,.94)';
+            roundRect(vw / 2 - 140, floorY + floorH + 16, 280, 44, 10); ctx.fill();
+            ctx.fillStyle = '#10180f'; ctx.font = '700 16px Georgia'; ctx.textAlign = 'center';
+            ctx.fillText(mrResolveOk ? 'CORRECT!' : 'WRONG MUSHROOM!', vw / 2, floorY + floorH + 16 + 29);
         }
 
         ctx.restore();
     }
 
     function canvasPointLogical(e) {
-        // Mirrors drawBurrito()'s coordinate space: X against the canvas's own box,
+        // Mirrors drawMushroomGame()'s coordinate space: X against the canvas's own box,
         // Y against the wrapper (the thing that actually clips what's visible/clickable).
         const rect = ui.canvas.getBoundingClientRect();
         const wrap = ui.canvas.parentElement;
@@ -459,16 +454,15 @@ export function createLevel2(ui) {
         return { x: (e.clientX - rect.left) * (vw / rect.width), y: (e.clientY - wrapRect.top) * (vh / wrapRect.height) };
     }
     function pointInRect(p, r) { return p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h; }
-    function handleBurritoClick(e) {
+    function handleMushroomClick(e) {
         const p = canvasPointLogical(e);
         const vw = ui.canvas.clientWidth || 1000;
         const wrap = ui.canvas.parentElement;
         const vh = (wrap && wrap.clientHeight) || ui.canvas.clientHeight || 600;
-        const { tray, scarlettChip, exitRect } = burritoLayout(vw, vh);
-        if (pointInRect(p, exitRect)) { exitBurritoGame(); return; }
-        if (bgPhase === 'gameEnd') { enterBurritoGame(); return; }
-        if (pointInRect(p, scarlettChip.rect)) { placeBurritoItem('scarlett'); return; }
-        for (const c of tray) if (pointInRect(p, c.rect)) { placeBurritoItem(c.id); return; }
+        const { tray, exitRect } = mushroomLayout(vw, vh);
+        if (pointInRect(p, exitRect)) { exitMushroomGame(); return; }
+        if (mrPhase === 'gameEnd') { enterMushroomGame(); return; }
+        for (const m of tray) if (pointInRect(p, m.rect)) { pickMushroom(m.id); return; }
     }
 
     function drawMarker(img, px, py, w, h, t) {
@@ -577,11 +571,11 @@ export function createLevel2(ui) {
     }
 
     ui.canvas.addEventListener('pointerdown', e => {
-        if (mode === 'burrito') { handleBurritoClick(e); return; }
+        if (mode === 'mushroom') { handleMushroomClick(e); return; }
         const p = canvasPointToWorld(e);
         if (dialogueQueue) { advanceDialogue(); return; }
         if (!metTom && Math.hypot(p.x - TOM_JOURNAL.x, p.y - TOM_JOURNAL.y) < 50) { startTomMeeting(); return; }
-        if (Math.hypot(p.x - MINI_GAME_SPOT.x, p.y - MINI_GAME_SPOT.y) < 55) { enterBurritoGame(); return; }
+        if (Math.hypot(p.x - MINI_GAME_SPOT.x, p.y - MINI_GAME_SPOT.y) < 55) { enterMushroomGame(); return; }
         if (Math.hypot(p.x - PRINCESS_Q_SPOT.x, p.y - PRINCESS_Q_SPOT.y) < 60) { ui.dialogue.textContent = `${PRINCESS_Q_SPOT.name} - nothing here yet.`; return; }
     });
 
@@ -589,9 +583,9 @@ export function createLevel2(ui) {
         const t = ts / 1000;
         const dt = lastT ? Math.min(.05, t - lastT) : 1 / 60;
         lastT = t;
-        if (mode === 'burrito') {
-            updateBurrito(dt);
-            drawBurrito();
+        if (mode === 'mushroom') {
+            updateMushroom(dt);
+            drawMushroomGame();
         } else {
             updateMovement(dt);
             drawWorld(t, dt);
