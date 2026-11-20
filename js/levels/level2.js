@@ -23,8 +23,12 @@
 import { playSfx } from '../audio.js?v=9820';
 
 const WORLD_W = 1536, WORLD_H = 1024;
-const MAP_ZOOM = 1.5;
+const MAP_ZOOM = 1.9;   // bumped up from 1.5 per Scarlett - a closer, tighter framing
 const CAM_LEAD_Y = 90;
+// Olly's drawn size on this map is independent of MAP_ZOOM (both he and the background
+// scale together with the camera, so zoom alone can't change his size relative to the
+// map) - this is the actual fix for "Olly feels a bit big": shrink his own draw scale.
+const OLLY_MAP_SCALE = 0.72;   // was effectively .92 (i.e. Olly ~22% smaller now)
 
 // Rough spot-check against the map art (assets/environment/level2-map-bg.webp):
 // the hollow is the lantern-lit cave on the left edge; the journal icon sits just
@@ -39,7 +43,10 @@ const TOM_JOURNAL = { x: 255, y: 505 };
 const MINI_GAME_SPOT = { x: 650, y: 790, name: 'FIND SCARLETT' };
 const PRINCESS_Q_SPOT = { x: 1300, y: 230, name: 'Chaos Fairy Goth clue' };
 
-const PLAYER_START = { x: 700, y: 830 };
+// Olly now starts right at the glowing tree-hollow archway near the top of the map
+// (Scarlett: "his starting position to be the top-left tree hollow"), standing on its
+// stone threshold just below the doorway itself, rather than down by the fairy ring.
+const PLAYER_START = { x: 755, y: 300 };
 
 // Placeholder-only lines, built from the fragments Scarlett already gave for Tom's
 // intro ("That's my book, give it back!" / "Huh?" / "Hi, I'm Tom, Tom the Puffle.").
@@ -553,13 +560,13 @@ export function createLevel2(ui) {
         const strideSway = sideways ? stepPhase * 2 * leanSign : 0;
         ctx.translate(x + strideSway, y - bob);
         ctx.fillStyle = SH(.34);
-        ctx.beginPath(); ctx.ellipse(0, 38 * .92, 23 * .92, 6 * .92, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(0, 38 * OLLY_MAP_SCALE, 23 * OLLY_MAP_SCALE, 6 * OLLY_MAP_SCALE, 0, 0, Math.PI * 2); ctx.fill();
         let img = ollySprite.front;
         if (mapDir === 'up') img = ollySprite.back;
         else if (mapDir === 'left') img = ollySprite.left;
         else if (mapDir === 'right') img = ollySprite.right;
         if (img.complete && img.naturalWidth) {
-            const s = .92, h = 144 * s, w = h * (img.naturalWidth / img.naturalHeight);
+            const s = OLLY_MAP_SCALE, h = 144 * s, w = h * (img.naturalWidth / img.naturalHeight);
             ctx.save();
             ctx.transform(1, 0, lean, 1, 0, 0);
             ctx.drawImage(img, -w / 2, -114 * s, w, h);
@@ -584,6 +591,48 @@ export function createLevel2(ui) {
             const h = 70, w = h * (tomSprite.naturalWidth / tomSprite.naturalHeight);
             ctx.drawImage(tomSprite, -w / 2, -h * .82, w, h);
         }
+        ctx.restore();
+    }
+
+    // Ambient fog wisps for the Mystical Forest - soft drifting green/blue glows, purely
+    // atmospheric (no gameplay effect), drawn in world space so they drift past specific
+    // bits of scenery rather than feeling pasted on top of the screen.
+    const FOG_COUNT = 22;
+    let fogWisps = null;
+    function initFog() {
+        fogWisps = Array.from({ length: FOG_COUNT }, () => ({
+            x: Math.random() * WORLD_W,
+            y: Math.random() * WORLD_H,
+            vx: (Math.random() * 2 - 1) * 11,
+            vy: (Math.random() * 2 - 1) * 6,
+            r: 110 + Math.random() * 170,
+            green: Math.random() < 0.5,
+            alpha: 0.28 + Math.random() * 0.2,
+            phase: Math.random() * Math.PI * 2
+        }));
+    }
+    function updateFog(dt) {
+        if (!fogWisps) initFog();
+        const pad = 160;
+        fogWisps.forEach(w => {
+            w.x += w.vx * dt; w.y += w.vy * dt;
+            if (w.x < -pad) w.x = WORLD_W + pad; else if (w.x > WORLD_W + pad) w.x = -pad;
+            if (w.y < -pad) w.y = WORLD_H + pad; else if (w.y > WORLD_H + pad) w.y = -pad;
+        });
+    }
+    function drawFog(t) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        fogWisps.forEach(w => {
+            const pulse = 0.85 + 0.15 * Math.sin(t * 0.5 + w.phase);
+            const rgb = w.green ? '140,220,160' : '120,190,240';
+            const r = w.r * pulse;
+            const grad = ctx.createRadialGradient(w.x, w.y, 0, w.x, w.y, r);
+            grad.addColorStop(0, `rgba(${rgb},${w.alpha * pulse})`);
+            grad.addColorStop(1, `rgba(${rgb},0)`);
+            ctx.fillStyle = grad;
+            ctx.beginPath(); ctx.arc(w.x, w.y, r, 0, Math.PI * 2); ctx.fill();
+        });
         ctx.restore();
     }
 
@@ -618,6 +667,8 @@ export function createLevel2(ui) {
         // Draw whichever of Olly/Tom is further back first, roughly, so neither always clips over the other.
         drawTom(t);
         drawOlly(t, moving);
+        updateFog(dt);
+        drawFog(t);
         ctx.restore();
     }
 
