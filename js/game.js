@@ -108,6 +108,10 @@ function showDisclaimer(){
   // V9.82: it now rolls up and SETTLES centered instead of continuing to scroll off the top, so there's time to read it.
   // V9.84: Scarlett's own voice reading the disclaimer plays over a vintage-jazz bed; both
   // fade out into the title screen's menu music once the person moves on.
+  // V9.86: the voice used to start the instant this screen rendered - before the credits text had
+  // even scrolled up into view - and the button let you skip past it while it was still talking
+  // (or, if it had overlapped itself, while TWO copies were talking). Now it waits for the text to
+  // arrive, and "ENTER THE ABYSS" / Enter / Space are locked out until the line has genuinely finished.
   root.innerHTML = `
     <section class="gg-boot gg-disclaimer" aria-label="Disclaimer">
       <div class="gg-credits-roll" id="gg-credits-roll">
@@ -116,13 +120,29 @@ function showDisclaimer(){
         <p>No eyeliner was wasted in the making of this game. Side effects may include an unexpected urge to listen to The Cure, mild fishnet envy, and a seemingly irrational fear of pale women. Play responsibly.</p>
         <p class="gg-disclaimer-credit">Lovingly handcrafted for Olly.</p>
       </div>
-      <button id="gg-disclaimer-go" class="primary gg-disclaimer-skip" type="button">ENTER THE ABYSS &#9654;</button>
+      <button id="gg-disclaimer-go" class="primary gg-disclaimer-skip" type="button" disabled>ENTER THE ABYSS &#9654;</button>
     </section>`;
   playMusic('disclaimer');
-  playVoiceLine('disclaimer-voice', 1);
-  const go = () => { window.removeEventListener('keydown', onKey); stopVoiceLine(); playMusic('menu', 1200); showTitle(); };
+  const btn = document.getElementById('gg-disclaimer-go');
+  let voiceDone = false;
+  const markVoiceDone = () => { if (voiceDone) return; voiceDone = true; btn.disabled = false; };
+  // .gg-credits-roll rolls up from below the screen over 4.6s (see css/game.css); with its
+  // ease-out curve the text is already readable well before that settles, so 1.5s is a beat
+  // after render but still well ahead of the full roll finishing.
+  const TEXT_APPEAR_MS = 1500;
+  const voiceTimer = setTimeout(() => playVoiceLine('disclaimer-voice', 1, markVoiceDone), TEXT_APPEAR_MS);
+  // Safety net: the real clip is ~19.4s. If it's blocked outright (or missing) and never actually
+  // plays, don't leave the player stuck forever unable to continue - unlock anyway after a
+  // generous ceiling.
+  const safetyTimer = setTimeout(markVoiceDone, TEXT_APPEAR_MS + 22000);
+  const go = () => {
+    if (!voiceDone) return;   // can't enter the abyss until she's finished speaking
+    clearTimeout(voiceTimer); clearTimeout(safetyTimer);
+    window.removeEventListener('keydown', onKey);
+    stopVoiceLine(); playMusic('menu', 1200); showTitle();
+  };
   const onKey = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } };
-  document.getElementById('gg-disclaimer-go').addEventListener('click', go, { once:true });
+  btn.addEventListener('click', go, { once:true });
   window.addEventListener('keydown', onKey);
 }
 

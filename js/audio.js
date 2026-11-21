@@ -77,11 +77,16 @@ function loadBuffer(name, tries = 0) {
         .catch(() => { delete loading[name]; if (tries < 15) setTimeout(() => loadBuffer(name, tries + 1), Math.min(6000, 800 * (tries + 1))); });
 }
 const fallbackCache = {};
+// Returns the <audio> element it tried to play (or null on failure), plus the play() promise,
+// so a caller that needs to know whether it actually started (playVoiceLine) can wait for it.
 function fallbackPlay(name, v) {
     try {
         if (!fallbackCache[name]) { fallbackCache[name] = new Audio(`assets/audio/sfx/${name}.mp3?v=9900`); fallbackCache[name].preload = 'auto'; }
-        const a = fallbackCache[name].cloneNode(); a.volume = v; a.play().catch(() => {});
-    } catch (e) {}
+        const a = fallbackCache[name].cloneNode(); a.volume = v;
+        const p = a.play();
+        (p && p.catch ? p : Promise.resolve()).catch(() => {});
+        return { el: a, promise: p && p.then ? p : Promise.resolve() };
+    } catch (e) { return { el: null, promise: Promise.reject(e) }; }
 }
 export function playSfx(name, gain = 1, rate = 1) {
     const v = Math.max(0, Math.min(1, vol.master * vol.sfx * gain));
@@ -106,31 +111,52 @@ let voiceSrc = null;
 // first"). playMusic already has a retry-on-first-gesture (wantMusic/unlock below) - which is
 // why the jazz bed always eventually comes through - but nothing retried the voice line, so it
 // just silently never played. wantVoice gives it the same second chance.
-let wantVoice = null;
-export function playVoiceLine(name, gain = 1) {
+// V9.86: that fallback <audio> was never tracked anywhere once it started, so when the
+// unlock()-retry's web-audio attempt fired a moment later it had nothing to stop - the fallback
+// kept talking while a second, full-quality copy started on top of it (reported as "it played
+// twice overlapping"). voiceFallback + voiceToken fix that: every playVoiceLine (and
+// stopVoiceLine) first stops BOTH possible players and bumps the token so a late-arriving
+// fallback promise from an earlier, now-superseded attempt can tell it's stale and bail out.
+let voiceFallback = null, wantVoice = null, voiceToken = 0;
+// onEnded (optional) fires once, the moment the line genuinely finishes playing on its own -
+// never when it's cut short by stopVoiceLine() or superseded by a newer playVoiceLine() call.
+// Used to gate "you can't click past the disclaimer until the voice-over is done".
+export function playVoiceLine(name, gain = 1, onEnded) {
     const v = Math.max(0, Math.min(1, vol.master * vol.sfx * gain));
+    stopVoiceLine();
+    if (v <= 0) return;
+    const myToken = voiceToken;
     const c = getCtx();
-    if (voiceSrc) { try { voiceSrc.stop(); } catch (e) {} voiceSrc = null; }
-    if (v <= 0) { wantVoice = null; return; }
     if (c && buffers[name] && (c.state === 'running' || held)) {
-        wantVoice = null;   // actually started for real - no retry needed
         wake();
         const src = c.createBufferSource(), g = c.createGain();
         src.buffer = buffers[name]; g.gain.value = v;
         src.connect(g); g.connect(sfxGain); src.start(0);
         voiceSrc = src;
-        src.onended = () => { if (voiceSrc === src) voiceSrc = null; if (wantVoice && wantVoice.name === name) wantVoice = null; };
+        src.onended = () => { if (voiceSrc === src) voiceSrc = null; if (myToken === voiceToken) onEnded?.(); };
     } else {
-        wantVoice = { name, gain };   // couldn't confirm it actually started - the next gesture gets one retry
+        wantVoice = { name, gain, onEnded };   // couldn't confirm it actually started - the next gesture gets one retry
         if (c && c.state !== 'running') wake();
         loadBuffer(name);
-        fallbackPlay(name, v);
+        const { el, promise } = fallbackPlay(name, v);
+        promise.then(() => {
+            if (myToken !== voiceToken || !el) return;   // a later play/stop already moved on - don't let this stale attempt do anything
+            wantVoice = null;   // actually confirmed playing for real - no retry needed
+            voiceFallback = el;
+            el.onended = () => { if (voiceFallback === el) voiceFallback = null; if (myToken === voiceToken) onEnded?.(); };
+        }).catch(() => {});   // still blocked - wantVoice stays set for the unlock() retry
     }
 }
 // V9.84: lets a screen that started a voice line (the disclaimer's reading) cut it off
 // cleanly if the person clicks through before it finishes, instead of it talking over
-// whatever comes next.
-export function stopVoiceLine() { if (voiceSrc) { try { voiceSrc.stop(); } catch (e) {} voiceSrc = null; } wantVoice = null; }
+// whatever comes next. V9.86: also stops the fallback <audio> path and bumps voiceToken so
+// a late-confirming fallback promise (see playVoiceLine) can't resurrect what we just stopped.
+export function stopVoiceLine() {
+    voiceToken++;
+    if (voiceSrc) { try { voiceSrc.stop(); } catch (e) {} voiceSrc = null; }
+    if (voiceFallback) { try { voiceFallback.pause(); voiceFallback.currentTime = 0; } catch (e) {} voiceFallback = null; }
+    wantVoice = null;
+}
 // V9.81: a tiny synthesized "magic" cue for Patricia's purple orb - there's no recorded
 // SFX for it, and a generic impact sound wasn't reading as "watch out, something's coming".
 // A quick rising zap on the charge-up, then a brighter descending one on launch.
@@ -303,7 +329,7 @@ const unlock = () => {
     if (wantMusic && !musicBusy && (!musicEl || musicEl.paused)) playMusic(wantMusic);
     // V9.85: same idea for a voice line that tried to play before any gesture ever happened (the
     // disclaimer's reading) and got silently blocked - one retry, now that we're inside a real gesture.
-    if (wantVoice) { const wv = wantVoice; playVoiceLine(wv.name, wv.gain); }
+    if (wantVoice) { const wv = wantVoice; playVoiceLine(wv.name, wv.gain, wv.onEnded); }
     unlocked = true;
 };
 window.addEventListener('pageshow', () => { if (wantMusic && !musicBusy && (!musicEl || musicEl.paused)) playMusic(wantMusic); });

@@ -883,3 +883,4 @@ html,body,#app{height:100%;overflow:hidden}
 .gg-credits-roll p{margin:0;color:#e7d2e0;font:italic 500 clamp(18px,2.2vw,23px)/1.6 Georgia,serif}
 .gg-disclaimer-credit{color:#f3bcd3 !important;font-style:normal !important;font-weight:700 !important}
 .gg-disclaimer-skip{position:fixed;left:50%;bottom:max(28px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:2;padding:12px 28px;border:1px solid #d98ba8;border-radius:12px;background:#382132;color:#f8eaf0;font:800 15px Georgia,serif;letter-spacing:.1em;cursor:pointer}
+.gg-disclaimer-skip:disabled{opacity:.4;cursor:not-allowed}
