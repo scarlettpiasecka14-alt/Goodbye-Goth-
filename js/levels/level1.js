@@ -430,20 +430,34 @@ let patAssetsRequested = false;
 function loadPatriciaAssets() {
     if (patAssetsRequested) return;
     patAssetsRequested = true;
-    for (const [name, a] of Object.entries(patAtlas)) {
+    // V9.84: used to wait for img.decode() to finish before even STARTING createImageBitmap - two
+    // decodes of the same giant sheet ran back-to-back instead of in parallel. That caused "her sword
+    // swipe sometimes plays slow/blurry, sometimes fine": every draw call falls back to the raw <img>
+    // (see drawChainAtlasFrame: `pack.bmp || pack.img`) until the bitmap is ready, and a cheat-skipped
+    // fight (testing) gave zero lead time for it versus the real boss-intro screen's few extra seconds.
+    // V9.86: firing ALL 9 sheets' decode() + createImageBitmap() at once (the V9.84 fix) traded that
+    // for a worse bug - a concentrated CPU/memory spike (several sheets are 4000x3000-7000px; all 9
+    // decoding + bitmap-uploading at the same instant is >1GB of transient image data on an 8GB Mac)
+    // that stalls the main thread for a second or more. That stall is exactly what looks like "Olly
+    // freezes, then a second later he's already on the floor and already hit" - gnow() keeps advancing
+    // while the thread is blocked, so combat logic "catches up" to the real elapsed time the instant
+    // rendering resumes. Loading a few sheets at a time keeps the spike small while still finishing
+    // well before one-at-a-time sequential decoding did.
+    const entries = Object.entries(patAtlas);
+    const CONCURRENCY = 3;
+    let next = 0;
+    function startOne() {
+        if (next >= entries.length) return;
+        const [name, a] = entries[next++];
         const img = a.img;
         img.src = `assets/characters/patricia/atlas/pat-${name}.webp?v=9820`;
-        // V9.84: used to wait for img.decode() to finish before even STARTING createImageBitmap -
-        // two decodes of the same giant sheet run back-to-back instead of in parallel. That's the
-        // likely cause of "her sword swipe sometimes plays slow/blurry, sometimes fine": every draw
-        // call falls back to the raw <img> (see drawChainAtlasFrame: `pack.bmp || pack.img`) until
-        // the bitmap is ready, and a cheat-skipped fight (testing) gives zero lead time for it versus
-        // the real boss-intro screen's few extra seconds, so whichever finishes first is luck. Kicking
-        // both off at once roughly halves the time-to-bitmap, without changing WHEN this loader itself
-        // is called (that stays lazy on purpose - see the note above about 8GB Macs and memory).
-        img.decode?.().catch(() => {});
-        if (window.createImageBitmap) createImageBitmap(img).then(bmp => { a.bmp = bmp; }).catch(() => {});
+        const afterDecode = () => {
+            if (window.createImageBitmap) createImageBitmap(img).then(bmp => { a.bmp = bmp; startOne(); }).catch(() => startOne());
+            else startOne();
+        };
+        img.decode?.().then(afterDecode).catch(afterDecode);
     }
+    for (let k = 0; k < CONCURRENCY; k++) startOne();
 }
 const PAT_SCALE = 0.66;               // = the atlas scale, so she is never resampled
 const PAT_STAND_OFF = 215, PAT_CHASE_SPEED = 210;   // V9.84: a touch faster again - still a deliberate menacing walk, just not quite as draggy (was 185, V9.80)   // V9.41: her legs were moving faster than she travelled   // V9.36: slower (was 140)
