@@ -2,7 +2,7 @@ import { StoryController } from './story.js?v=9820';
 import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9830';
 import { createLevel2 } from './levels/level2.js?v=9830';
 import { createLevel3 } from './levels/level3.js?v=9850';
-import { playMusic, setLoopSfx, playSfx, audioNeedsClick } from './audio.js?v=9820';
+import { playMusic, setLoopSfx, playSfx, audioNeedsClick, playVoiceLine, stopVoiceLine } from './audio.js?v=9820';
 import { initSettings, openSettings } from './settings.js?v=9820';
 import { actionForKey, hintHTML } from './controls.js?v=9820';
 import { initCheats, registerCheats } from './cheats.js?v=9820';
@@ -88,7 +88,7 @@ function showTitleMessage(message){
 function showBoot(){
   // V9.80: only show the loading bat + disclaimer on the first load of the session.
   // Save & Quit reloads the page, and should drop straight to the title screen.
-  try { if (sessionStorage.getItem('gg_booted')) { showTitle(); return; } sessionStorage.setItem('gg_booted', '1'); } catch (e) {}
+  try { if (sessionStorage.getItem('gg_booted')) { playMusic('menu'); showTitle(); return; } sessionStorage.setItem('gg_booted', '1'); } catch (e) {}
   setLoopSfx('ambience', false);
   root.innerHTML = `
     <section class="gg-boot" aria-label="Loading">
@@ -106,6 +106,8 @@ function showDisclaimer(){
   // V9.81: no more boxed card - full-screen rolling credits (the lines scroll up like a film's),
   // and the closing line no longer says "go find your princess" (it was spoiling the later kidnap reveal).
   // V9.82: it now rolls up and SETTLES centered instead of continuing to scroll off the top, so there's time to read it.
+  // V9.84: Scarlett's own voice reading the disclaimer plays over a vintage-jazz bed; both
+  // fade out into the title screen's menu music once the person moves on.
   root.innerHTML = `
     <section class="gg-boot gg-disclaimer" aria-label="Disclaimer">
       <div class="gg-credits-roll" id="gg-credits-roll">
@@ -116,7 +118,9 @@ function showDisclaimer(){
       </div>
       <button id="gg-disclaimer-go" class="primary gg-disclaimer-skip" type="button">ENTER THE ABYSS &#9654;</button>
     </section>`;
-  const go = () => { window.removeEventListener('keydown', onKey); showTitle(); };
+  playMusic('disclaimer');
+  playVoiceLine('disclaimer-voice', 1);
+  const go = () => { window.removeEventListener('keydown', onKey); stopVoiceLine(); playMusic('menu', 1200); showTitle(); };
   const onKey = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } };
   document.getElementById('gg-disclaimer-go').addEventListener('click', go, { once:true });
   window.addEventListener('keydown', onKey);
@@ -588,14 +592,18 @@ if (audioNeedsClick()) {
   window.addEventListener('pointerdown', () => hint.remove(), { once: true });
   window.addEventListener('keydown', () => hint.remove(), { once: true });
 }
-playMusic('menu');   // title song: assets/audio/music/menu.mp3 (starts after the first click)
+// V9.84: menu music used to start here unconditionally, underneath the loading bat AND
+// the disclaimer screen, which left the disclaimer with no music bed of its own. Now the
+// disclaimer starts its own jazz bed (see showDisclaimer) and fades into 'menu' itself
+// when the person moves on, so this only needs to kick off music for the debug previews
+// below, which skip the boot flow (and its music) entirely.
 // V9.84-preview: debug-only entry straight into the Level 2 scaffolding via ?level=2 in
 // the URL, so Scarlett can look at it without this touching the real title -> Level 1 ->
 // "Coming Soon" flow at all. Remove this (and mountLevel2/level2.js) once Level 2 is ready
 // to be the real handoff target.
 {
   const debugLevel = new URLSearchParams(location.search).get('level');
-  if (debugLevel === '2') mountLevel2();
-  else if (debugLevel === '3') mountLevel3();
-  else showBoot();   // V9.80: loading bat -> disclaimer -> title
+  if (debugLevel === '2') { playMusic('menu'); mountLevel2(); }
+  else if (debugLevel === '3') { playMusic('menu'); mountLevel3(); }
+  else showBoot();   // V9.80: loading bat -> disclaimer (own music) -> title
 }

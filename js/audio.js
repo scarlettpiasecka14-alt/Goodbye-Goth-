@@ -117,6 +117,10 @@ export function playVoiceLine(name, gain = 1) {
         fallbackPlay(name, v);
     }
 }
+// V9.84: lets a screen that started a voice line (the disclaimer's reading) cut it off
+// cleanly if the person clicks through before it finishes, instead of it talking over
+// whatever comes next.
+export function stopVoiceLine() { if (voiceSrc) { try { voiceSrc.stop(); } catch (e) {} voiceSrc = null; } }
 // V9.81: a tiny synthesized "magic" cue for Patricia's purple orb - there's no recorded
 // SFX for it, and a generic impact sound wasn't reading as "watch out, something's coming".
 // A quick rising zap on the charge-up, then a brighter descending one on launch.
@@ -176,7 +180,7 @@ const ALL_SFX = ['punch-1', 'punch-2', 'punch-3', 'goth-hurt-1', 'goth-hurt-2', 
     'breath-recovery', 'countdown-tick', 'fight-shout', 'zombie-death', 'tutorial', 'minigame-win', 'quiz-win', 'round-ok', 'wrong-buzz',
     'patricia-check-backpack', 'patricia-hey', 'patricia-kill-you', 'patricia-nice-try-cutie', 'patricia-nice-try', 'patricia-not-funny', 'patricia-pay-for-that', 'patricia-trying-hard',
     'patricia-ugh-stop-it', 'patricia-unfair-fight', 'patricia-who-do-you', 'patricia-grunt-1', 'patricia-grunt-3', 'patricia-grunt-4', 'patricia-grunt-5', 'patricia-grunt-6', 'patricia-grunt-7', 'patricia-grunt-8', 'patricia-grunt-9',
-    'princess-q-right-1', 'princess-q-right-2', 'princess-q-wrong-1', 'princess-q-wrong-2', 'princess-q-wrong-3'];
+    'princess-q-right-1', 'princess-q-right-2', 'princess-q-wrong-1', 'princess-q-wrong-2', 'princess-q-wrong-3', 'disclaimer-voice'];
 ALL_SFX.forEach((n, i) => setTimeout(() => loadBuffer(n), i * 15));
 
 /* Music "pools": each name plays one file (looping) or a playlist that moves to the next track when one ends.
@@ -185,7 +189,8 @@ const MUSIC = {
     menu: ['Menu.mp3'],
     map: ['BackgroundMusicTrack1.mp3', 'BackgroundTrack2.mp3', 'BackgroundTrack3.mp3', 'BackgroundTrack4.mp3'],
     fight: ['FightMusic1.mp3', 'FightMusic2.mp3'],
-    boss: ['BossFight1.mp3', 'FightMusic1.mp3', 'FightMusic2.mp3']   // V9.34: Patricia's fight starts with BossFight1, then alternates the two fight tracks
+    boss: ['BossFight1.mp3', 'FightMusic1.mp3', 'FightMusic2.mp3'],   // V9.34: Patricia's fight starts with BossFight1, then alternates the two fight tracks
+    disclaimer: ['Disclaimer.mp3']   // V9.84: vintage-jazz bed under the disclaimer screen (Scarlett's own reading plays over it as a voice line)
 };
 let musicEl = null, musicName = '', wantMusic = '', fadeTimer = null, musicToken = 0, musicBusy = false;
 function musicTarget() { return Math.max(0, Math.min(1, vol.master * vol.music)); }
