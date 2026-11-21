@@ -99,19 +99,29 @@ export function playSfx(name, gain = 1, rate = 1) {
 // line always stops whatever she was still saying, so a duration guess that runs long
 // can never overlap the next line (reported as "her lines overlap" during the fight intro).
 let voiceSrc = null;
+// V9.85: a line started this early (the disclaimer's reading starts the instant that screen
+// renders, before the player has clicked anything at all, ever) hits browsers' autoplay block
+// dead-on - NOT just the AudioContext (wake() can't resume what no gesture has unlocked yet),
+// the plain <audio> fallback too (NotAllowedError: "the user didn't interact with the document
+// first"). playMusic already has a retry-on-first-gesture (wantMusic/unlock below) - which is
+// why the jazz bed always eventually comes through - but nothing retried the voice line, so it
+// just silently never played. wantVoice gives it the same second chance.
+let wantVoice = null;
 export function playVoiceLine(name, gain = 1) {
     const v = Math.max(0, Math.min(1, vol.master * vol.sfx * gain));
     const c = getCtx();
     if (voiceSrc) { try { voiceSrc.stop(); } catch (e) {} voiceSrc = null; }
-    if (v <= 0) return;
+    if (v <= 0) { wantVoice = null; return; }
     if (c && buffers[name] && (c.state === 'running' || held)) {
+        wantVoice = null;   // actually started for real - no retry needed
         wake();
         const src = c.createBufferSource(), g = c.createGain();
         src.buffer = buffers[name]; g.gain.value = v;
         src.connect(g); g.connect(sfxGain); src.start(0);
         voiceSrc = src;
-        src.onended = () => { if (voiceSrc === src) voiceSrc = null; };
+        src.onended = () => { if (voiceSrc === src) voiceSrc = null; if (wantVoice && wantVoice.name === name) wantVoice = null; };
     } else {
+        wantVoice = { name, gain };   // couldn't confirm it actually started - the next gesture gets one retry
         if (c && c.state !== 'running') wake();
         loadBuffer(name);
         fallbackPlay(name, v);
@@ -120,7 +130,7 @@ export function playVoiceLine(name, gain = 1) {
 // V9.84: lets a screen that started a voice line (the disclaimer's reading) cut it off
 // cleanly if the person clicks through before it finishes, instead of it talking over
 // whatever comes next.
-export function stopVoiceLine() { if (voiceSrc) { try { voiceSrc.stop(); } catch (e) {} voiceSrc = null; } }
+export function stopVoiceLine() { if (voiceSrc) { try { voiceSrc.stop(); } catch (e) {} voiceSrc = null; } wantVoice = null; }
 // V9.81: a tiny synthesized "magic" cue for Patricia's purple orb - there's no recorded
 // SFX for it, and a generic impact sound wasn't reading as "watch out, something's coming".
 // A quick rising zap on the charge-up, then a brighter descending one on launch.
@@ -291,6 +301,9 @@ const unlock = () => {
     getCtx(); wake();
     // (Re)start the wanted song if nothing is actually playing - e.g. after the page was reloaded, restored from the back button, or Safari paused it.
     if (wantMusic && !musicBusy && (!musicEl || musicEl.paused)) playMusic(wantMusic);
+    // V9.85: same idea for a voice line that tried to play before any gesture ever happened (the
+    // disclaimer's reading) and got silently blocked - one retry, now that we're inside a real gesture.
+    if (wantVoice) { const wv = wantVoice; playVoiceLine(wv.name, wv.gain); }
     unlocked = true;
 };
 window.addEventListener('pageshow', () => { if (wantMusic && !musicBusy && (!musicEl || musicEl.paused)) playMusic(wantMusic); });

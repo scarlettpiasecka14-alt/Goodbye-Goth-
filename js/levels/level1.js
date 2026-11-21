@@ -1336,6 +1336,8 @@ export function createLevel1(ui) {
         gateOpened = false,
         heavyUnlocked = false,
         heavyCdMul = 1,   // V9.42: chest reward can lower this
+        veilCharges = 0,   // V9.85: Patricia's "Moth-Eaten Veil" chest reward - 3 total uses, never recharges, gone once spent
+        veilUntil = -1e9,   // purely cosmetic: draws the shimmer while a veil use is active (the actual invincibility is player.invuln, same as dodge)
         keySpawnAnnounced = false,
         inventory = {},
         checkpoint = 'cemetery-entrance',
@@ -1864,6 +1866,15 @@ export function createLevel1(ui) {
 
     function openPrincessQuestion() {
         mode = 'puzzle';
+        // V9.85: one shuffle per time the question opens, not per click - each of the 3 wrong
+        // buttons keeps the same voice line the whole time it's up, and no two of them share one
+        // (was a fresh random pick per click, so "wrong answer, mate" could play all 3 times in a
+        // row before "try again" ever came up - read as broken rather than random).
+        princessWrongShuffle = [...PRINCESS_Q_WRONG_LINES];
+        for (let i = princessWrongShuffle.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [princessWrongShuffle[i], princessWrongShuffle[j]] = [princessWrongShuffle[j], princessWrongShuffle[i]];
+        }
         const img = document.querySelector('#puzzle .quiz-image');
         if (img) {
             img.src = 'assets/encounters/level1/princess-question-art.webp?v=501';
@@ -2206,7 +2217,14 @@ export function createLevel1(ui) {
         if (jumping || jumpOffset < -18 || nowMs < dodgeUntil || heavyAttackAnimUntil > nowMs)
             return;
 
-        const minGap = 108;
+        // V9.85: the Zombie Goth's heavy bite only lands once she's physically closed to within 85px of Olly
+        // (see updateZombieAI's heavyKick branch, catchDistance <= 85) - but this function was re-pushing him
+        // back out to the normal 108px "solid body" gap every single frame, which is OUTSIDE that 85px catch
+        // range, so the bite could never actually connect: she'd crawl right up against him and just stall
+        // there (reported as "she's right on top of you and never bites" / "she pushes you away as she chases").
+        // Let the gap close all the way while she's actively trying to catch him with it.
+        const zombieBiting = target?.type === 'shambler' && zombieCombatState === 'heavyKick' && zombieBiteCaughtAt === 0 && !zombieBiteEvaded;
+        const minGap = zombieBiting ? 20 : 108;
         const playerMinX = 140;
         const playerMaxX = COMBAT_W - 140;
         const dx = player.x - zombieCombatX;
@@ -3874,10 +3892,10 @@ export function createLevel1(ui) {
 
     // ---- V9.42: Patricia's fall -> death cutscene (preloaded) -> chest in the arena -> reward pop-up -> Level 1 complete ----
     // Cutscene file: assets/video/cutscene4/patricia-death.mp4 (the video carries the BossFight1 music; afterwards BossFight1 restarts 15 s in).
-    // REWARDS ARE PLACEHOLDERS: edit PAT_REWARDS (icon, name, description, what it does).
+    // V9.85: one limited-use ability + one permanent passive, per Scarlett (not a pile of stacking collectibles).
     const PAT_REWARDS = [
-        { id: 'maxhp', icon: '❤', name: 'Max HP +20', desc: 'Olly can take a little more punishment. (Fully heals him too.)', apply() { maxHp += 20; hp = maxHp; stats(); } },
-        { id: 'heavycd', icon: '⚡', name: 'Heavy Attack recharge -20%', desc: 'Heavy Attack comes back faster (20s becomes 16s).', apply() { heavyCdMul = Math.max(.3, heavyCdMul * .8); } },
+        { id: 'veil', icon: '🕸️', name: 'Moth-Eaten Veil', get desc() { return 'Press ' + actionHint('veil') + ' mid-fight for 3 seconds of true invincibility. Works 3 times, ever - then it\'s gone.'; }, apply() { veilCharges = 3; } },
+        { id: 'heavycd', icon: '⚡', name: 'Heavy Attack recharge -25%', desc: 'Heavy Attack comes back faster, for good (20s becomes 15s).', apply() { heavyCdMul = Math.min(heavyCdMul, .75); } },
     ];
     const PAT_CUTSCENE_FILES = ['assets/video/cutscene4/patricia-death.mp4', 'assets/video/cutscene4/patriciadeath.mp4', 'assets/video/cutscene4/PatriciaDeath.mp4', 'assets/video/cutscene4/patricia-death.mov'];
     function patDeathPrep() {
@@ -4550,6 +4568,18 @@ export function createLevel1(ui) {
             cctx.restore();
         }
         else drawOllyWorldCombat(cctx, player.x, player.y, anim, nowMs / 1000, renderHurt, jumpOffset);
+        if (nowMs < veilUntil) {   // V9.85: cosmetic shimmer while a Moth-Eaten Veil charge is active - a drifting translucent veil, no real combat read needed
+            const left = Math.max(0, veilUntil - nowMs), fy = player.y + OLLY_DRAW_FOOT_OFFSET - 150 + jumpOffset;
+            cctx.save();
+            cctx.globalAlpha = .45 + .15 * Math.sin(nowMs / 90);
+            const g = cctx.createRadialGradient(player.x, fy, 10, player.x, fy, 150);
+            g.addColorStop(0, 'rgba(210,190,255,.55)'); g.addColorStop(.6, 'rgba(160,120,220,.28)'); g.addColorStop(1, 'rgba(120,80,180,0)');
+            cctx.fillStyle = g; cctx.beginPath(); cctx.arc(player.x, fy, 150, 0, Math.PI * 2); cctx.fill();
+            cctx.restore();
+            cctx.save(); cctx.textAlign = 'center'; cctx.font = '700 15px system-ui, sans-serif'; cctx.fillStyle = '#e4d4ff';
+            cctx.fillText('VEIL ' + (left / 1000).toFixed(1) + 's', player.x, fy - 160);
+            cctx.restore();
+        }
         if (nowMs < attackCooldownUntil && !playerDeathTriggered) {   // V9.19: make the punch rest impossible to miss
             const left = ((attackCooldownUntil - nowMs) / 1000).toFixed(1);
             cctx.save(); cctx.textAlign = 'center'; cctx.font = '700 26px system-ui, sans-serif';
@@ -4931,6 +4961,23 @@ export function createLevel1(ui) {
         jumpOffset = 0;
         ui.combatStatus.textContent = '↪ DODGE!';
     }
+    // V9.85: the Moth-Eaten Veil (Patricia's chest reward) - 3 total charges, no recharge, ever. Each press
+    // buys 3 real seconds of true invincibility (reuses the same player.invuln the dodge i-frame uses, just
+    // much longer), so it works against anything - sword, lightning, future bosses, all of it.
+    function combatVeil() {
+        if (patReward) return;
+        if (pausedAt) return;
+        if (mode !== 'combat' || zombieIntroActive || patFrozen() || playerDeathTriggered)
+            return;
+        if (veilCharges <= 0) return;   // never had it, or already used all 3 - either way, nothing to do
+        const nowMs = gnow();
+        if (nowMs < veilUntil) return;   // already shimmering: can't stack another charge on top
+        veilCharges--;
+        veilUntil = nowMs + 3000;
+        player.invuln = nowMs + 3000;
+        playSfx('olly-jump', .7);   // V9.85: placeholder sfx - swap for a dedicated veil whoosh once Scarlett has one
+        ui.combatStatus.textContent = `🕸️ VEIL! True invincibility - 3s. (${veilCharges} use${veilCharges === 1 ? '' : 's'} left)`;
+    }
     function showHeavyAttackReward() {
         heavyUnlocked = true;
         mode = 'reward';
@@ -5209,7 +5256,8 @@ export function createLevel1(ui) {
     // quiz-win/wrong-buzz stinger rather than replacing it.
     const PRINCESS_Q_RIGHT_LINES = ['princess-q-right-1', 'princess-q-right-2'];
     const PRINCESS_Q_WRONG_LINES = ['princess-q-wrong-1', 'princess-q-wrong-2', 'princess-q-wrong-3'];
-    function answerPuzzle(answer) {
+    let princessWrongShuffle = null;   // V9.85: set fresh each time openPrincessQuestion() runs - see there
+    function answerPuzzle(answer, slot) {
         if (mode !== 'puzzle')
             return;
         if (answer === 'correct') {
@@ -5222,7 +5270,11 @@ export function createLevel1(ui) {
             showCompletionScreen('assets/encounters/level1/princess-question-completed.webp?v=1', 'Princess Question complete', 'CONGRATULATIONS!', "You've answered the Princess Question correctly, proving that love and intelligence can, on rare occasions, coexist. Princess Scarlett would be proud. Try not to let it go to your head.", 'KEEP EXPLORING');
         } else {
             playSfx('wrong-buzz', 1.4);
-            playVoiceLine(PRINCESS_Q_WRONG_LINES[Math.floor(Math.random() * PRINCESS_Q_WRONG_LINES.length)], 1.1);
+            // V9.85: 'slot' is which of the (up to 3) wrong buttons was actually clicked, 0-indexed in
+            // DOM order - falls back to a plain random pick if it's missing for any reason.
+            const pool = princessWrongShuffle || PRINCESS_Q_WRONG_LINES;
+            const line = Number.isInteger(slot) ? pool[slot % pool.length] : pool[Math.floor(Math.random() * pool.length)];
+            playVoiceLine(line, 1.1);
             ui.puzzleFeedback.textContent = '❌ Incorrect. The princess remains imprisoned, and somewhere a goth has just judged you.';
         }
     }
@@ -5353,7 +5405,7 @@ export function createLevel1(ui) {
     function saveGame(silent = false) {
         try {
             const state = {
-                version: 5,
+                version: 6,
                 savedAt: new Date().toISOString(),
                 level: 1,
                 x,
@@ -5361,6 +5413,7 @@ export function createLevel1(ui) {
                 hp,
                 maxHp,
                 heavyCdMul,
+                veilCharges,
                 kills,
                 relationshipDone,
                 puzzleSolved,
@@ -5385,7 +5438,7 @@ export function createLevel1(ui) {
     }
     function loadGame() {
         const state = safeParseSave();
-        if (!state || ![2, 3, 4, 5].includes(state.version))
+        if (!state || ![2, 3, 4, 5, 6].includes(state.version))
             return false;
         try {
             x = Number.isFinite(state.x) ? Math.min(WORLD_W - 40, Math.max(40, state.x)) : x;
@@ -5393,6 +5446,7 @@ export function createLevel1(ui) {
             { const safe = nearestWalkable(x, y); x = safe.x; y = safe.y; }   // V9.23: old saves may be on a spot that is now blocked
             maxHp = Number.isFinite(state.maxHp) ? Math.max(100, state.maxHp) : 100;
             heavyCdMul = Number.isFinite(state.heavyCdMul) ? Math.max(.3, Math.min(1, state.heavyCdMul)) : 1;
+            veilCharges = state.version >= 6 && Number.isFinite(state.veilCharges) ? Math.max(0, Math.min(3, state.veilCharges)) : 0;   // V9.85: older saves never had the veil - treat as 0, not 3
             if (state.version >= 4) {
                 hp = Number.isFinite(state.hp) ? state.hp : maxHp;
             }
@@ -5562,6 +5616,7 @@ export function createLevel1(ui) {
         combatAttack,
         combatHeavyAttack,
         combatDodge,
+        combatVeil,
         shootAtPointer,
         retryCombat,
         backToMap,

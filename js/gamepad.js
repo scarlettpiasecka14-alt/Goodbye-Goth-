@@ -164,7 +164,7 @@ function frame(now) {
     } else {
         // Playing: stick / D-pad = move, buttons = actions.
         for (const d of ['up', 'down', 'left', 'right']) setMove(d, dir[d]);
-        for (const act of ['jump', 'dodge', 'attack', 'heavy']) if (edgeBtn(pb[act])) tapAction(act);
+        for (const act of ['jump', 'dodge', 'attack', 'heavy', 'veil']) if (edgeBtn(pb[act])) tapAction(act);
     }
     Object.assign(prev, now2); prev.dir = dir;
 }

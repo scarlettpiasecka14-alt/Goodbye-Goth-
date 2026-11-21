@@ -11,9 +11,10 @@ export const ACTIONS = [
     { id: 'dodge', label: 'Dodge' },
     { id: 'attack', label: 'Punch' },
     { id: 'heavy', label: 'Heavy attack' },
+    { id: 'veil', label: 'Moth-Eaten Veil (if earned)' },
     { id: 'inventory', label: 'Inventory (backpack)' }
 ];
-export const DEFAULTS = { up: 'w', down: 's', left: 'a', right: 'd', jump: ' ', dodge: 'r', attack: 'x', heavy: 'z', inventory: 'y' };
+export const DEFAULTS = { up: 'w', down: 's', left: 'a', right: 'd', jump: ' ', dodge: 'r', attack: 'x', heavy: 'z', veil: 'k', inventory: 'y' };
 const ARROWS = { arrowup: 'up', arrowdown: 'down', arrowleft: 'left', arrowright: 'right' };
 const RESERVED = new Set(['o', 'escape', 'tab', 'enter', '`', 'f5', 'f11', 'f12', 'meta', 'control', 'alt', 'shift', 'capslock']);
 
@@ -60,10 +61,10 @@ export function keyLabel(key) {
 
 /* ---- V9.80: controller buttons (Gamepad API "standard" numbering) ---- */
 const PAD_KEY = 'goodbyeGothPad_v1';
-export const PAD_ACTIONS = ['jump', 'dodge', 'attack', 'heavy', 'inventory'];
-export const PAD_DEFAULTS = { jump: 0, dodge: 1, attack: 2, heavy: 3, inventory: 8 };
-export const PAD_NAMES = { 0: 'A', 1: 'B', 2: 'X', 3: 'Y', 4: 'LB', 5: 'RB', 6: 'LT', 7: 'RT', 8: 'VIEW', 9: 'START' };
-export const PAD_ALLOWED = [0, 1, 2, 3, 4, 5, 6, 7, 8];     // Start, D-pad and sticks stay fixed
+export const PAD_ACTIONS = ['jump', 'dodge', 'attack', 'heavy', 'veil', 'inventory'];
+export const PAD_DEFAULTS = { jump: 0, dodge: 1, attack: 2, heavy: 3, veil: 11, inventory: 8 };
+export const PAD_NAMES = { 0: 'A', 1: 'B', 2: 'X', 3: 'Y', 4: 'LB', 5: 'RB', 6: 'LT', 7: 'RT', 8: 'VIEW', 9: 'START', 11: 'R3 (right stick click)' };
+export const PAD_ALLOWED = [0, 1, 2, 3, 4, 5, 6, 7, 8, 11];     // Start and D-pad stay fixed; R3 (click-in) is free to use, per Scarlett for the veil
 let padMap = { ...PAD_DEFAULTS };
 try {
     const saved = JSON.parse(localStorage.getItem(PAD_KEY) || 'null');

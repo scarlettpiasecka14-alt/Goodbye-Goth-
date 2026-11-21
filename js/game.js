@@ -240,6 +240,7 @@ function showControls(){
           <div class="control-item"><span class="control-key">${hintHTML('dodge')}</span><span class="control-action">Dodge</span></div>
           <div class="control-item"><span class="control-key">${hintHTML('attack')}</span><span class="control-action">Punch</span></div>
           <div class="control-item"><span class="control-key">${hintHTML('heavy')}</span><span class="control-action">Heavy attack (once earned)</span></div>
+          <div class="control-item"><span class="control-key">${hintHTML('veil')}</span><span class="control-action">Moth-Eaten Veil (if you have it)</span></div>
           <div class="control-item"><span class="control-key">${hintHTML('interact')}</span><span class="control-action">Pick up / interact</span></div>
           <div class="control-item"><span class="control-key">${hintHTML('inventory')}</span><span class="control-action">Open inventory (backpack)</span></div>
           <div class="control-item"><span class="control-key">${hintHTML('settings')}</span><span class="control-action">Settings (or the ⚙ button)</span></div>
@@ -417,7 +418,10 @@ function mountLevel1(loadSaved=false){
   // Note this swaps the REAL win-ready button too, not just the cheat path, since they're
   // the same button - so actually finishing Level 1 for real now leads here as well.
   document.getElementById('win-ready')?.addEventListener('click',()=>{ level.stop(); mountLevel2(); });
-  document.querySelectorAll('[data-answer]').forEach(b=>b.addEventListener('click',()=>level.answerPuzzle(b.dataset.answer)));
+  // V9.85: pass which wrong button this is (0,1,2 in DOM order) so each one gets its own stable
+  // voice line for the life of one Princess Question, instead of a fresh random pick every click.
+  { const wrongBtns = [...document.querySelectorAll('[data-answer="wrong"]')];
+    document.querySelectorAll('[data-answer]').forEach(b=>b.addEventListener('click',()=>level.answerPuzzle(b.dataset.answer, b.dataset.answer==='wrong' ? wrongBtns.indexOf(b) : undefined))); }
   ui.combatCanvas.addEventListener('mousedown',e=>{
     if(e.button!==2) return;   // V9.31: punching is the X key only (left-click is kept free for shooting arrows later)
     e.preventDefault();
@@ -463,6 +467,11 @@ function mountLevel1(loadSaved=false){
     if(act==='heavy' && inFight){
       e.preventDefault();
       if(!e.repeat) level.combatHeavyAttack?.();
+      return;
+    }
+    if(act==='veil' && inFight){
+      e.preventDefault();
+      if(!e.repeat) level.combatVeil?.();
       return;
     }
     if(MOVE_KEY[act]){ e.preventDefault(); level.setMoveKey?.(MOVE_KEY[act],true); return; }
