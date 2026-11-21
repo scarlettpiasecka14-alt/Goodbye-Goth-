@@ -47,7 +47,7 @@ const RING_TUTORIAL = {   // V9.80: new wording. title = big heading, paras = on
     red: { label: 'Red Ring', title: 'Now We\'re Getting Serious', paras: ['This attack packs considerably more punch.', 'One hit won\'t be enough; you\'ll need to keep dodging or jumping until the attack is over.', 'Good luck, soldier.'] },
     purple: { label: 'Purple Ring', title: 'Oh, This Is Just Cheating', paras: ['Some Goths have rather... unusual abilities.', 'A purple ring signals a special ability unique to the enemy. These abilities don\'t necessarily follow the usual rules of combat, so watch carefully.'] },
     stun: { label: 'Dazed', title: 'Some Enemies Can Be Stunned!', paras: ['A few well-placed hits might leave an enemy seeing stars.', "Keep an eye on their stun bar. Once they're stunned, they'll be briefly vulnerable, giving you a chance to strike.", "But don't get too comfortable. Not every enemy goes down so easily!"] },
-    yellow: { label: 'Yellow Ring', title: 'A Little More Personal Space, Please?', paras: ['This attack covers a much larger area, so you\'ll need to think carefully about where you dodge or jump.', 'Some attacks may require more than one well-timed movement.', 'And don\'t bother trying to interrupt it. Enemies are completely invincible in yellow attacks.', 'Your best bet? Jump out of the way.'] }
+    yellow: { label: 'Yellow Ring', title: 'A Little More Personal Space, Please?', paras: ['This attack covers a much larger area, so you\'ll need to think carefully about where you dodge or jump.', 'Some attacks may require more than one well-timed movement.', 'And don\'t bother trying to interrupt it. Enemies are completely invincible during yellow attacks.', 'Your best bet? Get out of her way.'] }
 };
 const RING_TUTORIAL_ASPECT = { pink: '1672/941', red: '1672/941', purple: '1672/941', yellow: '1672/941', stun: '1280/801' };
 // V9.83: these were never preloaded, so the FIRST time each ring showed, the card rendered small/squarish (no intrinsic
@@ -179,7 +179,10 @@ const ITEM_INFO = {
     potion: { name: 'Potion', desc: 'Drink to restore to full HP.', tip: 'Drink to restore to full HP.', img: 'assets/items/potion-vial.webp', label: 'POTION' }
 };
 // V9.22: Olly's drinking animation (50 frames) used before the Patricia fight.
-const DRINK_FRAMES = 50, DRINK_FRAME_MS = 50, DRINK_HEAL_FRAME = 28, DRINK_DRAW_K = 0.51;   // V9.36b: was 0.656 (he looked about 30% bigger than in the fight itself)
+// V9.84: this was tuned (V9.36b) against PAT_OLLY_SCALE=0.95 and never retuned when that later changed
+// (0.95 -> 1.12 in V9.82, now 1.0 in V9.84) - so the drink animation drifted out of sync with his actual
+// size in the rest of the fight ("much smaller than the others"). Scaled by the same ratio so it tracks.
+const DRINK_FRAMES = 50, DRINK_FRAME_MS = 50, DRINK_HEAL_FRAME = 28, DRINK_DRAW_K = 0.51 * (1.0 / 0.95);
 const DRINK_ART = { w: 369, h: 527, feetY: 524, centerX: 191 };
 const drinkImgs = [];
 function loadDrinkFrames() {
@@ -430,13 +433,20 @@ function loadPatriciaAssets() {
     for (const [name, a] of Object.entries(patAtlas)) {
         const img = a.img;
         img.src = `assets/characters/patricia/atlas/pat-${name}.webp?v=9820`;
-        img.decode?.().then(() => {
-            if (window.createImageBitmap) createImageBitmap(img).then(bmp => { a.bmp = bmp; }).catch(() => {});
-        }).catch(() => {});
+        // V9.84: used to wait for img.decode() to finish before even STARTING createImageBitmap -
+        // two decodes of the same giant sheet run back-to-back instead of in parallel. That's the
+        // likely cause of "her sword swipe sometimes plays slow/blurry, sometimes fine": every draw
+        // call falls back to the raw <img> (see drawChainAtlasFrame: `pack.bmp || pack.img`) until
+        // the bitmap is ready, and a cheat-skipped fight (testing) gives zero lead time for it versus
+        // the real boss-intro screen's few extra seconds, so whichever finishes first is luck. Kicking
+        // both off at once roughly halves the time-to-bitmap, without changing WHEN this loader itself
+        // is called (that stays lazy on purpose - see the note above about 8GB Macs and memory).
+        img.decode?.().catch(() => {});
+        if (window.createImageBitmap) createImageBitmap(img).then(bmp => { a.bmp = bmp; }).catch(() => {});
     }
 }
 const PAT_SCALE = 0.66;               // = the atlas scale, so she is never resampled
-const PAT_STAND_OFF = 215, PAT_CHASE_SPEED = 185;   // V9.80: she closes in faster   // V9.41: her legs were moving faster than she travelled   // V9.36: slower (was 140)
+const PAT_STAND_OFF = 215, PAT_CHASE_SPEED = 210;   // V9.84: a touch faster again - still a deliberate menacing walk, just not quite as draggy (was 185, V9.80)   // V9.41: her legs were moving faster than she travelled   // V9.36: slower (was 140)
 // V9.34: her clips were generated separately, so she was a different size in each. These multipliers (measured head-to-feet against the idle clip) make her the same size in every move.
 // V9.44: the 'Salvagable?' jump clip's bounding box balloons as her limbs/hair fly out mid-jump (measured up to ~44% taller
 // than her idle box by the box's final segment), which is why her hurt reactions looked "MASSIVE" compared to every other
@@ -468,7 +478,7 @@ const PAT_STAGE2_MS = (() => {
 })();
 const PAT_HP = 300, PAT_STAGE2_HP = 150;
 const PAT_FLOOR_SHIFT = 105;   // V9.31: Patricia's arena floor is lower than the Level 1 arena, so both fighters were floating; everything is drawn this far lower there
-const PAT_OLLY_SCALE = 1.12;   // V9.82: she said everything felt smaller than him anyway - make Olly a bit bigger (was 0.95, V9.30)
+const PAT_OLLY_SCALE = 1.0;   // V9.84: back down - he now reads too big next to her (was 1.12, V9.82; 0.95, V9.30)
 // V9.31: Patricia's clips are 24 fps video (41.7 ms per source frame). The V9.25 timings below assumed ~31 fps (some moves 2x), so every move played far too fast.
 // Every number here is now source-frames x 41.7 ms, so she moves exactly as in the clips.
 const PAT_WALK_FRAME_MS = 40, PAT_IDLE_FRAME_MS = 83, PAT_INTRO_FRAME_MS = 70;   // V9.80: quicker stride   // V9.80: new green-screen walk + intro clips   // V9.39: the walk/idle atlases hold (nearly) every video frame now; walk is ~2x slower than the video on purpose
@@ -486,8 +496,14 @@ const PAT_LIGHT_RANGE = 520;   // V9.81: 900 covered basically the whole arena f
 // instant you're actually airborne is safe, and landing back in the zone resumes the tick. The loop is stretched to a
 // full ping-pong cycle (was cut short mid-cycle) so there's a real window to camp in it and get punished for it.
 const PAT_LIGHT_LOOP_MS = 1500, PAT_LIGHT_LOOP_FRAME_MS = 50, PAT_LIGHT_SETTLE_MS = 300, PAT_LIGHT_HIT_WINDOW_MS = 620;
-const PAT_LIGHT_TICK_MS = 500, PAT_LIGHT_TICK_DAMAGE = 4;   // 4 dmg every half-second standing in the zone (~ one old 25-dmg hit every 3s of camping)
-const PAT_LIGHT_STUN_AT_MS = 3000, PAT_LIGHT_STUN_MS = 900, PAT_LIGHT_STUN_DAMAGE = 6;   // 3 continuous seconds in the zone -> stunned + a damage spike
+// V9.84: a flat tick (same damage anywhere in the ring) read as "standing right in the visible
+// lightning and taking nothing" whenever you were grounded near the ring's outer edge between ticks -
+// per Scarlett, it should instead be continuous damage-per-second that scales with how close you are
+// to her (worst right at her feet, falling off to the ring's rim), with 0 the instant you're actually
+// outside PAT_LIGHT_RANGE. PAT_LIGHT_DPS_MIN is deliberately not 0 - the rim is still "in the lightning"
+// and should still visibly hurt a little, not feel like a dead zone just inside the line.
+const PAT_LIGHT_DPS_MAX = 14, PAT_LIGHT_DPS_MIN = 3;
+const PAT_LIGHT_STUN_AT_MS = 3000, PAT_LIGHT_STUN_MS = 900, PAT_LIGHT_STUN_DAMAGE = 6;   // 3 continuous seconds in the zone -> stunned + a damage spike (TODO: once Scarlett sends the Olly electric-shock reaction art, play it here instead of the generic hurt flash)
 // V9.41: her four hurt reactions are the jumps in the 'Salvagable?' clip (atlas 'salv' = source frames 4-52). [first, last] indexes into that atlas.
 // PAT_HURT_DY = how far (source px) each piece's first frame sits below the standing line, so every reaction starts with her feet on the floor.
 // V9.80: hurt reactions. Light hit = a flinch on whatever she is doing (no animation: the crouch looked like a leap). Medium (several punches quickly) and Heavy use single poses of the 'Salvagable?' clip
@@ -3387,7 +3403,7 @@ export function createLevel1(ui) {
         patDeathPrep();   // V9.42: load the death cutscene in the background so it can start the instant she falls
         patReward = null;
         patSpark = null; patSparkShards = null; patSparkPuff = null;
-        patLightStandMs = 0; patLightTickAt = -1e9; playerStunUntil = 0;
+        patLightStandMs = 0; patLightDmgAccum = 0; playerStunUntil = 0;
         chainLastGood = null;   // V9.39: never show the Chain Goth's last frame (the dead chain on the floor) before Patricia's art has loaded
         patStage = resume ? 2 : 1;
         patStep = 0; patHitsDone = 0; patDoneOnce = false;
@@ -3721,30 +3737,34 @@ export function createLevel1(ui) {
         if (st === 'lightning') {
             const strikeAt = PAT_LIGHT_WINDUP_MS;
             if (!zombieCombatAttackHit) { zombieCombatAttackHit = true; patHitsDone = 1; playThunder(1); }   // the slam-down sound still fires once, right as the zone goes live
-            // V9.82: the zone is live from the slam to the end of the settle, and it's a real floor hazard the whole time -
-            // 4 dmg every 500ms you're grounded and in range, and 3 full seconds of continuous standing in it stuns you
-            // for a beat with a damage spike. Jumping only buys immunity for the instant you're actually off the ground;
-            // land back in the zone and the tick picks up right where it left off (it used to zero out the moment you jumped,
-            // even for a hop that barely left the floor, so "just keep hopping" made the whole attack a non-threat).
+            // V9.84: the zone is live from the slam to the end of the settle, and it's a real floor hazard the whole time -
+            // continuous damage-per-second that scales with distance from her (worst right at her feet, down to a still-
+            // noticeable minimum at the ring's rim, 0 the instant you're actually outside it), and 3 full seconds of
+            // continuous standing in it stuns you for a beat with a damage spike. Jumping only buys immunity for the
+            // instant you're actually off the ground; land back in the zone and it picks up right where it left off
+            // (it used to zero out the moment you jumped, even for a hop that barely left the floor, so "just keep
+            // hopping" made the whole attack a non-threat).
             if (elapsed >= strikeAt && elapsed < strikeAt + PAT_LIGHT_LOOP_MS + PAT_LIGHT_SETTLE_MS) {
                 const airborne = jumping || jumpOffset < -20;
-                const inZone = Math.abs(player.x - zombieCombatX) <= PAT_LIGHT_RANGE;
+                const dist = Math.abs(player.x - zombieCombatX);
+                const inZone = dist <= PAT_LIGHT_RANGE;
                 if (inZone && !airborne && !(player.invuln > nowMs)) {
                     patLightStandMs += dt * 1000;
-                    if (nowMs - patLightTickAt >= PAT_LIGHT_TICK_MS) {
-                        patLightTickAt = nowMs;
-                        patDamage(PAT_LIGHT_TICK_DAMAGE, 1e5, 0, 'LIGHTNING ZONE', nowMs, true, true);
-                    }
+                    const closeness = 1 - Math.min(1, dist / PAT_LIGHT_RANGE);   // 1 = right on top of her, 0 = the ring's rim
+                    const dps = PAT_LIGHT_DPS_MIN + (PAT_LIGHT_DPS_MAX - PAT_LIGHT_DPS_MIN) * closeness;
+                    patLightDmgAccum += dps * dt;
+                    const whole = Math.floor(patLightDmgAccum);
+                    if (whole > 0) { patLightDmgAccum -= whole; patDamage(whole, 1e5, 0, 'LIGHTNING ZONE', nowMs, true, true); }
                     if (patLightStandMs >= PAT_LIGHT_STUN_AT_MS) {
                         patLightStandMs = 0;
                         playerStunUntil = nowMs + PAT_LIGHT_STUN_MS;
                         patDamage(PAT_LIGHT_STUN_DAMAGE, 1e5, 60, 'LIGHTNING STUN', nowMs, true, true);
                     }
                 } else {
-                    patLightTickAt = -1e9;   // off the floor or out of range: the tick clock pauses (not reset) and resumes on landing back in the zone
+                    patLightDmgAccum = 0;   // off the floor or out of range: no partial carry-over into the next tick
                 }
             } else {
-                patLightStandMs = 0; patLightTickAt = -1e9;   // zone's gone: start clean next time
+                patLightStandMs = 0; patLightDmgAccum = 0;   // zone's gone: start clean next time
             }
             if (elapsed >= strikeAt + PAT_LIGHT_LOOP_MS + PAT_LIGHT_SETTLE_MS) patToRecover(nowMs, 700);
             return;
@@ -3763,7 +3783,7 @@ export function createLevel1(ui) {
     let patLastDraw = null, patXfade = null, patStunning = false, patHurtMs = 500, patHurtLvl = 'medium', patHurtSeg = 0, patHurtLast = -1, patReward = null, patVid = null;
     // V9.54: no more freezing. While she stands still (waiting, recovering, between moves) she breathes and sways, and EVERY hit gives her a visible flinch (even during a strike's strike-frames, when no hurt clip plays).
     let patHitKickAt = -1e9, patLastWalkIdx = -1, patWalkMovedAt = -1e9;
-    let patLightTickAt = -1e9, patLightStandMs = 0;   // V9.82: lightning floor-hazard DOT/stun tracking
+    let patLightStandMs = 0, patLightDmgAccum = 0;   // V9.84: lightning floor-hazard DOT/stun tracking (fractional per-frame damage accrues in patLightDmgAccum and is applied in whole points, so the HP readout stays a clean integer)
     // her hurt clip starts ~15% smaller than the rest of it (the clip's camera pushes in), so its first frames are drawn bigger and ease down to the normal size
     // V9.36: every frame carries a "next" frame and how far we are towards it (frac), so the drawing can cross-fade: no more "bitty" steps.
     function patSeqFrame(q, el) {   // V9.80: step through [index, ms] poses, each cross-fading into the next over its last 55%; the final pose is held

@@ -28,7 +28,7 @@ const CAM_LEAD_Y = 90;
 // Olly's drawn size on this map is independent of MAP_ZOOM (both he and the background
 // scale together with the camera, so zoom alone can't change his size relative to the
 // map) - this is the actual fix for "Olly feels a bit big": shrink his own draw scale.
-const OLLY_MAP_SCALE = 0.72;   // was effectively .92 (i.e. Olly ~22% smaller now)
+const OLLY_MAP_SCALE = 0.792;   // V9.86: +10% per Scarlett (was 0.72)
 
 // Rough spot-check against the map art (assets/environment/level2-map-bg.webp):
 // the hollow is the lantern-lit cave on the left edge; the journal icon sits just
