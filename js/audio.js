@@ -175,7 +175,8 @@ const ALL_SFX = ['punch-1', 'punch-2', 'punch-3', 'goth-hurt-1', 'goth-hurt-2', 
     'chain-clatter', 'chain-drag', 'chain-drop', 'chain-impact', 'chain-impact-spin', 'chain-rattle', 'chain-spin',
     'breath-recovery', 'countdown-tick', 'fight-shout', 'zombie-death', 'tutorial', 'minigame-win', 'quiz-win', 'round-ok', 'wrong-buzz',
     'patricia-check-backpack', 'patricia-hey', 'patricia-kill-you', 'patricia-nice-try-cutie', 'patricia-nice-try', 'patricia-not-funny', 'patricia-pay-for-that', 'patricia-trying-hard',
-    'patricia-ugh-stop-it', 'patricia-unfair-fight', 'patricia-who-do-you', 'patricia-grunt-1', 'patricia-grunt-3', 'patricia-grunt-4', 'patricia-grunt-5', 'patricia-grunt-6', 'patricia-grunt-7', 'patricia-grunt-8', 'patricia-grunt-9'];
+    'patricia-ugh-stop-it', 'patricia-unfair-fight', 'patricia-who-do-you', 'patricia-grunt-1', 'patricia-grunt-3', 'patricia-grunt-4', 'patricia-grunt-5', 'patricia-grunt-6', 'patricia-grunt-7', 'patricia-grunt-8', 'patricia-grunt-9',
+    'princess-q-right-1', 'princess-q-right-2', 'princess-q-wrong-1', 'princess-q-wrong-2', 'princess-q-wrong-3'];
 ALL_SFX.forEach((n, i) => setTimeout(() => loadBuffer(n), i * 15));
 
 /* Music "pools": each name plays one file (looping) or a playlist that moves to the next track when one ends.

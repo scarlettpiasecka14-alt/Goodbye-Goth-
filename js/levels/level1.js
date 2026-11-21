@@ -5184,6 +5184,11 @@ export function createLevel1(ui) {
             ui.wouldFeedback.innerHTML = '<span class="wy-miss">✗</span> ' + (pct < zoneStart ? 'Too early. Decoy. Starting again.' : 'Too late. Starting again.');   // V9.30: no buzz here (the wrong-answer sound is for the Princess Question only)
         }
     }
+    // V9.84: Scarlett's own voice lines for the Princess Question, one random pick per
+    // press from whichever pool matches (right/wrong) - layered on top of the existing
+    // quiz-win/wrong-buzz stinger rather than replacing it.
+    const PRINCESS_Q_RIGHT_LINES = ['princess-q-right-1', 'princess-q-right-2'];
+    const PRINCESS_Q_WRONG_LINES = ['princess-q-wrong-1', 'princess-q-wrong-2', 'princess-q-wrong-3'];
     function answerPuzzle(answer) {
         if (mode !== 'puzzle')
             return;
@@ -5193,9 +5198,11 @@ export function createLevel1(ui) {
             ui.puzzle.classList.add('hidden');
             stats();
             playSfx('quiz-win', 1.6);
+            playVoiceLine(PRINCESS_Q_RIGHT_LINES[Math.floor(Math.random() * PRINCESS_Q_RIGHT_LINES.length)], 1.1);
             showCompletionScreen('assets/encounters/level1/princess-question-completed.webp?v=1', 'Princess Question complete', 'CONGRATULATIONS!', "You've answered the Princess Question correctly, proving that love and intelligence can, on rare occasions, coexist. Princess Scarlett would be proud. Try not to let it go to your head.", 'KEEP EXPLORING');
         } else {
             playSfx('wrong-buzz', 1.4);
+            playVoiceLine(PRINCESS_Q_WRONG_LINES[Math.floor(Math.random() * PRINCESS_Q_WRONG_LINES.length)], 1.1);
             ui.puzzleFeedback.textContent = '❌ Incorrect. The princess remains imprisoned, and somewhere a goth has just judged you.';
         }
     }
