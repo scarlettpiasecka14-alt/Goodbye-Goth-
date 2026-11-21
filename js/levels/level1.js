@@ -4148,6 +4148,68 @@ export function createLevel1(ui) {
         drawPatSpark(c, nowMs);
     }
     let patSparkPuff = null, patSparkShards = null;   // V9.82: shard burst when the orb hits Olly
+    // V9.87: per Scarlett's redesign - the orb no longer holds one fixed look. It continuously
+    // crossfades through all three of the reviewed concepts (a glassy "crystal" shell with smoke
+    // curling inside it, a dense "swirl" wreath of smoke with no shell, and a sparser "witchlight"
+    // of orbiting embers), with heavier smoke throughout than any single one of those drafts had.
+    const PAT_ORB_STYLES = ['crystal', 'swirl', 'witch'];
+    const PAT_ORB_STYLE_MS = 760;   // how long each style holds before it starts crossfading to the next
+    const PAT_ORB_XFADE_MS = 300;   // the overlap during which two styles are both drawn, blended
+    function patOrbPhase(ageMs) {
+        const cycle = PAT_ORB_STYLE_MS * PAT_ORB_STYLES.length;
+        const t = ((ageMs % cycle) + cycle) % cycle;
+        const idx = Math.floor(t / PAT_ORB_STYLE_MS);
+        const into = t - idx * PAT_ORB_STYLE_MS;
+        const xfadeStart = PAT_ORB_STYLE_MS - PAT_ORB_XFADE_MS;
+        const w = into > xfadeStart ? (into - xfadeStart) / PAT_ORB_XFADE_MS : 0;
+        return { from: PAT_ORB_STYLES[idx], to: PAT_ORB_STYLES[(idx + 1) % PAT_ORB_STYLES.length], w };
+    }
+    // One style's smoke motif, drawn at the given opacity so two can be crossfaded together.
+    function drawOrbSmoke(style, c, x, y, R, dir, nowMs, alpha) {
+        if (alpha <= .015) return;
+        c.save(); c.globalAlpha = alpha; c.globalCompositeOperation = 'lighter';
+        if (style === 'crystal') {
+            // a thin glass ring (the "shell" read) plus smoke curling just inside it
+            c.save(); c.globalCompositeOperation = 'source-over'; c.globalAlpha = alpha * .8;
+            c.strokeStyle = 'rgba(230,200,255,.55)'; c.lineWidth = 2; c.beginPath(); c.arc(x, y, R, 0, Math.PI * 2); c.stroke();
+            c.restore();
+            c.save(); c.beginPath(); c.arc(x, y, R * .97, 0, Math.PI * 2); c.clip();
+            for (let i = 0; i < 7; i++) {
+                const a0 = nowMs / 650 + i * .9;
+                c.strokeStyle = i % 2 ? 'rgba(224,180,255,.6)' : 'rgba(150,80,220,.55)'; c.lineWidth = 3.4 - i * .18;
+                c.beginPath();
+                for (let t = 0; t <= 1; t += .05) { const a = a0 + t * 5.4, rr = R * (.14 + t * .86); const px = x + Math.cos(a) * rr, py = y + Math.sin(a) * rr * .82; t === 0 ? c.moveTo(px, py) : c.lineTo(px, py); }
+                c.stroke();
+            }
+            c.restore();
+        } else if (style === 'swirl') {
+            // a dense wreath of smoke ribbons, no shell - reaches a touch past R for a fuller look
+            for (let i = 0; i < 12; i++) {
+                const a0 = nowMs / (560 + i * 35) + i * .78;
+                const rr0 = R * (.3 + (i % 4) * .23);
+                c.strokeStyle = i % 3 === 0 ? 'rgba(240,210,255,.55)' : (i % 3 === 1 ? 'rgba(194,114,250,.48)' : 'rgba(134,54,204,.46)');
+                c.lineWidth = 5 - (i % 3);
+                c.beginPath();
+                for (let t = 0; t <= 1; t += .035) { const a = a0 + t * 6.3, rr = rr0 * (.58 + .52 * Math.sin(t * 6 + i)); const px = x + Math.cos(a) * rr, py = y + Math.sin(a) * rr * .88; t === 0 ? c.moveTo(px, py) : c.lineTo(px, py); }
+                c.stroke();
+            }
+        } else {
+            // witchlight: a sparser veil plus small orbiting embers
+            for (let i = 0; i < 5; i++) {
+                const a0 = nowMs / 900 + i * 2.1;
+                c.strokeStyle = 'rgba(204,144,252,.42)'; c.lineWidth = 2.3;
+                c.beginPath();
+                for (let t = 0; t <= 1; t += .06) { const a = a0 + t * 4.2, rr = R * (.52 + t * .55); const px = x + Math.cos(a) * rr, py = y + Math.sin(a) * rr * .8; t === 0 ? c.moveTo(px, py) : c.lineTo(px, py); }
+                c.stroke();
+            }
+            for (let i = 0; i < 6; i++) {
+                const a = nowMs / 240 + i * (Math.PI * 2 / 6), rr = R * .82, px = x + Math.cos(a) * rr, py = y + Math.sin(a) * rr * .82;
+                const eg = c.createRadialGradient(px, py, 0, px, py, 9); eg.addColorStop(0, 'rgba(255,242,255,1)'); eg.addColorStop(1, 'rgba(182,92,232,0)');
+                c.fillStyle = eg; c.beginPath(); c.arc(px, py, 9, 0, Math.PI * 2); c.fill();
+            }
+        }
+        c.restore();
+    }
     function updatePatSpark(dt, nowMs) {
         if (!patSpark || patSpark.dead) return;
         const s = patSpark;
@@ -4186,12 +4248,19 @@ export function createLevel1(ui) {
         }
         // V9.82: on impact with Olly it explodes into purple shards (same deep-purple family as her teleport smoke) - an
         // unmissable burst instead of a silent, sometimes-ambiguous touch.
-        if (patSparkShards && nowMs - patSparkShards.t < 420) {
-            const k = (nowMs - patSparkShards.t) / 420, sx = patSparkShards.x, sy = patSparkShards.y;
+        // V9.87: per Scarlett ("should explode into little purple sparks and shards") - the jagged shards are joined
+        // by a separate, denser flock of small bright sparks (different size/motion/look from the shards, so the
+        // burst genuinely reads as two kinds of debris), and the whole thing runs a touch longer so it's unmissable.
+        if (patSparkShards && nowMs - patSparkShards.t < 520) {
+            const k = (nowMs - patSparkShards.t) / 520, sx = patSparkShards.x, sy = patSparkShards.y;
             if (!patSparkShards.pts) {
-                patSparkShards.pts = Array.from({ length: 14 }, (_, i) => {
-                    const a = (i / 14) * Math.PI * 2 + Math.random() * .4;
-                    return { a, speed: 190 + Math.random() * 260, size: 7 + Math.random() * 11, spin: (Math.random() - .5) * 9 };
+                patSparkShards.pts = Array.from({ length: 18 }, (_, i) => {
+                    const a = (i / 18) * Math.PI * 2 + Math.random() * .4;
+                    return { a, speed: 200 + Math.random() * 280, size: 7 + Math.random() * 11, spin: (Math.random() - .5) * 9 };
+                });
+                patSparkShards.sparks = Array.from({ length: 20 }, () => {
+                    const a = Math.random() * Math.PI * 2;
+                    return { a, speed: 280 + Math.random() * 380, size: 1.6 + Math.random() * 2.4 };
                 });
             }
             c.save(); c.globalCompositeOperation = 'lighter';
@@ -4204,6 +4273,14 @@ export function createLevel1(ui) {
                 sg.addColorStop(0, `rgba(196,128,255,${a})`); sg.addColorStop(1, `rgba(90,30,150,${a})`);
                 c.fillStyle = sg; c.beginPath(); c.moveTo(0, -p.size); c.lineTo(p.size * .55, 0); c.lineTo(0, p.size); c.lineTo(-p.size * .55, 0); c.closePath(); c.fill();
                 c.restore();
+            }
+            for (const sp of patSparkShards.sparks) {
+                const dist = sp.speed * k, fall = 520 * k * k * .5;
+                const px = sx + Math.cos(sp.a) * dist, py = sy + Math.sin(sp.a) * dist * .6 + fall;
+                const a = Math.max(0, 1 - k * 1.15);
+                const sg = c.createRadialGradient(px, py, 0, px, py, sp.size * 3);
+                sg.addColorStop(0, `rgba(255,255,255,${a})`); sg.addColorStop(1, 'rgba(190,110,255,0)');
+                c.fillStyle = sg; c.beginPath(); c.arc(px, py, sp.size * 3, 0, Math.PI * 2); c.fill();
             }
             c.restore();
             if (k >= 1) patSparkShards = null;
@@ -4225,6 +4302,9 @@ export function createLevel1(ui) {
         c.strokeStyle = 'rgba(206,150,255,.9)'; c.lineWidth = 2.5;
         for (let i = 0; i < 7; i++) { const a = nowMs / 55 + i * 1.1; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * (22 + Math.random() * 26), y + Math.sin(a) * (22 + Math.random() * 26)); c.stroke(); }
         c.restore();
+        // V9.87: the morphing style layer (crystal shell / swirl wreath / witchlight embers), crossfading
+        // continuously for as long as the orb is alive - see drawOrbSmoke/patOrbPhase above.
+        { const ph = patOrbPhase(nowMs - patSpark.born); drawOrbSmoke(ph.from, c, x, y, R, patSpark.dir, nowMs, 1 - ph.w); drawOrbSmoke(ph.to, c, x, y, R, patSpark.dir, nowMs, ph.w); }
         // V9.81: a crisp, fully-opaque white-purple ring + core drawn WITHOUT additive blending, on top -
         // the 'lighter' glow above can wash out against a bright patch of background; this hard edge never does.
         c.save();
