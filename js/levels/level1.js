@@ -4165,18 +4165,41 @@ export function createLevel1(ui) {
         return { from: PAT_ORB_STYLES[idx], to: PAT_ORB_STYLES[(idx + 1) % PAT_ORB_STYLES.length], w };
     }
     // One style's smoke motif, drawn at the given opacity so two can be crossfaded together.
+    // V9.88: per Scarlett ("the colour should be more similar to her smoke, and some wisps should
+    // be part of the orb") - every strand/ribbon below is now drawn from the EXACT same 3 color
+    // stops as her teleport smoke (patPuffs, just above: 196,128,255 / 120,50,190 / 70,20,120),
+    // instead of the lighter pink/magenta tones the first pass used, and drawOrbWisps adds actual
+    // soft drifting smoke puffs (patPuffs' own gradient recipe, literally) orbiting the orb itself,
+    // so it visibly belongs to the same smoke as the rest of her kit, not just a similar hue.
+    function drawOrbWisps(c, x, y, R, nowMs, alpha) {
+        if (alpha <= .015) return;
+        c.save(); c.globalAlpha = alpha; c.globalCompositeOperation = 'lighter';
+        const n = 10;
+        for (let i = 0; i < n; i++) {
+            const u = ((nowMs / 900) + i / n) % 1;
+            const ang = (i / n) * Math.PI * 2 + Math.sin(i * 12.9898) * 2;
+            const dist = R * (.25 + u * 1.05);
+            const px = x + Math.cos(ang) * dist, py = y + Math.sin(ang) * dist * .85 - u * 18;
+            const rad = R * (.18 + u * .32);
+            const a = (1 - u) * Math.min(1, u / .12) * .5;
+            const g = c.createRadialGradient(px, py, 0, px, py, rad);
+            g.addColorStop(0, `rgba(196,128,255,${a})`); g.addColorStop(.55, `rgba(120,50,190,${a * .6})`); g.addColorStop(1, 'rgba(70,20,120,0)');
+            c.fillStyle = g; c.beginPath(); c.arc(px, py, rad, 0, Math.PI * 2); c.fill();
+        }
+        c.restore();
+    }
     function drawOrbSmoke(style, c, x, y, R, dir, nowMs, alpha) {
         if (alpha <= .015) return;
         c.save(); c.globalAlpha = alpha; c.globalCompositeOperation = 'lighter';
         if (style === 'crystal') {
             // a thin glass ring (the "shell" read) plus smoke curling just inside it
             c.save(); c.globalCompositeOperation = 'source-over'; c.globalAlpha = alpha * .8;
-            c.strokeStyle = 'rgba(230,200,255,.55)'; c.lineWidth = 2; c.beginPath(); c.arc(x, y, R, 0, Math.PI * 2); c.stroke();
+            c.strokeStyle = 'rgba(216,170,255,.55)'; c.lineWidth = 2; c.beginPath(); c.arc(x, y, R, 0, Math.PI * 2); c.stroke();
             c.restore();
             c.save(); c.beginPath(); c.arc(x, y, R * .97, 0, Math.PI * 2); c.clip();
             for (let i = 0; i < 7; i++) {
                 const a0 = nowMs / 650 + i * .9;
-                c.strokeStyle = i % 2 ? 'rgba(224,180,255,.6)' : 'rgba(150,80,220,.55)'; c.lineWidth = 3.4 - i * .18;
+                c.strokeStyle = i % 2 ? 'rgba(196,128,255,.6)' : 'rgba(120,50,190,.55)'; c.lineWidth = 3.4 - i * .18;
                 c.beginPath();
                 for (let t = 0; t <= 1; t += .05) { const a = a0 + t * 5.4, rr = R * (.14 + t * .86); const px = x + Math.cos(a) * rr, py = y + Math.sin(a) * rr * .82; t === 0 ? c.moveTo(px, py) : c.lineTo(px, py); }
                 c.stroke();
@@ -4187,7 +4210,7 @@ export function createLevel1(ui) {
             for (let i = 0; i < 12; i++) {
                 const a0 = nowMs / (560 + i * 35) + i * .78;
                 const rr0 = R * (.3 + (i % 4) * .23);
-                c.strokeStyle = i % 3 === 0 ? 'rgba(240,210,255,.55)' : (i % 3 === 1 ? 'rgba(194,114,250,.48)' : 'rgba(134,54,204,.46)');
+                c.strokeStyle = i % 3 === 0 ? 'rgba(196,128,255,.55)' : (i % 3 === 1 ? 'rgba(150,80,220,.5)' : 'rgba(120,50,190,.46)');
                 c.lineWidth = 5 - (i % 3);
                 c.beginPath();
                 for (let t = 0; t <= 1; t += .035) { const a = a0 + t * 6.3, rr = rr0 * (.58 + .52 * Math.sin(t * 6 + i)); const px = x + Math.cos(a) * rr, py = y + Math.sin(a) * rr * .88; t === 0 ? c.moveTo(px, py) : c.lineTo(px, py); }
@@ -4197,18 +4220,19 @@ export function createLevel1(ui) {
             // witchlight: a sparser veil plus small orbiting embers
             for (let i = 0; i < 5; i++) {
                 const a0 = nowMs / 900 + i * 2.1;
-                c.strokeStyle = 'rgba(204,144,252,.42)'; c.lineWidth = 2.3;
+                c.strokeStyle = 'rgba(150,80,220,.42)'; c.lineWidth = 2.3;
                 c.beginPath();
                 for (let t = 0; t <= 1; t += .06) { const a = a0 + t * 4.2, rr = R * (.52 + t * .55); const px = x + Math.cos(a) * rr, py = y + Math.sin(a) * rr * .8; t === 0 ? c.moveTo(px, py) : c.lineTo(px, py); }
                 c.stroke();
             }
             for (let i = 0; i < 6; i++) {
                 const a = nowMs / 240 + i * (Math.PI * 2 / 6), rr = R * .82, px = x + Math.cos(a) * rr, py = y + Math.sin(a) * rr * .82;
-                const eg = c.createRadialGradient(px, py, 0, px, py, 9); eg.addColorStop(0, 'rgba(255,242,255,1)'); eg.addColorStop(1, 'rgba(182,92,232,0)');
+                const eg = c.createRadialGradient(px, py, 0, px, py, 9); eg.addColorStop(0, 'rgba(255,242,255,1)'); eg.addColorStop(1, 'rgba(120,50,190,0)');
                 c.fillStyle = eg; c.beginPath(); c.arc(px, py, 9, 0, Math.PI * 2); c.fill();
             }
         }
         c.restore();
+        drawOrbWisps(c, x, y, R, nowMs, alpha);   // the connecting layer - present in every style, same smoke family throughout
     }
     function updatePatSpark(dt, nowMs) {
         if (!patSpark || patSpark.dead) return;
