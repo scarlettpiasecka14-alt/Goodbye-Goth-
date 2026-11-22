@@ -2810,7 +2810,14 @@ export function createLevel1(ui) {
                 }
             }
 
-            if (!heavy && !zombieCombatAttackHit && elapsed >= 300 && elapsed <= 500) {
+            // V9.90: this used to require landing inside a 300-500ms WINDOW to register the hit at
+            // all. zombieCombatAttackHit already stops it from re-firing, so the upper bound did
+            // nothing but create a failure mode: any frame-timing stall (asset decode, GC pause,
+            // a dropped frame) that skipped elapsed clean over 500ms meant the swipe just never
+            // applied damage - no hit, no miss message, nothing - and the next windup looked
+            // identical, so it read as "she never actually attacks." A stall that pushes elapsed
+            // past 300ms should still land the hit it was already past due to play, not skip it.
+            if (!heavy && !zombieCombatAttackHit && elapsed >= 300) {
                 zombieCombatAttackHit = true;
                 applyZombieDamage(7, 165, 38, nowMs, 'CLAW SWIPE');
             }
@@ -4936,7 +4943,7 @@ export function createLevel1(ui) {
         const horizontalDistance = Math.abs(dx);
         const verticalDistance = Math.abs(dy);
         const hit = isAIFight()
-            ? horizontalDistance <= (isPatriciaFight() ? 260 : (isChainFight() ? 280 : 205)) && verticalDistance <= 105 && !patGone() && !patInvuln()   // Chain Goth keeps ~250px away, so her reach is longer
+            ? horizontalDistance <= (isPatriciaFight() ? 260 : (isChainFight() ? 280 : 205)) && verticalDistance <= 105 && !patGone() && !patInvuln()
             : Math.hypot(dx, dy) <= 180;
 
         if (hit) {
