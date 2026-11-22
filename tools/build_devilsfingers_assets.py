@@ -7,12 +7,33 @@ from one consistent source canvas like Patricia's clips.
 
 Source clips (from Scarlett, chroma-keyed from green-screen video):
   disappearandreappa.mp4  (193 frames, 8.04s)  -> "Burrowing"
-  thegrab.mp4              (241 frames, 10.04s) -> "Swallow and Spit" - a
-      COMPLETE baked cutscene: both the creature AND Olly are animated
-      together in this one clip (grab -> pull in -> implied swallow ->
-      spit out -> Olly lands dazed, gets up). Play it back whole, like
-      Patricia's stage2 half-health cutscene - don't try to re-composite
-      Olly live from this footage.
+  thegrab.mp4              (241 frames, 10.04s) -> "Swallow and Spit" source
+      footage (grab -> pull in -> implied swallow -> spit out -> Olly lands
+      dazed, gets up). NOT a baked cutscene in-game: per Scarlett, this is
+      fully interactive (dodge window to avoid the grab entirely; if
+      grabbed, a mash-X QTE to escape; only on QTE failure does playback
+      continue through to the spit-out/dazed/get-up ending). Combat code
+      for this branching is not yet written.
+
+      PATCH NOTE: every one of the 241 source frames has the creature's
+      tentacles genuinely cropped by the camera's top/right edges (a
+      source-footage limitation, confirmed via per-frame alpha-bbox
+      edge-touch checks). Fixed via horizontal-mirror reconstruction - the
+      design is bilaterally symmetric, so the frame's own fully-visible
+      left side is mirrored to fill in the cropped right/top, guaranteeing
+      exact color/lighting/style match (same artwork, reflected, not
+      borrowed from another clip). The mirror backdrop is computed ONCE
+      from frame_0001 (axis of symmetry at x=991 in the original
+      1280x720 frame) and reused statically across all 241 frames - safe
+      because the idle/background tentacles never move and the active
+      grabbing tentacle's motion stays confined to the Olly side (x<600),
+      never overlapping the patched region. Canvas padded by
+      PAD_TOP=220/PAD_RIGHT=280 to 1560x940; original frame content is
+      always pasted on top of the mirror backdrop at (0, PAD_TOP), so real
+      per-frame art always wins and the mirror only shows in the new
+      padding. This is why df_grab's anchor below is (640, 580), not
+      (640, 360) - it's the original frame-center anchor shifted down by
+      PAD_TOP to match the padded canvas.
   CreepyCrawl.mp4           (121 frames, 5.04s)  -> "Crawling" phase 1
       (rearing/bracing windup - "breaks free from its original position")
   DFcrawl.mp4               (145 frames, 6.04s)  -> "Crawling" phase 2
@@ -37,6 +58,11 @@ on the clip's own lighting - sample its own frame corners and key on
 them in assets/characters/devilsfingers/<folder>/frame_%04d.png, and run
 this script.
 
+For df_grab specifically, apply the mirror patch (see PATCH NOTE above)
+to the RAW (pre-key) frames first, then chroma-key the patched frames,
+before running this script - the keyed frames need to already be at the
+padded 1560x940 size with tentacles filled in.
+
 usage: build_devilsfingers_assets.py <repo_root> [name ...]
 """
 import sys, os, json, glob
@@ -58,7 +84,7 @@ CLIPS = {
     # composited relative to anywhere on the arena floor. Coarser step +
     # smaller scale so the atlas stays under WebP's 16383px dimension limit
     # (every video frame at full res would blow well past it).
-    'df_grab':         ('grab',         3, 0.55, (640, 360)),
+    'df_grab':         ('grab',         3, 0.55, (640, 580)),
 }
 
 def find_anchor(folder):
