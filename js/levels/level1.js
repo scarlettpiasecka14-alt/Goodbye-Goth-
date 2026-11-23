@@ -488,7 +488,11 @@ const PAT_STAND_OFF = 215, PAT_CHASE_SPEED = 210;   // V9.84: a touch faster aga
 // V9.44: the 'Salvagable?' jump clip's bounding box balloons as her limbs/hair fly out mid-jump (measured up to ~44% taller
 // than her idle box by the box's final segment), which is why her hurt reactions looked "MASSIVE" compared to every other
 // move. .84 reins the worst of that in without shrinking the first (already-normal-sized) segment too much.
-const PAT_PACK_K = { walk: .885 };   // V9.54: combo 1.23 -> 1.11 (it was drawn ~11% bigger than her idle); salv also ramps up for its first frames (see patSalvK)   // V9.41: combo art is smaller in its picture; 1.23 makes her the same height as in every other move
+const PAT_PACK_K = { walk: .885, intro: .886 };   // V9.54: combo 1.23 -> 1.11 (it was drawn ~11% bigger than her idle); salv also ramps up for its first frames (see patSalvK)   // V9.41: combo art is smaller in its picture; 1.23 makes her the same height as in every other move
+// V9.91: per Scarlett, the umbrella/purple-smoke intro clip reads as too large. Confirmed directly from the atlas's
+// own anchor offsets - every intro frame's offY (feet-to-top distance, scale-independent) runs ~639 vs idle/lunge's
+// ~566, a consistent ~13% oversize across the whole clip, not just one pose. 566/639 = .886 - coincidentally almost
+// the exact correction already applied to walk, suggesting both were shot on a different camera zoom than the rest.
 const PAT_SIZE_K = 1.18;   // V9.80: she reads as a boss now (was 1.0 and looked small next to Olly)
 // V9.36: feet. How far (in source px) each grounded clip's feet sit below the idle pose's feet; the clip is shifted up/down by that so she never floats.
 const PAT_FOOT_SRC = { walk: 5 };
@@ -519,6 +523,7 @@ const PAT_OLLY_SCALE = 1.0;   // V9.84: back down - he now reads too big next to
 // V9.31: Patricia's clips are 24 fps video (41.7 ms per source frame). The V9.25 timings below assumed ~31 fps (some moves 2x), so every move played far too fast.
 // Every number here is now source-frames x 41.7 ms, so she moves exactly as in the clips.
 const PAT_WALK_FRAME_MS = 40, PAT_IDLE_FRAME_MS = 83, PAT_INTRO_FRAME_MS = 70;   // V9.80: quicker stride   // V9.80: new green-screen walk + intro clips   // V9.39: the walk/idle atlases hold (nearly) every video frame now; walk is ~2x slower than the video on purpose
+const PAT_INTRO_BASE_W = 524;   // V9.91: her resting frame width in the intro clip (arms at her side, between twirls) - see the smoke-gating note in drawPatriciaCombat
 const PAT_LUNGE_WINDUP_FRAMES = 37, PAT_LUNGE_WINDUP_MS = 1500, PAT_LUNGE_STRIKE_FRAMES = 24, PAT_LUNGE_FRAME_MS = 48, PAT_LUNGE_HIT_AT_MS = 290;
 const PAT_LUNGE_DAMAGE = 12, PAT_LUNGE_RANGE = 360, PAT_LUNGE_PUSH = 36;
 const PAT_LUNGE_STRIKE_DY_NUDGE = 14;   // V9.90: how far (source px) to drop her during just the lunge's strike half - see getPatriciaFrame
@@ -4190,11 +4195,20 @@ export function createLevel1(ui) {
         // ambient rather than a one-shot triggered on contact). Reuses patPuffs' own gradient/motion,
         // anchored to the tip's position in THIS clip's own source frame (offset from its own anchor,
         // found by probing the keyed frames), scaled/mirrored the same way her art itself is.
+        // V9.91: per Scarlett, the smoke should only show while she's actually twirling the umbrella, not
+        // the whole clip (it previously ran constantly, which read as a static sway). The clip's own frame
+        // widths already tell us this directly - she's noticeably wider (arms/umbrella swung outward) during
+        // each twirl and back to her resting ~524px width between them - so "twirl intensity" is derived
+        // straight from that instead of a guessed, hand-picked frame range.
         if (st === 'intro') {
-            const PAT_INTRO_TIP_DX = -294, PAT_INTRO_TIP_DY = -16;
-            const tipX = enemyX + (drawFace === 'left' ? 1 : -1) * PAT_INTRO_TIP_DX * rs;
-            const tipY = CHAIN_FLOOR_Y + PAT_INTRO_TIP_DY * rs;
-            patPuffs(c, tipX, tipY, .55, nowMs, 10);
+            const introIdx = Math.floor(Math.max(0, nowMs - zombieCombatStateStart) / PAT_INTRO_FRAME_MS) % patAtlas.intro.frames.length;
+            const twirl = Math.max(0, Math.min(1, (patAtlas.intro.frames[introIdx][2] - PAT_INTRO_BASE_W) / 90));
+            if (twirl > .02) {
+                const PAT_INTRO_TIP_DX = -294, PAT_INTRO_TIP_DY = -16;
+                const tipX = enemyX + (drawFace === 'left' ? 1 : -1) * PAT_INTRO_TIP_DX * rs;
+                const tipY = CHAIN_FLOOR_Y + PAT_INTRO_TIP_DY * rs;
+                patPuffs(c, tipX, tipY, .55 * twirl, nowMs, 10);
+            }
         }
         updateChainStunMeter(nowMs);
         if (patSpeech) drawSpeechBubble(c, enemyX - 20, 118, patSpeech.text, nowMs - patSpeech.start, -250);   // V9.80: higher, clear of her face   // bubble sits beside her head so it never covers her HP box
@@ -4350,6 +4364,8 @@ export function createLevel1(ui) {
                 const sg = c.createLinearGradient(0, -p.size, 0, p.size);
                 sg.addColorStop(0, `rgba(196,128,255,${a})`); sg.addColorStop(1, `rgba(90,30,150,${a})`);
                 c.fillStyle = sg; c.beginPath(); c.moveTo(0, -p.size); c.lineTo(p.size * .55, 0); c.lineTo(0, p.size); c.lineTo(-p.size * .55, 0); c.closePath(); c.fill();
+                // V9.91: a thin bright edge along one facet - the glint that actually sells these as glass, not just purple confetti
+                c.strokeStyle = `rgba(255,255,255,${a * .8})`; c.lineWidth = 1; c.beginPath(); c.moveTo(0, -p.size); c.lineTo(p.size * .55, 0); c.stroke();
                 c.restore();
             }
             for (const sp of patSparkShards.sparks) {
@@ -4364,25 +4380,33 @@ export function createLevel1(ui) {
             if (k >= 1) patSparkShards = null;
         } else if (patSparkShards) patSparkShards = null;
         if (!patSpark || patSpark.dead) return;
-        const x = patSpark.x, y = patSpark.y, R = 62;   // V9.81: bigger still, and given a hard bright edge so it reads against any background, not just a dark one
-        // a trailing comet tail opposite the travel direction (drawn first, underneath)
-        c.save(); c.globalCompositeOperation = 'lighter';
+        // V9.91: per Scarlett's redesign - the orb should read as the wind-up smoke itself, shot out and
+        // transformed, not something that just pops into existence. For its first PAT_ORB_FORM_MS it grows
+        // in from a small, bright, smoke-wreathed point up to full size, so the transformation actually reads.
+        const formAge = nowMs - patSpark.born, formK = Math.min(1, formAge / PAT_ORB_FORM_MS);
+        const formEase = 1 - (1 - formK) * (1 - formK);   // ease-out: fast at first, settling into full size
+        const x = patSpark.x, y = patSpark.y, R = 62 * (.3 + .7 * formEase);   // V9.81: bigger still, and given a hard bright edge so it reads against any background, not just a dark one
+        // a trailing comet tail opposite the travel direction (drawn first, underneath) - fades in with the orb, so it never trails from nothing
+        c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = formEase;
         const tg = c.createLinearGradient(x - patSpark.dir * 130, y, x, y);
         tg.addColorStop(0, 'rgba(110,40,170,0)'); tg.addColorStop(1, 'rgba(176,100,230,.65)');
         c.fillStyle = tg; c.beginPath(); c.ellipse(x - patSpark.dir * 62, y, 76, 22, 0, 0, Math.PI * 2); c.fill();
         c.restore();
         // V9.82: deeper, more saturated purple - matching the family of colors in her teleport smoke (patPuffs) -
         // it used to skew pink/pastel and read as not-quite-belonging in her palette.
+        // V9.91: the straight radiating "spark" lines that used to sit on top of this glow are gone - per
+        // Scarlett, they were the main thing making this (and the wind-up below) read as a cartoon pink
+        // star rather than something she'd have drawn. The glow, ring and drifting smoke below carry it now.
         c.save(); c.globalCompositeOperation = 'lighter';
         const g = c.createRadialGradient(x, y, 3, x, y, R);
         g.addColorStop(0, 'rgba(216,170,255,1)'); g.addColorStop(.4, 'rgba(168,80,230,.88)'); g.addColorStop(.75, 'rgba(110,40,170,.5)'); g.addColorStop(1, 'rgba(70,20,120,0)');
         c.fillStyle = g; c.beginPath(); c.arc(x, y, R, 0, Math.PI * 2); c.fill();
-        c.strokeStyle = 'rgba(206,150,255,.9)'; c.lineWidth = 2.5;
-        for (let i = 0; i < 7; i++) { const a = nowMs / 55 + i * 1.1; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * (22 + Math.random() * 26), y + Math.sin(a) * (22 + Math.random() * 26)); c.stroke(); }
         c.restore();
-        // V9.87: the morphing style layer (crystal shell / swirl wreath / witchlight embers), crossfading
-        // continuously for as long as the orb is alive - see drawOrbSmoke/patOrbPhase above.
-        { const ph = patOrbPhase(nowMs - patSpark.born); drawOrbSmoke(ph.from, c, x, y, R, patSpark.dir, nowMs, 1 - ph.w); drawOrbSmoke(ph.to, c, x, y, R, patSpark.dir, nowMs, ph.w); }
+        // V9.91: simplified to just the 'crystal' look (a glass shell with smoke curling inside) full-time,
+        // instead of continuously morphing through 3 styles - a single, deliberate shape reads as more
+        // hand-drawn than something visibly cycling, and "glassy" is the one that actually matches her being
+        // a mystic ORB that then explodes into glass SHARDS.
+        drawOrbSmoke('crystal', c, x, y, R, patSpark.dir, nowMs, 1);
         // V9.81: a crisp, fully-opaque white-purple ring + core drawn WITHOUT additive blending, on top -
         // the 'lighter' glow above can wash out against a bright patch of background; this hard edge never does.
         c.save();
@@ -4391,22 +4415,27 @@ export function createLevel1(ui) {
         c.fillStyle = '#f3e4ff'; c.beginPath(); c.arc(x, y, 11, 0, Math.PI * 2); c.fill();
         c.restore();
     }
-    // V9.80: purple sparks gather at the umbrella tip during the jab wind-up, as a charge-up telegraph
+    // V9.91: how long the orb takes to finish forming out of the wind-up smoke once it's launched (ms)
+    const PAT_ORB_FORM_MS = 190;
+    // V9.80: purple smoke gathers and wraps the umbrella tip during the jab wind-up, as a charge-up telegraph.
+    // V9.91: per Scarlett's redesign - this used to be a burst of straight pink lines (read as a cartoon star,
+    // didn't fit her at all, and didn't connect visually to the orb it led into). Replaced with the same
+    // gothic purple smoke family as her teleport (patPuffs/drawOrbWisps), coiling tighter and brighter around
+    // the tip as the charge builds, so it reads as the umbrella itself being wrapped in smoke - the same smoke
+    // that shoots out and becomes the orb the instant she throws (see PAT_ORB_FORM_MS above).
     function drawJabCharge(c, enemyX, nowMs) {
         if (zombieCombatState !== 'jab') return;
         const el = nowMs - zombieCombatStateStart; if (el >= PAT_JAB_WINDUP_MS) return;
         const k = el / PAT_JAB_WINDUP_MS; const dir = patFace === 'left' ? -1 : 1;
         const tx = enemyX + dir * 120, ty = CHAIN_FLOOR_Y - 150;
         c.save(); c.globalCompositeOperation = 'lighter';
-        const g = c.createRadialGradient(tx, ty, 1, tx, ty, 14 + k * 40);   // V9.81: bigger charge glow, easier to clock from across the arena
-        g.addColorStop(0, `rgba(236,190,255,${.55 + .4 * k})`); g.addColorStop(1, 'rgba(150,60,210,0)');
-        c.fillStyle = g; c.beginPath(); c.arc(tx, ty, 14 + k * 40, 0, Math.PI * 2); c.fill();
-        c.strokeStyle = `rgba(222,160,250,${.45 + .5 * k})`; c.lineWidth = 2.5;
-        const n = 4 + Math.floor(k * 7);
-        for (let i = 0; i < n; i++) { const a = nowMs / 45 + i * (6.28 / n); const r = (18 + k * 44) * (.6 + Math.random() * .4); c.beginPath(); c.moveTo(tx, ty); c.lineTo(tx + Math.cos(a) * r, ty + Math.sin(a) * r); c.stroke(); }
+        const g = c.createRadialGradient(tx, ty, 1, tx, ty, 10 + k * 26);
+        g.addColorStop(0, `rgba(196,128,255,${.5 + .4 * k})`); g.addColorStop(1, 'rgba(70,20,120,0)');
+        c.fillStyle = g; c.beginPath(); c.arc(tx, ty, 10 + k * 26, 0, Math.PI * 2); c.fill();
         c.restore();
-        // V9.81: a solid (non-additive) bright dot at the gathering point so the charge-up is visible even over a light background patch
-        c.save(); c.globalAlpha = .35 + .5 * k; c.fillStyle = '#f3d6ff'; c.beginPath(); c.arc(tx, ty, 4 + k * 7, 0, Math.PI * 2); c.fill(); c.restore();
+        drawOrbWisps(c, tx, ty, 14 + k * 34, nowMs, .35 + .55 * k);   // coiling smoke, tighter and brighter as she charges
+        // a solid (non-additive) bright dot at the gathering point so the charge-up is visible even over a light background patch
+        c.save(); c.globalAlpha = .35 + .5 * k; c.fillStyle = '#e8cdfa'; c.beginPath(); c.arc(tx, ty, 4 + k * 6, 0, Math.PI * 2); c.fill(); c.restore();
     }
     // V9.30: comic speech bubble above a character's head (tail points down at (x, tipY)).
     function drawSpeechBubble(c, x, tipY, text, age, shiftX = 0) {
