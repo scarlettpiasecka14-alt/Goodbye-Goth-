@@ -426,6 +426,28 @@ PATRICIA_ATLAS_DATA.jab = {"size":[4007,3392],"scale":1.0,"frames":[[0,0,322,573
 PATRICIA_ATLAS_DATA.stage2 = {"size":[4082,4656],"scale":1.0,"frames":[[0,0,455,571,-245,-569],[457,0,455,571,-245,-569],[914,0,455,570,-245,-568],[1371,0,455,570,-245,-568],[1828,0,455,570,-245,-568],[2285,0,455,570,-245,-568],[2742,0,455,570,-245,-568],[3199,0,455,570,-245,-568],[0,573,451,569,-242,-567],[453,573,446,570,-238,-568],[901,573,440,572,-234,-570],[1343,573,439,570,-228,-568],[1784,573,442,568,-224,-566],[2228,573,445,566,-222,-565],[2675,573,455,564,-223,-562],[3132,573,469,559,-226,-558],[3603,573,479,554,-228,-554],[0,1147,487,547,-230,-550],[489,1147,499,540,-233,-543],[990,1147,514,528,-236,-532],[1506,1147,525,517,-238,-522],[2033,1147,533,509,-240,-514],[2568,1147,545,492,-242,-498],[3115,1147,559,463,-246,-470],[0,1696,568,431,-246,-438],[570,1696,570,422,-243,-430],[1142,1696,573,422,-242,-429],[1717,1696,567,426,-237,-433],[2286,1696,562,429,-234,-436],[2850,1696,558,430,-231,-438],[3410,1696,555,433,-230,-440],[0,2131,556,434,-231,-441],[558,2131,556,434,-231,-442],[1116,2131,556,434,-231,-442],[1674,2131,556,434,-231,-442],[2232,2131,556,434,-231,-442],[2790,2131,556,433,-231,-440],[3348,2131,556,430,-231,-437],[0,2567,557,426,-232,-434],[559,2567,558,426,-233,-433],[1119,2567,558,426,-233,-433],[1679,2567,558,426,-233,-433],[2239,2567,558,426,-233,-433],[2799,2567,558,426,-233,-433],[3359,2567,558,426,-233,-433],[0,2995,558,426,-234,-432],[560,2995,560,426,-235,-433],[1122,2995,560,434,-240,-441],[1684,2995,561,446,-246,-454],[2247,2995,558,458,-250,-466],[2807,2995,546,480,-252,-487],[3355,2995,522,515,-248,-520],[0,3512,496,541,-242,-543],[498,3512,477,560,-234,-558],[977,3512,454,572,-222,-566],[1433,3512,466,576,-238,-570],[1901,3512,510,576,-280,-570],[2413,3512,567,572,-334,-566],[2982,3512,614,564,-376,-558],[0,4090,626,562,-381,-556],[628,4090,624,562,-378,-557],[1254,4090,622,563,-376,-558],[1878,4090,621,564,-376,-558],[2501,4090,618,564,-376,-558],[3121,4090,618,564,-376,-558]]};   // V9.80: half-health cutscene (impact -> knees -> rise)
 for (const [name, data] of Object.entries(PATRICIA_ATLAS_DATA))
     patAtlas[name] = { img: new Image(), frames: data.frames, scale: data.scale };
+// V9.90: per Scarlett, her hair still shows a green fringe (green-screen spill left over from keying)
+// in the 'jab' standing pose and the 'intro' umbrella/smoke clip. Those two are the only packs run
+// through this - it's a per-pixel ImageData pass, so keeping it to the 2 implicated sheets (instead
+// of all 9) avoids adding real time to the loading-spike problem already fixed above.
+const PAT_DESPILL = { jab: true, intro: true };
+function patDespillCanvas(img) {
+    const cv = document.createElement('canvas');
+    cv.width = img.naturalWidth; cv.height = img.naturalHeight;
+    const ctx = cv.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    const id = ctx.getImageData(0, 0, cv.width, cv.height);
+    const d = id.data;
+    for (let i = 0; i < d.length; i += 4) {
+        if (d[i + 3] === 0) continue;   // fully transparent - nothing to despill
+        const r = d[i], g = d[i + 1], b = d[i + 2], mx = Math.max(r, b);
+        if (g > mx) d[i + 1] = mx;   // pull the green channel down to whichever of red/blue is stronger - kills the
+                                     // green-screen fringe (which is G-dominant almost by definition) without touching
+                                     // any hue that was never green-shifted in the first place
+    }
+    ctx.putImageData(id, 0, 0);
+    return cv;
+}
 let patAssetsRequested = false;
 function loadPatriciaAssets() {
     if (patAssetsRequested) return;
@@ -452,7 +474,8 @@ function loadPatriciaAssets() {
         const img = a.img;
         img.src = `assets/characters/patricia/atlas/pat-${name}.webp?v=9820`;
         const afterDecode = () => {
-            if (window.createImageBitmap) createImageBitmap(img).then(bmp => { a.bmp = bmp; startOne(); }).catch(() => startOne());
+            const src = (PAT_DESPILL[name] && window.CanvasRenderingContext2D) ? patDespillCanvas(img) : img;
+            if (window.createImageBitmap) createImageBitmap(src).then(bmp => { a.bmp = bmp; startOne(); }).catch(() => startOne());
             else startOne();
         };
         img.decode?.().then(afterDecode).catch(afterDecode);
@@ -498,6 +521,7 @@ const PAT_OLLY_SCALE = 1.0;   // V9.84: back down - he now reads too big next to
 const PAT_WALK_FRAME_MS = 40, PAT_IDLE_FRAME_MS = 83, PAT_INTRO_FRAME_MS = 70;   // V9.80: quicker stride   // V9.80: new green-screen walk + intro clips   // V9.39: the walk/idle atlases hold (nearly) every video frame now; walk is ~2x slower than the video on purpose
 const PAT_LUNGE_WINDUP_FRAMES = 37, PAT_LUNGE_WINDUP_MS = 1500, PAT_LUNGE_STRIKE_FRAMES = 24, PAT_LUNGE_FRAME_MS = 48, PAT_LUNGE_HIT_AT_MS = 290;
 const PAT_LUNGE_DAMAGE = 12, PAT_LUNGE_RANGE = 360, PAT_LUNGE_PUSH = 36;
+const PAT_LUNGE_STRIKE_DY_NUDGE = 14;   // V9.90: how far (source px) to drop her during just the lunge's strike half - see getPatriciaFrame
 const PAT_JAB_WINDUP_MS = 1000, PAT_JAB_WINDUP_FRAMES = 23, PAT_JAB_STRIKE_FRAMES = 16, PAT_JAB_FRAME_MS = 45, PAT_JAB_HIT_IDX = 3;   // V9.80 umbrella jab
 const PAT_JAB_DAMAGE = 9, PAT_JAB_RANGE = 340, PAT_JAB_PUSH = 22;
 const PAT_SMOKE_FRAME_MS = 125, PAT_SMOKE_FRAMES = 21, PAT_SMOKE_GONE_AT_MS = 560, PAT_SMOKE_REAPPEAR_AT_MS = 1600;   // V9.45: she vanishes twice as fast (was 1120 / 2100)
@@ -3859,6 +3883,12 @@ export function createLevel1(ui) {
         }
         if (st === 'intro') {   // V9.80: her new green-screen intro clip (she stands, hair/dress sway, raises a clawed hand)
             if (patAtlas.intro?.img?.complete && patAtlas.intro.img.naturalWidth) return mk(patAtlas.intro, (nowMs - zombieCombatStateStart) / PAT_INTRO_FRAME_MS, patAtlas.intro.frames.length, true);
+            // V9.90: it hadn't finished loading yet, so we're on the idle fallback above - keep pushing the clip's
+            // own start time forward while that's true, so the instant it IS ready we begin at frame 0, not
+            // wherever real elapsed time would have put us. Without this, a slow load (most likely right after
+            // a page reload from Save/Load, before the preload has had time to run) meant she'd suddenly cut
+            // from idle into the MIDDLE of the intro clip - the "disappear and reappear" during her intro.
+            zombieCombatStateStart = nowMs;
             return patIdle(nowMs);
         }
         if (st === 'lunge' || st === 'vstrike') {
@@ -4115,7 +4145,12 @@ export function createLevel1(ui) {
         } else if (st === 'vstrike') patPuffs(c, enemyX, CHAIN_FLOOR_Y, 1 - Math.min(1, tt / 500), nowMs, 14);
         const packName = Object.keys(patAtlas).find(k => patAtlas[k] === frame.pack);
         const rs = PAT_SCALE * PAT_SIZE_K * (PAT_PACK_K[packName] || 1) * 1;
-        const dy = -((PAT_FOOT_SRC[packName] || 0) + (frame.dySrc || 0)) * rs;   // keeps her feet on the same line in every clip
+        let dy = -((PAT_FOOT_SRC[packName] || 0) + (frame.dySrc || 0)) * rs;   // keeps her feet on the same line in every clip
+        // V9.90: per Scarlett, the sword lunge reads as hitting too high - the blade swings well above Olly even
+        // though the hit (applyZombieDamage) has no vertical check at all, so it always lands regardless. Nudging
+        // her down a touch for just the strike half (not the windup raise) brings the blade closer to his height
+        // without disturbing the windup pose or her feet in every other clip.
+        if (st === 'lunge' && nowMs - zombieCombatStateStart >= PAT_LUNGE_WINDUP_MS) dy += PAT_LUNGE_STRIKE_DY_NUDGE * rs;
         // V9.54: breathing while she stands still + a flinch on every hit (scaled around her feet)
         if (zombieCombatWalkIndex !== patLastWalkIdx) { patLastWalkIdx = zombieCombatWalkIndex; patWalkMovedAt = nowMs; }
         let sx = 1, sy = 1, shx = 0;
