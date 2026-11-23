@@ -532,12 +532,12 @@ const PAT_OLLY_SCALE = 1.0;   // V9.84: back down - he now reads too big next to
 const PAT_WALK_FRAME_MS = 40, PAT_IDLE_FRAME_MS = 83, PAT_INTRO_FRAME_MS = 70;   // V9.80: quicker stride   // V9.80: new green-screen walk + intro clips   // V9.39: the walk/idle atlases hold (nearly) every video frame now; walk is ~2x slower than the video on purpose
 const PAT_INTRO_BASE_W = 524;   // V9.91: her resting frame width in the intro clip (arms at her side, between twirls) - see the smoke-gating note in drawPatriciaCombat
 const PAT_LUNGE_WINDUP_FRAMES = 37, PAT_LUNGE_WINDUP_MS = 1500, PAT_LUNGE_STRIKE_FRAMES = 24, PAT_LUNGE_FRAME_MS = 48, PAT_LUNGE_HIT_AT_MS = 290;
-const PAT_LUNGE_DAMAGE = 12, PAT_LUNGE_RANGE = 360, PAT_LUNGE_PUSH = 36;
+const PAT_LUNGE_DAMAGE = 18, PAT_LUNGE_RANGE = 360, PAT_LUNGE_PUSH = 36;   // V9.93: damage pass per Scarlett, so Patricia clearly hits hardest in the game - was 12
 const PAT_LUNGE_STRIKE_DY_NUDGE = 14;   // V9.90: how far (source px) to drop her during just the lunge's strike half - see getPatriciaFrame
 const PAT_JAB_WINDUP_MS = 1000, PAT_JAB_WINDUP_FRAMES = 23, PAT_JAB_STRIKE_FRAMES = 16, PAT_JAB_FRAME_MS = 45, PAT_JAB_HIT_IDX = 3;   // V9.80 umbrella jab
-const PAT_JAB_DAMAGE = 9, PAT_JAB_RANGE = 340, PAT_JAB_PUSH = 22;
+const PAT_JAB_DAMAGE = 14, PAT_JAB_RANGE = 340, PAT_JAB_PUSH = 22;   // V9.93: damage pass per Scarlett - was 9
 const PAT_SMOKE_FRAME_MS = 125, PAT_SMOKE_FRAMES = 21, PAT_SMOKE_GONE_AT_MS = 560, PAT_SMOKE_REAPPEAR_AT_MS = 1600;   // V9.45: she vanishes twice as fast (was 1120 / 2100)
-const PAT_VSTRIKE_APPEAR_MS = 280, PAT_VSTRIKE_DAMAGE = 15;
+const PAT_VSTRIKE_APPEAR_MS = 280, PAT_VSTRIKE_DAMAGE = 32;   // V9.93: damage pass per Scarlett - her signature hit, was 15, now clearly the hardest single hit in the game
 const PAT_LIGHT_WINDUP_FRAMES = 14, PAT_LIGHT_WINDUP_MS = 720, PAT_LIGHT_FRAMES = 9, PAT_LIGHT_FRAME_MS = 167;
 const PAT_LIGHT_RANGE = 520;   // V9.81: 900 covered basically the whole arena floor (no way to escape it at all) - the real fix for "doesn't hit a stationary player" was the single-instant hit check below, not a huge range, so this is back down to a range you can actually run clear of
 // V9.34: the lightning clip ends with her floating, so the discharge frames now loop for a while, then she settles back down (windup frames played in reverse).
