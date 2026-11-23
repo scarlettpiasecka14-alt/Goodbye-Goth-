@@ -1349,6 +1349,7 @@ export function createLevel1(ui) {
         keyCollected = false,
         gateOpened = false,
         heavyUnlocked = false,
+        patriciaDefeated = false,   // V9.90: true once her fight is won - saved, so a reload after "Save and Quit" on the win screen can put the win screen back up instead of just dropping you on a map with nothing left to do
         heavyCdMul = 1,   // V9.42: chest reward can lower this
         veilCharges = 0,   // V9.85: Patricia's "Moth-Eaten Veil" chest reward - 3 total uses, never recharges, gone once spent
         veilUntil = -1e9,   // purely cosmetic: draws the shimmer while a veil use is active (the actual invincibility is player.invuln, same as dodge)
@@ -5191,6 +5192,7 @@ export function createLevel1(ui) {
         if (won) {
             if (isBoss) {
                 hp = maxHp;
+                patriciaDefeated = true;   // V9.90: persisted below so a save taken on this win screen can restore it
                 stats();
                 ui.win.classList.remove('hidden');
                 return;
@@ -5541,7 +5543,7 @@ export function createLevel1(ui) {
     function saveGame(silent = false) {
         try {
             const state = {
-                version: 6,
+                version: 7,   // V9.90: added patriciaDefeated
                 savedAt: new Date().toISOString(),
                 level: 1,
                 x,
@@ -5557,6 +5559,7 @@ export function createLevel1(ui) {
                 gateOpened,
                 bossIntroPending,
                 heavyUnlocked,
+                patriciaDefeated,
                 inventory,
                 checkpoint,
                 enemies: enemies.map(e => ({
@@ -5574,7 +5577,7 @@ export function createLevel1(ui) {
     }
     function loadGame() {
         const state = safeParseSave();
-        if (!state || ![2, 3, 4, 5, 6].includes(state.version))
+        if (!state || ![2, 3, 4, 5, 6, 7].includes(state.version))
             return false;
         try {
             x = Number.isFinite(state.x) ? Math.min(WORLD_W - 40, Math.max(40, state.x)) : x;
@@ -5611,6 +5614,7 @@ export function createLevel1(ui) {
             heavyUnlocked = state.version >= 5 ? !!state.heavyUnlocked : false;
             if (enemies.every(e => e.dead))
                 heavyUnlocked = true;
+            patriciaDefeated = state.version >= 7 && !!state.patriciaDefeated;   // V9.90: old saves predate this - nothing to restore, false is correct for them
             mode = 'map';
             target = null;
             bossRoomEntered = false;
@@ -5622,6 +5626,10 @@ export function createLevel1(ui) {
             revealAround(x, y, true);
             ui.dialogue.textContent = '📂 Game loaded. Welcome back to the cemetery.';
             if (state.bossIntroPending) { gateOpened = true; showBossIntro(); }
+            // V9.90: she was already beaten when this save was made, but nothing before this persisted
+            // that - loading just dropped you on a finished-looking map with no way to actually move on.
+            // Put the win screen straight back up so "Ready" / "Save and Quit" are reachable again.
+            else if (patriciaDefeated) { isBoss = true; hp = maxHp; stats(); ui.win.classList.remove('hidden'); }
             return true;
         } catch (err) {
             console.error('Goodbye Goth load failed', err);
