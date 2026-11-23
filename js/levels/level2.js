@@ -42,6 +42,10 @@ const TOM_JOURNAL = { x: 255, y: 505 };
 // real content goes in.
 const MINI_GAME_SPOT = { x: 650, y: 790, name: 'FIND SCARLETT' };
 const PRINCESS_Q_SPOT = { x: 1300, y: 230, name: 'Chaos Fairy Goth clue' };
+// Devil's Fingers (Level 2 miniboss) encounter spot. Placeholder position on the map -
+// nothing in the art marks this spot yet, so Scarlett will want to move this once she's
+// looked at the real map art; it's only here so the fight is actually reachable to test.
+const DF_SPOT = { x: 980, y: 640, name: "Devil's Fingers" };
 
 // Olly now starts right at the glowing tree-hollow archway near the top of the map
 // (Scarlett: "his starting position to be the top-left tree hollow"), standing on its
@@ -122,6 +126,55 @@ princessQIcon.src = 'assets/icons/princess-question.webp?v=9420';
 
 const SH = a => `rgba(0,0,0,${a})`;
 
+// --- Devil's Fingers (Level 2 miniboss) combat ---------------------------------------
+// Atlases built by tools/build_devilsfingers_assets.py from her 6 source clips (see that
+// script's own docstring for the full per-clip documentation). Frame rows are the same
+// [atlasX, atlasY, w, h, offX, offY] shape used by Patricia/Chain Goth in level1.js.
+// Loaded lazily (only once the player actually reaches the encounter) since these are a
+// few MB each and Level 2 preview has no reason to pay that cost just sitting on the map.
+const DF_CLIP_NAMES = ['df_disappear', 'df_grab', 'df_creepycrawl', 'df_dfcrawl', 'df_flick', 'df_acidtrip'];
+const dfAtlas = {};
+let dfAssetsRequested = false, dfAtlasData = null;
+function loadDevilsFingersAssets() {
+    if (dfAssetsRequested) return;
+    dfAssetsRequested = true;
+    fetch('assets/characters/devilsfingers/atlas_data.json').then(r => r.json()).then(data => {
+        dfAtlasData = data;
+        for (const name of DF_CLIP_NAMES) {
+            const d = data[name];
+            if (!d) continue;
+            const img = new Image();
+            img.src = `assets/characters/devilsfingers/atlas/${name}.webp`;
+            dfAtlas[name] = { img, frames: d.frames, scale: d.scale, anchor: d.anchor };
+        }
+    }).catch(() => {});
+}
+// Real frame timing, from the build script's own frame-step documentation (24fps source,
+// df_disappear/df_grab packed every 3rd frame = 125ms/frame, the rest every 2nd = 83.3ms/frame).
+const DF_FRAME_MS = { df_disappear: 125, df_grab: 125, df_creepycrawl: 1000 / 12, df_dfcrawl: 1000 / 12, df_flick: 1000 / 12, df_acidtrip: 1000 / 12 };
+// Minimal, self-contained version of level1.js's drawChainAtlasFrame - same algorithm,
+// without the Chain-Goth-specific width-stretch or "last good frame" fallback (DF's clips
+// aren't continuously on screen the way she is, so a blank frame during a load stall is fine).
+function drawDFAtlasFrame(c, pack, index, x, floorY, face, renderScale = 1, alpha = 1) {
+    if (!pack?.img?.complete || !pack.img.naturalWidth || !pack.frames?.length) return false;
+    const n = pack.frames.length, i = Math.max(0, Math.min(n - 1, Math.floor(index)));
+    const f = pack.frames[i];
+    const k = renderScale / pack.scale;
+    c.save();
+    c.globalAlpha = alpha;
+    c.translate(Math.round(x), Math.round(floorY));
+    c.scale(face === 'left' ? 1 : -1, 1);   // art faces left, like Patricia/Chain Goth's
+    c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
+    // f[4]/f[5] (the anchor-relative offset) are in the SOURCE clip's original pixel
+    // units, so they scale by renderScale directly; f[2]/f[3] (the atlas crop's own
+    // width/height) are already at the atlas's packed scale, so they scale by k to land
+    // at the requested renderScale. (Mixing these up is exactly what made df_grab -
+    // the one clip packed at scale 0.55 instead of 1.0 - render in the wrong place.)
+    c.drawImage(pack.img, f[0], f[1], f[2], f[3], Math.round(f[4] * renderScale), Math.round(f[5] * renderScale), Math.round(f[2] * k), Math.round(f[3] * k));
+    c.restore();
+    return true;
+}
+
 export function createLevel2(ui) {
     const ctx = ui.canvas.getContext('2d');
 
@@ -135,8 +188,43 @@ export function createLevel2(ui) {
     let dialogueQueue = null, dialogueIdx = 0;
     let raf = 0, lastT = 0;
 
-    // 'map' | 'mushroom'
+    // 'map' | 'mushroom' | 'combat'
     let mode = 'map';
+
+    // --- Devil's Fingers combat runtime state --------------------------------------
+    const DF_MAX_HP = 200, OLLY_COMBAT_MAX_HP = 100;
+    const DF_PUNCH_DAMAGE = 5, DF_PUNCH_COMBO = 3, DF_PUNCH_COOLDOWN_MS = 10000;
+    const DF_HEAVY_DAMAGE = 20, DF_HEAVY_COOLDOWN_MS = 60000;
+    const DF_DODGE_INVULN_MS = 500, DF_DODGE_COOLDOWN_MS = 600;
+    const DF_MELEE_RANGE = 170;
+    const DF_ARENA_W = 1440, DF_ARENA_FLOOR_Y = 560;
+    // Her 5 named attacks. hitMs are provisional "when does this actually land" timings
+    // picked from the clips' own real durations (see DF_FRAME_MS/build script) - flagged
+    // for Scarlett to eyeball once she can see the fight, same as the still-unpinned
+    // Tentacle Swipe strike frame from the original checklist.
+    const DF_ATTACKS = {
+        disappear: { clip: 'df_disappear', dmg: 15, hitMs: 7310, label: 'Burrowing' },
+        creepycrawl: { clip: 'df_creepycrawl', dmg: 0, hitMs: null, label: 'Crawling (brace)' },   // windup only, leads into dfcrawl
+        dfcrawl: { clip: 'df_dfcrawl', dmg: 8, hitMs: 3350, label: 'Crawling' },
+        flick: { clip: 'df_flick', dmg: 12, hitMs: 2450, label: 'Tentacle Swipe' },   // TODO(Scarlett): pin down the real strike frame
+        acidtrip: { clip: 'df_acidtrip', dmg: 10, hitMs: 2433, label: 'Acid Bombs: The Trip' }
+    };
+    const DF_GRAB_CATCH_MS = 3544;   // dodge window: dodge any time before this and the grab whiffs entirely
+    const DF_GRAB_QTE_MS = 2500, DF_GRAB_MASH_NEEDED = 8;
+    const DF_GRAB_ESCAPE_DAMAGE = 8, DF_GRAB_FAIL_DAMAGE = 30;
+    const ACID_TRIP_EFFECT_MS = 5000;   // whole-screen swirl + Olly dazed, per Scarlett
+
+    let dfHP = DF_MAX_HP, ollyCombatHP = OLLY_COMBAT_MAX_HP;
+    let dfState = 'idle', dfStateStart = 0, dfNextAttackAt = 0, dfHitApplied = false;
+    let dfArenaX = DF_ARENA_W * 0.74, ollyArenaX = DF_ARENA_W * 0.26, dfFacing = 'left';
+    let dfMashCount = 0, dfQteDeadline = 0, dfFreezeFrameIdx = 0, dfFailStart = 0;
+    let dfLastAttackId = null;
+    let attackComboCount = 0, attackCooldownUntil = 0, heavyCooldownUntil = 0;
+    let playerInvulnUntil = 0, dodgeCooldownUntil = 0;
+    let acidEffectUntil = 0;
+    let dfCombatStatus = '';
+    let dfDom = null;   // built lazily on entering the fight, torn down on exit
+    let dfNowMs = 0;
 
     // --- Find Scarlett runtime state ---
     let fsRoundIdx = 0;
@@ -152,6 +240,259 @@ export function createLevel2(ui) {
     let mistScroll = 0;
 
     function near(px, py, r) { return Math.hypot(x - px, y - py) < r; }
+
+    // --- Devil's Fingers: enter / exit ----------------------------------------------
+    function buildDfDom() {
+        const ov = document.createElement('div');
+        ov.id = 'df-combat-overlay';
+        ov.style.cssText = 'position:fixed;inset:0;z-index:10030;background:#0a0710;display:flex;flex-direction:column;align-items:center;justify-content:center;';
+        ov.innerHTML = `
+            <div style="width:min(94vw,1200px);display:flex;flex-direction:column;gap:8px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;font:700 15px Georgia,serif;color:#f0e6f5;">
+                    <div>OLLY <span id="df-olly-hp-text">100 / 100</span></div>
+                    <div style="letter-spacing:.04em;">DEVIL'S FINGERS (PREVIEW)</div>
+                    <div><span id="df-enemy-hp-text">200 / 200</span> DEVIL'S FINGERS</div>
+                </div>
+                <div style="display:flex;gap:10px;">
+                    <div style="flex:1;height:10px;border-radius:6px;background:rgba(255,255,255,.12);overflow:hidden;"><div id="df-olly-hp-bar" style="height:100%;width:100%;background:#7fd68a;transition:width .15s;"></div></div>
+                    <div style="flex:1;height:10px;border-radius:6px;background:rgba(255,255,255,.12);overflow:hidden;"><div id="df-enemy-hp-bar" style="height:100%;width:100%;background:#b878e0;transition:width .15s;"></div></div>
+                </div>
+                <div style="position:relative;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.14);">
+                    <canvas id="df-combat-canvas" width="1440" height="650" style="display:block;width:100%;height:auto;background:#140a1c;"></canvas>
+                    <div id="df-acid-fx" style="position:absolute;inset:0;pointer-events:none;opacity:0;mix-blend-mode:screen;background:conic-gradient(from 0deg,#ff5ecb,#6ef0ff,#b6ff5e,#ffe65e,#ff5ecb);"></div>
+                </div>
+                <div id="df-combat-status" style="min-height:22px;text-align:center;font:600 14px Georgia,serif;color:#e8d9ef;">A monstrous tangle of fingers blocks the way.</div>
+                <div style="text-align:center;font:500 12px Georgia,serif;color:#a898b0;">${actionHintFallback('attack')} punch &nbsp;·&nbsp; ${actionHintFallback('heavy')} heavy &nbsp;·&nbsp; ${actionHintFallback('dodge')}/right-click dodge</div>
+            </div>`;
+        document.body.appendChild(ov);
+        return {
+            ov,
+            canvas: ov.querySelector('#df-combat-canvas'),
+            ctx: ov.querySelector('#df-combat-canvas').getContext('2d'),
+            status: ov.querySelector('#df-combat-status'),
+            ollyHpBar: ov.querySelector('#df-olly-hp-bar'), ollyHpText: ov.querySelector('#df-olly-hp-text'),
+            enemyHpBar: ov.querySelector('#df-enemy-hp-bar'), enemyHpText: ov.querySelector('#df-enemy-hp-text'),
+            acidFx: ov.querySelector('#df-acid-fx')
+        };
+    }
+    // Shows the DEFAULT key for each action (controls.js isn't imported into this file,
+    // to avoid a second module instance) - if Scarlett's rebound her keys this hint line
+    // will say the wrong key; fine for a combat preview, worth fixing if this goes live.
+    function actionHintFallback(act) { return act === 'attack' ? 'X' : act === 'heavy' ? 'Z' : 'R'; }
+    function dfSetStatus(s) { dfCombatStatus = s; if (dfDom) dfDom.status.textContent = s; }
+    function enterDevilsFingersCombat() {
+        if (mode === 'combat') return;
+        loadDevilsFingersAssets();
+        mode = 'combat';
+        dfHP = DF_MAX_HP; ollyCombatHP = OLLY_COMBAT_MAX_HP;
+        dfState = 'idle'; dfStateStart = dfNowMs; dfNextAttackAt = dfNowMs + 1400; dfHitApplied = false;
+        dfArenaX = DF_ARENA_W * 0.74; ollyArenaX = DF_ARENA_W * 0.26; dfFacing = 'left';
+        attackComboCount = 0; attackCooldownUntil = 0; heavyCooldownUntil = 0;
+        playerInvulnUntil = 0; dodgeCooldownUntil = 0; acidEffectUntil = 0;
+        dfDom = buildDfDom();
+        dfSetStatus("A monstrous tangle of fingers blocks the way.");
+        playSfx('click', 1);
+    }
+    function exitDevilsFingersCombat(won) {
+        if (mode !== 'combat') return;
+        mode = 'map';
+        if (dfDom) { dfDom.ov.remove(); dfDom = null; }
+        ui.dialogue.textContent = won
+            ? "Devil's Fingers sinks back into the earth. (PREVIEW - no reward/death sequence yet.)"
+            : "Olly stumbles back to the path, shaken. (PREVIEW - no real fail-state yet; HP simply resets.)";
+    }
+
+    // --- Devil's Fingers: player actions ---------------------------------------------
+    function dfInRange() { return Math.abs(ollyArenaX - dfArenaX) <= DF_MELEE_RANGE; }
+    function combatAttackDF() {
+        if (mode !== 'combat') return;
+        if (dfState === 'grab_qte') {   // mash-X QTE: every fresh attack press counts as one mash
+            dfMashCount++;
+            playSfx('click');
+            dfSetStatus(`Mash! (${Math.min(dfMashCount, DF_GRAB_MASH_NEEDED)}/${DF_GRAB_MASH_NEEDED})`);
+            return;
+        }
+        if (dfNowMs < attackCooldownUntil || dfHP <= 0 || ollyCombatHP <= 0) return;
+        if (!dfInRange()) { dfSetStatus('Too far away to punch.'); return; }
+        dfHP = Math.max(0, dfHP - DF_PUNCH_DAMAGE);
+        attackComboCount++;
+        playSfx('punch-1');
+        if (attackComboCount >= DF_PUNCH_COMBO) {
+            attackComboCount = 0;
+            attackCooldownUntil = dfNowMs + DF_PUNCH_COOLDOWN_MS;
+            dfSetStatus(`Combo complete - ${DF_PUNCH_DAMAGE} dmg. 10s cooldown!`);
+        } else dfSetStatus(`Punch! ${DF_PUNCH_DAMAGE} dmg.`);
+        checkDfDeath();
+    }
+    function combatHeavyAttackDF() {
+        if (mode !== 'combat') return;
+        if (dfNowMs < heavyCooldownUntil || dfHP <= 0 || ollyCombatHP <= 0) return;
+        if (!dfInRange()) { dfSetStatus('Too far away to land a heavy hit.'); return; }
+        dfHP = Math.max(0, dfHP - DF_HEAVY_DAMAGE);
+        heavyCooldownUntil = dfNowMs + DF_HEAVY_COOLDOWN_MS;
+        playSfx('olly-heavy-attack');
+        dfSetStatus(`HEAVY HIT! ${DF_HEAVY_DAMAGE} dmg. 60s cooldown.`);
+        checkDfDeath();
+    }
+    function combatDodgeDF() {
+        if (mode !== 'combat') return;
+        if (dfNowMs < dodgeCooldownUntil || ollyCombatHP <= 0) return;
+        dodgeCooldownUntil = dfNowMs + DF_DODGE_COOLDOWN_MS;
+        playerInvulnUntil = dfNowMs + DF_DODGE_INVULN_MS;
+        playSfx('olly-dodge-grunt');
+        if (dfState === 'grab_approach') { dfState = 'idle'; dfStateStart = dfNowMs; dfNextAttackAt = dfNowMs + 1400; dfSetStatus('Olly dodges the grab entirely!'); }
+    }
+    function checkDfDeath() {
+        if (dfHP <= 0) { dfSetStatus("Devil's Fingers collapses!"); setTimeout(() => exitDevilsFingersCombat(true), 900); }
+    }
+    function dealOllyDamage(n) {
+        ollyCombatHP = Math.max(0, ollyCombatHP - n);
+        if (ollyCombatHP <= 0) { dfSetStatus('Olly is overwhelmed...'); setTimeout(() => exitDevilsFingersCombat(false), 900); }
+    }
+    function dfHitCheck(dmg, label) {
+        if (dfNowMs < playerInvulnUntil) { dfSetStatus(`Dodged the ${label}!`); return; }
+        if (!dfInRange()) return;   // out of melee range when it landed - treat as a clean miss (range/reach tuning TBD)
+        dealOllyDamage(dmg);
+        dfSetStatus(`Hit by ${label}! -${dmg} HP.`);
+        if (label === 'Acid Bombs: The Trip') acidEffectUntil = dfNowMs + ACID_TRIP_EFFECT_MS;
+    }
+
+    // --- Devil's Fingers: AI / state machine -----------------------------------------
+    const DF_ATTACK_POOL = ['disappear', 'creepycrawl', 'flick', 'acidtrip', 'grab'];
+    function pickNextDfAttack() {
+        let id;
+        do { id = DF_ATTACK_POOL[Math.floor(Math.random() * DF_ATTACK_POOL.length)]; } while (id === dfLastAttackId && DF_ATTACK_POOL.length > 1);
+        dfLastAttackId = id;
+        return id;
+    }
+    function startDfAttack(id) {
+        dfState = id; dfStateStart = dfNowMs; dfHitApplied = false;
+        if (id === 'grab') { dfState = 'grab_approach'; dfMashCount = 0; }
+    }
+    function updateDevilsFingers(dt) {
+        const nowMs = dfNowMs;
+        const elapsed = nowMs - dfStateStart;
+        const speed = 220;
+        if (held.left) ollyArenaX -= speed * dt; else if (held.right) ollyArenaX += speed * dt;
+        ollyArenaX = Math.max(40, Math.min(DF_ARENA_W - 40, ollyArenaX));
+        dfFacing = ollyArenaX < dfArenaX ? 'left' : 'right';
+
+        if (dfHP <= 0 || ollyCombatHP <= 0) return;   // frozen on the death/collapse pause
+
+        if (dfState === 'idle') {
+            if (nowMs >= dfNextAttackAt) startDfAttack(pickNextDfAttack());
+            return;
+        }
+        if (dfState === 'grab_approach') {
+            if (elapsed >= DF_GRAB_CATCH_MS) {
+                if (dfInRange()) { dfState = 'grab_qte'; dfQteDeadline = nowMs + DF_GRAB_QTE_MS; dfMashCount = 0; dfFreezeFrameIdx = elapsed / DF_FRAME_MS.df_grab; dfSetStatus("Caught! Mash your punch key to break free!"); }
+                else { dfState = 'idle'; dfStateStart = nowMs; dfNextAttackAt = nowMs + 1200; }
+            }
+            return;
+        }
+        if (dfState === 'grab_qte') {
+            if (nowMs >= dfQteDeadline) {
+                if (dfMashCount >= DF_GRAB_MASH_NEEDED) {
+                    dealOllyDamage(DF_GRAB_ESCAPE_DAMAGE);
+                    dfSetStatus(`Olly breaks free! -${DF_GRAB_ESCAPE_DAMAGE} HP. (placeholder escape visual)`);
+                    dfState = 'idle'; dfStateStart = nowMs; dfNextAttackAt = nowMs + 1600;
+                } else {
+                    dfState = 'grab_fail_play'; dfFailStart = nowMs;
+                    dealOllyDamage(DF_GRAB_FAIL_DAMAGE);
+                    dfSetStatus(`Swallowed and spat out! -${DF_GRAB_FAIL_DAMAGE} HP.`);
+                }
+            }
+            return;
+        }
+        if (dfState === 'grab_fail_play') {
+            const total = 81 * DF_FRAME_MS.df_grab - DF_GRAB_CATCH_MS;
+            if (nowMs - dfFailStart >= total) { dfState = 'idle'; dfStateStart = nowMs; dfNextAttackAt = nowMs + 1600; }
+            return;
+        }
+        if (dfState === 'creepycrawl') {
+            if (elapsed >= 61 * DF_FRAME_MS.df_creepycrawl) startDfAttack('dfcrawl');
+            return;
+        }
+        if (dfState === 'dfcrawl') {
+            // She advances toward Olly during the real traversal - gives the "Crawling" windup/charge some actual stakes.
+            dfArenaX += (ollyArenaX - dfArenaX) * Math.min(1, dt * 1.1);
+            const a = DF_ATTACKS.dfcrawl;
+            if (!dfHitApplied && elapsed >= a.hitMs) { dfHitApplied = true; dfHitCheck(a.dmg, a.label); }
+            if (elapsed >= 73 * DF_FRAME_MS.df_dfcrawl) { dfState = 'idle'; dfStateStart = nowMs; dfNextAttackAt = nowMs + 1600; }
+            return;
+        }
+        const simple = DF_ATTACKS[dfState];
+        if (simple) {
+            const n = { disappear: 65, flick: 49, acidtrip: 73 }[dfState];
+            if (simple.hitMs != null && !dfHitApplied && elapsed >= simple.hitMs) { dfHitApplied = true; dfHitCheck(simple.dmg, simple.label); }
+            if (elapsed >= n * DF_FRAME_MS[simple.clip]) { dfState = 'idle'; dfStateStart = nowMs; dfNextAttackAt = nowMs + 1600; }
+        }
+    }
+    function dfCurrentFrame() {
+        const elapsed = dfNowMs - dfStateStart;
+        if (dfState === 'idle' || dfState === 'grab_approach') return { clip: 'df_creepycrawl', idx: 0 };
+        if (dfState === 'grab_qte') return { clip: 'df_grab', idx: dfFreezeFrameIdx };
+        if (dfState === 'grab_fail_play') return { clip: 'df_grab', idx: DF_GRAB_CATCH_MS / DF_FRAME_MS.df_grab + (dfNowMs - dfFailStart) / DF_FRAME_MS.df_grab };
+        if (dfState === 'dfcrawl') return { clip: 'df_dfcrawl', idx: elapsed / DF_FRAME_MS.df_dfcrawl };
+        const a = DF_ATTACKS[dfState];
+        if (a) return { clip: a.clip, idx: elapsed / DF_FRAME_MS[a.clip] };
+        return { clip: 'df_creepycrawl', idx: 0 };
+    }
+    function drawDfOlly(c, nowMs) {
+        const dazed = nowMs < acidEffectUntil;
+        c.save();
+        const shake = dazed ? (Math.sin(nowMs / 35) * 6) : 0;
+        c.translate(ollyArenaX + shake, DF_ARENA_FLOOR_Y);
+        c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(0, 6, 34, 9, 0, 0, Math.PI * 2); c.fill();
+        const img = ollySprite.front;
+        if (img.complete && img.naturalWidth) {
+            const h = 190, w = h * (img.naturalWidth / img.naturalHeight);
+            c.save();
+            if (dazed) c.transform(1, 0, Math.sin(nowMs / 90) * .05, 1, 0, 0);
+            c.drawImage(img, -w / 2, -h + 6, w, h);
+            c.restore();
+            if (dazed) {   // placeholder "dazed" reaction until Scarlett's new Olly art exists
+                c.fillStyle = '#fff';
+                c.beginPath(); c.ellipse(-16, -h + 54, 11, 13, 0, 0, Math.PI * 2); c.ellipse(16, -h + 54, 11, 13, 0, 0, Math.PI * 2); c.fill();
+                const spin = nowMs / 140;
+                c.fillStyle = '#2a1830';
+                [-16, 16].forEach(ex => { c.beginPath(); c.arc(ex + Math.cos(spin) * 5, -h + 54 + Math.sin(spin) * 5, 3.2, 0, Math.PI * 2); c.fill(); });
+            }
+        }
+        c.restore();
+    }
+    function drawDevilsFingersCombat() {
+        if (!dfDom) return;
+        const c = dfDom.ctx, canvas = dfDom.canvas;
+        const nowMs = dfNowMs;
+        c.clearRect(0, 0, canvas.width, canvas.height);
+        const g = c.createLinearGradient(0, 0, 0, canvas.height);
+        g.addColorStop(0, '#241331'); g.addColorStop(1, '#0d0714');
+        c.fillStyle = g; c.fillRect(0, 0, canvas.width, canvas.height);
+        c.fillStyle = 'rgba(0,0,0,.3)'; c.fillRect(0, DF_ARENA_FLOOR_Y + 10, canvas.width, canvas.height - DF_ARENA_FLOOR_Y - 10);
+
+        const { clip, idx } = dfCurrentFrame();
+        const pack = dfAtlas[clip];
+        // df_grab is a full-scene baked shot (both characters already in the footage -
+        // see build_devilsfingers_assets.py's own note on this clip), not composited
+        // against the arena floor like her other 5 clips - so it draws screen-centered,
+        // at its own scale, and Olly's normal sprite is skipped while it's playing.
+        const isGrabClip = clip === 'df_grab';
+        const drawn = pack && drawDFAtlasFrame(c, pack, idx, isGrabClip ? canvas.width / 2 : dfArenaX, isGrabClip ? canvas.height / 2 : DF_ARENA_FLOOR_Y, isGrabClip ? 'left' : dfFacing, 1, 1);
+        if (!drawn) {   // assets still loading - a simple placeholder silhouette so the fight isn't blank
+            c.fillStyle = 'rgba(120,60,150,.55)';
+            c.beginPath(); c.ellipse(dfArenaX, DF_ARENA_FLOOR_Y - 90, 90, 160, 0, 0, Math.PI * 2); c.fill();
+        }
+        if (!isGrabClip) drawDfOlly(c, nowMs);
+
+        dfDom.ollyHpText.textContent = `${ollyCombatHP} / ${OLLY_COMBAT_MAX_HP}`;
+        dfDom.ollyHpBar.style.width = `${(ollyCombatHP / OLLY_COMBAT_MAX_HP) * 100}%`;
+        dfDom.enemyHpText.textContent = `${dfHP} / ${DF_MAX_HP}`;
+        dfDom.enemyHpBar.style.width = `${(dfHP / DF_MAX_HP) * 100}%`;
+        const acidOn = nowMs < acidEffectUntil;
+        dfDom.acidFx.style.opacity = acidOn ? String(0.35 + 0.2 * Math.sin(nowMs / 90)) : '0';
+        if (acidOn) dfDom.acidFx.style.transform = `rotate(${nowMs / 12}deg) scale(1.6)`;
+    }
 
     function setMoveKey(key, down) {
         if (mode === 'mushroom') return;
@@ -207,10 +548,11 @@ export function createLevel2(ui) {
     }
 
     function primaryAction() {
-        if (mode === 'mushroom') return;
+        if (mode === 'mushroom' || mode === 'combat') return;
         if (dialogueQueue) { advanceDialogue(); return; }
         if (!metTom && near(TOM_JOURNAL.x, TOM_JOURNAL.y, 70)) { startTomMeeting(); return; }
         if (near(MINI_GAME_SPOT.x, MINI_GAME_SPOT.y, 70)) { enterMushroomGame(); return; }
+        if (near(DF_SPOT.x, DF_SPOT.y, 80)) { enterDevilsFingersCombat(); return; }
         if (near(PRINCESS_Q_SPOT.x, PRINCESS_Q_SPOT.y, 70)) {
             ui.dialogue.textContent = `${PRINCESS_Q_SPOT.name} - nothing here yet.`;
             return;
@@ -550,6 +892,24 @@ export function createLevel2(ui) {
         ctx.restore();
     }
 
+    // No map icon exists yet for Devil's Fingers - a procedural glowing crack in the
+    // ground (placeholder) stands in until Scarlett has real marker art for this spot.
+    function drawDfMarker(px, py, t) {
+        ctx.save();
+        const pulse = 0.8 + 0.2 * Math.sin(t * 3);
+        ctx.translate(px, py);
+        const glow = ctx.createRadialGradient(0, 0, 4, 0, 0, 46 * pulse);
+        glow.addColorStop(0, 'rgba(150,90,200,.75)'); glow.addColorStop(1, 'rgba(90,30,140,0)');
+        ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(0, 0, 46 * pulse, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = 'rgba(210,170,255,.9)'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+        for (let i = 0; i < 5; i++) {
+            const a = (i / 5) * Math.PI * 2 + t * 0.4;
+            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * 22, Math.sin(a) * 10 - 4);
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+
     function drawOlly(t, moving) {
         ctx.save();
         const stepPhase = moving ? Math.sin(t * 9) : 0;
@@ -662,6 +1022,7 @@ export function createLevel2(ui) {
         if (!metTom) drawMarker(journalIcon, TOM_JOURNAL.x, TOM_JOURNAL.y, 70, 70, t);
         drawMarker(miniGameIcon, MINI_GAME_SPOT.x, MINI_GAME_SPOT.y, 90, 90, t);
         drawMarker(princessQIcon, PRINCESS_Q_SPOT.x, PRINCESS_Q_SPOT.y, 100, 100, t);
+        drawDfMarker(DF_SPOT.x, DF_SPOT.y, t);
 
         const moving = (held.up || held.down || held.left || held.right) && !dialogueQueue;
         // Draw whichever of Olly/Tom is further back first, roughly, so neither always clips over the other.
@@ -683,11 +1044,13 @@ export function createLevel2(ui) {
     }
 
     ui.canvas.addEventListener('pointerdown', e => {
+        if (mode === 'combat') return;   // combat has its own overlay/canvas now
         if (mode === 'mushroom') { handleMushroomClick(e); return; }
         const p = canvasPointToWorld(e);
         if (dialogueQueue) { advanceDialogue(); return; }
         if (!metTom && Math.hypot(p.x - TOM_JOURNAL.x, p.y - TOM_JOURNAL.y) < 50) { startTomMeeting(); return; }
         if (Math.hypot(p.x - MINI_GAME_SPOT.x, p.y - MINI_GAME_SPOT.y) < 55) { enterMushroomGame(); return; }
+        if (Math.hypot(p.x - DF_SPOT.x, p.y - DF_SPOT.y) < 60) { enterDevilsFingersCombat(); return; }
         if (Math.hypot(p.x - PRINCESS_Q_SPOT.x, p.y - PRINCESS_Q_SPOT.y) < 60) { ui.dialogue.textContent = `${PRINCESS_Q_SPOT.name} - nothing here yet.`; return; }
     });
 
@@ -695,9 +1058,13 @@ export function createLevel2(ui) {
         const t = ts / 1000;
         const dt = lastT ? Math.min(.05, t - lastT) : 1 / 60;
         lastT = t;
+        dfNowMs = ts;
         if (mode === 'mushroom') {
             updateMushroom(dt);
             drawMushroomGame();
+        } else if (mode === 'combat') {
+            updateDevilsFingers(dt);
+            drawDevilsFingersCombat();
         } else {
             updateMovement(dt);
             drawWorld(t, dt);
@@ -723,7 +1090,7 @@ export function createLevel2(ui) {
         primaryAction,
         interact: primaryAction,
         confirmEncounter: () => {}, closeEncounter: () => {},
-        combatAttack: () => {}, combatHeavyAttack: () => {}, combatDodge: () => {}, shootAtPointer: () => {},
+        combatAttack: combatAttackDF, combatHeavyAttack: combatHeavyAttackDF, combatDodge: combatDodgeDF, shootAtPointer: () => {},
         retryCombat: () => {}, backToMap: () => {}, continueCompletion: () => {}, completeRelationship: () => {},
         answerPuzzle: () => {}, startBoss: () => {},
         saveAndQuit: () => {}, saveGame: () => false, loadGame: () => false

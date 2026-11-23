@@ -552,6 +552,11 @@ function mountLevel2(){
     if(!act) return;
     if(MOVE_KEY2[act]){ e.preventDefault(); level2.setMoveKey(MOVE_KEY2[act], true); return; }
     if(act==='jump'){ e.preventDefault(); level2.primaryAction(); return; }
+    // V9.93: Devil's Fingers combat (preview) - mirrors Level 1's attack/heavy/dodge routing.
+    // level2's own hooks are no-ops outside combat, so it's safe to always forward these.
+    if(act==='attack'){ e.preventDefault(); if(!e.repeat) level2.combatAttack?.(); return; }
+    if(act==='heavy'){ e.preventDefault(); if(!e.repeat) level2.combatHeavyAttack?.(); return; }
+    if(act==='dodge'){ e.preventDefault(); if(!e.repeat) level2.combatDodge?.(); return; }
   }
   function onKeyUp2(e){
     const act = actionForKey(e.key);
@@ -559,6 +564,11 @@ function mountLevel2(){
   }
   window.addEventListener('keydown', onKeyDown2);
   window.addEventListener('keyup', onKeyUp2);
+  // Right-click dodge (same convention as Level 1's combat canvas).
+  const world2Canvas = document.getElementById('world2');
+  world2Canvas?.addEventListener('mousedown', e => { if(e.button===2){ e.preventDefault(); e.stopPropagation(); level2.combatDodge?.(); } });
+  world2Canvas?.addEventListener('contextmenu', e => e.preventDefault());
+  world2Canvas?.addEventListener('auxclick', e => e.preventDefault());
   document.getElementById('l2-exit')?.addEventListener('click', () => {
     level2.stop();
     window.removeEventListener('keydown', onKeyDown2);
