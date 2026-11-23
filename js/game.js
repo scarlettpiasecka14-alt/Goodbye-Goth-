@@ -327,6 +327,7 @@ function mountLevel1(loadSaved=false){
       <div id="encounter" class="overlay hidden"><div class="overlay-box center encounter-box">
         <img id="encounter-image" class="encounter-art" alt="Encounter artwork">
         <div id="encounter-name" class="story-title">ENCOUNTER</div>
+        <div id="encounter-species" class="encounter-species"></div>
         <p id="encounter-text" class="encounter-copy"></p>
         <div class="encounter-actions">
           <button id="encounter-ready" class="primary" type="button">I'M READY</button>
@@ -394,7 +395,7 @@ function mountLevel1(loadSaved=false){
       <div id="boss-intro" class="overlay hidden patricia-screen">
         <img class="patricia-art" src="assets/story/patricia-encounter.webp" alt="Patricia, the Classic Goth">
         <div class="patricia-card">
-          <div class="patricia-title">You've encountered Patricia, The Classic Goth.</div>
+          <div class="patricia-title">You've encountered Patricia, The Classic Goth <span class="patricia-species">(Gothicus Tradicionalis)</span>.</div>
           <p>She loves watching you squirm and thinks you're rather adorable. She's terribly bored, so she'll humour you with a fight. Not that you stand much chance of surviving.</p>
           <div class="patricia-btns"><button id="boss-start" class="primary" type="button">I'm Ready</button><button id="boss-save-quit" type="button">Save and Quit</button></div>
         </div>
@@ -411,7 +412,7 @@ function mountLevel1(loadSaved=false){
     canvas:document.getElementById('world'), dialogue:document.getElementById('dialogue'),
     hpEl:document.getElementById('player-hp-text'), hpFill:document.getElementById('player-hp-fill'), gothEl:document.getElementById('goth-count'), relEl:document.getElementById('rel-state'), puzzleEl:document.getElementById('puzzle-state'),
     inventory:document.getElementById('inventory'), inventoryButton:document.getElementById('inventory-button'), inventoryClose:document.getElementById('inventory-close'),
-    encounter:document.getElementById('encounter'), encounterImage:document.getElementById('encounter-image'), encounterName:document.getElementById('encounter-name'), encounterText:document.getElementById('encounter-text'), encounterReady:document.getElementById('encounter-ready'), encounterExplore:document.getElementById('encounter-explore'),
+    encounter:document.getElementById('encounter'), encounterImage:document.getElementById('encounter-image'), encounterName:document.getElementById('encounter-name'), encounterSpecies:document.getElementById('encounter-species'), encounterText:document.getElementById('encounter-text'), encounterReady:document.getElementById('encounter-ready'), encounterExplore:document.getElementById('encounter-explore'),
     combat:document.getElementById('combat'), combatCanvas:document.getElementById('combat-canvas'), combatName:document.getElementById('combat-name'), enemyHp:document.getElementById('enemy-hp'), enemyHpText:document.getElementById('enemy-hp-text'), enemyStunWrap:document.getElementById('enemy-stun-wrap'), enemyStun:document.getElementById('enemy-stun'), enemyStunLabel:document.getElementById('enemy-stun-label'), combatStatus:document.getElementById('combat-status'),
     death:document.getElementById('death'), deathText:document.getElementById('death-text'), retryCombat:document.getElementById('retry-combat'), backMap:document.getElementById('back-map'),
     completion:document.getElementById('completion'), completionImage:document.getElementById('completion-image'), completionTitle:document.getElementById('completion-title'), completionCopy:document.getElementById('completion-copy'), completionContinue:document.getElementById('completion-continue'),

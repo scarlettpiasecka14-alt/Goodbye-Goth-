@@ -651,6 +651,7 @@ body:has(.game-screen) .gg-gear { display: flex !important; }
 .patricia-art { display: block; width: min(96vw, 1440px); max-height: 66dvh; height: auto; object-fit: contain; margin: 0 auto; border: 0; border-radius: 0; }
 .patricia-card { width: min(820px, 94vw); text-align: center; color: #f6e4ea; }
 .patricia-title { font: 700 clamp(1.2rem, 2.6vw, 2rem) Georgia, serif; letter-spacing: .04em; color: #ff9fbd; margin-bottom: 6px; }
+.patricia-title .patricia-species { font: italic 700 clamp(.78rem, 1.7vw, 1.15rem) Georgia, serif; color: #d9a6b8; letter-spacing: .02em; }
 .patricia-card p { font: italic clamp(.95rem, 1.5vw, 1.2rem)/1.4 Georgia, serif; margin: 0 0 12px; }
 .patricia-btns { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
 .patricia-btns button { min-width: 180px; padding: 11px 22px; font: 700 15px Georgia, serif; letter-spacing: .12em; text-transform: uppercase; color: #fbeaf0; background: rgba(60,18,40,.88); border: 1px solid #d98ba8; border-radius: 12px; cursor: pointer; }

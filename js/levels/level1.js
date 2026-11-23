@@ -302,12 +302,14 @@ const ENCOUNTER_DATA = {
     zombieGoth: {
         role: 'zombieGoth',
         name: 'ZOMBIE GOTH',
+        species: 'Gothica Putrefacta',   // V9.91: made up - she's not one of the book's five named types, so this isn't from the Goth Girl Guide
         image: 'assets/encounters/level1/zombie-goth-encounter.webp?v=2',
         text: 'The zombie goth reaches for you with her claws moaning about the burning sun. You stumble backwards partially blinded by the light. Are you ready?'
     },
     chainGoth: {
         role: 'chainGoth',
         name: 'CHAIN GOTH',
+        species: 'Gothica Catenata',   // V9.91: made up, same as above
         image: 'assets/encounters/level1/chain-goth-encounter.webp?v=2',
         text: 'You encounter the chain goth, she raises her chain high above her head demanding eyeliner. You turn expecting a blow that never comes. Are you ready?'
     },
@@ -504,18 +506,23 @@ const PAT_FOOT_SRC = { walk: 5 };
 // (mid-way through the still-silent kneel, mouth already shut) and stretched 28-64 as one block, so the audio
 // started before her mouth opened and kept going well after it closed again. Now each real segment gets its own
 // pace, and only the talking segment (40-54) is stretched to the voice line's actual length.
+// V9.92: per Scarlett's playtest notes - the voice line was starting late (the silent kneel before
+// it held too long), the kneel+speak transition itself read as rushed, and the standing hold at the
+// end dragged and felt choppy. Tightened the silent kneel (shortens the dead-air wait before she
+// speaks) and the closing hold (shortens the drag at the end); the speaking segment itself stays
+// locked to the voice line's real length so her mouth never falls out of sync with the audio.
 const PAT_STAGE2_SEG = [   // [frame this segment STARTS at, ms per frame within it]
     { from: 0, ms: 45 },    // impact + shocked stagger: snappy, reactive
-    { from: 27, ms: 70 },   // silent kneel: a held beat before she speaks
+    { from: 27, ms: 50 },   // silent kneel: a held beat before she speaks - was 70, shortened so the voice line doesn't feel late
     { from: 40, ms: 2900 / (55 - 40) },   // speaking while rising: stretched to match the voice line ('pay-for-that' is ~2900ms - see PAT_VOICE_MS below)
-    { from: 55, ms: 90 },   // back on her feet: a short hold to land the line
+    { from: 55, ms: 55 },   // back on her feet: a short hold to land the line - was 90, shortened so it doesn't drag/feel choppy
     { from: 65, ms: 0 }
 ];
 const PAT_STAGE2_SPEAK_AT = PAT_STAGE2_SEG[0].ms * (PAT_STAGE2_SEG[1].from - PAT_STAGE2_SEG[0].from) + PAT_STAGE2_SEG[1].ms * (PAT_STAGE2_SEG[2].from - PAT_STAGE2_SEG[1].from);   // she speaks the instant frame 40 (mouth opens) arrives
 const PAT_STAGE2_MS = (() => {
     let t = 0;
     for (let i = 0; i < PAT_STAGE2_SEG.length - 1; i++) t += PAT_STAGE2_SEG[i].ms * (PAT_STAGE2_SEG[i + 1].from - PAT_STAGE2_SEG[i].from);
-    return t + 300;   // + a short beat held after she finishes
+    return t + 150;   // + a short beat held after she finishes - was 300, trimmed along with the rest of the sequence
 })();
 const PAT_HP = 300, PAT_STAGE2_HP = 150;
 const PAT_FLOOR_SHIFT = 105;   // V9.31: Patricia's arena floor is lower than the Level 1 arena, so both fighters were floating; everything is drawn this far lower there
@@ -1838,6 +1845,11 @@ export function createLevel1(ui) {
         ui.encounter.classList.toggle('enc-rel', relEnc);
         ui.encounterName.textContent = data.name;
         ui.encounterName.style.display = relEnc ? 'none' : '';
+        // V9.91: the "scientific" Latin name, per the Goth Girl Guide taxonomy - only the Goths that actually have one show it.
+        if (ui.encounterSpecies) {
+            ui.encounterSpecies.textContent = data.species ? `(${data.species})` : '';
+            ui.encounterSpecies.style.display = relEnc ? 'none' : '';
+        }
         if (relEnc && data.text.includes('\n')) {
             const cut = data.text.indexOf('\n');
             ui.encounterText.textContent = '';
@@ -3952,7 +3964,7 @@ export function createLevel1(ui) {
     // V9.85: one limited-use ability + one permanent passive, per Scarlett (not a pile of stacking collectibles).
     const PAT_REWARDS = [
         { id: 'veil', icon: '🕸️', name: 'Moth-Eaten Veil', get desc() { return 'Press ' + actionHint('veil') + ' mid-fight for 3 seconds of true invincibility. Works 3 times, ever - then it\'s gone.'; }, apply() { veilCharges = 3; } },
-        { id: 'heavycd', icon: '⚡', name: 'Heavy Attack recharge -25%', desc: 'Heavy Attack comes back faster, for good (20s becomes 15s).', apply() { heavyCdMul = Math.min(heavyCdMul, .75); } },
+        { id: 'heavycd', icon: '⚡', name: 'Heavy Attack recharge -25%', desc: 'Heavy Attack comes back faster, for good (60s becomes 45s).', apply() { heavyCdMul = Math.min(heavyCdMul, .75); } },   // V9.92: text updated to match the new 60s base cooldown
     ];
     const PAT_CUTSCENE_FILES = ['assets/video/cutscene4/patricia-death.mp4', 'assets/video/cutscene4/patriciadeath.mp4', 'assets/video/cutscene4/PatriciaDeath.mp4', 'assets/video/cutscene4/patricia-death.mov'];
     function patDeathPrep() {
@@ -5012,7 +5024,7 @@ export function createLevel1(ui) {
             : Math.hypot(dx, dy) <= 180;
 
         if (hit) {
-            const damage = 10;
+            const damage = 5;   // V9.92: punch damage tuning, per Scarlett - was 10
             combatHp = Math.max(0, combatHp - damage);
             ui.enemyHp.style.width = (combatHp / combatMax * 100) + '%';
             ui.enemyHpText.textContent = `${combatHp} / ${combatMax}`;
@@ -5039,9 +5051,9 @@ export function createLevel1(ui) {
 
         if (comboCount >= COMBO_PUNCHES) {
             comboCount = COMBO_PUNCHES;
-            attackCooldownUntil = nowMs + 5000;
+            attackCooldownUntil = nowMs + 10000;   // V9.92: punch cooldown tuning, per Scarlett - was 5000
             playSfx('breath-recovery', .85);
-            ui.combatStatus.textContent += ' ⚠️ Combo complete. 5s cooldown!';
+            ui.combatStatus.textContent += ' ⚠️ Combo complete. 10s cooldown!';
         }
     }
 
@@ -5074,7 +5086,7 @@ export function createLevel1(ui) {
             dx = enemyX - player.x;
         combatFacing = dx < 0 ? 'left' : 'right';
 
-        heavyAttackCooldownUntil = nowMs + 20000 * heavyCdMul;
+        heavyAttackCooldownUntil = nowMs + 60000 * heavyCdMul;   // V9.92: heavy attack tuning, per Scarlett - once a minute, was 20s
         playSfx('olly-heavy-attack', 1);
         heavyAttackAnimUntil = nowMs + 620;
         combatAnimationState = 'heavy';
@@ -5109,7 +5121,7 @@ export function createLevel1(ui) {
             ui.enemyHpText.textContent = `${combatHp} / ${combatMax}`;
             playSfx('punch-2', 1); playSfx('olly-hurt-heavy', .5, 1.3);   // a meatier thump so it reads as a big hit
             kickShake(12, 300);
-            ui.combatStatus.textContent = `💥 HEAVY HIT! ${damage} damage. Heavy attack on cooldown for 15s.`;
+            ui.combatStatus.textContent = `💥 HEAVY HIT! ${damage} damage. Heavy attack on cooldown for ${Math.ceil(60 * heavyCdMul)}s.`;   // V9.92: was a hardcoded "15s" that no longer matched the real cooldown
             if (combatHp <= 0) {
                 if (target?.type === 'shambler')
                     triggerZombieDeath(nowMs);
@@ -5203,7 +5215,7 @@ export function createLevel1(ui) {
         box.appendChild(img);
 
         const copy = document.createElement('div');   // V9.80: compacted
-        copy.innerHTML = '<em>Well, look at you \u2014 you\'ve finally learnt to put some weight behind those swings.</em><br><strong>Press ' + hintHTML('heavy') + '</strong> to unleash your heavy attack. It\u2019s got some <em>kick</em> to it \u2014 20 damage &middot; 20s cooldown.';
+        copy.innerHTML = '<em>Well, look at you \u2014 you\'ve finally learnt to put some weight behind those swings.</em><br><strong>Press ' + hintHTML('heavy') + '</strong> to unleash your heavy attack. It\u2019s got some <em>kick</em> to it \u2014 20 damage &middot; 60s cooldown.';   // V9.92: text updated to match the new 60s cooldown
         copy.style.cssText = 'color:#f5eaf0;font:700 clamp(16px,2vw,21px) Georgia,serif;text-align:center;line-height:1.55;max-width:860px;';
         box.appendChild(copy);
 
