@@ -3622,7 +3622,7 @@ export function createLevel1(ui) {
         patHurtMs = PAT_STUN_MS; patStunning = true;
         patBeginHurt(nowMs);
         zombieCombatAttackHit = true;
-        comboCount = Math.max(0, comboCount - 1); attackCooldownUntil = 0;   // V9.82: refund one punch, not the whole combo (see startChainStun)
+        comboCount = Math.max(0, comboCount - 1); attackCooldownUntil = 0;   // V9.82: refund one punch, not the whole combo (Patricia only - Chain Goth's refund was removed in V9.93, see startChainStun)
         queueRingTutorial('stun');
     }
     function patStartStage2(nowMs) {   // V9.36: the fight pauses, the camera pushes in on her, she reacts and warns him; then she goes straight into lightning
@@ -4512,8 +4512,9 @@ export function createLevel1(ui) {
         // to wipe the counter back to 0 and hand him a whole second fresh combo for free
         // (6 hits before any cooldown, reported as feeling too generous). V9.82: refund one
         // slot instead of the whole counter.
-        comboCount = Math.max(0, comboCount - 1);
-        attackCooldownUntil = 0;
+        // V9.93: no punch refund any more. The stunning hit lands BEFORE the combo-complete check, so the
+        // refund (3 -> 2, cooldown wiped) meant that hit never started the 10s rest, and Chain Goth could be
+        // punched 4-5 times in a row. Chain Goth now obeys the same 3-punch rule as Zombie Goth.
         queueRingTutorial('stun');
     }
 
@@ -5500,6 +5501,7 @@ export function createLevel1(ui) {
         loadPatriciaAssets();   // V9.44: safety net in case the early (level-open) preload hasn't fired yet - gives her one more head start before the player hits "fight"
         ui.bossIntro.classList.remove('hidden');
     }
+    let patResumeFromSave = false;
     function saveAndQuit() {
         if (isBoss && mode !== 'map') bossIntroPending = true;   // quitting during / after the Patricia fight: Load Game brings you back to her screen
         saveGame(true);
@@ -5514,9 +5516,13 @@ export function createLevel1(ui) {
             x,
             y
         };
-        patCheckpoint = false;
-        startCombat(true);
-        beginBossPrefight();
+        // V9.93: loaded from a save made after she hit half health -> go straight into the second half
+        // (she is at half HP, Olly keeps the HP he saved with, and the potion is exactly as he left it),
+        // the same way "Try Again" does, with no speech / potion scene.
+        const resumeSecondHalf = patResumeFromSave; patResumeFromSave = false;
+        patCheckpoint = resumeSecondHalf;
+        startCombat(true, resumeSecondHalf);
+        if (!resumeSecondHalf) beginBossPrefight();
     }
 
     // ---- V9.22 pre-fight: Patricia talks, the potion appears in the bag, then Drink / Save for later -> 3-2-1 -> fight ----
@@ -5634,6 +5640,7 @@ export function createLevel1(ui) {
                 keyCollected,
                 gateOpened,
                 bossIntroPending,
+                patCheckpoint: bossIntroPending && patCheckpoint,   // V9.93: she was already at half health when you saved - Load Game resumes the second half instead of restarting
                 heavyUnlocked,
                 patriciaDefeated,
                 inventory,
@@ -5701,6 +5708,7 @@ export function createLevel1(ui) {
             lastFogRevealY = null;
             revealAround(x, y, true);
             ui.dialogue.textContent = '📂 Game loaded. Welcome back to the cemetery.';
+            patResumeFromSave = !!(state.bossIntroPending && state.patCheckpoint);   // V9.93
             if (state.bossIntroPending) { gateOpened = true; showBossIntro(); }
             // V9.90: she was already beaten when this save was made, but nothing before this persisted
             // that - loading just dropped you on a finished-looking map with no way to actually move on.
