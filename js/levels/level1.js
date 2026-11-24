@@ -457,6 +457,21 @@ function patDespillCanvas(img) {
     return cv;
 }
 let patAssetsRequested = false;
+// V9.95: start downloading the two images the fight needs on frame 1 (intro + jab) as early as
+// possible — when the level loads — without decoding them into bitmaps (which is what eats memory).
+// The browser caches the downloaded file, so when loadPatriciaAssets() fires later and sets the same
+// src, the image is already in the HTTP cache and loads almost instantly. This turns a 3-5 s blank
+// screen into a near-instant display on most connections.
+let patEssentialsPreloaded = false;
+function preloadPatriciaEssentials() {
+    if (patEssentialsPreloaded || patAssetsRequested) return;
+    patEssentialsPreloaded = true;
+    for (const name of ['intro', 'jab']) {
+        if (!patAtlas[name]) continue;
+        const img = patAtlas[name].img;
+        if (!img.src) img.src = `assets/characters/patricia/atlas/pat-${name}.webp?v=9820`;
+    }
+}
 function loadPatriciaAssets() {
     if (patAssetsRequested) return;
     patAssetsRequested = true;
@@ -896,6 +911,10 @@ export function createLevel1(ui, opts = {}) {
     let metTom = false, tomX = 0, tomY = 0;
     setTimeout(loadCombatAssets, 2500);   // start fetching fight art in the background once the level opens
     // V9.80: Patricia's art (about 490 MB once decoded, x2 as bitmaps) is no longer loaded when the level opens: it loads when you reach her (boss screen / fight). On an 8 GB Mac it was starving the game of memory.
+    // V9.95: but the two essential sheets (intro + jab, ~5 MB total) are preloaded as soon as the level
+    // opens — just the network download, no decode/bitmap, so negligible memory — giving the browser's
+    // HTTP cache a full head start. By the time the player reaches Patricia, they're already cached.
+    setTimeout(preloadPatriciaEssentials, 4000);
     const ctx = ui.canvas.getContext('2d'),
         cctx = ui.combatCanvas.getContext('2d'),
         rctx = ui.relationshipCanvas.getContext('2d');
@@ -5797,13 +5816,22 @@ export function createLevel1(ui, opts = {}) {
                 setBagGlow(true);
             });
         }
-        if (patAtlas.intro?.img?.complete && patAtlas.intro.img.naturalWidth) {
+        // V9.95: gate on BOTH intro AND jab loaded — the intro state's fallback (patStand)
+        // returns jab frame 0, so if only intro is loaded but jab isn't, Patricia is STILL invisible.
+        function patEssentialsReady() {
+            return patAtlas.intro?.img?.complete && patAtlas.intro.img.naturalWidth
+                && patAtlas.jab?.img?.complete && patAtlas.jab.img.naturalWidth;
+        }
+        if (patEssentialsReady()) {
             startPrefightSequence();
         } else {
             ui.combatStatus.textContent = 'Loading...';
             const poll = setInterval(() => {
                 if (token !== prefightToken || mode !== 'combat') { clearInterval(poll); return; }
-                if (patAtlas.intro?.img?.complete && patAtlas.intro.img.naturalWidth) {
+                // V9.95: keep the combat clock frozen while we're waiting — otherwise gnow() advances
+                // and the intro animation jumps to the middle of its timeline the instant she appears.
+                combatLastFrame = gnow();
+                if (patEssentialsReady()) {
                     clearInterval(poll);
                     startPrefightSequence();
                 }
