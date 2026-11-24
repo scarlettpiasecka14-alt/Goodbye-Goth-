@@ -467,7 +467,14 @@ function loadPatriciaAssets() {
     // while the thread is blocked, so combat logic "catches up" to the real elapsed time the instant
     // rendering resumes. Loading a few sheets at a time keeps the spike small while still finishing
     // well before one-at-a-time sequential decoding did.
-    const entries = Object.entries(patAtlas);
+    // V9.94: intro + jab must load first — the fight opens in the 'intro' state, whose
+    // fallback (patStand) returns jab frame 0. With the old insertion-order loading
+    // (walk/lunge/lightning first), neither was ready when the fight started → invisible Patricia.
+    const PRIORITY = ['intro', 'jab'];
+    const entries = [
+        ...PRIORITY.filter(k => patAtlas[k]).map(k => [k, patAtlas[k]]),
+        ...Object.entries(patAtlas).filter(([k]) => !PRIORITY.includes(k))
+    ];
     const CONCURRENCY = 3;
     let next = 0;
     function startOne() {
@@ -533,7 +540,7 @@ const PAT_WALK_FRAME_MS = 40, PAT_INTRO_FRAME_MS = 70;   // V9.80: quicker strid
 const PAT_INTRO_BASE_W = 524;   // V9.91: her resting frame width in the intro clip (arms at her side, between twirls) - see the smoke-gating note in drawPatriciaCombat
 const PAT_LUNGE_WINDUP_FRAMES = 37, PAT_LUNGE_WINDUP_MS = 1500, PAT_LUNGE_STRIKE_FRAMES = 24, PAT_LUNGE_FRAME_MS = 48, PAT_LUNGE_HIT_AT_MS = 290;
 const PAT_LUNGE_DAMAGE = 18, PAT_LUNGE_RANGE = 360, PAT_LUNGE_PUSH = 36;   // V9.93: damage pass per Scarlett, so Patricia clearly hits hardest in the game - was 12
-const PAT_LUNGE_STRIKE_DY_NUDGE = 35;   // V9.93: raised from 14 — sword was visibly too high above Olly during the lunge strike
+const PAT_LUNGE_STRIKE_DY_NUDGE = 55;   // V9.94: raised from 35 (was 14) — sword STILL too high above Olly during the lunge strike
 const PAT_JAB_WINDUP_MS = 1000, PAT_JAB_WINDUP_FRAMES = 23, PAT_JAB_STRIKE_FRAMES = 16, PAT_JAB_FRAME_MS = 45, PAT_JAB_HIT_IDX = 3;   // V9.80 umbrella jab
 const PAT_JAB_DAMAGE = 14, PAT_JAB_RANGE = 340, PAT_JAB_PUSH = 22;   // V9.93: damage pass per Scarlett - was 9
 const PAT_SMOKE_FRAME_MS = 125, PAT_SMOKE_FRAMES = 21, PAT_SMOKE_GONE_AT_MS = 560, PAT_SMOKE_REAPPEAR_AT_MS = 1600;   // V9.45: she vanishes twice as fast (was 1120 / 2100)
