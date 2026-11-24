@@ -175,6 +175,42 @@ function drawDFAtlasFrame(c, pack, index, x, floorY, face, renderScale = 1, alph
     return true;
 }
 
+// --- Chaos Fairy Goth (Level 2 boss) assets ------------------------------------------
+// Atlases built by tools/build_chaosfairy_assets.py. Every CFG clip is normalised so her
+// standing figure is the same size, offsets are in normalised source px, scale is 0.5, and
+// the art is drawn facing RIGHT natively (opposite of Devil's Fingers).
+const CFG_CLIP_NAMES = ['cfg_idle', 'cfg_shot', 'cfg_heavy', 'cfg_electric', 'cfg_dust'];
+const cfgAtlas = {};
+let cfgAssetsRequested = false;
+const cfgArenaBg = new Image();
+function loadChaosFairyAssets() {
+    if (cfgAssetsRequested) return;
+    cfgAssetsRequested = true;
+    cfgArenaBg.src = 'assets/arenas/cfg-arena.webp';
+    fetch('assets/characters/chaosfairy/atlas_data.json').then(r => r.json()).then(data => {
+        for (const name of CFG_CLIP_NAMES) {
+            const d = data[name];
+            if (!d) continue;
+            const img = new Image();
+            img.src = `assets/characters/chaosfairy/atlas/${name}.webp`;
+            cfgAtlas[name] = { img, frames: d.frames, scale: d.scale, anchor: d.anchor };
+        }
+    }).catch(() => {});
+}
+function drawCFGFrame(c, pack, index, x, floorY, faceRight, rs, alpha = 1) {
+    if (!pack?.img?.complete || !pack.img.naturalWidth || !pack.frames?.length) return false;
+    const n = pack.frames.length, f = pack.frames[Math.max(0, Math.min(n - 1, Math.floor(index)))];
+    const k = rs / pack.scale;
+    c.save();
+    c.globalAlpha = Math.max(0, Math.min(1, alpha));
+    c.translate(Math.round(x), Math.round(floorY));
+    c.scale(faceRight ? 1 : -1, 1);
+    c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
+    c.drawImage(pack.img, f[0], f[1], f[2], f[3], Math.round(f[4] * rs), Math.round(f[5] * rs), Math.round(f[2] * k), Math.round(f[3] * k));
+    c.restore();
+    return true;
+}
+
 export function createLevel2(ui) {
     const ctx = ui.canvas.getContext('2d');
 
@@ -226,6 +262,30 @@ export function createLevel2(ui) {
     let dfDom = null;   // built lazily on entering the fight, torn down on exit
     let dfNowMs = 0;
 
+    // --- Chaos Fairy Goth fight state ------------------------------------------------
+    // She reuses the shared foe variables above (dfHP = her HP, dfArenaX = her x,
+    // dfState/dfStateStart/dfNextAttackAt = her state machine) so Olly's punch/heavy/dodge
+    // work on her unchanged. `fightId` says which boss is currently loaded.
+    let fightId = 'df';
+    let foeMaxHP = DF_MAX_HP;
+    // PROVISIONAL numbers (flagged for Scarlett to tune once she's watched the fight).
+    const CFG_MAX_HP = 250;
+    const CFG_RS = 0.38;                       // render scale: ~234px tall vs Olly's 190px
+    const CFG_MS = 1000 / 12;                  // atlas frame time (24fps source, every 2nd frame)
+    const CFG_ARROW_Y = 120;                   // arrow travel height above the floor
+    const CFG_BLINK_COOLDOWN_MS = 6000;
+    const CFG_BLINK_GONE_FROM = 750, CFG_BLINK_GONE_TO = 1550;   // the ONLY window she can't be hit
+    const CFG_BLINK_MOVE_AT = 1250, CFG_BLINK_END = 2583;
+    const CFG_STORM_MS = 4500, CFG_STORM_RADIUS = 130, CFG_STORM_TICK_MS = 600, CFG_STORM_DMG = 4;
+    const CFG_ATTACKS = {
+        shot:     { dmg: 12, fireAt: 1700, end: 2500, speed: 900, label: 'Arrow' },
+        heavy:    { dmg: 24, fireAt: 1900, end: 2500, speed: 560, label: 'Glowing Arrow' },
+        electric: { dmg: 18, fireAt: 3300, end: 3800, speed: 1800, label: 'Lightning Arrow' }
+    };
+    let cfgArrows = [], cfgStorm = null, cfgDust = [];
+    let cfgBlinkReadyAt = 0, cfgBlinkFromX = 0, cfgMoved = false, cfgFired = false, cfgDir = 1, cfgFlashUntil = 0;
+    let cfgLastAttack = null;
+
     // --- Find Scarlett runtime state ---
     let fsRoundIdx = 0;
     let fsPhase = 'reveal';   // 'reveal' | 'shuffle' | 'guess' | 'resolve' | 'gameEnd'
@@ -242,7 +302,7 @@ export function createLevel2(ui) {
     function near(px, py, r) { return Math.hypot(x - px, y - py) < r; }
 
     // --- Devil's Fingers: enter / exit ----------------------------------------------
-    function buildDfDom() {
+    function buildDfDom(title = "DEVIL'S FINGERS (PREVIEW)", name = "DEVIL'S FINGERS", hpColor = '#b878e0', intro = 'A monstrous tangle of fingers blocks the way.', maxHp = DF_MAX_HP) {
         const ov = document.createElement('div');
         ov.id = 'df-combat-overlay';
         ov.style.cssText = 'position:fixed;inset:0;z-index:10030;background:#0a0710;display:flex;flex-direction:column;align-items:center;justify-content:center;';
@@ -250,18 +310,18 @@ export function createLevel2(ui) {
             <div style="width:min(94vw,1200px);display:flex;flex-direction:column;gap:8px;">
                 <div style="display:flex;justify-content:space-between;align-items:center;font:700 15px Georgia,serif;color:#f0e6f5;">
                     <div>OLLY <span id="df-olly-hp-text">100 / 100</span></div>
-                    <div style="letter-spacing:.04em;">DEVIL'S FINGERS (PREVIEW)</div>
-                    <div><span id="df-enemy-hp-text">200 / 200</span> DEVIL'S FINGERS</div>
+                    <div style="letter-spacing:.04em;">${title}</div>
+                    <div><span id="df-enemy-hp-text">${maxHp} / ${maxHp}</span> ${name}</div>
                 </div>
                 <div style="display:flex;gap:10px;">
                     <div style="flex:1;height:10px;border-radius:6px;background:rgba(255,255,255,.12);overflow:hidden;"><div id="df-olly-hp-bar" style="height:100%;width:100%;background:#7fd68a;transition:width .15s;"></div></div>
-                    <div style="flex:1;height:10px;border-radius:6px;background:rgba(255,255,255,.12);overflow:hidden;"><div id="df-enemy-hp-bar" style="height:100%;width:100%;background:#b878e0;transition:width .15s;"></div></div>
+                    <div style="flex:1;height:10px;border-radius:6px;background:rgba(255,255,255,.12);overflow:hidden;"><div id="df-enemy-hp-bar" style="height:100%;width:100%;background:${hpColor};transition:width .15s;"></div></div>
                 </div>
                 <div style="position:relative;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.14);">
                     <canvas id="df-combat-canvas" width="1440" height="650" style="display:block;width:100%;height:auto;background:#140a1c;"></canvas>
                     <div id="df-acid-fx" style="position:absolute;inset:0;pointer-events:none;opacity:0;mix-blend-mode:screen;background:conic-gradient(from 0deg,#ff5ecb,#6ef0ff,#b6ff5e,#ffe65e,#ff5ecb);"></div>
                 </div>
-                <div id="df-combat-status" style="min-height:22px;text-align:center;font:600 14px Georgia,serif;color:#e8d9ef;">A monstrous tangle of fingers blocks the way.</div>
+                <div id="df-combat-status" style="min-height:22px;text-align:center;font:600 14px Georgia,serif;color:#e8d9ef;">${intro}</div>
                 <div style="text-align:center;font:500 12px Georgia,serif;color:#a898b0;">${actionHintFallback('attack')} punch &nbsp;·&nbsp; ${actionHintFallback('heavy')} heavy &nbsp;·&nbsp; ${actionHintFallback('dodge')}/right-click dodge</div>
             </div>`;
         document.body.appendChild(ov);
@@ -284,6 +344,7 @@ export function createLevel2(ui) {
         if (mode === 'combat') return;
         loadDevilsFingersAssets();
         mode = 'combat';
+        fightId = 'df'; foeMaxHP = DF_MAX_HP;
         dfHP = DF_MAX_HP; ollyCombatHP = OLLY_COMBAT_MAX_HP;
         dfState = 'idle'; dfStateStart = dfNowMs; dfNextAttackAt = dfNowMs + 1400; dfHitApplied = false;
         dfArenaX = DF_ARENA_W * 0.74; ollyArenaX = DF_ARENA_W * 0.26; dfFacing = 'left';
@@ -293,12 +354,29 @@ export function createLevel2(ui) {
         dfSetStatus("A monstrous tangle of fingers blocks the way.");
         playSfx('click', 1);
     }
+    function enterChaosFairyCombat() {
+        if (mode === 'combat') return;
+        loadChaosFairyAssets();
+        mode = 'combat';
+        fightId = 'cfg'; foeMaxHP = CFG_MAX_HP;
+        dfHP = CFG_MAX_HP; ollyCombatHP = OLLY_COMBAT_MAX_HP;
+        dfState = 'idle'; dfStateStart = dfNowMs; dfNextAttackAt = dfNowMs + 1800; dfHitApplied = false;
+        dfArenaX = DF_ARENA_W * 0.74; ollyArenaX = DF_ARENA_W * 0.26; dfFacing = 'left';
+        attackComboCount = 0; attackCooldownUntil = 0; heavyCooldownUntil = 0;
+        playerInvulnUntil = 0; dodgeCooldownUntil = 0; acidEffectUntil = 0;
+        cfgArrows = []; cfgStorm = null; cfgDust = []; cfgBlinkReadyAt = dfNowMs + 4000; cfgLastAttack = null; cfgFlashUntil = 0;
+        dfDom = buildDfDom('CHAOS FAIRY GOTH (PREVIEW)', 'CHAOS FAIRY GOTH', '#e86fb0', 'Something small and furious flutters between the ruins.', CFG_MAX_HP);
+        dfDom.canvas.style.background = '#0c1a10';
+        dfSetStatus('Something small and furious flutters between the ruins.');
+        playSfx('click', 1);
+    }
     function exitDevilsFingersCombat(won) {
         if (mode !== 'combat') return;
         mode = 'map';
         if (dfDom) { dfDom.ov.remove(); dfDom = null; }
+        const cfg = fightId === 'cfg';
         ui.dialogue.textContent = won
-            ? "Devil's Fingers sinks back into the earth. (PREVIEW - no reward/death sequence yet.)"
+            ? (cfg ? "The Chaos Fairy Goth drops her bow and flutters away. (PREVIEW - no reward/dialogue yet.)" : "Devil's Fingers sinks back into the earth. (PREVIEW - no reward/death sequence yet.)")
             : "Olly stumbles back to the path, shaken. (PREVIEW - no real fail-state yet; HP simply resets.)";
     }
 
@@ -313,6 +391,7 @@ export function createLevel2(ui) {
             return;
         }
         if (dfNowMs < attackCooldownUntil || dfHP <= 0 || ollyCombatHP <= 0) return;
+        if (cfgUntargetable()) { dfSetStatus('She vanished in the dust!'); return; }
         if (!dfInRange()) { dfSetStatus('Too far away to punch.'); return; }
         dfHP = Math.max(0, dfHP - DF_PUNCH_DAMAGE);
         attackComboCount++;
@@ -327,6 +406,7 @@ export function createLevel2(ui) {
     function combatHeavyAttackDF() {
         if (mode !== 'combat') return;
         if (dfNowMs < heavyCooldownUntil || dfHP <= 0 || ollyCombatHP <= 0) return;
+        if (cfgUntargetable()) { dfSetStatus('She vanished in the dust!'); return; }
         if (!dfInRange()) { dfSetStatus('Too far away to land a heavy hit.'); return; }
         dfHP = Math.max(0, dfHP - DF_HEAVY_DAMAGE);
         heavyCooldownUntil = dfNowMs + DF_HEAVY_COOLDOWN_MS;
@@ -343,7 +423,7 @@ export function createLevel2(ui) {
         if (dfState === 'grab_approach') { dfState = 'idle'; dfStateStart = dfNowMs; dfNextAttackAt = dfNowMs + 1400; dfSetStatus('Olly dodges the grab entirely!'); }
     }
     function checkDfDeath() {
-        if (dfHP <= 0) { dfSetStatus("Devil's Fingers collapses!"); setTimeout(() => exitDevilsFingersCombat(true), 900); }
+        if (dfHP <= 0) { dfSetStatus(fightId === 'cfg' ? 'The Chaos Fairy Goth tumbles out of the air!' : "Devil's Fingers collapses!"); setTimeout(() => exitDevilsFingersCombat(true), 900); }
     }
     function dealOllyDamage(n) {
         ollyCombatHP = Math.max(0, ollyCombatHP - n);
@@ -355,6 +435,194 @@ export function createLevel2(ui) {
         dealOllyDamage(dmg);
         dfSetStatus(`Hit by ${label}! -${dmg} HP.`);
         if (label === 'Acid Bombs: The Trip') acidEffectUntil = dfNowMs + ACID_TRIP_EFFECT_MS;
+    }
+
+    // --- Chaos Fairy Goth: AI / state machine ----------------------------------------
+    // Her kit (deliberately NOT Patricia's vanish-and-stab):
+    //  * shot     - side-on crouch + full draw, then a fast arrow along the floor line (dodge it)
+    //  * heavy    - raised glowing hand, then a big slow arrow (easy to see coming, hits harder)
+    //  * electric - nocked arrow held up and shaking while the arena dims and flickers, then a very fast bolt
+    //  * blink    - twirl in fairy dust: fades out, can't be hit ~0.8s, reappears 200px+ from Olly, leaves a
+    //               dust storm behind. Blink is her MOVEMENT - and she never lands a hit on arrival, and she
+    //               is fully hittable the rest of the time (incl. while she is still dizzy afterwards).
+    function cfgBlinkElapsed() { return dfState === 'blink' ? dfNowMs - dfStateStart : -1; }
+    function cfgUntargetable() {
+        if (fightId !== 'cfg') return false;
+        const e = cfgBlinkElapsed();
+        return e >= CFG_BLINK_GONE_FROM && e <= CFG_BLINK_GONE_TO;
+    }
+    function cfgBurst(x, n) {
+        for (let i = 0; i < n; i++) {
+            const a = Math.random() * Math.PI * 2, sp = 40 + Math.random() * 160;
+            cfgDust.push({ x: x + (Math.random() - .5) * 60, y: DF_ARENA_FLOOR_Y - 20 - Math.random() * 90,
+                vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * .6 - 30, born: dfNowMs, life: 700 + Math.random() * 600 });
+        }
+    }
+    function startCfgAttack(id) {
+        dfState = id; dfStateStart = dfNowMs; dfHitApplied = false; cfgFired = false; cfgLastAttack = id;
+        if (id === 'blink') { cfgMoved = false; cfgBlinkFromX = dfArenaX; dfSetStatus('She twirls into the dust - hit her before she goes, or get ready to chase!'); }
+        else if (id === 'shot') dfSetStatus('She draws her bow...');
+        else if (id === 'heavy') dfSetStatus('Her hand is glowing - big arrow coming!');
+        else if (id === 'electric') dfSetStatus('The air crackles... lightning arrow! Dodge it!');
+    }
+    function pickNextCfgAttack() {
+        const d = Math.abs(ollyArenaX - dfArenaX);
+        const cornered = dfArenaX < 170 || dfArenaX > DF_ARENA_W - 170;
+        const blinkReady = dfNowMs >= cfgBlinkReadyAt;
+        if (blinkReady && ((d < 230 && cornered) || Math.random() < 0.3)) return 'blink';
+        const pool = ['shot', 'heavy', 'electric'].filter(a => a !== cfgLastAttack);
+        return pool[Math.floor(Math.random() * pool.length)];
+    }
+    function cfgFireArrow(id) {
+        const a = CFG_ATTACKS[id];
+        cfgDir = ollyArenaX < dfArenaX ? -1 : 1;
+        cfgArrows.push({ x: dfArenaX + cfgDir * 70, vx: cfgDir * a.speed, dmg: a.dmg, id, label: a.label, dodged: false, born: dfNowMs });
+        if (id === 'electric') cfgFlashUntil = dfNowMs + 140;
+    }
+    function updateChaosFairy(dt) {
+        const nowMs = dfNowMs, elapsed = nowMs - dfStateStart;
+        // dust particles + arrows keep moving even while she is between states
+        cfgDust = cfgDust.filter(p => nowMs - p.born < p.life);
+        for (const p of cfgDust) { p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.97; p.vy *= 0.97; }
+        for (const ar of cfgArrows) {
+            ar.x += ar.vx * dt;
+            if (!ar.dodged && !ar.hit && Math.abs(ar.x - ollyArenaX) < 34) {
+                if (nowMs < playerInvulnUntil) { ar.dodged = true; dfSetStatus(`Dodged the ${ar.label}!`); }
+                else { ar.hit = true; dealOllyDamage(ar.dmg); dfSetStatus(`Hit by the ${ar.label}! -${ar.dmg} HP.`); }
+            }
+        }
+        cfgArrows = cfgArrows.filter(ar => !ar.hit && ar.x > -80 && ar.x < DF_ARENA_W + 80);
+        if (cfgStorm) {
+            if (nowMs >= cfgStorm.until) cfgStorm = null;
+            else if (nowMs >= cfgStorm.nextTick && Math.abs(ollyArenaX - cfgStorm.x) < CFG_STORM_RADIUS) {
+                cfgStorm.nextTick = nowMs + CFG_STORM_TICK_MS;
+                if (nowMs >= playerInvulnUntil) { dealOllyDamage(CFG_STORM_DMG); dfSetStatus(`The dust storm scours Olly! -${CFG_STORM_DMG} HP.`); }
+            }
+        }
+        if (dfHP <= 0 || ollyCombatHP <= 0) return;
+
+        if (dfState === 'idle') {
+            // kite: keep roughly 300-520px from Olly, slowly (Olly is faster, so he can always catch her)
+            const d = Math.abs(ollyArenaX - dfArenaX), away = ollyArenaX < dfArenaX ? 1 : -1;
+            if (d < 300) dfArenaX += away * 70 * dt; else if (d > 520) dfArenaX -= away * 70 * dt;
+            dfArenaX = Math.max(100, Math.min(DF_ARENA_W - 100, dfArenaX));
+            if (nowMs >= dfNextAttackAt) startCfgAttack(pickNextCfgAttack());
+            return;
+        }
+        if (dfState === 'blink') {
+            if (!cfgMoved && elapsed >= CFG_BLINK_MOVE_AT) {
+                cfgMoved = true;
+                cfgStorm = { x: cfgBlinkFromX, until: nowMs + CFG_STORM_MS, nextTick: nowMs + 400 };
+                cfgBurst(cfgBlinkFromX, 26);
+                const side = Math.random() < 0.5 ? -1 : 1;
+                const cand = [side, -side].map(sd => ollyArenaX + sd * (330 + Math.random() * 170)).map(v => Math.max(120, Math.min(DF_ARENA_W - 120, v)));
+                dfArenaX = cand.find(v => Math.abs(v - ollyArenaX) >= 220) ?? cand[0];
+                cfgBurst(dfArenaX, 20);
+            }
+            if (elapsed >= CFG_BLINK_END) { dfState = 'idle'; dfStateStart = nowMs; dfNextAttackAt = nowMs + 1400; cfgBlinkReadyAt = nowMs + CFG_BLINK_COOLDOWN_MS; dfSetStatus('Dizzy from the twirl - hit her now!'); }
+            return;
+        }
+        const a = CFG_ATTACKS[dfState];
+        if (a) {
+            if (!cfgFired && elapsed >= a.fireAt) { cfgFired = true; cfgFireArrow(dfState); }
+            if (elapsed >= a.end) { dfState = 'idle'; dfStateStart = nowMs; dfNextAttackAt = nowMs + 1500; }
+        }
+    }
+    function cfgCurrentFrame() {
+        const elapsed = dfNowMs - dfStateStart;
+        if (dfState === 'shot') return { clip: 'cfg_shot', idx: Math.min(29, elapsed / CFG_MS) };
+        if (dfState === 'heavy') return { clip: 'cfg_heavy', idx: Math.min(15, elapsed / CFG_MS) };
+        if (dfState === 'electric') return { clip: 'cfg_electric', idx: Math.min(30, elapsed / CFG_MS) };
+        if (dfState === 'blink') return { clip: 'cfg_dust', idx: Math.min(30, elapsed / (CFG_BLINK_END / 31)) };
+        return { clip: 'cfg_idle', idx: (dfNowMs / CFG_MS) % 31 };
+    }
+    function cfgBlinkAlpha(e) {
+        if (e < 0) return 1;
+        if (e < CFG_BLINK_GONE_FROM) return 1 - 0.9 * (e / CFG_BLINK_GONE_FROM);   // fade down to 0.1
+        if (e <= CFG_BLINK_GONE_TO) return 0;
+        return Math.min(1, (e - CFG_BLINK_GONE_TO) / 450);
+    }
+    function drawChaosFairyScene(c, canvas, nowMs) {
+        // arena (cathedral ruins) - bottom-aligned crop so the mossy ground sits under the fight
+        if (cfgArenaBg.complete && cfgArenaBg.naturalWidth) c.drawImage(cfgArenaBg, 0, 160, 1440, 650, 0, 0, canvas.width, canvas.height);
+        else { c.fillStyle = '#0c1a10'; c.fillRect(0, 0, canvas.width, canvas.height); }
+        const elapsed = nowMs - dfStateStart;
+        // dust storm patch left where she blinked from
+        if (cfgStorm) {
+            const left = Math.max(0, cfgStorm.until - nowMs), fade = Math.min(1, left / 700);
+            c.save();
+            for (let i = 0; i < 22; i++) {
+                const ang = nowMs / 260 + i * 0.9, r = (i % 7) / 7 * CFG_STORM_RADIUS + 20;
+                const px = cfgStorm.x + Math.cos(ang) * r, py = DF_ARENA_FLOOR_Y - 20 - (i % 5) * 26 + Math.sin(ang * 1.3) * 14;
+                const g = c.createRadialGradient(px, py, 0, px, py, 34);
+                g.addColorStop(0, `rgba(255,170,230,${0.5 * fade})`); g.addColorStop(1, 'rgba(255,170,230,0)');
+                c.fillStyle = g; c.beginPath(); c.arc(px, py, 34, 0, Math.PI * 2); c.fill();
+            }
+            c.restore();
+        }
+        // telegraph line while she's aiming
+        const atk = CFG_ATTACKS[dfState];
+        if (atk && !cfgFired) {
+            const aimFrom = atk.fireAt - 800;
+            if (elapsed > aimFrom) {
+                const dir = ollyArenaX < dfArenaX ? -1 : 1, t = Math.min(1, (elapsed - aimFrom) / 800);
+                c.save();
+                c.strokeStyle = dfState === 'electric' ? `rgba(150,220,255,${0.15 + 0.5 * t})` : `rgba(255,150,220,${0.12 + 0.4 * t})`;
+                c.lineWidth = dfState === 'heavy' ? 7 : 3; c.setLineDash([14, 10]);
+                c.beginPath(); c.moveTo(dfArenaX + dir * 70, DF_ARENA_FLOOR_Y - CFG_ARROW_Y); c.lineTo(dir > 0 ? canvas.width : 0, DF_ARENA_FLOOR_Y - CFG_ARROW_Y); c.stroke();
+                c.restore();
+            }
+        }
+        // her
+        const { clip, idx } = cfgCurrentFrame();
+        const be = cfgBlinkElapsed();
+        const shake = dfState === 'electric' && elapsed > 1500 && !cfgFired ? (Math.random() - .5) * 7 : 0;
+        const bob = dfState === 'idle' ? Math.sin(nowMs / 420) * 6 : 0;
+        const faceRight = ollyArenaX > dfArenaX;
+        const ok = drawCFGFrame(c, cfgAtlas[clip], idx, dfArenaX + shake, DF_ARENA_FLOOR_Y - 26 + bob, faceRight, CFG_RS, cfgBlinkAlpha(be));
+        if (!ok) { c.fillStyle = 'rgba(230,110,180,.55)'; c.beginPath(); c.ellipse(dfArenaX, DF_ARENA_FLOOR_Y - 130, 55, 110, 0, 0, Math.PI * 2); c.fill(); }
+        // charge glow on her hand (heavy) and crackle (electric)
+        const hx = dfArenaX + (faceRight ? 1 : -1) * 60, hy = DF_ARENA_FLOOR_Y - CFG_ARROW_Y - 10;
+        if (dfState === 'heavy' && !cfgFired && elapsed > 500) {
+            const t = Math.min(1, (elapsed - 500) / 1400), r = 18 + 30 * t + Math.sin(nowMs / 60) * 3;
+            const g = c.createRadialGradient(hx, hy, 0, hx, hy, r); g.addColorStop(0, 'rgba(255,230,160,.9)'); g.addColorStop(1, 'rgba(255,120,200,0)');
+            c.fillStyle = g; c.beginPath(); c.arc(hx, hy, r, 0, Math.PI * 2); c.fill();
+        }
+        if (dfState === 'electric' && elapsed > 1200 && !cfgFired) {
+            c.save(); c.strokeStyle = 'rgba(190,235,255,.9)'; c.lineWidth = 2; c.lineCap = 'round';
+            for (let i = 0; i < 4; i++) {
+                let px = hx, py = hy; c.beginPath(); c.moveTo(px, py);
+                for (let k = 0; k < 4; k++) { px += (Math.random() - .5) * 46; py += (Math.random() - .5) * 46; c.lineTo(px, py); }
+                c.stroke();
+            }
+            c.restore();
+        }
+        // dust particles
+        for (const p of cfgDust) {
+            const t = (nowMs - p.born) / p.life;
+            c.fillStyle = `rgba(255,190,240,${0.7 * (1 - t)})`; c.beginPath(); c.arc(p.x, p.y, 3 + 3 * (1 - t), 0, Math.PI * 2); c.fill();
+        }
+        // arrows
+        for (const ar of cfgArrows) {
+            const big = ar.id === 'heavy', bolt = ar.id === 'electric', L = big ? 90 : bolt ? 140 : 60, y = DF_ARENA_FLOOR_Y - CFG_ARROW_Y, dir = Math.sign(ar.vx);
+            c.save(); c.lineCap = 'round';
+            c.strokeStyle = bolt ? 'rgba(190,235,255,.95)' : big ? 'rgba(255,225,150,.95)' : 'rgba(235,220,200,.95)';
+            c.lineWidth = big ? 8 : bolt ? 4 : 3; c.shadowColor = bolt ? '#8fd8ff' : big ? '#ffb0e0' : 'transparent'; c.shadowBlur = bolt || big ? 18 : 0;
+            c.beginPath(); c.moveTo(ar.x - dir * L, y + (bolt ? Math.sin(nowMs / 20) * 5 : 0)); c.lineTo(ar.x, y); c.stroke();
+            c.beginPath(); c.moveTo(ar.x, y); c.lineTo(ar.x - dir * 14, y - 7); c.moveTo(ar.x, y); c.lineTo(ar.x - dir * 14, y + 7); c.stroke();
+            c.restore();
+        }
+    }
+    function drawChaosFairyLighting(c, canvas, nowMs) {
+        // electric windup: the arena dims and flickers; the bolt itself throws a white flash
+        let dim = 0;
+        if (dfState === 'electric') {
+            const e = nowMs - dfStateStart;
+            dim = Math.min(1, e / 2400) * 0.5;
+            if (e > 1500 && Math.sin(nowMs / 37) > 0.6) dim *= 0.4;
+        }
+        if (dim > 0) { c.fillStyle = `rgba(5,10,30,${dim})`; c.fillRect(0, 0, canvas.width, canvas.height); }
+        if (nowMs < cfgFlashUntil) { c.fillStyle = `rgba(210,240,255,${0.5 * (cfgFlashUntil - nowMs) / 140})`; c.fillRect(0, 0, canvas.width, canvas.height); }
     }
 
     // --- Devil's Fingers: AI / state machine -----------------------------------------
@@ -377,6 +645,7 @@ export function createLevel2(ui) {
         ollyArenaX = Math.max(40, Math.min(DF_ARENA_W - 40, ollyArenaX));
         dfFacing = ollyArenaX < dfArenaX ? 'left' : 'right';
 
+        if (fightId === 'cfg') { updateChaosFairy(dt); return; }
         if (dfHP <= 0 || ollyCombatHP <= 0) return;   // frozen on the death/collapse pause
 
         if (dfState === 'idle') {
@@ -466,29 +735,35 @@ export function createLevel2(ui) {
         const c = dfDom.ctx, canvas = dfDom.canvas;
         const nowMs = dfNowMs;
         c.clearRect(0, 0, canvas.width, canvas.height);
-        const g = c.createLinearGradient(0, 0, 0, canvas.height);
-        g.addColorStop(0, '#241331'); g.addColorStop(1, '#0d0714');
-        c.fillStyle = g; c.fillRect(0, 0, canvas.width, canvas.height);
-        c.fillStyle = 'rgba(0,0,0,.3)'; c.fillRect(0, DF_ARENA_FLOOR_Y + 10, canvas.width, canvas.height - DF_ARENA_FLOOR_Y - 10);
+        if (fightId === 'cfg') {
+            drawChaosFairyScene(c, canvas, nowMs);
+            drawDfOlly(c, nowMs);
+            drawChaosFairyLighting(c, canvas, nowMs);
+        } else {
+            const g = c.createLinearGradient(0, 0, 0, canvas.height);
+            g.addColorStop(0, '#241331'); g.addColorStop(1, '#0d0714');
+            c.fillStyle = g; c.fillRect(0, 0, canvas.width, canvas.height);
+            c.fillStyle = 'rgba(0,0,0,.3)'; c.fillRect(0, DF_ARENA_FLOOR_Y + 10, canvas.width, canvas.height - DF_ARENA_FLOOR_Y - 10);
 
-        const { clip, idx } = dfCurrentFrame();
-        const pack = dfAtlas[clip];
-        // df_grab is a full-scene baked shot (both characters already in the footage -
-        // see build_devilsfingers_assets.py's own note on this clip), not composited
-        // against the arena floor like her other 5 clips - so it draws screen-centered,
-        // at its own scale, and Olly's normal sprite is skipped while it's playing.
-        const isGrabClip = clip === 'df_grab';
-        const drawn = pack && drawDFAtlasFrame(c, pack, idx, isGrabClip ? canvas.width / 2 : dfArenaX, isGrabClip ? canvas.height / 2 : DF_ARENA_FLOOR_Y, isGrabClip ? 'left' : dfFacing, 1, 1);
-        if (!drawn) {   // assets still loading - a simple placeholder silhouette so the fight isn't blank
-            c.fillStyle = 'rgba(120,60,150,.55)';
-            c.beginPath(); c.ellipse(dfArenaX, DF_ARENA_FLOOR_Y - 90, 90, 160, 0, 0, Math.PI * 2); c.fill();
+            const { clip, idx } = dfCurrentFrame();
+            const pack = dfAtlas[clip];
+            // df_grab is a full-scene baked shot (both characters already in the footage -
+            // see build_devilsfingers_assets.py's own note on this clip), not composited
+            // against the arena floor like her other 5 clips - so it draws screen-centered,
+            // at its own scale, and Olly's normal sprite is skipped while it's playing.
+            const isGrabClip = clip === 'df_grab';
+            const drawn = pack && drawDFAtlasFrame(c, pack, idx, isGrabClip ? canvas.width / 2 : dfArenaX, isGrabClip ? canvas.height / 2 : DF_ARENA_FLOOR_Y, isGrabClip ? 'left' : dfFacing, 1, 1);
+            if (!drawn) {   // assets still loading - a simple placeholder silhouette so the fight isn't blank
+                c.fillStyle = 'rgba(120,60,150,.55)';
+                c.beginPath(); c.ellipse(dfArenaX, DF_ARENA_FLOOR_Y - 90, 90, 160, 0, 0, Math.PI * 2); c.fill();
+            }
+            if (!isGrabClip) drawDfOlly(c, nowMs);
         }
-        if (!isGrabClip) drawDfOlly(c, nowMs);
 
         dfDom.ollyHpText.textContent = `${ollyCombatHP} / ${OLLY_COMBAT_MAX_HP}`;
         dfDom.ollyHpBar.style.width = `${(ollyCombatHP / OLLY_COMBAT_MAX_HP) * 100}%`;
-        dfDom.enemyHpText.textContent = `${dfHP} / ${DF_MAX_HP}`;
-        dfDom.enemyHpBar.style.width = `${(dfHP / DF_MAX_HP) * 100}%`;
+        dfDom.enemyHpText.textContent = `${dfHP} / ${foeMaxHP}`;
+        dfDom.enemyHpBar.style.width = `${(dfHP / foeMaxHP) * 100}%`;
         const acidOn = nowMs < acidEffectUntil;
         dfDom.acidFx.style.opacity = acidOn ? String(0.35 + 0.2 * Math.sin(nowMs / 90)) : '0';
         if (acidOn) dfDom.acidFx.style.transform = `rotate(${nowMs / 12}deg) scale(1.6)`;
@@ -553,10 +828,7 @@ export function createLevel2(ui) {
         if (!metTom && near(TOM_JOURNAL.x, TOM_JOURNAL.y, 70)) { startTomMeeting(); return; }
         if (near(MINI_GAME_SPOT.x, MINI_GAME_SPOT.y, 70)) { enterMushroomGame(); return; }
         if (near(DF_SPOT.x, DF_SPOT.y, 80)) { enterDevilsFingersCombat(); return; }
-        if (near(PRINCESS_Q_SPOT.x, PRINCESS_Q_SPOT.y, 70)) {
-            ui.dialogue.textContent = `${PRINCESS_Q_SPOT.name} - nothing here yet.`;
-            return;
-        }
+        if (near(PRINCESS_Q_SPOT.x, PRINCESS_Q_SPOT.y, 70)) { enterChaosFairyCombat(); return; }   // PREVIEW entry for the CFG fight
     }
 
     // --- Find Scarlett: game logic ---
@@ -1051,7 +1323,7 @@ export function createLevel2(ui) {
         if (!metTom && Math.hypot(p.x - TOM_JOURNAL.x, p.y - TOM_JOURNAL.y) < 50) { startTomMeeting(); return; }
         if (Math.hypot(p.x - MINI_GAME_SPOT.x, p.y - MINI_GAME_SPOT.y) < 55) { enterMushroomGame(); return; }
         if (Math.hypot(p.x - DF_SPOT.x, p.y - DF_SPOT.y) < 60) { enterDevilsFingersCombat(); return; }
-        if (Math.hypot(p.x - PRINCESS_Q_SPOT.x, p.y - PRINCESS_Q_SPOT.y) < 60) { ui.dialogue.textContent = `${PRINCESS_Q_SPOT.name} - nothing here yet.`; return; }
+        if (Math.hypot(p.x - PRINCESS_Q_SPOT.x, p.y - PRINCESS_Q_SPOT.y) < 60) { enterChaosFairyCombat(); return; }
     });
 
     function loop(ts) {
