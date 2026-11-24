@@ -5576,12 +5576,12 @@ export function createLevel1(ui) {
             if (!prefight.ready) { if (note) note.textContent = 'Let her finish...'; return; }
             closeBag(); setBagGlow(false);
             prefight.ready = false;
-            if (drink) { drinkAnim = { start: gnow(), healed: false }; inventory.potion = 0; refreshInventoryUI(); }
+            if (drink) { drinkAnim = { start: gnow(), healed: false }; inventory.potion = 0; refreshInventoryUI(); playSfx('Drinking_potion'); }
             else startPrefightCountdown();
             return;
         }
         if (mode === 'map' && drink) {   // outside the boss fight: just heal
-            hp = maxHp; inventory.potion = 0; closeBag(); stats();
+            hp = maxHp; inventory.potion = 0; closeBag(); stats(); playSfx('Drinking_potion');
             ui.dialogue.textContent = 'You drink the potion. Full HP again.';
             return;
         }
