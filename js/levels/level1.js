@@ -2443,7 +2443,11 @@ export function createLevel1(ui, opts = {}) {
         // range, so the bite could never actually connect: she'd crawl right up against him and just stall
         // there (reported as "she's right on top of you and never bites" / "she pushes you away as she chases").
         // Let the gap close all the way while she's actively trying to catch him with it.
-        const zombieBiting = target?.type === 'shambler' && zombieCombatState === 'heavyKick' && zombieBiteCaughtAt === 0 && !zombieBiteEvaded;
+        // V9.97: the body gap must shrink for ANY active bite crawl, not only un-evaded ones.
+        // The old code kept the 108px gap when zombieBiteEvaded was true, which meant the
+        // zombie visually reached Olly but got pushed back to 108px — outside the 85px catch
+        // range — so the bite never actually connected ("she's right on top of me but nothing happens").
+        const zombieBiting = target?.type === 'shambler' && zombieCombatState === 'heavyKick' && zombieBiteCaughtAt === 0;
         const minGap = foe ? foe.bodyGap : (zombieBiting ? 20 : 108);
         const playerMinX = 140;
         const playerMaxX = COMBAT_W - 140;
@@ -2978,7 +2982,11 @@ export function createLevel1(ui, opts = {}) {
                 // Jumping or dodging can still avoid the catch.
                 // V9.19: a dodge that starts while the red ring is closing in (or just as she lunges) beats the bite.
                 // Before, the 0.6s dodge was often over by the time she reached him, so well-timed dodges still got caught.
-                if (!zombieBiteEvaded && zombieBiteCaughtAt === 0 && Math.max(lastDodgeStart, lastJumpStart) >= zombieCombatStateStart - 800 && Math.max(lastDodgeStart, lastJumpStart) <= zombieCombatStateStart + 350) {
+                // V9.97: tightened the evade window from -800/+350 to -200/+350. The old 800ms pre-window
+                // meant any jump/dodge during most of the 1150ms windup auto-evaded the bite, so the
+                // zombie would visually crawl right onto Olly but never actually bite. Now only a
+                // dodge/jump within 200ms before the lunge (i.e. late in the windup) or 350ms after counts.
+                if (!zombieBiteEvaded && zombieBiteCaughtAt === 0 && Math.max(lastDodgeStart, lastJumpStart) >= zombieCombatStateStart - 200 && Math.max(lastDodgeStart, lastJumpStart) <= zombieCombatStateStart + 350) {
                     zombieBiteEvaded = true;
                     ui.combatStatus.textContent = '↪ BITE avoided!';
                 }
