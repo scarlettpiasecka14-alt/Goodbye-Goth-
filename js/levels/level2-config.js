@@ -153,7 +153,7 @@ export const LEVEL2 = {
         text: "She's been watching you since you arrived. She's braided three of the trees together out of boredom, and now she's decided you look fun to ruin. Floaty dress, questionable footwear, a magic bow. Run.",
         fight: 'cfg',
         combatName: 'SOPHIA • THE CHAOS FAIRY GOTH',
-        maxHp: 250   // PROVISIONAL
+        maxHp: 320   // PROVISIONAL - Patricia (Level 1's boss) is 300, Sophia needs to beat that
     },
     complete: {
         image: 'assets/arenas/cfg-arena.webp',   // placeholder
