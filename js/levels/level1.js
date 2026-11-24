@@ -512,13 +512,13 @@ const PAT_FOOT_SRC = { walk: 5 };
 // speaks) and the closing hold (shortens the drag at the end); the speaking segment itself stays
 // locked to the voice line's real length so her mouth never falls out of sync with the audio.
 const PAT_STAGE2_SEG = [   // [frame this segment STARTS at, ms per frame within it]
-    { from: 0, ms: 45 },    // impact + shocked stagger: snappy, reactive
-    { from: 27, ms: 50 },   // silent kneel: a held beat before she speaks - was 70, shortened so the voice line doesn't feel late
-    { from: 40, ms: 2900 / (55 - 40) },   // speaking while rising: stretched to match the voice line ('pay-for-that' is ~2900ms - see PAT_VOICE_MS below)
-    { from: 55, ms: 55 },   // back on her feet: a short hold to land the line - was 90, shortened so it doesn't drag/feel choppy
+    { from: 0, ms: 45 },    // impact + shocked stagger: snappy, reactive (27 frames × 45ms = 1215ms)
+    { from: 27, ms: 130 },  // V9.93: kneeling hold — per Scarlett the kneel was too fast; now 13 frames × 130ms = 1690ms of staying down, voice starts partway through
+    { from: 40, ms: 42 },   // V9.93: rising to feet — was stretched to ~193ms/frame to fill voice line, looked choppy; now quick and smooth (15 frames × 42ms = 630ms)
+    { from: 55, ms: 50 },   // back on her feet: short hold
     { from: 65, ms: 0 }
 ];
-const PAT_STAGE2_SPEAK_AT = PAT_STAGE2_SEG[0].ms * (PAT_STAGE2_SEG[1].from - PAT_STAGE2_SEG[0].from) + PAT_STAGE2_SEG[1].ms * (PAT_STAGE2_SEG[2].from - PAT_STAGE2_SEG[1].from);   // she speaks the instant frame 40 (mouth opens) arrives
+const PAT_STAGE2_SPEAK_AT = PAT_STAGE2_SEG[0].ms * (PAT_STAGE2_SEG[1].from - PAT_STAGE2_SEG[0].from) + 500;   // V9.93: voice starts 500ms into the kneeling hold (while she's still down), not at frame 40 when she's already rising
 const PAT_STAGE2_MS = (() => {
     let t = 0;
     for (let i = 0; i < PAT_STAGE2_SEG.length - 1; i++) t += PAT_STAGE2_SEG[i].ms * (PAT_STAGE2_SEG[i + 1].from - PAT_STAGE2_SEG[i].from);
