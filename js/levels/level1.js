@@ -533,13 +533,13 @@ const PAT_WALK_FRAME_MS = 40, PAT_INTRO_FRAME_MS = 70;   // V9.80: quicker strid
 const PAT_INTRO_BASE_W = 524;   // V9.91: her resting frame width in the intro clip (arms at her side, between twirls) - see the smoke-gating note in drawPatriciaCombat
 const PAT_LUNGE_WINDUP_FRAMES = 37, PAT_LUNGE_WINDUP_MS = 1500, PAT_LUNGE_STRIKE_FRAMES = 24, PAT_LUNGE_FRAME_MS = 48, PAT_LUNGE_HIT_AT_MS = 290;
 const PAT_LUNGE_DAMAGE = 18, PAT_LUNGE_RANGE = 360, PAT_LUNGE_PUSH = 36;   // V9.93: damage pass per Scarlett, so Patricia clearly hits hardest in the game - was 12
-const PAT_LUNGE_STRIKE_DY_NUDGE = 14;   // V9.90: how far (source px) to drop her during just the lunge's strike half - see getPatriciaFrame
+const PAT_LUNGE_STRIKE_DY_NUDGE = 35;   // V9.93: raised from 14 — sword was visibly too high above Olly during the lunge strike
 const PAT_JAB_WINDUP_MS = 1000, PAT_JAB_WINDUP_FRAMES = 23, PAT_JAB_STRIKE_FRAMES = 16, PAT_JAB_FRAME_MS = 45, PAT_JAB_HIT_IDX = 3;   // V9.80 umbrella jab
 const PAT_JAB_DAMAGE = 14, PAT_JAB_RANGE = 340, PAT_JAB_PUSH = 22;   // V9.93: damage pass per Scarlett - was 9
 const PAT_SMOKE_FRAME_MS = 125, PAT_SMOKE_FRAMES = 21, PAT_SMOKE_GONE_AT_MS = 560, PAT_SMOKE_REAPPEAR_AT_MS = 1600;   // V9.45: she vanishes twice as fast (was 1120 / 2100)
 const PAT_VSTRIKE_APPEAR_MS = 280, PAT_VSTRIKE_DAMAGE = 32;   // V9.93: damage pass per Scarlett - her signature hit, was 15, now clearly the hardest single hit in the game
 const PAT_LIGHT_WINDUP_FRAMES = 14, PAT_LIGHT_WINDUP_MS = 720, PAT_LIGHT_FRAMES = 9, PAT_LIGHT_FRAME_MS = 167;
-const PAT_LIGHT_RANGE = 520;   // V9.81: 900 covered basically the whole arena floor (no way to escape it at all) - the real fix for "doesn't hit a stationary player" was the single-instant hit check below, not a huge range, so this is back down to a range you can actually run clear of
+const PAT_LIGHT_RANGE = 620;   // V9.93: bumped from 520 — per Scarlett lightning felt like it did nothing; wider range + higher DPS makes it a real threat you have to respect, while still escapable by running
 // V9.34: the lightning clip ends with her floating, so the discharge frames now loop for a while, then she settles back down (windup frames played in reverse).
 // V9.82: redesigned from one instant hit into a damage-over-time floor hazard, per feedback - jumping anywhere, even
 // staying inside the zone's x-range, used to make you fully immune the moment your feet left the ground; now only the
@@ -552,7 +552,7 @@ const PAT_LIGHT_LOOP_MS = 1500, PAT_LIGHT_LOOP_FRAME_MS = 50, PAT_LIGHT_SETTLE_M
 // to her (worst right at her feet, falling off to the ring's rim), with 0 the instant you're actually
 // outside PAT_LIGHT_RANGE. PAT_LIGHT_DPS_MIN is deliberately not 0 - the rim is still "in the lightning"
 // and should still visibly hurt a little, not feel like a dead zone just inside the line.
-const PAT_LIGHT_DPS_MAX = 14, PAT_LIGHT_DPS_MIN = 3;
+const PAT_LIGHT_DPS_MAX = 28, PAT_LIGHT_DPS_MIN = 8;   // V9.93: doubled from 14/3 — lightning was doing almost no visible damage per Scarlett
 const PAT_LIGHT_STUN_AT_MS = 3000, PAT_LIGHT_STUN_MS = 900, PAT_LIGHT_STUN_DAMAGE = 6;   // 3 continuous seconds in the zone -> stunned + a damage spike (TODO: once Scarlett sends the Olly electric-shock reaction art, play it here instead of the generic hurt flash)
 // V9.41: her four hurt reactions are the jumps in the 'Salvagable?' clip (atlas 'salv' = source frames 4-52). [first, last] indexes into that atlas.
 // PAT_HURT_DY = how far (source px) each piece's first frame sits below the standing line, so every reaction starts with her feet on the floor.
@@ -4004,7 +4004,7 @@ export function createLevel1(ui) {
         // side, which is the "wrong side again" regression. Put it on the side of Olly that's away from
         // where she fell (zombieCombatX stays put through the death + cutscene) instead.
         const dir = zombieCombatX >= player.x ? -1 : 1;   // V9.80: on the OTHER side of Olly
-        patReward = { phase: 'chest', t0: gnow(), x: Math.max(260, Math.min(COMBAT_W - 260, player.x + dir * 220)) };   // V9.82: sat too far forward/away from him at 320
+        patReward = { phase: 'chest', t0: gnow(), x: COMBAT_W / 2 };   // V9.93: fixed position (centre of arena) — spawning relative to Olly was confusing per Scarlett
         ui.combatStatus.textContent = 'A chest has appeared! Walk up to it and click it.';
     }
     function patChestInteract() {
@@ -4329,8 +4329,10 @@ export function createLevel1(ui) {
             for (let i = 1; i <= steps && !s.hit; i++) {
                 const px = prevX + (s.x - prevX) * (i / steps), py = prevY + (s.y - prevY) * (i / steps);
                 if (Math.abs(px - player.x) < 70 && py > CHAIN_FLOOR_Y - 260) {
-                    const airborne = jumping || jumpOffset < -20;
-                    if (airborne || player.invuln > nowMs) continue;   // jumped over / dodged: it sails past
+                    // V9.93: removed the airborne check — the orb arcs up after bouncing and visually
+                    // hits Olly even when he's jumping, so letting it pass through looked like a bug.
+                    // Only dodging (invuln frames) avoids the orb now.
+                    if (player.invuln > nowMs) continue;   // dodged: it sails past
                     s.hit = true; s.dead = true;
                     patSparkShards = { x: px, y: py, t: nowMs };   // V9.82: burst into purple shards on impact so the hit is unmistakable
                     patDamage(PAT_JAB_DAMAGE, 1e5, PAT_JAB_PUSH, 'UMBRELLA SPARK', nowMs);
