@@ -22,6 +22,6 @@ export function slotSummary(n) {
     const s = readSlot(n);
     if (!s) return null;
     const when = s.savedAt ? new Date(s.savedAt) : null;
-    return { hp: s.hp, maxHp: s.maxHp, kills: s.kills || 0, when: when && !isNaN(when) ? when.toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '' };
+    return { level: s.level === 2 ? 2 : 1, hp: s.hp, maxHp: s.maxHp, kills: s.kills || 0, when: when && !isNaN(when) ? when.toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '' };
 }
 export function anySave() { for (let i = 1; i <= SLOT_COUNT; i++) if (readSlot(i)) return true; return false; }

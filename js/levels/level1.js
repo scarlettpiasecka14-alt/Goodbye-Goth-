@@ -2,6 +2,11 @@
 import { playSfx, playVoiceLine, playMagicZap, playThunder, playRandomSfx, playMusic, playMusicFrom, preloadSfx, setLoopSfx, setAudioHeld, kickAudio } from '../audio.js?v=9820';
 import { activeKey } from '../saves.js?v=9820';
 import { actionHint, hintHTML } from '../controls.js?v=9820';
+// V9.94: Level 2 runs on this same engine (createLevel1(ui, { level: 2 })). Its settings live in
+// level2-config.js; the parts this file doesn't have (Find the Princess, Devil's Fingers, Sophia)
+// are borrowed from level2.js. With no level option everything below behaves exactly as Level 1.
+import { LEVEL2 } from './level2-config.js?v=9940';
+import { createLevel2 } from './level2.js?v=9940';
 // Game clock: normal time, but it stands still while a tutorial pop-up is open (so nothing happens behind it).
 let pausedTotal = 0, pausedAt = 0;
 const gnow = () => (pausedAt || performance.now()) - pausedTotal;
@@ -134,7 +139,7 @@ function drawAttackRing(c, x, floorY, radius, kind, progress, active, nowMs, win
     c.restore();
 }
 // V9.23: how close the map camera is (was 1.42; 1.7 in V9.23). Bigger = closer, characters and objects look larger.
-const MAP_ZOOM = 1.5;
+let MAP_ZOOM = 1.5;   // V9.94: Level 2 sets its own (createLevel1)
 // V9.27: the map camera sits this many map-pixels above Olly, so you see more of what is ahead/north (the church corner at the start).
 const CAM_LEAD_Y = 90;
 const MIST_SEE_NEAR = 560, MIST_SEE_FAR = 760;   // enemies are fully visible inside 560 map-px of Olly, invisible beyond 760
@@ -656,6 +661,7 @@ const CHAIN_STUN_FRAME_MS = 41,   // V9.31: stun lasts ~25% longer (2.5 s, was 2
 // Hurt reaction: she doubles over and straightens up. A normal punch plays the first 46 frames, a Heavy Attack plays all 61 frames more slowly.
 const CHAIN_HURT_NORMAL_FRAMES = 46, CHAIN_HURT_NORMAL_MS = 1150, CHAIN_HURT_HEAVY_FRAMES = 61, CHAIN_HURT_HEAVY_MS = 1900;
 const CHAIN_PATTERN = ['swipe', 'swipe', 'slam'];
+let CHAIN_HARD = null;   // V9.94: Level 2's harder Chain Goth (see level2-config.js chainHard); null = Level 1 as tuned
 // Frames where the mace touches the floor: [x, y] of the contact point, in animator pixels relative to her feet (negative x = toward Olly; measured from where the chain lies on the floor in your frames).
 // A little cream spark burst is drawn on those frames so the chain feels like it really hits the ground.
 const CHAIN_CONTACTS = {
@@ -734,10 +740,20 @@ const WALK = (() => {
     });
     return g;
 })();
+// V9.94: the active walk grid (Level 1's by default; Level 2 swaps in its own when it starts).
+let ACTIVE_WALK = WALK;
+function decodeWalkRle(rle) {
+    const g = new Uint8Array(WALK_COLS * WALK_ROWS);
+    rle.split('|').forEach((row, gy) => {
+        let gx = 0, v = 0;
+        row.split(',').forEach(n => { n = +n; if (v) g.fill(1, gy * WALK_COLS + gx, gy * WALK_COLS + gx + n); gx += n; v ^= 1; });
+    });
+    return g;
+}
 const WALK_DEBUG = /[?&]walk(=|&|$)/.test(typeof location !== 'undefined' ? location.search : '');
 function walkAt(px, py) {
     const gx = Math.floor(px / WALK_CELL), gy = Math.floor(py / WALK_CELL);
-    return gx >= 0 && gy >= 0 && gx < WALK_COLS && gy < WALK_ROWS && WALK[gy * WALK_COLS + gx] === 1;
+    return gx >= 0 && gy >= 0 && gx < WALK_COLS && gy < WALK_ROWS && ACTIVE_WALK[gy * WALK_COLS + gx] === 1;
 }
 function blockedWorld(px, py, r=0) {
     // Olly's feet must be on the path, and so must a point 8px to each side (so his body never overlaps a hedge).
@@ -754,8 +770,9 @@ function nearestWalkable(px, py) {
             if (!blockedWorld(nx, ny)) return { x: nx, y: ny };
         }
     }
-    return { x: 240, y: 372 };
+    return ACTIVE_START;
 }
+let ACTIVE_START = { x: 240, y: 372 };   // V9.94: per level
 let walkDebugCanvas = null;
 function drawWalkDebug(ctx) {
     if (!walkDebugCanvas) {
@@ -846,7 +863,28 @@ function drawZombieSprite(ctx, x, y, type, s=.68, t=0, attack=false, face='left'
     ctx.restore();
 }
 
-export function createLevel1(ui) {
+export function createLevel1(ui, opts = {}) {
+    // V9.94: which level this is. LV = null means Level 1 (nothing changes); LV = LEVEL2 for Level 2.
+    const LV = opts.level === 2 ? LEVEL2 : null;
+    MAP_ZOOM = LV ? LV.mapZoom : 1.5;
+    ACTIVE_WALK = LV ? decodeWalkRle(LV.walkRle) : WALK;
+    ACTIVE_START = LV ? { ...LV.start } : { x: 240, y: 372 };
+    walkDebugCanvas = null;
+    CHAIN_HARD = LV ? LV.chainHard : null;
+    const mapBg = LV ? Object.assign(new Image(), { src: LV.mapBg }) : mapBackground;
+    const keySprite = LV ? Object.assign(new Image(), { src: LV.keyItem.img }) : goldenKeySprite;
+    if (LV) ITEM_INFO.key = { ...ITEM_INFO.key, ...LV.keyItem };
+    const OLLY_MAP_DRAW_SCALE = LV ? LV.ollyMapScale : .92;
+    // Level 2 borrows Find the Princess / Devil's Fingers / Sophia from level2.js (its own overlay + canvas).
+    let extras = null;
+    if (LV) {
+        const extrasCanvas = document.createElement('canvas');
+        extrasCanvas.width = 1536; extrasCanvas.height = 1024;
+        extras = createLevel2({ canvas: extrasCanvas, dialogue: ui.dialogue }, { hosted: true, isGod: () => cheatGod });
+    }
+    const tomSprite = LV ? Object.assign(new Image(), { src: 'assets/characters/tom/tom-front.webp' }) : null;
+    const tomJournalIcon = LV ? Object.assign(new Image(), { src: 'assets/icons/tom-journal.webp' }) : null;
+    let metTom = false, tomX = 0, tomY = 0;
     setTimeout(loadCombatAssets, 2500);   // start fetching fight art in the background once the level opens
     // V9.80: Patricia's art (about 490 MB once decoded, x2 as bitmaps) is no longer loaded when the level opens: it loads when you reach her (boss screen / fight). On an 8 GB Mac it was starving the game of memory.
     const ctx = ui.canvas.getContext('2d'),
@@ -880,7 +918,7 @@ export function createLevel1(ui) {
 
     // Deliberately mixed placement: some patches hide objectives/gate, while
     // others are just atmospheric so the player cannot infer what matters.
-    const FOG_PATCHES = [
+    const FOG_PATCHES_L1 = [
         // Dense objective-adjacent patches, deliberately mixed with decoys.
         { x: 475, y: 420, rx: 175, ry: 125, a: .88, seed: .2 },
         { x: 390, y: 555, rx: 125, ry: 95, a: .58, seed: .9 },
@@ -968,6 +1006,8 @@ export function createLevel1(ui) {
         { x: 850, y: 980, rx: 120, ry: 75, a: .22, seed: 35.3, edge: true },
         { x: 1180, y: 980, rx: 125, ry: 78, a: .20, seed: 36.0, edge: true }
     ];
+    // V9.94: Level 2 has its own patches over its objectives; the general fog banks are shared.
+    const FOG_PATCHES = LV ? LV.fogPatches.concat(FOG_PATCHES_L1.slice(10)) : FOG_PATCHES_L1;
 
     // v6.5.21: each fog patch is a broad, overlapping cloud bank rather than
     // a collection of isolated white blobs.  A patch fades away as soon as
@@ -1319,7 +1359,7 @@ export function createLevel1(ui) {
         ctx.restore();
     }
 
-    const enemies = [
+    const enemies = LV ? LV.enemies() : [
     {
         x: 604,
         y: 244,
@@ -1359,19 +1399,25 @@ export function createLevel1(ui) {
             y: 576
         };
     const MAX_HP = 100;
+    if (LV) {   // V9.94: Level 2 positions (the gate is the glowing doorway, the key is the pendant)
+        Object.assign(relationshipChallenge, LV.relationshipChallenge);
+        Object.assign(princessQuestion, LV.princessQuestion);
+        Object.assign(boss, LV.gate);
+        Object.assign(key, LV.key);
+    }
     const COMBAT_W = 1440,
         COMBAT_H = 810,
         COMBAT_GROUND_Y = 470;
     const combatBackgroundImage = new Image();
-    combatBackgroundImage.src = 'assets/environment/combat-background-level1.webp';
+    combatBackgroundImage.src = LV ? LV.combatBackground : 'assets/environment/combat-background-level1.webp';
     const patriciaArenaImage = new Image();
     patriciaArenaImage.src = 'assets/arenas/patricia-arena.webp?v=9420';   // V9.30: Patricia's own arena
 
     // v6.5.16e: start just below the upper-left church, close to Zombie Goth.
-    let x = 240,
-        y = 372,
-        cameraX = 240,
-        cameraY = 372 - CAM_LEAD_Y,
+    let x = ACTIVE_START.x,
+        y = ACTIVE_START.y,
+        cameraX = ACTIVE_START.x,
+        cameraY = ACTIVE_START.y - CAM_LEAD_Y,
         hp = 100,
         maxHp = 100,
         mode = 'map',
@@ -1470,6 +1516,21 @@ export function createLevel1(ui) {
     let now = 0,
         raf = 0,
         lastMoveTime = 0;
+    if (LV) {
+        // V9.94: Level 2 starts with Heavy Attack (earned in Level 1) and carries Olly's Level 1
+        // rewards over (extra max HP, faster Heavy Attack, veil uses, potions) when he comes
+        // straight from the Level 1 win screen.
+        heavyUnlocked = true;
+        const c = opts.carry;
+        if (c) {
+            if (Number.isFinite(c.maxHp)) maxHp = Math.max(100, c.maxHp);
+            hp = maxHp;
+            if (Number.isFinite(c.heavyCdMul)) heavyCdMul = c.heavyCdMul;
+            if (Number.isFinite(c.veilCharges)) veilCharges = c.veilCharges;
+            if (c.inventory && typeof c.inventory === 'object') inventory = { ...c.inventory, key: 0 };
+        }
+        tomX = x; tomY = y;
+    }
     const held = {
         up: false,
         down: false,
@@ -1530,7 +1591,7 @@ export function createLevel1(ui) {
             // Directional appearance is controlled by setMoveKey(), so short
             // taps remain visible as a sticky pose. Keep movement direction
             // separate from the visual facing state.
-            ui.dialogue.textContent = 'The cemetery is strangely peaceful. Somewhere nearby, a goth is probably plotting.';
+            ui.dialogue.textContent = LV ? LV.dialogue.walking : 'The cemetery is strangely peaceful. Somewhere nearby, a goth is probably plotting.';
         }
     }
 
@@ -1540,7 +1601,7 @@ export function createLevel1(ui) {
     });
     function reveal() { revealAround(x, y, true); }
     function objectivesComplete() {
-        return kills >= 2 && relationshipDone && puzzleSolved
+        return kills >= 2 && relationshipDone && puzzleSolved && (!LV || metTom)   // V9.94: Level 2 also needs Tom found
     }
     function unlockedBoss() {
         return objectivesComplete() && keyCollected && gateOpened
@@ -1584,6 +1645,7 @@ export function createLevel1(ui) {
 
     // ---- V9.21 inventory items: hover text + click for actions (the key has a USE button) ----
     function gateNearPlayer() {
+        if (LV) return Math.hypot(x - LV.gateNear.x, y - LV.gateNear.y) < LV.gateNear.r;
         return Math.hypot(x - 1380, y - 875) < 170;   // the path in front of the gate
     }
     function ensureItemPanel() {
@@ -1638,7 +1700,18 @@ export function createLevel1(ui) {
         ui.inventory?.setAttribute('aria-hidden', 'true');
         hideItemPanel();
         hideInvTip();
+        if (LV) { openLevel2Gate(); return; }
         playCutscene2();
+    }
+    // V9.94: Level 2's doorway has no cutscene yet - the pendant is used up and Sophia appears.
+    function openLevel2Gate() {
+        gateOpened = true;
+        inventory.key = 0;
+        refreshInventoryUI();
+        mode = 'map';
+        stats();
+        ui.dialogue.textContent = LV.dialogue.gateOpened;
+        showBossIntro();
     }
     function hideInvTip() { if (invTipEl) invTipEl.style.display = 'none'; }
     function initInventoryItems() {
@@ -1681,7 +1754,7 @@ export function createLevel1(ui) {
         refreshInventoryUI();
         if (objectivesComplete() && !keyCollected && !keySpawnAnnounced) {
             keySpawnAnnounced = true;
-            ui.dialogue.textContent = '🔑 A golden key has appeared somewhere in the cemetery. Find it.';
+            ui.dialogue.textContent = LV ? LV.dialogue.keyAppears : '🔑 A golden key has appeared somewhere in the cemetery. Find it.';
         }
     }
 
@@ -1743,26 +1816,25 @@ export function createLevel1(ui) {
             camY = Math.max(viewH / 2, Math.min(WORLD_H - viewH / 2, cameraY));
         ctx.translate(vw / 2 - camX * zoom, vh / 2 - camY * zoom);
         ctx.scale(zoom, zoom);
-        if (mapBackground.complete && mapBackground.naturalWidth)
-            ctx.drawImage(mapBackground, 0, 0, WORLD_W, WORLD_H);
+        if (mapBg.complete && mapBg.naturalWidth)
+            ctx.drawImage(mapBg, 0, 0, WORLD_W, WORLD_H);
         else {
             ctx.fillStyle = '#1b1420';
             ctx.fillRect(0, 0, WORLD_W, WORLD_H)
         }
         if (WALK_DEBUG) drawWalkDebug(ctx);
         // V9.27: Goths only emerge from the mist as you get close (so the Chain Goth is not on screen at the start).
-        const mistAlpha = e => { const near = e === enemies[0] ? 150 : MIST_SEE_NEAR, far = e === enemies[0] ? 250 : MIST_SEE_FAR;   // the Zombie Goth lurks close to the start, so she only shows up very close
+        const mistAlpha = e => { const near = e.type === 'shambler' ? 150 : MIST_SEE_NEAR, far = e.type === 'shambler' ? 250 : MIST_SEE_FAR;   // the Zombie Goth lurks close to the start, so she only shows up very close
             return Math.max(0, Math.min(1, (far - Math.hypot(e.x - x, e.y - y)) / (far - near))); };
-        if (!enemies[0].dead) {
-            ctx.save(); ctx.globalAlpha = mistAlpha(enemies[0]);
-            drawZombieSprite(ctx, enemies[0].x, enemies[0].y, 'shambler', .84, t / 1000, false);
+        // V9.94: drawn per enemy type so Level 2 (Chain Goth + Devil's Fingers) uses the same code.
+        enemies.forEach(e => {
+            if (e.dead) return;
+            ctx.save(); ctx.globalAlpha = mistAlpha(e);
+            if (e.type === 'devilsfingers') drawDevilsFingersMapMarker(ctx, e.x, e.y, t / 1000);
+            else drawZombieSprite(ctx, e.x, e.y, e.type, e.type === 'shambler' ? .84 : .9594, t / 1000, false);
             ctx.restore();
-        }
-        if (!enemies[1].dead) {
-            ctx.save(); ctx.globalAlpha = mistAlpha(enemies[1]);
-            drawZombieSprite(ctx, enemies[1].x, enemies[1].y, 'chain', .9594, t / 1000, false);
-            ctx.restore();
-        }
+        });
+        if (LV && !metTom && tomJournalIcon) drawMarker(ctx, tomJournalIcon, LV.tomJournal.x, LV.tomJournal.y, 70, 70, '', t / 1000);
         if (!relationshipDone)
             drawMarker(ctx, relationshipChallengeIcon, relationshipChallenge.x, relationshipChallenge.y, 90, 90, '', t / 1000);
         if (!puzzleSolved)
@@ -1772,13 +1844,15 @@ export function createLevel1(ui) {
             ctx.translate(key.x, key.y + Math.sin(t / 280) * 4);
             ctx.shadowColor = '#ffe49b';
             ctx.shadowBlur = 22;
-            if (goldenKeySprite.complete && goldenKeySprite.naturalWidth) {
-                const ks = 88 / Math.max(goldenKeySprite.naturalWidth, goldenKeySprite.naturalHeight);
-                ctx.drawImage(goldenKeySprite, -goldenKeySprite.naturalWidth * ks / 2, -goldenKeySprite.naturalHeight * ks / 2, goldenKeySprite.naturalWidth * ks, goldenKeySprite.naturalHeight * ks);
+            if (LV) ctx.shadowColor = '#7fe6ff';
+            if (keySprite.complete && keySprite.naturalWidth) {
+                const ks = (LV ? 72 : 88) / Math.max(keySprite.naturalWidth, keySprite.naturalHeight);
+                ctx.drawImage(keySprite, -keySprite.naturalWidth * ks / 2, -keySprite.naturalHeight * ks / 2, keySprite.naturalWidth * ks, keySprite.naturalHeight * ks);
             }
             ctx.restore();
         }
-        if (!gateOpened && gateLockSprite.complete && gateLockSprite.naturalWidth) {
+        if (LV && !gateOpened) drawOrbPulse(ctx, boss.x, boss.y - 58, t / 1000);
+        if (!LV && !gateOpened && gateLockSprite.complete && gateLockSprite.naturalWidth) {
             ctx.save();
             ctx.translate(boss.x, boss.y - 58 + Math.sin(t / 360) * 3);
             ctx.shadowColor = 'rgba(0,0,0,.75)';
@@ -1788,7 +1862,8 @@ export function createLevel1(ui) {
             ctx.restore();
         }
         const mapMoving = mode === 'map' && (held.up || held.down || held.left || held.right);
-        drawOlly(ctx, playerX, playerY, .92, t / 1000, true, facingDir, mapMoving, walkDir);
+        if (LV && metTom) drawTomFollower(ctx, t / 1000, dt);
+        drawOlly(ctx, playerX, playerY, OLLY_MAP_DRAW_SCALE, t / 1000, true, facingDir, mapMoving, walkDir);
         // v6.5.16e: unexplored cemetery remains covered; revealed areas stay clear.
         updateFogPatchClears(t);
         updateFogParting(t);
@@ -1797,6 +1872,48 @@ export function createLevel1(ui) {
             drawAnimatedMist(t);
         }
         ctx.restore();
+    }
+    // ---- V9.94 Level 2 map drawing helpers ----
+    // Devil's Fingers has no map sprite yet: a glowing crack in the ground marks her spot.
+    function drawDevilsFingersMapMarker(c, px, py, t) {
+        c.save();
+        const pulse = .8 + .2 * Math.sin(t * 3);
+        c.translate(px, py);
+        const glow = c.createRadialGradient(0, 0, 4, 0, 0, 52 * pulse);
+        glow.addColorStop(0, 'rgba(230,80,110,.75)'); glow.addColorStop(1, 'rgba(120,20,60,0)');
+        c.fillStyle = glow; c.beginPath(); c.arc(0, 0, 52 * pulse, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = 'rgba(255,170,190,.9)'; c.lineWidth = 3; c.lineCap = 'round';
+        for (let i = 0; i < 5; i++) {
+            const a = (i / 5) * Math.PI * 2 + t * .4;
+            c.beginPath(); c.moveTo(0, 0); c.lineTo(Math.cos(a) * 24, Math.sin(a) * 11 - 4); c.stroke();
+        }
+        c.restore();
+    }
+    // The glowing doorway (the orb): a soft pulse marks where to click until it's opened.
+    function drawOrbPulse(c, px, py, t) {
+        c.save();
+        const r = 46 + Math.sin(t * 2.4) * 6;
+        const g = c.createRadialGradient(px, py, 4, px, py, r);
+        g.addColorStop(0, 'rgba(160,240,255,.55)'); g.addColorStop(1, 'rgba(60,180,255,0)');
+        c.fillStyle = g; c.beginPath(); c.arc(px, py, r, 0, Math.PI * 2); c.fill();
+        c.restore();
+    }
+    // Tom hops along behind Olly once he's been met (front-on art only for now).
+    function drawTomFollower(c, t, dt) {
+        const targetX = x - (facingDir === 'left' ? -46 : 46), targetY = y + 18;
+        const k = 1 - Math.exp(-5 * Math.min(dt || .016, .05));
+        tomX += (targetX - tomX) * k;
+        tomY += (targetY - tomY) * k;
+        const hop = Math.abs(Math.sin(t * 6)) * 10;
+        c.save();
+        c.translate(tomX, tomY - hop);
+        c.fillStyle = SH(.3);
+        c.beginPath(); c.ellipse(0, 20 + hop, 16, 5, 0, 0, Math.PI * 2); c.fill();
+        if (tomSprite.complete && tomSprite.naturalWidth) {
+            const h = 62, w = h * (tomSprite.naturalWidth / tomSprite.naturalHeight);
+            c.drawImage(tomSprite, -w / 2, -h * .82, w, h);
+        }
+        c.restore();
     }
     function canvasPointToWorld(e) {
         const rect = ui.canvas.getBoundingClientRect(),
@@ -1826,7 +1943,7 @@ export function createLevel1(ui) {
     let pendingInteraction = null;
     let gateEncounterShown = false;
     function openInteractionEncounter(kind, enemy=null) {
-        const data = ENCOUNTER_DATA[kind];
+        const data = (LV ? LV.encounters : ENCOUNTER_DATA)[kind];
         if (!data)
             return;
         playSfx('click');   // clicking a map icon (assets/audio/sfx/interact.mp3)
@@ -1844,7 +1961,7 @@ export function createLevel1(ui) {
         const relEnc = kind === 'relationshipChallenge';
         ui.encounter.classList.toggle('enc-rel', relEnc);
         ui.encounterName.textContent = data.name;
-        ui.encounterName.style.display = relEnc ? 'none' : '';
+        ui.encounterName.style.display = relEnc && !LV ? 'none' : '';   // V9.94: Level 2's placeholder picture has no title in it
         // V9.91: the "scientific" Latin name, per the Goth Girl Guide taxonomy - only the Goths that actually have one show it.
         if (ui.encounterSpecies) {
             ui.encounterSpecies.textContent = data.species ? `(${data.species})` : '';
@@ -1863,6 +1980,7 @@ export function createLevel1(ui) {
         if (kind === 'lockedGate' && ui.encounterReady) {
             ui.encounterReady.classList.add('hidden');
         }
+        if (kind === 'tomJournal' && ui.encounterReady) ui.encounterReady.textContent = 'PICK IT UP';
         ui.encounter.classList.remove('hidden');
     }
     function closeEncounter() {
@@ -1886,8 +2004,11 @@ export function createLevel1(ui) {
             startCombat(false);
             return;
         }
+        if (p.kind === 'devilsFingers') { target = p.enemy; mode = 'map'; startCustomFight(p.enemy); return; }   // V9.94
+        if (p.kind === 'tomJournal') { mode = 'map'; playTomCutscene(); return; }   // V9.94
         if (p.kind === 'relationshipChallenge') {
             mode = 'map';
+            if (LV) { startFindPrincess(); return; }   // V9.94
             startRelationship();
             return;
         }
@@ -1931,9 +2052,20 @@ export function createLevel1(ui) {
             const j = Math.floor(Math.random() * (i + 1));
             [princessWrongShuffle[i], princessWrongShuffle[j]] = [princessWrongShuffle[j], princessWrongShuffle[i]];
         }
+        if (LV) {   // V9.94: Level 2's question and answers
+            const q = LV.princessQuestionData, qEl = document.querySelector('#puzzle .quiz-question');
+            if (qEl) qEl.textContent = q.question;
+            document.querySelectorAll('#puzzle [data-answer]').forEach((b, i) => {
+                const a = q.answers[i];
+                if (!a) { b.style.display = 'none'; return; }
+                b.style.display = '';
+                b.dataset.answer = a.correct ? 'correct' : 'wrong';
+                b.innerHTML = `<strong>${'ABCD'[i]}.</strong> ${a.text}`;
+            });
+        }
         const img = document.querySelector('#puzzle .quiz-image');
         if (img) {
-            img.src = 'assets/encounters/level1/princess-question-art.webp?v=501';
+            img.src = LV ? LV.princessQuestionData.image : 'assets/encounters/level1/princess-question-art.webp?v=501';
             matchArtworkLetterboxing(img);
         }
         ui.puzzle.classList.remove('hidden');
@@ -2086,9 +2218,10 @@ export function createLevel1(ui) {
         const near = (px, py, r) => Math.hypot(pt.x - px, pt.y - py) < r;
         const enemyHit = enemies.find(z => !z.dead && near(z.x, z.y, 70));
         if (enemyHit) {
-            openInteractionEncounter(enemyHit.type === 'shambler' ? 'zombieGoth' : 'chainGoth', enemyHit);
+            openInteractionEncounter(enemyHit.type === 'shambler' ? 'zombieGoth' : enemyHit.type === 'devilsfingers' ? 'devilsFingers' : 'chainGoth', enemyHit);
             return;
         }
+        if (LV && !metTom && near(LV.tomJournal.x, LV.tomJournal.y, 58)) { openInteractionEncounter('tomJournal'); return; }   // V9.94
         if (!relationshipDone && near(relationshipChallenge.x, relationshipChallenge.y, 58)) {
             openInteractionEncounter('relationshipChallenge');
             return;
@@ -2099,11 +2232,12 @@ export function createLevel1(ui) {
         }
         if (objectivesComplete() && !keyCollected && near(key.x, key.y, 55)) {
             keyCollected = true;
-            preloadGateCutscene();   // V9.80: buffer the gate video now so the cute-bat loader doesn't show when the gate opens
+            if (!LV) preloadGateCutscene();   // V9.80: buffer the gate video now so the cute-bat loader doesn't show when the gate opens
             playSfx('pickup');   // assets/audio/sfx/pickup.mp3
             inventory.key = 1;
             refreshInventoryUI();
-            ui.dialogue.textContent = '🔑 A little brass key drops onto the cobblestones. Finally, a sensible piece of game design. Take it to the gate: open your backpack (' + actionHint('inventory') + '), select the key and press USE.';
+            if (LV) ui.dialogue.textContent = LV.dialogue.keyPickup.replace('{inv}', actionHint('inventory'));
+            else ui.dialogue.textContent = '🔑 A little brass key drops onto the cobblestones. Finally, a sensible piece of game design. Take it to the gate: open your backpack (' + actionHint('inventory') + '), select the key and press USE.';
             stats();
             return;
         }
@@ -2115,7 +2249,8 @@ export function createLevel1(ui) {
                 return;
             }
             if (!gateOpened) {
-                ui.dialogue.textContent = '🔒 The gate is locked. Open your backpack (' + actionHint('inventory') + '), select the key and press USE while standing in front of it.';
+                if (LV) ui.dialogue.textContent = LV.dialogue.gateLocked.replace('{inv}', actionHint('inventory'));
+                else ui.dialogue.textContent = '🔒 The gate is locked. Open your backpack (' + actionHint('inventory') + '), select the key and press USE while standing in front of it.';
                 return;
             }
         }
@@ -3104,6 +3239,7 @@ export function createLevel1(ui) {
     let chainDeathFace = 'left';
     let chainHurtHeavy = false;
     let chainPatternStep = 0;
+    let chainFollowUp = false;   // V9.94: Level 2's follow-up swipe already used this attack
     let chainStunHits = 0;
     let chainStunLastHit = -1e9;
     let chainSparks = [];
@@ -4519,7 +4655,8 @@ export function createLevel1(ui) {
     }
 
     function chooseChainAttack(nowMs) {
-        const next = CHAIN_PATTERN[chainPatternStep % CHAIN_PATTERN.length];
+        const pattern = CHAIN_HARD?.pattern || CHAIN_PATTERN;   // V9.94
+        const next = pattern[chainPatternStep % pattern.length];
         chainPatternStep++;
         if (next === 'slam') {
             zombieCombatAttackType = 'slam';
@@ -4589,7 +4726,7 @@ export function createLevel1(ui) {
                 zombieCombatState = 'chase';
                 zombieCombatStateStart = nowMs;
                 zombieCombatNextDecision = nowMs;
-            } else if (nowMs - zombieCombatStateStart >= 280) {
+            } else if (nowMs - zombieCombatStateStart >= 280 * (CHAIN_HARD?.recover || 1)) {
                 chooseChainAttack(nowMs);
             }
             return;
@@ -4599,7 +4736,7 @@ export function createLevel1(ui) {
             if (distance > CHAIN_STAND_OFF) {
                 const desiredX = player.x - direction * (CHAIN_STAND_OFF - 20);
                 const targetX = Math.max(280, Math.min(COMBAT_W - 280, desiredX));
-                const step = Math.min(Math.abs(targetX - zombieCombatX), CHAIN_CHASE_SPEED * dt);
+                const step = Math.min(Math.abs(targetX - zombieCombatX), CHAIN_CHASE_SPEED * (CHAIN_HARD?.speed || 1) * dt);
                 zombieCombatX += (targetX >= zombieCombatX ? 1 : -1) * step;
                 zombieCombatX = Math.max(170, Math.min(COMBAT_W - 170, zombieCombatX));
                 zombieCombatWalkIndex += dt * 1000;
@@ -4612,7 +4749,7 @@ export function createLevel1(ui) {
         }
 
         if (zombieCombatState === 'windup') {
-            if (nowMs - zombieCombatStateStart >= CHAIN_SWIPE_WINDUP_MS) {
+            if (nowMs - zombieCombatStateStart >= CHAIN_SWIPE_WINDUP_MS * (CHAIN_HARD?.windup || 1)) {
                 zombieCombatState = 'swipe';
                 zombieCombatStateStart = nowMs;
                 zombieCombatAttackHit = false;
@@ -4628,12 +4765,26 @@ export function createLevel1(ui) {
                 zombieCombatAttackHit = true;
                 playSfx('chain-impact', .9);
                 // Red swipe (short reach): only a dodge avoids it. Jumping (even over her) does not.
-                applyZombieDamage(CHAIN_SWIPE_DAMAGE, CHAIN_SWIPE_RANGE, CHAIN_SWIPE_PUSH, nowMs, 'CHAIN SWIPE', false, false);   // red tier: dodge or jump both avoid it
+                applyZombieDamage(Math.round(CHAIN_SWIPE_DAMAGE * (CHAIN_HARD?.damage || 1)), CHAIN_SWIPE_RANGE, CHAIN_SWIPE_PUSH, nowMs, 'CHAIN SWIPE', false, false);   // red tier: dodge or jump both avoid it
             }
             if (elapsed >= CHAIN_SWIPE_TOTAL_MS + 60) {
+                // V9.94 (Level 2): sometimes she whips the chain straight back for a second swipe.
+                if (CHAIN_HARD && !chainFollowUp && Math.random() < CHAIN_HARD.followUp) {
+                    chainFollowUp = true;
+                    zombieCombatAttackType = 'swipe';
+                    zombieCombatAttackHit = false;
+                    zombieCombatState = 'windup';
+                    zombieCombatStateStart = nowMs;
+                    enemyAttackPhase = 'windup';
+                    chainSwipeAim = player.x >= zombieCombatX ? 1 : -1;
+                    playSfx('chain-rattle', .7);
+                    ui.combatStatus.textContent = 'She whips it straight back round. DODGE again!';
+                    return;
+                }
+                chainFollowUp = false;
                 zombieCombatState = 'recover';
                 zombieCombatStateStart = nowMs;
-                zombieRecoveryDuration = CHAIN_RECOVER_MS;
+                zombieRecoveryDuration = CHAIN_RECOVER_MS * (CHAIN_HARD?.recover || 1);
                 enemyAttackPhase = 'recover';
             }
             return;
@@ -4659,13 +4810,13 @@ export function createLevel1(ui) {
                 const airborne = jumping || jumpOffset < -20;
                 if (rel > -20 && rel < reach && !airborne && !(player.invuln > nowMs)) {   // V9.80: dodging also avoids a shockwave
                     chainSlamWaveHit = (chainSlamWaveHit | 0) | bit;
-                    applyZombieDamage(CHAIN_SLAM_DAMAGE, 1e5, CHAIN_SLAM_PUSH, nowMs, 'CHAIN SLAM', true, true);
+                    applyZombieDamage(Math.round(CHAIN_SLAM_DAMAGE * (CHAIN_HARD?.damage || 1)), 1e5, CHAIN_SLAM_PUSH, nowMs, 'CHAIN SLAM', true, true);
                 }
             });
             if (elapsed >= CHAIN_SLAM_TOTAL_MS) {
                 zombieCombatState = 'recover';
                 zombieCombatStateStart = nowMs;
-                zombieRecoveryDuration = CHAIN_RECOVER_MS + 250;
+                zombieRecoveryDuration = (CHAIN_RECOVER_MS + 250) * (CHAIN_HARD?.recover || 1);
                 enemyAttackPhase = 'recover';
             }
             return;
@@ -5283,11 +5434,12 @@ export function createLevel1(ui) {
 
                 const bothLevel1GothsDefeated = enemies.every(e => e.dead);
                 const isZombie = defeatedType === 'shambler' || defeatedType === 'zombie';
-                const defeatArt = isZombie
+                const lvDefeat = LV && LV.defeat[defeatedType];   // V9.94: Level 2's own screens
+                const defeatArt = lvDefeat ? lvDefeat.image : isZombie
                     ? 'assets/encounters/level1/zombie-goth-defeated.webp?v=2'
                     : 'assets/encounters/level1/chain-goth-defeated.webp?v=2';
-                const defeatTitle = isZombie ? 'ZOMBIE GOTH DEFEATED!' : 'CHAIN GOTH DEFEATED!';
-                const defeatCopy = isZombie
+                const defeatTitle = lvDefeat ? lvDefeat.title : isZombie ? 'ZOMBIE GOTH DEFEATED!' : 'CHAIN GOTH DEFEATED!';
+                const defeatCopy = lvDefeat ? lvDefeat.copy : isZombie
                     ? "The Zombie Goth collapses at last. Her quest for fishnets has been cut short, and you've narrowly avoided becoming tonight's dinner. A productive evening all round."
                     : "As the Chain Goth takes her last breath, her weapon clatters to the floor with a thud. You've survived, barely. May lady luck stay on your side and the goths stay far, far away.";
 
@@ -5324,6 +5476,8 @@ export function createLevel1(ui) {
             reveal();
         }
         mode = 'map';
+        if (LV && isBoss) { setTimeout(() => startBoss(), 100); return; }   // V9.94: Sophia again
+        if (target?.custom) { const tg = target; setTimeout(() => startCustomFight(tg), 100); return; }   // V9.94: Devil's Fingers again
         if (target || isBoss)
             setTimeout(() => startCombat(isBoss, isBoss && patCheckpoint), 100);
     }
@@ -5338,7 +5492,7 @@ export function createLevel1(ui) {
             reveal();
         }
         mode = 'map';
-        ui.dialogue.textContent = 'You retreat to the checkpoint. The goths are still waiting.';
+        ui.dialogue.textContent = LV ? LV.dialogue.retreat : 'You retreat to the checkpoint. The goths are still waiting.';
         stats();
     }
 
@@ -5482,7 +5636,8 @@ export function createLevel1(ui) {
             stats();
             playSfx('quiz-win', 1.6);
             playVoiceLine(PRINCESS_Q_RIGHT_LINES[Math.floor(Math.random() * PRINCESS_Q_RIGHT_LINES.length)], 1.1);
-            showCompletionScreen('assets/encounters/level1/princess-question-completed.webp?v=1', 'Princess Question complete', 'CONGRATULATIONS!', "You've answered the Princess Question correctly, proving that love and intelligence can, on rare occasions, coexist. Princess Scarlett would be proud. Try not to let it go to your head.", 'KEEP EXPLORING');
+            if (LV) showCompletionScreen('assets/encounters/level1/princess-question-completed.webp?v=1', 'Princess Question complete', LV.princessQuestionData.completedTitle, LV.princessQuestionData.completedCopy, 'KEEP EXPLORING');
+            else showCompletionScreen('assets/encounters/level1/princess-question-completed.webp?v=1', 'Princess Question complete', 'CONGRATULATIONS!', "You've answered the Princess Question correctly, proving that love and intelligence can, on rare occasions, coexist. Princess Scarlett would be proud. Try not to let it go to your head.", 'KEEP EXPLORING');
         } else {
             playSfx('wrong-buzz', 1.4);
             // V9.85: 'slot' is which of the (up to 3) wrong buttons was actually clicked, 0-indexed in
@@ -5498,7 +5653,7 @@ export function createLevel1(ui) {
         bossIntroPending = true;
         mode = 'bossintro';
         playMusic('map');
-        loadPatriciaAssets();   // V9.44: safety net in case the early (level-open) preload hasn't fired yet - gives her one more head start before the player hits "fight"
+        if (!LV) loadPatriciaAssets();   // V9.44: safety net in case the early (level-open) preload hasn't fired yet - gives her one more head start before the player hits "fight"
         ui.bossIntro.classList.remove('hidden');
     }
     let patResumeFromSave = false;
@@ -5508,6 +5663,7 @@ export function createLevel1(ui) {
         location.reload();   // back to the title screen; Load Game returns to this screen
     }
     function startBoss() {
+        if (LV) { startLevel2Boss(); return; }   // V9.94: Sophia, the Chaos Fairy Goth
         bossIntroPending = false;
         ui.bossReady?.classList.add('hidden');
         ui.bossIntro.classList.add('hidden');
@@ -5622,12 +5778,113 @@ export function createLevel1(ui) {
         }
         c.restore();
     }
+    // ---- V9.94 Level 2 activities --------------------------------------------------------
+    // Find the Princess (Level 2's relationship challenge) - runs full screen from level2.js.
+    function startFindPrincess() {
+        mode = 'relationship';
+        extras.runFindPrincess(r => {
+            mode = 'map';
+            if (r.passed) {
+                relationshipDone = true;
+                stats();
+                const c = LV.findPrincessCompleted;
+                showCompletionScreen(c.image, 'Find the Princess complete', c.title, c.copy, 'KEEP EXPLORING');
+            } else {
+                ui.dialogue.textContent = r.finished ? 'The princess is still hiding under a mushroom somewhere. Have another go.' : 'You leave the mushrooms to it. For now.';
+                stats();
+            }
+        });
+    }
+    // Devil's Fingers (a normal map fight in Level 2) - fought in level2.js's arena with Olly's real HP.
+    function startCustomFight(enemy) {
+        target = enemy;
+        isBoss = false;
+        combatCheckpoint = combatCheckpoint || { x, y };
+        mode = 'extra';
+        extras.runFight(enemy.custom, { hp, maxHp }, r => {
+            mode = 'map';
+            hp = Math.max(0, Math.min(maxHp, Math.round(r.hp)));
+            target = enemy;
+            endCombat(!!r.won);
+        });
+    }
+    // Sophia, the Chaos Fairy Goth (Level 2's boss, through the glowing doorway).
+    function startLevel2Boss() {
+        bossIntroPending = false;
+        ui.bossIntro.classList.add('hidden');
+        target = null;
+        isBoss = true;
+        combatCheckpoint = { x, y };
+        mode = 'extra';
+        extras.runFight(LV.boss.fight, { hp, maxHp }, r => {
+            mode = 'map';
+            hp = Math.max(0, Math.min(maxHp, Math.round(r.hp)));
+            if (r.won) {
+                hp = maxHp;
+                patriciaDefeated = true;   // (the saved "boss beaten" flag - for Level 2 it means Sophia)
+                stats();
+                ui.win.classList.remove('hidden');
+                return;
+            }
+            endCombat(false);
+        });
+    }
+    // Tom's journal: plays Tom's cutscene (once Scarlett uploads it); until then, placeholder lines.
+    function playTomCutscene() {
+        mode = 'cutscene2';
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:#09070d;display:flex;align-items:center;justify-content:center;';
+        const video = document.createElement('video');
+        video.playsInline = true; video.preload = 'auto';
+        video.style.cssText = 'width:100%;height:100%;object-fit:contain;background:#09070d;';
+        overlay.appendChild(video);
+        const skip = document.createElement('button');
+        skip.type = 'button'; skip.textContent = 'SKIP CUTSCENE ▸';
+        skip.style.cssText = 'position:absolute;right:22px;bottom:22px;padding:8px 16px;border:1px solid rgba(255,255,255,.35);border-radius:10px;background:rgba(0,0,0,.55);color:#fff;font:700 13px Georgia,serif;cursor:pointer;';
+        overlay.appendChild(skip);
+        document.body.appendChild(overlay);
+        playMusic('');
+        let done = false;
+        const finish = () => {
+            if (done) return; done = true;
+            try { video.pause(); } catch (e) {}
+            overlay.remove();
+            metTom = true; tomX = x; tomY = y;
+            mode = 'map';
+            playMusic('map');
+            stats();
+            ui.dialogue.textContent = 'Tom the Puffle hops along beside you, journal tucked under one arm.';
+        };
+        // No video yet: show the placeholder lines one at a time instead.
+        const placeholder = () => {
+            if (done) return;
+            video.remove();
+            const box = document.createElement('div');
+            box.style.cssText = 'max-width:760px;padding:28px 34px;border:1px solid #6f4a61;border-radius:18px;background:#18101d;color:#f5eaf0;font:600 22px "Cormorant Garamond",Georgia,serif;text-align:center;line-height:1.5;';
+            const line = document.createElement('div');
+            const next = document.createElement('button');
+            next.type = 'button'; next.className = 'primary'; next.style.marginTop = '18px';
+            box.append(line, next);
+            overlay.insertBefore(box, skip);
+            let i = 0;
+            const show = () => { line.textContent = LV.tomPlaceholderLines[i]; next.textContent = i < LV.tomPlaceholderLines.length - 1 ? 'NEXT' : 'KEEP EXPLORING'; };
+            next.addEventListener('click', () => { i++; if (i >= LV.tomPlaceholderLines.length) finish(); else show(); });
+            show();
+        };
+        skip.addEventListener('click', finish);
+        video.addEventListener('ended', finish, { once: true });
+        video.addEventListener('error', placeholder, { once: true });
+        video.addEventListener('canplay', () => { video.play().catch(() => {}); }, { once: true });
+        video.src = LV.tomCutscene;
+        video.load();
+    }
     function saveGame(silent = false) {
         try {
             const state = {
                 version: 7,   // V9.90: added patriciaDefeated
                 savedAt: new Date().toISOString(),
-                level: 1,
+                level: LV ? 2 : 1,
+                metTom,   // V9.94 (Level 2)
                 x,
                 y,
                 hp,
@@ -5662,6 +5919,7 @@ export function createLevel1(ui) {
         const state = safeParseSave();
         if (!state || ![2, 3, 4, 5, 6, 7].includes(state.version))
             return false;
+        if ((state.level === 2 ? 2 : 1) !== (LV ? 2 : 1)) return false;   // V9.94: a save belongs to one level
         try {
             x = Number.isFinite(state.x) ? Math.min(WORLD_W - 40, Math.max(40, state.x)) : x;
             y = Number.isFinite(state.y) ? Math.min(WORLD_H - 40, Math.max(40, state.y)) : y;
@@ -5697,6 +5955,7 @@ export function createLevel1(ui) {
             heavyUnlocked = state.version >= 5 ? !!state.heavyUnlocked : false;
             if (enemies.every(e => e.dead))
                 heavyUnlocked = true;
+            if (LV) { heavyUnlocked = true; metTom = !!state.metTom; tomX = x; tomY = y; }   // V9.94
             patriciaDefeated = state.version >= 7 && !!state.patriciaDefeated;   // V9.90: old saves predate this - nothing to restore, false is correct for them
             mode = 'map';
             target = null;
@@ -5707,7 +5966,7 @@ export function createLevel1(ui) {
             lastFogRevealX = null;
             lastFogRevealY = null;
             revealAround(x, y, true);
-            ui.dialogue.textContent = '📂 Game loaded. Welcome back to the cemetery.';
+            ui.dialogue.textContent = LV ? LV.dialogue.loaded : '📂 Game loaded. Welcome back to the cemetery.';
             patResumeFromSave = !!(state.bossIntroPending && state.patCheckpoint);   // V9.93
             if (state.bossIntroPending) { gateOpened = true; showBossIntro(); }
             // V9.90: she was already beaten when this save was made, but nothing before this persisted
@@ -5744,8 +6003,9 @@ export function createLevel1(ui) {
         // V9.31: autosave into the slot you are playing in: every 15 s on the map, and whenever the tab is hidden / closed.
         clearInterval(autosaveTimer);
         autosaveTimer = setInterval(() => { if (mode === 'map') saveGame(true); }, 15000);
-        setTimeout(() => { if (mode === 'map' && !safeParseSave()) saveGame(true); }, 2500);   // a brand-new slot gets its first save right away
-        const flush = () => { if (mode === 'map' || mode === 'bossintro') saveGame(true); };
+        // a brand-new slot gets its first save right away (V9.94: so does a slot that still holds the previous level)
+        setTimeout(() => { const sv = safeParseSave(); if (!stopped && mode === 'map' && (!sv || (sv.level === 2 ? 2 : 1) !== (LV ? 2 : 1))) saveGame(true); }, 2500);
+        const flush = () => { if (stopped) return; if (mode === 'map' || mode === 'bossintro') saveGame(true); };   // V9.94: a finished level never saves over the next one
         window.removeEventListener('pagehide', window.__ggFlush || (() => {}));
         window.__ggFlush = flush; window.addEventListener('pagehide', flush);
         document.addEventListener('visibilitychange', () => { if (document.hidden) flush(); });
@@ -5765,8 +6025,9 @@ export function createLevel1(ui) {
         setGod: v => { cheatGod = !!v; },
         refillHp: () => { hp = maxHp; stats(); },
         unlockHeavy: () => { heavyUnlocked = true; stats(); },
-        inFight: () => mode === 'combat' && !playerDeathTriggered,
+        inFight: () => (mode === 'combat' && !playerDeathTriggered) || !!extras?.inFight(),
         winFight: () => {
+            if (extras?.inFight()) return extras.cheatWinFight();   // V9.94: Devil's Fingers / Sophia
             if (mode !== 'combat' || playerDeathTriggered) return false;
             const nowMs = gnow();
             combatHp = 0;
@@ -5780,6 +6041,7 @@ export function createLevel1(ui) {
         },
         // V9.32: knock Olly out (shows the KNOCKED OUT screen)
         loseFight: () => {
+            if (extras?.inFight()) return extras.cheatLoseFight();   // V9.94
             if (mode !== 'combat' || playerDeathTriggered) return false;
             if (isPatriciaFight()) { prefightToken++; prefight = null; prefightHold = false; zombieIntroActive = false; patSpeech = null; }
             hp = 0; stats(); triggerPlayerKO(gnow());
@@ -5791,14 +6053,32 @@ export function createLevel1(ui) {
             else if (mode !== 'map') return false;
             else if (kind === 'patricia') { startBoss(); }
             else {
-                target = enemies[kind === 'zombie' ? 0 : 1];
+                // V9.94: find the enemy by type (Level 2 has no Zombie Goth, and has Devil's Fingers)
+                const want = kind === 'zombie' ? 'shambler' : kind === 'df' ? 'devilsfingers' : 'chain';
+                const found = enemies.find(e => e.type === want);
+                if (!found) return false;
+                target = found;
                 combatCheckpoint = { x, y };
+                if (found.custom) { startCustomFight(found); return true; }
                 startCombat(false);
             }
             if (kind === 'patricia' && skipIntro) { prefightToken++; prefight = null; prefightHold = false; zombieIntroActive = false; patSpeech = null; zombieCombatState = 'chase'; zombieCombatStateStart = gnow(); zombieCombatNextDecision = gnow() + 300; ui.combatStatus.textContent = ''; setBagGlow(false); }
             return true;
         },
         mode: () => mode,
+        level: () => (LV ? 2 : 1),
+        // V9.94 Level 2 test shortcuts
+        playFindPrincess: () => { if (!LV || mode !== 'map') return false; startFindPrincess(); return true; },
+        playTom: () => { if (!LV || mode !== 'map') return false; playTomCutscene(); return true; },
+        openPrincessQuestion: () => { if (mode !== 'map') return false; openPrincessQuestion(); return true; },
+        givePendant: () => {
+            if (mode !== 'map') return false;
+            enemies.forEach(e => { e.dead = true; e.hp = 0; }); kills = enemies.length;
+            relationshipDone = true; puzzleSolved = true; metTom = true; tomX = x; tomY = y;
+            keyCollected = true; inventory.key = 1; keySpawnAnnounced = true;
+            stats(); return true;
+        },
+        winFindPrincess: () => { if (!LV || mode !== 'map') return false; relationshipDone = true; stats(); return true; },   // V9.94
         // V9.84-preview: jump straight to the real end-of-Level-1 screen (Congratulations /
         // Ready for Level 2? / Save and Quit) without playing out Patricia's death
         // cutscene, chest and reward popup first - for testing the Level 1 -> Level 2
@@ -5823,7 +6103,9 @@ export function createLevel1(ui) {
     // be torn down mid-session (it used to be the only level, running until a page
     // reload) - this exists so the new win-ready -> mountLevel2() handoff doesn't leave
     // a second full map-draw loop quietly burning CPU in the background forever after.
+    let stopped = false;
     function stop() {
+        stopped = true;
         cancelAnimationFrame(raf); raf = 0;
         cancelAnimationFrame(relationshipRAF);
         cancelAnimationFrame(combatRaf);
@@ -5831,19 +6113,24 @@ export function createLevel1(ui) {
         clearInterval(autosaveTimer); autosaveTimer = null;
     }
 
+    const inExtraFight = () => !!extras?.inFight();
     return {
         cheat,
         start,
         stop,
         move,
-        setMoveKey,
+        setMoveKey: (k, d) => { if (inExtraFight()) extras.setMoveKey(k, d); else setMoveKey(k, d); },
+        inExtraFight,
+        levelNumber: LV ? 2 : 1,
+        // V9.94: what carries over into the next level
+        carryState: () => ({ maxHp, heavyCdMul, veilCharges, inventory: { ...inventory } }),
         primaryAction,
         interact,
         confirmEncounter,
         closeEncounter,
-        combatAttack,
-        combatHeavyAttack,
-        combatDodge,
+        combatAttack: () => inExtraFight() ? extras.combatAttack() : combatAttack(),
+        combatHeavyAttack: () => inExtraFight() ? extras.combatHeavyAttack() : combatHeavyAttack(),
+        combatDodge: () => inExtraFight() ? extras.combatDodge() : combatDodge(),
         combatVeil,
         shootAtPointer,
         retryCombat,

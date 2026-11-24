@@ -66,31 +66,38 @@ const TOM_INTRO_SCRIPT = [
     "Tom will keep his journal with him from now on. You can hear him shuffling along behind you."
 ];
 
-// --- Find Scarlett minigame data -----------------------------------------------------
-// A shell/cup game ("find the lady"): Olly turns Scarlett into one of these three
-// mushroom forms, they shuffle positions, and the player has to track which one she's
-// actually under. The three forms are Scarlett's own real mental picture of each size:
-// 'mushroom' = a classic red-and-white spotted toadstool, 'tall mushroom' = the tall
-// pale shaggy-cap type she sent a reference photo for, 'huge mushroom' = an oyster
-// mushroom cluster. Placeholder "programmer art" shapes approximating each - swap for
-// real illustrations later without touching any logic below.
+// --- Find the Princess minigame data -------------------------------------------------
+// "Find the Lady" with mushrooms (V9.94, Scarlett's rules): Princess Scarlett hides under
+// a mushroom, the mushrooms swap places faster and faster, and you click the one she's
+// under. Three rounds with 3 mushrooms, then three rounds with 5. Names are the ones
+// Scarlett and Olly use in real life: MUSHROOM = the red spotted toadstool (there is only
+// ever ONE, it's the special one), TALL MUSHROOM = the shaggy inkcap, BIG MUSHROOM = the
+// oyster cluster. The 5-mushroom rounds add a second tall + a second big mushroom.
+// Art: assets/minigames/find-the-princess/ (Scarlett's own drawings, transparent PNGs
+// converted to webp). `k` = drawn height relative to the round's base mushroom size.
+const FP_DIR = 'assets/minigames/find-the-princess/';
 const MUSHROOM_TYPES = [
-    { id: 'small', label: 'MUSHROOM' },
-    { id: 'tall', label: 'TALL MUSHROOM' },
-    { id: 'huge', label: 'HUGE MUSHROOM' }
+    { id: 'small', label: 'MUSHROOM', src: FP_DIR + 'mushroom-toadstool.webp', k: .9 },
+    { id: 'tall', label: 'TALL MUSHROOM', src: FP_DIR + 'tall-mushroom-inkcap.webp', k: 1.12 },
+    { id: 'huge', label: 'BIG MUSHROOM', src: FP_DIR + 'big-mushroom-oyster.webp', k: 1 }
 ];
-// Six rounds: the 3-mushroom shuffle three times, then the 5-mushroom shuffle three
-// times, each stage getting faster (more swaps, less time per swap) as it goes -
-// Scarlett's "3 mushrooms can be 3x and the 5 mushrooms 3x as well". Tune freely.
+MUSHROOM_TYPES.forEach(m => { m.img = new Image(); m.img.src = m.src; });
+const fpPrincessImg = new Image(); fpPrincessImg.src = FP_DIR + 'princess-scarlett.webp';
+const fpFoundImg = new Image(); fpFoundImg.src = FP_DIR + 'princess-found-peek.webp';
+// Each round: how many mushrooms, how many swaps, seconds per swap (smaller = faster).
+// Numbers are a first guess - Scarlett: "we can always tweak it".
 const SHELL_ROUNDS = [
-    { count: 3, swaps: 4, swapTime: .55 },
-    { count: 3, swaps: 6, swapTime: .45 },
-    { count: 3, swaps: 8, swapTime: .35 },
-    { count: 5, swaps: 7, swapTime: .5 },
-    { count: 5, swaps: 10, swapTime: .4 },
-    { count: 5, swaps: 13, swapTime: .32 }
+    { count: 3, swaps: 5, swapTime: .62 },
+    { count: 3, swaps: 7, swapTime: .5 },
+    { count: 3, swaps: 9, swapTime: .4 },
+    { count: 5, swaps: 8, swapTime: .5 },
+    { count: 5, swaps: 11, swapTime: .4 },
+    { count: 5, swaps: 14, swapTime: .31 }
 ];
-const REVEAL_SECONDS = 1.6;   // how long Scarlett is shown peeking out before the shuffle starts
+const FP_PASS_FRACTION = .6;   // Scarlett: "you have to get 60% to pass for now" -> 4 of 6
+const FP_PASS_SCORE = Math.ceil(SHELL_ROUNDS.length * FP_PASS_FRACTION);
+const REVEAL_SECONDS = 1.8;   // she's shown, then ducks under her mushroom, then the shuffle starts
+const FP_END_ANIM_S = 1.6;    // end screen: other mushrooms fade, she pops out of hers
 
 const mapBackground = new Image();
 mapBackground.src = 'assets/environment/level2-map-bg.webp';
@@ -211,7 +218,13 @@ function drawCFGFrame(c, pack, index, x, floorY, faceRight, rs, alpha = 1) {
     return true;
 }
 
-export function createLevel2(ui) {
+export function createLevel2(ui, hostOpts = null) {
+    // V9.94: hostOpts = { hosted: true, isGod } when the real Level 2 (the shared Level 1
+    // engine, level1.js with level 2 settings) borrows this module for the parts it
+    // doesn't have itself yet: Find the Princess, the Devil's Fingers fight and the Chaos
+    // Fairy Goth fight. In that mode this module never draws its own map - it only runs
+    // while one of those is open, then hands the result back through a callback.
+    const hosted = !!hostOpts?.hosted;
     const ctx = ui.canvas.getContext('2d');
 
     let x = PLAYER_START.x, y = PLAYER_START.y;
@@ -228,7 +241,8 @@ export function createLevel2(ui) {
     let mode = 'map';
 
     // --- Devil's Fingers combat runtime state --------------------------------------
-    const DF_MAX_HP = 200, OLLY_COMBAT_MAX_HP = 100;
+    const DF_MAX_HP = 200;
+    let OLLY_COMBAT_MAX_HP = 100;   // V9.94: when hosted, Olly's real max HP
     const DF_PUNCH_DAMAGE = 5, DF_PUNCH_COMBO = 3, DF_PUNCH_COOLDOWN_MS = 10000;
     const DF_HEAVY_DAMAGE = 20, DF_HEAVY_COOLDOWN_MS = 60000;
     const DF_DODGE_INVULN_MS = 500, DF_DODGE_COOLDOWN_MS = 600;
@@ -297,6 +311,9 @@ export function createLevel2(ui) {
     let fsSwapIdx = 0;
     let fsGuessedId = null;
     let fsResolveOk = false;
+    let fsLastScarlettSlot = 0;   // where she was in the last round (the end screen pops her out of it)
+    let hostFp = null;            // hosted: { overlay, onDone } for Find the Princess
+    let hostFight = null;         // hosted: { onDone } for Devil's Fingers / Chaos Fairy Goth
     let mistScroll = 0;
 
     function near(px, py, r) { return Math.hypot(x - px, y - py) < r; }
@@ -325,6 +342,9 @@ export function createLevel2(ui) {
                 <div style="text-align:center;font:500 12px Georgia,serif;color:#a898b0;">${actionHintFallback('attack')} punch &nbsp;·&nbsp; ${actionHintFallback('heavy')} heavy &nbsp;·&nbsp; ${actionHintFallback('dodge')}/right-click dodge</div>
             </div>`;
         document.body.appendChild(ov);
+        const dfc = ov.querySelector('#df-combat-canvas');
+        dfc.addEventListener('mousedown', e => { if (e.button === 2) { e.preventDefault(); combatDodgeDF(); } });
+        dfc.addEventListener('contextmenu', e => e.preventDefault());
         return {
             ov,
             canvas: ov.querySelector('#df-combat-canvas'),
@@ -346,11 +366,12 @@ export function createLevel2(ui) {
         mode = 'combat';
         fightId = 'df'; foeMaxHP = DF_MAX_HP;
         dfHP = DF_MAX_HP; ollyCombatHP = OLLY_COMBAT_MAX_HP;
+        if (hostFight) ollyCombatHP = Math.max(1, Math.min(OLLY_COMBAT_MAX_HP, hostFight.hp));
         dfState = 'idle'; dfStateStart = dfNowMs; dfNextAttackAt = dfNowMs + 1400; dfHitApplied = false;
         dfArenaX = DF_ARENA_W * 0.74; ollyArenaX = DF_ARENA_W * 0.26; dfFacing = 'left';
         attackComboCount = 0; attackCooldownUntil = 0; heavyCooldownUntil = 0;
         playerInvulnUntil = 0; dodgeCooldownUntil = 0; acidEffectUntil = 0;
-        dfDom = buildDfDom();
+        dfDom = hosted ? buildDfDom("DEVIL'S FINGERS") : buildDfDom();
         dfSetStatus("A monstrous tangle of fingers blocks the way.");
         playSfx('click', 1);
     }
@@ -360,12 +381,13 @@ export function createLevel2(ui) {
         mode = 'combat';
         fightId = 'cfg'; foeMaxHP = CFG_MAX_HP;
         dfHP = CFG_MAX_HP; ollyCombatHP = OLLY_COMBAT_MAX_HP;
+        if (hostFight) ollyCombatHP = Math.max(1, Math.min(OLLY_COMBAT_MAX_HP, hostFight.hp));
         dfState = 'idle'; dfStateStart = dfNowMs; dfNextAttackAt = dfNowMs + 1800; dfHitApplied = false;
         dfArenaX = DF_ARENA_W * 0.74; ollyArenaX = DF_ARENA_W * 0.26; dfFacing = 'left';
         attackComboCount = 0; attackCooldownUntil = 0; heavyCooldownUntil = 0;
         playerInvulnUntil = 0; dodgeCooldownUntil = 0; acidEffectUntil = 0;
         cfgArrows = []; cfgStorm = null; cfgDust = []; cfgBlinkReadyAt = dfNowMs + 4000; cfgLastAttack = null; cfgFlashUntil = 0;
-        dfDom = buildDfDom('CHAOS FAIRY GOTH (PREVIEW)', 'CHAOS FAIRY GOTH', '#e86fb0', 'Something small and furious flutters between the ruins.', CFG_MAX_HP);
+        dfDom = buildDfDom(hosted ? 'SOPHIA, THE CHAOS FAIRY GOTH' : 'CHAOS FAIRY GOTH (PREVIEW)', hosted ? 'SOPHIA' : 'CHAOS FAIRY GOTH', '#e86fb0', 'Something small and furious flutters between the ruins.', CFG_MAX_HP);
         dfDom.canvas.style.background = '#0c1a10';
         dfSetStatus('Something small and furious flutters between the ruins.');
         playSfx('click', 1);
@@ -374,6 +396,13 @@ export function createLevel2(ui) {
         if (mode !== 'combat') return;
         mode = 'map';
         if (dfDom) { dfDom.ov.remove(); dfDom = null; }
+        if (hostFight) {   // V9.94: hand the result back to the real Level 2
+            const cb = hostFight.onDone; hostFight = null;
+            stopHostLoop();
+            held.left = held.right = held.up = held.down = false;
+            if (cb) cb({ won, hp: ollyCombatHP });
+            return;
+        }
         const cfg = fightId === 'cfg';
         ui.dialogue.textContent = won
             ? (cfg ? "The Chaos Fairy Goth drops her bow and flutters away. (PREVIEW - no reward/dialogue yet.)" : "Devil's Fingers sinks back into the earth. (PREVIEW - no reward/death sequence yet.)")
@@ -426,6 +455,7 @@ export function createLevel2(ui) {
         if (dfHP <= 0) { dfSetStatus(fightId === 'cfg' ? 'The Chaos Fairy Goth tumbles out of the air!' : "Devil's Fingers collapses!"); setTimeout(() => exitDevilsFingersCombat(true), 900); }
     }
     function dealOllyDamage(n) {
+        if (hostOpts?.isGod?.()) return;   // cheat: no damage
         ollyCombatHP = Math.max(0, ollyCombatHP - n);
         if (ollyCombatHP <= 0) { dfSetStatus('Olly is overwhelmed...'); setTimeout(() => exitDevilsFingersCombat(false), 900); }
     }
@@ -836,13 +866,10 @@ export function createLevel2(ui) {
     function typeFor(id) { return MUSHROOM_TYPES.find(m => m.id === id); }
     function mushroomAtSlot(slot) { return fsMushrooms.find(m => m.slot === slot); }
 
-    // 3 cups = one of each type; 5 cups = the 3 types plus 2 repeats - deliberately
-    // reuses a type so two mushrooms can look identical, which is what makes tracking
-    // the right one through the shuffle an actual challenge once there are 5 of them.
+    // 3 mushrooms = one of each; 5 mushrooms = add a second TALL and a second BIG one.
+    // There is only ever one red toadstool ("that's the special mushroom").
     function buildTypesForCount(count) {
-        const base = ['small', 'tall', 'huge'];
-        const types = count <= 3 ? base.slice(0, count) : [...base];
-        while (types.length < count) types.push(base[types.length % base.length]);
+        const types = count <= 3 ? ['small', 'tall', 'huge'].slice(0, count) : ['small', 'tall', 'huge', 'tall', 'huge'].slice(0, count);
         for (let i = types.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [types[i], types[j]] = [types[j], types[i]];
@@ -863,10 +890,19 @@ export function createLevel2(ui) {
         mode = 'mushroom';
         fsRoundIdx = 0;
         fsScore = 0;
+        fsLastScarlettSlot = 0;
+        if (hostFp) hostFp.overlay.style.display = 'block';
         startShellRound();
     }
-    function exitMushroomGame() {
+    function exitMushroomGame(finished = false) {
         mode = 'map';
+        if (hostFp) {
+            hostFp.overlay.style.display = 'none';
+            const cb = hostFp.onDone; hostFp.onDone = null;
+            stopHostLoop();
+            if (cb) cb({ finished, passed: finished && fsScore >= FP_PASS_SCORE, score: fsScore, total: SHELL_ROUNDS.length });
+            return;
+        }
         ui.dialogue.textContent = `${MINI_GAME_SPOT.name} is quiet again. Last go: ${fsScore}/${SHELL_ROUNDS.length} found.`;
     }
     function startShellRound() {
@@ -884,14 +920,17 @@ export function createLevel2(ui) {
         fsResolveOk = ok;
         fsPhase = 'resolve';
         fsPhaseT = 0;
+        const sm = fsMushrooms.find(m => m.id === fsScarlettId);
+        if (sm) fsLastScarlettSlot = sm.slot;
         if (ok) { fsScore++; playSfx('round-ok'); } else playSfx('wrong-buzz');
     }
     function advanceShellRound() {
         fsRoundIdx++;
         if (fsRoundIdx >= SHELL_ROUNDS.length) {
+            fsRoundIdx = SHELL_ROUNDS.length - 1;   // keep the last round's layout for the end animation
             fsPhase = 'gameEnd';
             fsPhaseT = 0;
-            playSfx('minigame-win');
+            playSfx(fsScore >= FP_PASS_SCORE ? 'minigame-win' : 'wrong-buzz');
             return;
         }
         startShellRound();
@@ -905,9 +944,9 @@ export function createLevel2(ui) {
         resolveShellRound(m.id === fsScarlettId);
     }
     function updateMushroom(dt) {
-        if (fsPhase === 'gameEnd') return;
         fsPhaseT += dt;
         mistScroll += dt * 60;
+        if (fsPhase === 'gameEnd') return;
         const r = currentRound();
         if (fsPhase === 'reveal' && fsPhaseT >= REVEAL_SECONDS) { fsPhase = 'shuffle'; fsPhaseT = 0; }
         else if (fsPhase === 'shuffle') {
@@ -920,20 +959,31 @@ export function createLevel2(ui) {
                 fsSwapIdx++;
                 fsPhaseT = 0;
             }
-        } else if (fsPhase === 'resolve' && fsPhaseT >= 1.3) advanceShellRound();
+        } else if (fsPhase === 'resolve' && fsPhaseT >= 1.6) advanceShellRound();
     }
 
     // Evenly-spaced screen slot for a given logical slot index among `count` mushrooms.
     function slotX(slot, count, vw) {
-        const spacing = Math.min(230, (vw - 140) / Math.max(1, count - 1 || 1));
+        const spacing = Math.min(340, (vw - 220) / Math.max(1, count - 1));
         const totalW = spacing * (count - 1);
         return vw / 2 - totalW / 2 + slot * spacing;
     }
+    // Base drawn height of a mushroom this round: fits the screen height, and narrow enough
+    // that 5 oyster clusters (the widest art) don't overlap their neighbours.
+    function fpBaseSize(count, vw, vh) {
+        const spacing = Math.min(340, (vw - 220) / Math.max(1, count - 1));
+        return Math.min(vh * .34, spacing * .74);
+    }
+    function fpMushroomSize(type, count, vw, vh) {
+        const t = typeFor(type), img = t.img;
+        const h = fpBaseSize(count, vw, vh) * t.k;
+        const ar = img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 1;
+        return { w: h * ar, h };
+    }
     function shellLayout() {
-        const exitRect = { x: 20, y: 14, w: 168, h: 34 };
+        const exitRect = { x: 20, y: 14, w: 190, h: 34 };
         return { exitRect };
     }
-
     function roundRect(px, py, w, h, r) {
         ctx.beginPath();
         ctx.moveTo(px + r, py);
@@ -943,85 +993,48 @@ export function createLevel2(ui) {
         ctx.arcTo(px, py, px + w, py, r);
         ctx.closePath();
     }
-    function drawTimerBar(px, py, w, h, pct, color) {
-        ctx.fillStyle = 'rgba(255,255,255,.14)';
-        ctx.fillRect(px, py, w, h);
-        ctx.fillStyle = color;
-        ctx.fillRect(px, py, w * Math.max(0, Math.min(1, pct)), h);
-    }
-    function wrapText(text, cx, cy, maxWidth, lineHeight) {
-        const words = text.split(' ');
-        let line = '', lines = [];
-        for (const w of words) {
-            const test = line ? line + ' ' + w : w;
-            if (ctx.measureText(test).width > maxWidth && line) { lines.push(line); line = w; }
-            else line = test;
-        }
-        lines.push(line);
-        lines.forEach((l, i) => ctx.fillText(l, cx, cy + i * lineHeight));
-    }
-    // Draws one mushroom "cup" at (cx, floorY), sized/shaped per type. `peek` shows a
-    // little lavender glow + eyes at the base when this is the one hiding Scarlett (used
-    // during the reveal, and again during resolve to show where she really was); `lifted`
-    // tilts/raises the cap like it's being lifted to check underneath, used on resolve.
-    function drawMushroomCup(type, cx, floorY, peek, lifted, ring) {
+    function drawImgBottom(img, cx, floorY, w, h, alpha = 1) {
+        if (!img.complete || !img.naturalWidth) return;
         ctx.save();
-        ctx.translate(cx, floorY);
-        const lift = lifted ? -18 : 0;
-        if (peek) {
-            ctx.fillStyle = 'rgba(202,166,255,.85)';
-            ctx.beginPath(); ctx.arc(0, -6, 12, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = '#2a1830';
-            ctx.beginPath(); ctx.arc(-4, -8, 1.6, 0, Math.PI * 2); ctx.arc(4, -8, 1.6, 0, Math.PI * 2); ctx.fill();
-        }
-        ctx.translate(0, lift);
-        if (type === 'small') {
-            // classic red-and-white spotted toadstool
-            ctx.fillStyle = '#efe3d6'; roundRect(-6, -34, 12, 34, 4); ctx.fill();
-            ctx.fillStyle = '#d14b3f';
-            ctx.beginPath(); ctx.ellipse(0, -34, 24, 16, 0, Math.PI, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = '#fbeee0';
-            [[-11, -40], [3, -44], [13, -36]].forEach(([dx, dy]) => { ctx.beginPath(); ctx.arc(dx, dy, 3, 0, Math.PI * 2); ctx.fill(); });
-            ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.ellipse(0, -34, 24, 16, 0, Math.PI, Math.PI * 2); ctx.stroke();
-        } else if (type === 'tall') {
-            // tall, pale, narrow shaggy-cap mushroom
-            ctx.fillStyle = '#efe6d2'; roundRect(-5, -58, 10, 58, 4); ctx.fill();
-            ctx.fillStyle = '#f3ecd9';
-            ctx.beginPath(); ctx.ellipse(0, -62, 14, 26, 0, 0, Math.PI * 2); ctx.fill();
-            ctx.strokeStyle = 'rgba(0,0,0,.2)'; ctx.lineWidth = 1.5;
-            for (let s = -1; s <= 1; s++) { ctx.beginPath(); ctx.moveTo(s * 7, -84); ctx.lineTo(s * 9, -42); ctx.stroke(); }
-            ctx.beginPath(); ctx.ellipse(0, -62, 14, 26, 0, 0, Math.PI * 2); ctx.stroke();
-        } else {
-            // oyster mushroom - a low shelf-cluster of overlapping fans, barely any stem
-            ctx.fillStyle = '#efe3d6'; roundRect(-6, -14, 12, 14, 3); ctx.fill();
-            const fans = [{ dx: -16, dy: -18, r: 22, a: .95 }, { dx: 10, dy: -22, r: 26, a: 1 }, { dx: -2, dy: -12, r: 20, a: .9 }];
-            fans.forEach(f => {
-                ctx.save(); ctx.globalAlpha = f.a; ctx.fillStyle = '#cfc9bd';
-                ctx.beginPath(); ctx.ellipse(f.dx, f.dy, f.r, f.r * .62, -0.3, Math.PI * .6, Math.PI * 2.1); ctx.fill();
-                ctx.strokeStyle = 'rgba(0,0,0,.18)'; ctx.lineWidth = 1.5; ctx.stroke();
-                ctx.restore();
-            });
+        ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+        ctx.drawImage(img, cx - w / 2, floorY - h, w, h);
+        ctx.restore();
+    }
+    function drawPrincess(cx, floorY, h, alpha, scale = 1) {
+        const img = fpPrincessImg;
+        if (!img.complete || !img.naturalWidth) return;
+        const dh = h * scale, dw = dh * img.naturalWidth / img.naturalHeight;
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+        ctx.shadowColor = 'rgba(255,150,200,.75)'; ctx.shadowBlur = 22;
+        ctx.drawImage(img, cx - dw / 2, floorY - dh, dw, dh);
+        ctx.restore();
+    }
+    function drawSparkles(cx, cy, r, t, alpha) {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+        ctx.fillStyle = '#ffd6ec';
+        for (let i = 0; i < 9; i++) {
+            const a = i / 9 * Math.PI * 2 + t * 2;
+            const rr = r * (.55 + .45 * Math.sin(t * 5 + i));
+            ctx.beginPath(); ctx.arc(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * .6, 2.5 + (i % 3), 0, Math.PI * 2); ctx.fill();
         }
         ctx.restore();
-        if (ring) {
-            ctx.save();
-            ctx.strokeStyle = ring; ctx.lineWidth = 4;
-            ctx.beginPath(); ctx.ellipse(cx, floorY + 6, 34, 10, 0, 0, Math.PI * 2); ctx.stroke();
-            ctx.restore();
-        }
+    }
+    function fpText(text, x, y, font, color = '#fbeef6') {
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.font = font;
+        ctx.shadowColor = 'rgba(0,0,0,.85)'; ctx.shadowBlur = 10;
+        ctx.fillStyle = color;
+        ctx.fillText(text, x, y);
+        ctx.restore();
     }
 
     function drawMushroomGame() {
         const vw = ui.canvas.clientWidth || 1000;
-        // V9.84-preview: the #world2 canvas sizes its own CSS box from its width/height
-        // HTML attributes' aspect ratio (1536:1024) against whatever width it's given,
-        // which comes out taller than the .world-wrap container actually allows - the
-        // wrapper clips the overflow (so Level 1/2's map still looks right, since the
-        // map's own camera math doesn't care), but it means ui.canvas.clientHeight is
-        // NOT the visible height. Lay out the UI against the WRAPPER's height instead,
-        // so nothing (the mushrooms especially) ends up positioned in the clipped-off
-        // strip below what's actually on screen.
+        // Lay out against the WRAPPER's height (see the V9.84 note in git history: the
+        // canvas box can be taller than what's actually visible).
         const canvasVh = ui.canvas.clientHeight || 600;
         const wrap = ui.canvas.parentElement;
         const vh = (wrap && wrap.clientHeight) || canvasVh;
@@ -1032,96 +1045,150 @@ export function createLevel2(ui) {
         ctx.clearRect(0, 0, ui.canvas.width, ui.canvas.height);
         ctx.save();
         ctx.scale(sx, sy);
+        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
 
-        // Background: the fairy ring cropped from the real Level 2 map art (Scarlett's
-        // idea), drawn "cover"-style so it fills the screen at any window size without
-        // distorting. Falls back to a flat fill if the image hasn't loaded yet.
+        // Background: the fairy ring cropped from the Level 2 map art.
         if (shellGameBackground.complete && shellGameBackground.naturalWidth) {
             const iw = shellGameBackground.naturalWidth, ih = shellGameBackground.naturalHeight;
             const scale = Math.max(vw / iw, vh / ih);
             const dw = iw * scale, dh = ih * scale;
             ctx.drawImage(shellGameBackground, vw / 2 - dw / 2, vh / 2 - dh / 2, dw, dh);
-            ctx.fillStyle = 'rgba(10,14,10,.32)';
+            ctx.fillStyle = 'rgba(10,8,14,.42)';
             ctx.fillRect(0, 0, vw, vh);
         } else {
-            ctx.fillStyle = '#17241c';
+            ctx.fillStyle = '#17121c';
             ctx.fillRect(0, 0, vw, vh);
         }
 
         const { exitRect } = shellLayout();
-
-        // exit button
-        ctx.fillStyle = 'rgba(255,255,255,.14)';
+        ctx.fillStyle = 'rgba(20,10,24,.6)';
         roundRect(exitRect.x, exitRect.y, exitRect.w, exitRect.h, 8); ctx.fill();
-        ctx.fillStyle = '#e4f0df'; ctx.font = '600 13px Georgia'; ctx.textAlign = 'center';
-        ctx.fillText('‹ Back to the Hollow', exitRect.x + exitRect.w / 2, exitRect.y + exitRect.h / 2 + 4);
+        ctx.strokeStyle = 'rgba(239,183,201,.55)'; ctx.lineWidth = 1; ctx.stroke();
+        ctx.fillStyle = '#f6e6ee'; ctx.font = '600 14px "Cormorant Garamond", Georgia, serif'; ctx.textAlign = 'center';
+        ctx.fillText('‹ Back to the forest', exitRect.x + exitRect.w / 2, exitRect.y + exitRect.h / 2 + 5);
 
-        ctx.textAlign = 'left';
-        ctx.fillStyle = '#e4f0df';
-        ctx.shadowColor = 'rgba(0,0,0,.7)'; ctx.shadowBlur = 8;
-        ctx.font = '700 20px Georgia';
-        ctx.fillText('FIND SCARLETT', 24, 70);
-        ctx.shadowBlur = 0;
-
-        if (fsPhase === 'gameEnd') {
-            ctx.textAlign = 'center';
-            ctx.shadowColor = 'rgba(0,0,0,.7)'; ctx.shadowBlur = 10;
-            ctx.fillStyle = '#e4f0df'; ctx.font = '700 28px Georgia';
-            ctx.fillText('That\'s the lot!', vw / 2, vh * .4);
-            ctx.font = '600 17px Georgia';
-            ctx.fillText(`You found her ${fsScore} / ${SHELL_ROUNDS.length} times.`, vw / 2, vh * .4 + 36);
-            ctx.font = '600 13px Georgia'; ctx.fillStyle = '#d8e8d0';
-            ctx.fillText('Click anywhere to go again, or Back to the Hollow to leave.', vw / 2, vh * .4 + 64);
-            ctx.shadowBlur = 0;
-            ctx.restore();
-            return;
-        }
+        fpText('FIND THE PRINCESS', vw / 2, 52, '700 30px "Cormorant Garamond", Georgia, serif', '#f3c6d6');
 
         const r = currentRound();
-        ctx.shadowColor = 'rgba(0,0,0,.7)'; ctx.shadowBlur = 6;
-        ctx.font = '600 13px Georgia'; ctx.fillStyle = '#d8e8d0';
-        ctx.fillText(`Round ${fsRoundIdx + 1}/${SHELL_ROUNDS.length} • ${r.count} mushrooms • Score ${fsScore}/${SHELL_ROUNDS.length}`, 24, 92);
+        const floorY = vh * .8;
+        const t = performance.now() / 1000;
 
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#eef9e8'; ctx.font = '700 15px Georgia';
-        const prompt = fsPhase === 'reveal' ? "Watch closely - Olly's turning her into one of these..."
-            : fsPhase === 'shuffle' ? "He's mixing them up..."
-                : fsPhase === 'guess' ? 'Which mushroom is she under now? Click one.'
-                    : fsResolveOk ? 'Found her!' : "That wasn't her...";
-        ctx.fillText(prompt, vw / 2, 130);
-        ctx.shadowBlur = 0;
+        if (fsPhase === 'gameEnd') { drawFpEnd(vw, vh, floorY, r, t); ctx.restore(); return; }
 
-        // The fairy ring's own stone circle (already baked into the background art) is
-        // the "floor" the mushrooms sit on now - no separate drawn floor band needed.
-        const floorY = vh * .66;
+        fpText(`Round ${fsRoundIdx + 1} of ${SHELL_ROUNDS.length}   ·   Found her ${fsScore} time${fsScore === 1 ? '' : 's'}`, vw / 2, 80, '600 16px "Cormorant Garamond", Georgia, serif', '#e9d6e2');
+        const prompt = fsPhase === 'reveal' ? "Watch the princess... she's hiding under one of these."
+            : fsPhase === 'shuffle' ? 'Keep your eyes on her mushroom...'
+                : fsPhase === 'guess' ? 'Which mushroom is she under? Click it.'
+                    : fsResolveOk ? 'You found her!' : "That wasn't her...";
+        fpText(prompt, vw / 2, 112, '700 20px "Cormorant Garamond", Georgia, serif');
 
         const activeSwap = (fsPhase === 'shuffle' && fsSwapIdx < fsSwapQueue.length) ? fsSwapQueue[fsSwapIdx] : null;
         const swapT = activeSwap ? Math.min(1, fsPhaseT / r.swapTime) : 0;
-        const showPeek = fsPhase === 'reveal' || fsPhase === 'resolve';
-        const lifted = fsPhase === 'resolve';
+        const ease = swapT < .5 ? 2 * swapT * swapT : 1 - Math.pow(-2 * swapT + 2, 2) / 2;
+        const base = fpBaseSize(r.count, vw, vh);
 
-        fsMushrooms.forEach(m => {
-            let cx = slotX(m.slot, r.count, vw);
+        // Work out where each mushroom is this frame. The two swapping mushrooms travel on
+        // opposite arcs (one hops up and over, one dips under) so you can follow them.
+        const placed = fsMushrooms.map(m => {
+            let cx = slotX(m.slot, r.count, vw), dy = 0, front = 0;
             if (activeSwap) {
                 const [a, b] = activeSwap;
-                if (m.slot === a) cx = slotX(a, r.count, vw) + (slotX(b, r.count, vw) - slotX(a, r.count, vw)) * swapT;
-                else if (m.slot === b) cx = slotX(b, r.count, vw) + (slotX(a, r.count, vw) - slotX(b, r.count, vw)) * swapT;
+                if (m.slot === a || m.slot === b) {
+                    const from = slotX(m.slot, r.count, vw), to = slotX(m.slot === a ? b : a, r.count, vw);
+                    cx = from + (to - from) * ease;
+                    const up = m.slot === a;
+                    dy = Math.sin(Math.PI * swapT) * base * (up ? -.28 : .1);
+                    front = up ? 1 : 2;
+                }
             }
-            const isScarlett = m.id === fsScarlettId;
-            let ring = null;
-            if (fsPhase === 'resolve') {
-                if (isScarlett) ring = '#82dc96';
-                else if (m.id === fsGuessedId) ring = '#e66478';
-            }
-            drawMushroomCup(m.type, cx, floorY, showPeek && isScarlett, lifted, ring);
-        });
+            return { m, cx, dy, front, size: fpMushroomSize(m.type, r.count, vw, vh) };
+        }).sort((p, q) => p.front - q.front);
 
+        const scarlett = placed.find(p => p.m.id === fsScarlettId);
+        const princessH = base * 1.25;
+
+        // Reveal: she stands in front of her mushroom, then shrinks down and ducks under it.
+        if (fsPhase === 'reveal' && scarlett) {
+            const p = fsPhaseT / REVEAL_SECONDS;
+            const hide = Math.max(0, Math.min(1, (p - .55) / .35));
+            drawPrincess(scarlett.cx, floorY, princessH, 1 - hide, 1 - hide * .65);
+        }
+        placed.forEach(p => {
+            let lift = 0, alpha = 1;
+            if (fsPhase === 'resolve' && (p.m.id === fsGuessedId || p.m.id === fsScarlettId)) {
+                const k = Math.min(1, fsPhaseT / .35);
+                lift = -p.size.h * .45 * k;
+                alpha = 1 - .45 * k;
+            }
+            ctx.save();
+            ctx.fillStyle = 'rgba(0,0,0,.35)';
+            ctx.beginPath(); ctx.ellipse(p.cx, floorY - 4, p.size.w * .36, p.size.h * .05, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+            drawImgBottom(p.m.img || typeFor(p.m.type).img, p.cx, floorY + p.dy + lift, p.size.w, p.size.h, alpha);
+            if (fsPhase === 'resolve') {
+                const ring = p.m.id === fsScarlettId ? '#9be3a8' : p.m.id === fsGuessedId ? '#e66478' : null;
+                if (ring) {
+                    ctx.save(); ctx.strokeStyle = ring; ctx.lineWidth = 4;
+                    ctx.beginPath(); ctx.ellipse(p.cx, floorY, p.size.w * .42, p.size.h * .07, 0, 0, Math.PI * 2); ctx.stroke();
+                    ctx.restore();
+                }
+            }
+            if (fsPhase === 'guess') {
+                ctx.save(); ctx.strokeStyle = `rgba(239,183,201,${.35 + .25 * Math.sin(t * 4)})`; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.ellipse(p.cx, floorY, p.size.w * .4, p.size.h * .06, 0, 0, Math.PI * 2); ctx.stroke();
+                ctx.restore();
+            }
+        });
+        // Resolve: the lifted mushroom shows where she really was.
+        if (fsPhase === 'resolve' && scarlett) {
+            const k = Math.min(1, fsPhaseT / .35);
+            drawPrincess(scarlett.cx, floorY, princessH * .7, k);
+            if (fsResolveOk) drawSparkles(scarlett.cx, floorY - princessH * .45, base * .5, t, k);
+        }
         ctx.restore();
     }
 
+    // End of the game: the other mushrooms fade away and she pops out of the one she was
+    // last hiding under (Scarlett's "found her" picture), then the score.
+    function drawFpEnd(vw, vh, floorY, r, t) {
+        const p = Math.min(1, fsPhaseT / FP_END_ANIM_S);
+        const fadeOthers = Math.min(1, p / .45);
+        const pop = Math.max(0, Math.min(1, (p - .35) / .65));
+        const popE = 1 - Math.pow(1 - pop, 3);
+        fsMushrooms.forEach(m => {
+            if (m.slot === fsLastScarlettSlot) return;
+            const s = fpMushroomSize(m.type, r.count, vw, vh);
+            drawImgBottom(typeFor(m.type).img, slotX(m.slot, r.count, vw), floorY, s.w, s.h, 1 - fadeOthers);
+        });
+        const hers = fsMushrooms.find(m => m.slot === fsLastScarlettSlot);
+        const fromX = slotX(fsLastScarlettSlot, r.count, vw);
+        if (hers && pop < 1) {
+            const s = fpMushroomSize(hers.type, r.count, vw, vh);
+            drawImgBottom(typeFor(hers.type).img, fromX, floorY, s.w, s.h, 1 - popE);
+        }
+        const img = fpFoundImg;
+        if (img.complete && img.naturalWidth) {
+            const endH = vh * .55, startH = fpBaseSize(r.count, vw, vh);
+            const h = startH + (endH - startH) * popE;
+            const w = h * img.naturalWidth / img.naturalHeight;
+            const cx = fromX + (vw / 2 - fromX) * popE;
+            const bottom = floorY + (vh * .74 - floorY) * popE;
+            const bounce = pop >= 1 ? Math.sin(t * 2.2) * 4 : 0;
+            ctx.save();
+            ctx.globalAlpha = popE;
+            ctx.shadowColor = 'rgba(255,150,200,.6)'; ctx.shadowBlur = 30;
+            ctx.drawImage(img, cx - w / 2, bottom - h + bounce, w, h);
+            ctx.restore();
+            if (pop >= 1) drawSparkles(vw / 2, bottom - h * .55, h * .5, t, .9);
+        }
+        if (p < 1) return;
+        const passed = fsScore >= FP_PASS_SCORE;
+        fpText(passed ? 'You found her!' : 'She slipped away...', vw / 2, vh * .8 + 6, '700 30px "Cormorant Garamond", Georgia, serif', passed ? '#f3c6d6' : '#e9d6e2');
+        fpText(`You found the princess ${fsScore} out of ${SHELL_ROUNDS.length} times.`, vw / 2, vh * .8 + 38, '600 19px "Cormorant Garamond", Georgia, serif');
+        fpText(passed ? 'Click anywhere to carry on.' : `You need ${FP_PASS_SCORE} out of ${SHELL_ROUNDS.length}. Click anywhere to try again.`, vw / 2, vh * .8 + 66, '600 15px "Cormorant Garamond", Georgia, serif', '#d9c4d2');
+    }
+
     function canvasPointLogical(e) {
-        // Mirrors drawMushroomGame()'s coordinate space: X against the canvas's own box,
-        // Y against the wrapper (the thing that actually clips what's visible/clickable).
         const rect = ui.canvas.getBoundingClientRect();
         const wrap = ui.canvas.parentElement;
         const wrapRect = wrap ? wrap.getBoundingClientRect() : rect;
@@ -1136,14 +1203,19 @@ export function createLevel2(ui) {
         const wrap = ui.canvas.parentElement;
         const vh = (wrap && wrap.clientHeight) || ui.canvas.clientHeight || 600;
         const { exitRect } = shellLayout();
-        if (pointInRect(p, exitRect)) { exitMushroomGame(); return; }
-        if (fsPhase === 'gameEnd') { enterMushroomGame(); return; }
+        if (pointInRect(p, exitRect)) { exitMushroomGame(false); return; }
+        if (fsPhase === 'gameEnd') {
+            if (fsPhaseT < FP_END_ANIM_S) return;
+            if (fsScore >= FP_PASS_SCORE) { exitMushroomGame(true); return; }
+            enterMushroomGame();
+            return;
+        }
         if (fsPhase !== 'guess') return;
         const r = currentRound();
-        const floorY = vh * .66;   // must match drawMushroomGame()'s floorY
+        const floorY = vh * .8;   // must match drawMushroomGame()
         for (const m of fsMushrooms) {
-            const cx = slotX(m.slot, r.count, vw);
-            if (Math.hypot(p.x - cx, p.y - floorY) < 46) { guessSlot(m.slot); return; }
+            const cx = slotX(m.slot, r.count, vw), s = fpMushroomSize(m.type, r.count, vw, vh);
+            if (Math.abs(p.x - cx) < s.w * .45 && p.y > floorY - s.h && p.y < floorY + 20) { guessSlot(m.slot); return; }
         }
     }
 
@@ -1337,7 +1409,7 @@ export function createLevel2(ui) {
         } else if (mode === 'combat') {
             updateDevilsFingers(dt);
             drawDevilsFingersCombat();
-        } else {
+        } else if (!hosted) {
             updateMovement(dt);
             drawWorld(t, dt);
         }
@@ -1349,12 +1421,49 @@ export function createLevel2(ui) {
         raf = requestAnimationFrame(loop);
     }
     function stop() { if (raf) cancelAnimationFrame(raf); raf = 0; }
+    function stopHostLoop() { if (hosted) stop(); }
+    function startHostLoop() { if (!raf) { lastT = 0; raf = requestAnimationFrame(loop); } }
+
+    // --- V9.94: hosted API used by the real Level 2 (level1.js engine) ---------------
+    // Find the Princess shows full screen in its own overlay; onDone({ finished, passed, score, total }).
+    function runFindPrincess(onDone) {
+        if (!hostFp) {
+            const overlay = document.createElement('div');
+            overlay.id = 'find-princess-overlay';
+            overlay.style.cssText = 'position:fixed;inset:0;z-index:10020;background:#0a0710;display:none;';
+            const wrap = document.createElement('div');
+            wrap.style.cssText = 'position:absolute;inset:0;overflow:hidden;';
+            overlay.appendChild(wrap);
+            document.body.appendChild(overlay);
+            hostFp = { overlay, wrap, onDone: null };
+        }
+        // The minigame draws on ui.canvas, so move that canvas into the overlay.
+        ui.canvas.style.cssText = 'display:block;width:100%;height:100%;';
+        if (ui.canvas.parentElement !== hostFp.wrap) hostFp.wrap.appendChild(ui.canvas);
+        hostFp.onDone = onDone;
+        enterMushroomGame();
+        startHostLoop();
+    }
+    // Devil's Fingers ('df') or Sophia the Chaos Fairy Goth ('cfg'). opts = { hp, maxHp }.
+    // onDone({ won, hp }) with Olly's HP at the end of the fight.
+    function runFight(id, opts, onDone) {
+        OLLY_COMBAT_MAX_HP = Math.max(1, opts?.maxHp || 100);
+        hostFight = { onDone, hp: Number.isFinite(opts?.hp) ? opts.hp : OLLY_COMBAT_MAX_HP };
+        mode = 'map';
+        if (id === 'cfg') enterChaosFairyCombat(); else enterDevilsFingersCombat();
+        startHostLoop();
+    }
+    function cheatWinFight() { if (mode !== 'combat') return false; dfHP = 0; checkDfDeath(); return true; }
+    function cheatLoseFight() { if (mode !== 'combat') return false; ollyCombatHP = 0; dfSetStatus('Olly is overwhelmed...'); setTimeout(() => exitDevilsFingersCombat(false), 300); return true; }
 
     // Hooks matching (a trimmed subset of) Level 1's contract. Level 2's own wiring in
     // game.js only calls what actually applies right now; the rest are harmless no-ops
     // kept here so this stays drop-in compatible if more of Level 2 grows into the
     // full hook contract later.
     return {
+        runFindPrincess, runFight, cheatWinFight, cheatLoseFight,
+        inFight: () => mode === 'combat',
+        inMinigame: () => mode === 'mushroom',
         cheat: () => {},
         start, stop,
         move: () => {},

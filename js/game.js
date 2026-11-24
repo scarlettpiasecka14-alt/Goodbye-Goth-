@@ -1,6 +1,6 @@
 import { StoryController } from './story.js?v=9820';
-import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9830';
-import { createLevel2 } from './levels/level2.js?v=9830';
+import { createLevel1, resetRingTutorials } from './levels/level1.js?v=9940';
+import { LEVEL2 } from './levels/level2-config.js?v=9940';   // V9.94: Level 2 runs on the Level 1 engine
 import { createLevel3 } from './levels/level3.js?v=9850';
 import { playMusic, setLoopSfx, playSfx, audioNeedsClick, playVoiceLine, stopVoiceLine } from './audio.js?v=9820';
 import { initSettings, openSettings } from './settings.js?v=9820';
@@ -25,7 +25,7 @@ function loadSavedGame(slot){
   }
   setActiveSlot(slot);
   setLoopSfx('ambience', false);
-  mountLevel1(true);
+  mountLevel1(true, readSlot(slot)?.level === 2 ? 2 : 1);   // V9.94: a slot remembers which level it's on
 }
 
 // V9.31: three save slots. mode 'new' = pick where a new game goes (asks before replacing a save), 'load' = pick a save to continue.
@@ -37,7 +37,7 @@ function showSlotPicker(mode){
   const cards = [];
   for(let n=1;n<=SLOT_COUNT;n++){
     const info = slotSummary(n);
-    const label = info ? `${info.kills}/2 Goths beaten · ${info.hp}/${info.maxHp} HP${info.when ? ' · ' + info.when : ''}` : 'Empty';
+    const label = info ? `Level ${info.level || 1} · ${info.kills}/2 Goths beaten · ${info.hp}/${info.maxHp} HP${info.when ? ' · ' + info.when : ''}` : 'Empty';
     cards.push(`<button type="button" class="slot-card${info?'':' empty'}" data-slot="${n}" ${mode==='load'&&!info?'disabled':''}><span class="slot-n">SLOT ${n}</span><span class="slot-info">${label}</span></button>`);
   }
   box.innerHTML = `<div class="slot-box"><div class="slot-title">${mode==='new'?'♥ NEW GAME — PICK A SLOT ♥':'♥ LOAD GAME ♥'}</div>${cards.join('')}<div class="slot-confirm" hidden></div><button type="button" class="slot-back">BACK</button></div>`;
@@ -281,11 +281,17 @@ function showLevel1Intro(){
   );
 }
 
-function mountLevel1(loadSaved=false){
+// V9.94: listeners from the previous level are removed when the next one mounts.
+let levelListeners = null;
+function mountLevel1(loadSaved=false, levelNum=1, carry=null){
+  levelListeners?.abort();
+  levelListeners = new AbortController();
+  const listen = { signal: levelListeners.signal };
+  const L2 = levelNum === 2 ? LEVEL2 : null;
   root.innerHTML = `
     <section class="panel game-screen" style="position:relative">
       <div class="game-head">
-        <div><strong>LEVEL 1</strong><div class="small">THE HAUNTED CEMETERY</div></div>
+        <div><strong>LEVEL ${L2 ? 2 : 1}</strong><div class="small">${L2 ? L2.name : 'THE HAUNTED CEMETERY'}</div></div>
         <div class="stats">
           <span class="pill">🧟 <span id="goth-count">0/2</span></span>
           <span class="pill">🧩 <span id="rel-state">Locked</span></span>
@@ -306,9 +312,9 @@ function mountLevel1(loadSaved=false){
       <div class="game-layout">
         <div class="play-column">
           <div class="world-wrap">
-            <canvas id="world" width="1536" height="1024" tabindex="0" aria-label="Level 1 haunted cemetery"></canvas>
+            <canvas id="world" width="1536" height="1024" tabindex="0" aria-label="${L2 ? 'Level 2 mystical forest' : 'Level 1 haunted cemetery'}"></canvas>
           </div>
-          <div id="dialogue" class="dialogue" aria-live="polite">You wake up somewhere very dark...</div>
+          <div id="dialogue" class="dialogue" aria-live="polite">${L2 ? L2.dialogue.start : 'You wake up somewhere very dark...'}</div>
         </div>
       </div>
 
@@ -408,6 +414,21 @@ function mountLevel1(loadSaved=false){
       </div></div>
     </section>`;
 
+  if(L2){   // V9.94: Level 2's boss screen (Sophia) and its end-of-level screen
+    const bi = document.getElementById('boss-intro');
+    const art = bi?.querySelector('.patricia-art');
+    if(art){ art.src = L2.boss.image; art.alt = L2.boss.name; }
+    const bt = bi?.querySelector('.patricia-title');
+    if(bt) bt.innerHTML = `You've encountered ${L2.boss.name} <span class="patricia-species">(${L2.boss.species})</span>.`;
+    const bp = bi?.querySelector('.patricia-card p');
+    if(bp) bp.textContent = L2.boss.text;
+    const win = document.getElementById('win');
+    const wa = win?.querySelector('.level-complete-art');
+    if(wa){ wa.src = L2.complete.image; wa.alt = 'Level 2 complete'; }
+    const set = (sel, txt) => { const el = win?.querySelector(sel); if(el) el.textContent = txt; };
+    set('.lc-big', L2.complete.big); set('.lc-sub', L2.complete.sub); set('.lc-ask', L2.complete.ask);
+  }
+
   const ui = {
     canvas:document.getElementById('world'), dialogue:document.getElementById('dialogue'),
     hpEl:document.getElementById('player-hp-text'), hpFill:document.getElementById('player-hp-fill'), gothEl:document.getElementById('goth-count'), relEl:document.getElementById('rel-state'), puzzleEl:document.getElementById('puzzle-state'),
@@ -422,7 +443,7 @@ function mountLevel1(loadSaved=false){
 
   initSettings();
   playMusic('map');   // map + story music (assets/audio/music/map.mp3); starts after the first click
-  const level = createLevel1(ui);
+  const level = createLevel1(ui, { level: levelNum, carry });
   ui.encounterReady.addEventListener('click',()=>level.confirmEncounter());
   ui.encounterExplore.addEventListener('click',()=>level.closeEncounter());
   ui.retryCombat.addEventListener('click',()=>level.retryCombat());
@@ -438,11 +459,21 @@ function mountLevel1(loadSaved=false){
   // via "level2" in the cheat console rather than only reachable by beating Patricia.
   // Note this swaps the REAL win-ready button too, not just the cheat path, since they're
   // the same button - so actually finishing Level 1 for real now leads here as well.
-  document.getElementById('win-ready')?.addEventListener('click',()=>{ level.stop(); mountLevel2(); });
+  // V9.94: Level 1's Ready goes into the real Level 2 (same engine), carrying Olly's rewards over.
+  // Level 2's Ready: Level 3 isn't built yet.
+  document.getElementById('win-ready')?.addEventListener('click',()=>{
+    if(L2){ const a = document.querySelector('#win .lc-ask'); if(a) a.textContent = 'Level 3 is still being built. Save and Quit for now - your progress is kept.'; return; }
+    const carryOver = level.carryState?.();
+    level.stop();
+    mountLevel1(false, 2, carryOver);
+  });
   // V9.85: pass which wrong button this is (0,1,2 in DOM order) so each one gets its own stable
   // voice line for the life of one Princess Question, instead of a fresh random pick every click.
-  { const wrongBtns = [...document.querySelectorAll('[data-answer="wrong"]')];
-    document.querySelectorAll('[data-answer]').forEach(b=>b.addEventListener('click',()=>level.answerPuzzle(b.dataset.answer, b.dataset.answer==='wrong' ? wrongBtns.indexOf(b) : undefined))); }
+  // V9.94: worked out at click time, because Level 2 relabels the answers when its question opens.
+  document.querySelectorAll('[data-answer]').forEach(b=>b.addEventListener('click',()=>{
+    const wrongBtns = [...document.querySelectorAll('#puzzle [data-answer="wrong"]')];
+    level.answerPuzzle(b.dataset.answer, b.dataset.answer==='wrong' ? Math.max(0, wrongBtns.indexOf(b)) : undefined);
+  }));
   ui.combatCanvas.addEventListener('mousedown',e=>{
     if(e.button!==2) return;   // V9.31: punching is the X key only (left-click is kept free for shooting arrows later)
     e.preventDefault();
@@ -474,7 +505,7 @@ function mountLevel1(loadSaved=false){
     if(!act) return;
     if(act==='inventory' && !e.repeat){ e.preventDefault(); toggleInventory(); return; }
     if(!ui.inventory?.classList.contains('hidden')) return;
-    const inFight = !ui.combat.classList.contains('hidden');
+    const inFight = !ui.combat.classList.contains('hidden') || !!level.inExtraFight?.();   // V9.94: Devil's Fingers / Sophia have their own arena
     if(act==='dodge' && inFight){
       e.preventDefault();
       if(!e.repeat) level.combatDodge?.();
@@ -497,14 +528,14 @@ function mountLevel1(loadSaved=false){
     }
     if(MOVE_KEY[act]){ e.preventDefault(); level.setMoveKey?.(MOVE_KEY[act],true); return; }
     if(act==='jump'){ e.preventDefault(); if(!e.repeat) level.primaryAction(); return; }
-  });
+  }, listen);
   // Save lives in Settings now: the Settings window calls this.
   window.ggSaveGame = () => { try { return !!level.saveGame(); } catch(e) { return false; } };
   window.ggSaveAndQuit = () => { try { level.saveAndQuit(); } catch(e) {} };
   window.addEventListener('keyup',e=>{
     const act = actionForKey(e.key);
     if(MOVE_KEY[act]) level.setMoveKey?.(MOVE_KEY[act],false);
-  });
+  }, listen);
   registerCheats(level.cheat);
   level.start();
   if(loadSaved){
@@ -513,70 +544,6 @@ function mountLevel1(loadSaved=false){
       if(!ok) showTitleMessage('No saved game found.');
     });
   }
-}
-
-// V9.84-preview: Level 2 scaffolding, debug-only (see the ?level=2 entry point near the
-// bottom of this file). Deliberately its OWN html shell + its OWN event wiring, separate
-// from mountLevel1() - most of mountLevel1's listeners above are bound directly to ui.*
-// elements without optional chaining (ui.encounterReady.addEventListener etc.), so if this
-// reused that block verbatim it would throw the moment it hit an overlay Level 2 doesn't
-// have yet (no combat/encounter/puzzle/relationship/boss-intro content exists for it).
-// Not reachable from the title screen or the real "win-ready" Level 1 completion button -
-// those are untouched. This stays local; nothing here is committed/pushed until reviewed.
-function mountLevel2(){
-  root.innerHTML = `
-    <section class="panel game-screen" style="position:relative">
-      <div class="game-head">
-        <div><strong>LEVEL 2 (PREVIEW)</strong><div class="small">THE WHISPERING HOLLOW - work in progress, not reachable from normal play</div></div>
-      </div>
-      <div class="game-layout">
-        <div class="play-column">
-          <div class="world-wrap">
-            <canvas id="world2" width="1536" height="1024" tabindex="0" aria-label="Level 2 preview map"></canvas>
-          </div>
-          <div id="dialogue2" class="dialogue" aria-live="polite">Loading the hollow...</div>
-        </div>
-      </div>
-      <div style="position:absolute;top:10px;right:10px;z-index:50">
-        <button id="l2-exit" type="button" style="min-height:34px;padding:6px 10px;font-size:12px;">EXIT PREVIEW</button>
-      </div>
-    </section>`;
-
-  const ui2 = { canvas: document.getElementById('world2'), dialogue: document.getElementById('dialogue2') };
-  const level2 = createLevel2(ui2);
-
-  const MOVE_KEY2 = { up:'w', down:'s', left:'a', right:'d' };
-  function onKeyDown2(e){
-    if(e.ctrlKey || e.metaKey || e.altKey) return;
-    const act = actionForKey(e.key);
-    if(!act) return;
-    if(MOVE_KEY2[act]){ e.preventDefault(); level2.setMoveKey(MOVE_KEY2[act], true); return; }
-    if(act==='jump'){ e.preventDefault(); level2.primaryAction(); return; }
-    // V9.93: Devil's Fingers combat (preview) - mirrors Level 1's attack/heavy/dodge routing.
-    // level2's own hooks are no-ops outside combat, so it's safe to always forward these.
-    if(act==='attack'){ e.preventDefault(); if(!e.repeat) level2.combatAttack?.(); return; }
-    if(act==='heavy'){ e.preventDefault(); if(!e.repeat) level2.combatHeavyAttack?.(); return; }
-    if(act==='dodge'){ e.preventDefault(); if(!e.repeat) level2.combatDodge?.(); return; }
-  }
-  function onKeyUp2(e){
-    const act = actionForKey(e.key);
-    if(MOVE_KEY2[act]) level2.setMoveKey(MOVE_KEY2[act], false);
-  }
-  window.addEventListener('keydown', onKeyDown2);
-  window.addEventListener('keyup', onKeyUp2);
-  // Right-click dodge (same convention as Level 1's combat canvas).
-  const world2Canvas = document.getElementById('world2');
-  world2Canvas?.addEventListener('mousedown', e => { if(e.button===2){ e.preventDefault(); e.stopPropagation(); level2.combatDodge?.(); } });
-  world2Canvas?.addEventListener('contextmenu', e => e.preventDefault());
-  world2Canvas?.addEventListener('auxclick', e => e.preventDefault());
-  document.getElementById('l2-exit')?.addEventListener('click', () => {
-    level2.stop();
-    window.removeEventListener('keydown', onKeyDown2);
-    window.removeEventListener('keyup', onKeyUp2);
-    showBoot();
-  });
-
-  level2.start();
 }
 
 // V9.85-preview: Level 3 has no theme/map of its own yet, so this is just the relocated
@@ -643,7 +610,7 @@ if (audioNeedsClick()) {
 // to be the real handoff target.
 {
   const debugLevel = new URLSearchParams(location.search).get('level');
-  if (debugLevel === '2') { playMusic('menu'); mountLevel2(); }
+  if (debugLevel === '2') { playMusic('map'); mountLevel1(false, 2); }   // V9.94: straight into the real Level 2 (for testing)
   else if (debugLevel === '3') { playMusic('menu'); mountLevel3(); }
   else showBoot();   // V9.80: loading bat -> disclaimer (own music) -> title
 }

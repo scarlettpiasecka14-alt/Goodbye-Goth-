@@ -64,7 +64,7 @@ function toggle(force) {
     panel.classList.toggle('open', open); if (open) { sync(); panel.querySelector('#gg-cheat-cmd').focus(); }
 }
 
-const HELP = 'Codes: patricia | patricia skip | patricia win | patricia loss | chain goth | chain win | chain loss | zombie goth | zombie win | zombie loss | win | loss | god | god off | heal | heavy | map | intro new | intro old | intro random (Zombie Goth 3-2-1 version) | level2 (jump to the end-of-Level-1 screen)';
+const HELP = 'Codes: patricia | patricia skip | patricia win | patricia loss | chain goth | chain win | chain loss | zombie goth | zombie win | zombie loss | win | loss | god | god off | heal | heavy | map | intro new | intro old | intro random (Zombie Goth 3-2-1 version) | level2 (jump to the end-of-Level-1 screen) | Level 2: devils fingers / df (+ win, loss) | sophia (+ win, loss) | find princess (mark the mushroom game done) | mushrooms (play it) | tom | question | pendant (finish everything, get the key/pendant)';
 function runCode(raw) {
     if (!hooks) return 'Start a game first.';
     const c = String(raw || '').toLowerCase().replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -78,9 +78,15 @@ function runCode(raw) {
     if (c === 'heal' || c === 'hp') { hooks.refillHp(); return 'HP refilled.'; }
     if (c === 'heavy') { hooks.unlockHeavy(); return 'Heavy Attack unlocked.'; }
     { const im = c.match(/^intro (new|old|random)$/); if (im) { hooks.setIntro?.(im[1]); return 'Zombie Goth 3-2-1: ' + im[1]; } }
-    const m = c.match(/^(patricia|queen goth|chain goth|chain|zombie goth|zombie)(?: (skip|fight|start|win|loss|lose|lost))?$|^(win|loss|lose|lost)$/);
+    if (c === 'mushrooms' || c === 'mushroom') return hooks.playFindPrincess?.() ? 'Find the Princess started.' : 'Only in Level 2, on the map.';   // V9.94
+    if (c === 'tom') return hooks.playTom?.() ? "Tom's journal opened." : 'Only in Level 2, on the map.';
+    if (c === 'princess question' || c === 'question') return hooks.openPrincessQuestion?.() ? 'Princess Question opened.' : 'Go back to the map first.';
+    if (c === 'pendant' || c === 'key') return hooks.givePendant?.() ? 'Everything done + key/pendant in your backpack. Go to the gate/doorway and USE it.' : 'Go back to the map first.';
+    if (c === 'find princess' || c === 'find the princess') return hooks.winFindPrincess?.() ? 'Find the Princess marked as done.' : 'Only in Level 2, on the map.';   // V9.94
+    // V9.94: Level 2 codes. "devil's fingers" arrives here as "devil s fingers" (the apostrophe is stripped).
+    const m = c.match(/^(patricia|queen goth|chain goth|chain|zombie goth|zombie|devil s fingers|devils fingers|devil|df|sophia|chaos fairy|fairy)(?: (skip|fight|start|win|loss|lose|lost))?$|^(win|loss|lose|lost)$/);
     if (!m) return 'Unknown code. Type help.';
-    const who = m[1] ? (m[1].startsWith('chain') ? 'chain' : m[1].startsWith('zombie') ? 'zombie' : 'patricia') : null;
+    const who = m[1] ? (m[1].startsWith('chain') ? 'chain' : m[1].startsWith('zombie') ? 'zombie' : (m[1].startsWith('devil') || m[1] === 'df') ? 'df' : 'patricia') : null;
     const act = m[2] || m[3] || 'start';
     const result = act === 'win' ? 'win' : (act === 'loss' || act === 'lose' || act === 'lost') ? 'loss' : null;
     const end = () => result === 'win' ? hooks.winFight() : hooks.loseFight();
