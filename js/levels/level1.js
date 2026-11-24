@@ -479,6 +479,21 @@ function patDespillCanvas(img) {
     return cv;
 }
 let patAssetsRequested = false;
+// V9.95: start downloading the two images the fight needs on frame 1 (intro + jab) as early as
+// possible — when the level loads — without decoding them into bitmaps (which is what eats memory).
+// The browser caches the downloaded file, so when loadPatriciaAssets() fires later and sets the same
+// src, the image is already in the HTTP cache and loads almost instantly. This turns a 3-5 s blank
+// screen into a near-instant display on most connections.
+let patEssentialsPreloaded = false;
+function preloadPatriciaEssentials() {
+    if (patEssentialsPreloaded || patAssetsRequested) return;
+    patEssentialsPreloaded = true;
+    for (const name of ['intro', 'jab']) {
+        if (!patAtlas[name]) continue;
+        const img = patAtlas[name].img;
+        if (!img.src) img.src = `assets/characters/patricia/atlas/pat-${name}.webp?v=9820`;
+    }
+}
 function loadPatriciaAssets() {
     if (patAssetsRequested) return;
     patAssetsRequested = true;
@@ -925,6 +940,10 @@ export function createLevel1(ui, opts = {}) {
     let metTom = false, tomX = 0, tomY = 0;
     setTimeout(loadCombatAssets, 2500);   // start fetching fight art in the background once the level opens
     // V9.80: Patricia's art (about 490 MB once decoded, x2 as bitmaps) is no longer loaded when the level opens: it loads when you reach her (boss screen / fight). On an 8 GB Mac it was starving the game of memory.
+    // V9.95: but the two essential sheets (intro + jab, ~5 MB total) are preloaded as soon as the level
+    // opens — just the network download, no decode/bitmap, so negligible memory — giving the browser's
+    // HTTP cache a full head start. By the time the player reaches Patricia, they're already cached.
+    setTimeout(preloadPatriciaEssentials, 4000);
     const ctx = ui.canvas.getContext('2d'),
         cctx = ui.combatCanvas.getContext('2d'),
         rctx = ui.relationshipCanvas.getContext('2d');
@@ -2466,7 +2485,11 @@ export function createLevel1(ui, opts = {}) {
         // range, so the bite could never actually connect: she'd crawl right up against him and just stall
         // there (reported as "she's right on top of you and never bites" / "she pushes you away as she chases").
         // Let the gap close all the way while she's actively trying to catch him with it.
-        const zombieBiting = target?.type === 'shambler' && zombieCombatState === 'heavyKick' && zombieBiteCaughtAt === 0 && !zombieBiteEvaded;
+        // V9.97: the body gap must shrink for ANY active bite crawl, not only un-evaded ones.
+        // The old code kept the 108px gap when zombieBiteEvaded was true, which meant the
+        // zombie visually reached Olly but got pushed back to 108px — outside the 85px catch
+        // range — so the bite never actually connected ("she's right on top of me but nothing happens").
+        const zombieBiting = target?.type === 'shambler' && zombieCombatState === 'heavyKick' && zombieBiteCaughtAt === 0;
         const minGap = foe ? foe.bodyGap : (zombieBiting ? 20 : 108);
         const playerMinX = 140;
         const playerMaxX = COMBAT_W - 140;
@@ -2825,12 +2848,10 @@ export function createLevel1(ui, opts = {}) {
         // cycle straight INTO the first attack frame (still the most noticeable one) was untouched,
         // because we only remembered the last frame while already inside claw/heavyKick. Now we
         // remember the last frame drawn in ANY state, so entering (or leaving) the attack can blend too.
-        const xfadeState = (zombieCombatState === 'claw' || zombieCombatState === 'heavyKick');
-        const wasXfadeState = zombieLastDrawImg && zombieLastDrawImg.xfadeState;
-        if ((xfadeState || wasXfadeState) && zombieLastDrawImg && zombieLastDrawImg.img !== frame.img && nowMs - zombieLastDrawImg.t < 140) {
+        // V9.97: extended crossfade to ALL state transitions (walk→ready, ready→windup, etc.)
+        // so there's no hard pop between any animation sets. The old code only faded claw/heavyKick.
+        if (zombieLastDrawImg && zombieLastDrawImg.img !== frame.img && nowMs - zombieLastDrawImg.t < 140) {
             zombieXfade = { ...zombieLastDrawImg, start: nowMs };
-        } else if (!xfadeState && !wasXfadeState) {
-            zombieXfade = null;
         }
         const xk = zombieXfade ? Math.min(1, (nowMs - zombieXfade.start) / 90) : 1;
         if (zombieXfade && xk < 1) {
@@ -2839,7 +2860,7 @@ export function createLevel1(ui, opts = {}) {
             zombieXfade = null;
         }
         drawCombatImage(c, frame.img, enemyX, renderGroundY, renderHeight, face, renderMaxWidth, alpha * (zombieXfade ? Math.min(1, xk * 1.5) : 1), offsetX, rotation, sourceFacing, deathFloorOffset + deathSink);
-        zombieLastDrawImg = { img: frame.img, groundY: renderGroundY, h: renderHeight, face, offsetX, rotation, t: nowMs, xfadeState };
+        zombieLastDrawImg = { img: frame.img, groundY: renderGroundY, h: renderHeight, face, offsetX, rotation, t: nowMs };
         if (dying && frame.nextImg && frame.mix > .02) {
             const nh = (frame.scale && frame.nextImg.naturalHeight) ? Math.round(frame.nextImg.naturalHeight * frame.scale) : renderHeight;
             drawCombatImage(c, frame.nextImg, enemyX, renderGroundY, nh, face, renderMaxWidth, alpha * frame.mix, offsetX, rotation, sourceFacing, deathFloorOffset + deathSink);
@@ -3003,7 +3024,11 @@ export function createLevel1(ui, opts = {}) {
                 // Jumping or dodging can still avoid the catch.
                 // V9.19: a dodge that starts while the red ring is closing in (or just as she lunges) beats the bite.
                 // Before, the 0.6s dodge was often over by the time she reached him, so well-timed dodges still got caught.
-                if (!zombieBiteEvaded && zombieBiteCaughtAt === 0 && Math.max(lastDodgeStart, lastJumpStart) >= zombieCombatStateStart - 800 && Math.max(lastDodgeStart, lastJumpStart) <= zombieCombatStateStart + 350) {
+                // V9.97: tightened the evade window from -800/+350 to -200/+350. The old 800ms pre-window
+                // meant any jump/dodge during most of the 1150ms windup auto-evaded the bite, so the
+                // zombie would visually crawl right onto Olly but never actually bite. Now only a
+                // dodge/jump within 200ms before the lunge (i.e. late in the windup) or 350ms after counts.
+                if (!zombieBiteEvaded && zombieBiteCaughtAt === 0 && Math.max(lastDodgeStart, lastJumpStart) >= zombieCombatStateStart - 200 && Math.max(lastDodgeStart, lastJumpStart) <= zombieCombatStateStart + 350) {
                     zombieBiteEvaded = true;
                     ui.combatStatus.textContent = '↪ BITE avoided!';
                 }
@@ -5014,6 +5039,13 @@ export function createLevel1(ui, opts = {}) {
 
         const anim = getCombatAnimationFrame(nowMs);
         const renderHurt = playerHurtUntil > nowMs;
+
+        // V9.97: draw the zombie goth BEHIND Olly so the player character stays visible.
+        // Boss fights (Patricia, Chain Goth) and Level-2 foes handle their own layering.
+        if (!isBoss && !foe) {
+            drawZombieCombat(cctx, enemyX, enemyY, nowMs);
+        }
+
         if (drinkAnim) drawOllyDrink(cctx, player.x, player.y, nowMs);
         else if (isBoss) {   // V9.30: Olly is smaller next to Patricia (scaled around his feet)
             const fy = player.y + OLLY_DRAW_FOOT_OFFSET + 20, k = PAT_OLLY_SCALE;
@@ -5051,7 +5083,8 @@ export function createLevel1(ui, opts = {}) {
                 drawAttackRing(cctx, enemyX, ringY, ringR, ringKind, 1, true, nowMs);
         }
         if (foe) { foe.draw(cctx, nowMs); foe.drawOver(cctx, nowMs); }   // V9.96
-        else drawZombieCombat(cctx, enemyX, enemyY, nowMs);
+        // V9.97: zombie goth was drawn earlier (behind Olly); boss/foe draws here (they handle their own layering)
+        else if (isBoss) drawZombieCombat(cctx, enemyX, enemyY, nowMs);
         drawZombieCountdown(cctx, nowMs);
 
         // (Olly's HP now lives in the HTML HUD top-left, so the old canvas panel is gone.)
@@ -5839,13 +5872,22 @@ export function createLevel1(ui, opts = {}) {
                 setBagGlow(true);
             });
         }
-        if (patAtlas.intro?.img?.complete && patAtlas.intro.img.naturalWidth) {
+        // V9.95: gate on BOTH intro AND jab loaded — the intro state's fallback (patStand)
+        // returns jab frame 0, so if only intro is loaded but jab isn't, Patricia is STILL invisible.
+        function patEssentialsReady() {
+            return patAtlas.intro?.img?.complete && patAtlas.intro.img.naturalWidth
+                && patAtlas.jab?.img?.complete && patAtlas.jab.img.naturalWidth;
+        }
+        if (patEssentialsReady()) {
             startPrefightSequence();
         } else {
             ui.combatStatus.textContent = 'Loading...';
             const poll = setInterval(() => {
                 if (token !== prefightToken || mode !== 'combat') { clearInterval(poll); return; }
-                if (patAtlas.intro?.img?.complete && patAtlas.intro.img.naturalWidth) {
+                // V9.95: keep the combat clock frozen while we're waiting — otherwise gnow() advances
+                // and the intro animation jumps to the middle of its timeline the instant she appears.
+                combatLastFrame = gnow();
+                if (patEssentialsReady()) {
                     clearInterval(poll);
                     startPrefightSequence();
                 }
