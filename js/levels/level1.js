@@ -473,7 +473,14 @@ function loadPatriciaAssets() {
     // while the thread is blocked, so combat logic "catches up" to the real elapsed time the instant
     // rendering resumes. Loading a few sheets at a time keeps the spike small while still finishing
     // well before one-at-a-time sequential decoding did.
-    const entries = Object.entries(patAtlas);
+    // V9.94: intro + jab must load first — the fight opens in the 'intro' state, whose
+    // fallback (patStand) returns jab frame 0. With the old insertion-order loading
+    // (walk/lunge/lightning first), neither was ready when the fight started → invisible Patricia.
+    const PRIORITY = ['intro', 'jab'];
+    const entries = [
+        ...PRIORITY.filter(k => patAtlas[k]).map(k => [k, patAtlas[k]]),
+        ...Object.entries(patAtlas).filter(([k]) => !PRIORITY.includes(k))
+    ];
     const CONCURRENCY = 3;
     let next = 0;
     function startOne() {
@@ -491,7 +498,7 @@ function loadPatriciaAssets() {
     for (let k = 0; k < CONCURRENCY; k++) startOne();
 }
 const PAT_SCALE = 0.66;               // = the atlas scale, so she is never resampled
-const PAT_STAND_OFF = 215, PAT_CHASE_SPEED = 210;   // V9.84: a touch faster again - still a deliberate menacing walk, just not quite as draggy (was 185, V9.80)   // V9.41: her legs were moving faster than she travelled   // V9.36: slower (was 140)
+const PAT_STAND_OFF = 215, PAT_CHASE_SPEED = 280;   // V9.94: faster walk (was 210) — she felt too slow and sluggish to be a real threat   // V9.84: (was 185)   // V9.41: her legs were moving faster than she travelled
 // V9.34: her clips were generated separately, so she was a different size in each. These multipliers (measured head-to-feet against the idle clip) make her the same size in every move.
 // V9.44: the 'Salvagable?' jump clip's bounding box balloons as her limbs/hair fly out mid-jump (measured up to ~44% taller
 // than her idle box by the box's final segment), which is why her hurt reactions looked "MASSIVE" compared to every other
@@ -539,7 +546,7 @@ const PAT_WALK_FRAME_MS = 40, PAT_INTRO_FRAME_MS = 70;   // V9.80: quicker strid
 const PAT_INTRO_BASE_W = 524;   // V9.91: her resting frame width in the intro clip (arms at her side, between twirls) - see the smoke-gating note in drawPatriciaCombat
 const PAT_LUNGE_WINDUP_FRAMES = 37, PAT_LUNGE_WINDUP_MS = 1500, PAT_LUNGE_STRIKE_FRAMES = 24, PAT_LUNGE_FRAME_MS = 48, PAT_LUNGE_HIT_AT_MS = 290;
 const PAT_LUNGE_DAMAGE = 18, PAT_LUNGE_RANGE = 360, PAT_LUNGE_PUSH = 36;   // V9.93: damage pass per Scarlett, so Patricia clearly hits hardest in the game - was 12
-const PAT_LUNGE_STRIKE_DY_NUDGE = 35;   // V9.93: raised from 14 — sword was visibly too high above Olly during the lunge strike
+const PAT_LUNGE_STRIKE_DY_NUDGE = 72;   // V9.94: raised from 55 (was 35, was 14) — sword still not touching Olly, 30% lower again
 const PAT_JAB_WINDUP_MS = 1000, PAT_JAB_WINDUP_FRAMES = 23, PAT_JAB_STRIKE_FRAMES = 16, PAT_JAB_FRAME_MS = 45, PAT_JAB_HIT_IDX = 3;   // V9.80 umbrella jab
 const PAT_JAB_DAMAGE = 14, PAT_JAB_RANGE = 340, PAT_JAB_PUSH = 22;   // V9.93: damage pass per Scarlett - was 9
 const PAT_SMOKE_FRAME_MS = 125, PAT_SMOKE_FRAMES = 21, PAT_SMOKE_GONE_AT_MS = 560, PAT_SMOKE_REAPPEAR_AT_MS = 1600;   // V9.45: she vanishes twice as fast (was 1120 / 2100)
@@ -4512,7 +4519,7 @@ export function createLevel1(ui, opts = {}) {
                     if (player.invuln > nowMs) continue;   // dodged: it sails past
                     s.hit = true; s.dead = true;
                     patSparkShards = { x: px, y: py, t: nowMs };   // V9.82: burst into purple shards on impact so the hit is unmistakable
-                    patDamage(PAT_JAB_DAMAGE, 1e5, PAT_JAB_PUSH, 'UMBRELLA SPARK', nowMs);
+                    patDamage(PAT_JAB_DAMAGE, 1e5, PAT_JAB_PUSH, 'UMBRELLA SPARK', nowMs, true);   // V9.94: ignoreAir — the orb already did its own hit check, so applyZombieDamage must not re-check airborne
                 }
             }
         }
@@ -5354,9 +5361,13 @@ export function createLevel1(ui, opts = {}) {
         const enemyX = zombieCombatX,
             playerMinX = 140,
             playerMaxX = COMBAT_W - 140;
-        // Always dodge AWAY from the enemy (backwards), whichever way Olly happens to be facing or walking.
-        // If his back is to the wall there is no room, so he rolls THROUGH her to the other side instead.
-        let direction = player.x <= enemyX ? -1 : 1;
+        // V9.94: dodge goes the direction the player is pressing. If no direction is held,
+        // fall back to dodging away from the enemy. The old code always dodged away regardless
+        // of input, which felt unresponsive ("he dodges the wrong way").
+        let direction;
+        if (held.left && !held.right) direction = -1;
+        else if (held.right && !held.left) direction = 1;
+        else direction = player.x <= enemyX ? -1 : 1;   // no key / both keys: away from enemy
         const room = direction < 0 ? player.x - playerMinX : playerMaxX - player.x;
         let distance = 180;
         if (room < 110 && Math.abs(enemyX - player.x) <= 340) { direction = -direction; distance = Math.abs(enemyX - player.x) + 170; }   // cornered next to her: roll through to the other side
@@ -5761,23 +5772,43 @@ export function createLevel1(ui, opts = {}) {
         loadDrinkFrames();
         preloadSfx(['patricia-unfair-fight', 'patricia-check-backpack']);
         ui.combatStatus.textContent = '';
-        const later = (ms, fn) => setTimeout(() => { if (token === prefightToken && mode === 'combat') fn(); }, ms);
-        // V9.30: she speaks in a bubble over her head. 2 s after the fight loads she says line 1; line 2 only starts once line 1 has finished (they used to overlap).
-        const L1 = 2690, L2 = 1910, GAP = 450, PAT_SPEECH_DELAY = 2000;   // V9.31: 2 s after the fight loads (was 1 s)
-        patSpeech = null;
-        later(PAT_SPEECH_DELAY, () => { patSpeech = { text: 'I wouldn\'t enjoy an unfair fight...', start: gnow(), until: Infinity }; ui.combatStatus.textContent = ''; playVoiceLine('patricia-unfair-fight', 1); });
-        later(PAT_SPEECH_DELAY + L1 + GAP, () => {
-            patSpeech = { text: 'Check your backpack.', start: gnow(), until: Infinity };
-            playVoiceLine('patricia-check-backpack', 1);
-            if (!inventory.potion) inventory.potion = 1;
-            refreshInventoryUI();
-        });
-        later(PAT_SPEECH_DELAY + L1 + GAP + L2 + 500, () => {
+        // V9.94: wait for the intro atlas to finish loading before starting speech / timers.
+        // Without this, her voice lines fired while she was still invisible (the atlas hadn't
+        // downloaded yet), and the half-health cutscene could start before the fight even began.
+        function startPrefightSequence() {
+            if (token !== prefightToken || mode !== 'combat') return;
+            // Reset the intro state start so the animation begins at frame 0 from NOW
+            zombieCombatStateStart = gnow();
+            const later = (ms, fn) => setTimeout(() => { if (token === prefightToken && mode === 'combat') fn(); }, ms);
+            // V9.30: she speaks in a bubble over her head. 2 s after the fight loads she says line 1; line 2 only starts once line 1 has finished (they used to overlap).
+            const L1 = 2690, L2 = 1910, GAP = 450, PAT_SPEECH_DELAY = 2000;   // V9.31: 2 s after the fight loads (was 1 s)
             patSpeech = null;
-            if (prefight) prefight.ready = true;
-            ui.combatStatus.textContent = 'Press ' + actionHint('inventory') + ' to open your backpack.';
-            setBagGlow(true);
-        });
+            later(PAT_SPEECH_DELAY, () => { patSpeech = { text: 'I wouldn\'t enjoy an unfair fight...', start: gnow(), until: Infinity }; ui.combatStatus.textContent = ''; playVoiceLine('patricia-unfair-fight', 1); });
+            later(PAT_SPEECH_DELAY + L1 + GAP, () => {
+                patSpeech = { text: 'Check your backpack.', start: gnow(), until: Infinity };
+                playVoiceLine('patricia-check-backpack', 1);
+                if (!inventory.potion) inventory.potion = 1;
+                refreshInventoryUI();
+            });
+            later(PAT_SPEECH_DELAY + L1 + GAP + L2 + 500, () => {
+                patSpeech = null;
+                if (prefight) prefight.ready = true;
+                ui.combatStatus.textContent = 'Press ' + actionHint('inventory') + ' to open your backpack.';
+                setBagGlow(true);
+            });
+        }
+        if (patAtlas.intro?.img?.complete && patAtlas.intro.img.naturalWidth) {
+            startPrefightSequence();
+        } else {
+            ui.combatStatus.textContent = 'Loading...';
+            const poll = setInterval(() => {
+                if (token !== prefightToken || mode !== 'combat') { clearInterval(poll); return; }
+                if (patAtlas.intro?.img?.complete && patAtlas.intro.img.naturalWidth) {
+                    clearInterval(poll);
+                    startPrefightSequence();
+                }
+            }, 50);
+        }
     }
     function potionChoice(drink) {
         const note = document.querySelector('#inventory-item-panel .inv-panel-note');
@@ -5785,12 +5816,12 @@ export function createLevel1(ui, opts = {}) {
             if (!prefight.ready) { if (note) note.textContent = 'Let her finish...'; return; }
             closeBag(); setBagGlow(false);
             prefight.ready = false;
-            if (drink) { drinkAnim = { start: gnow(), healed: false }; inventory.potion = 0; refreshInventoryUI(); }
+            if (drink) { drinkAnim = { start: gnow(), healed: false }; inventory.potion = 0; refreshInventoryUI(); playSfx('Drinking_potion'); }
             else startPrefightCountdown();
             return;
         }
         if (mode === 'map' && drink) {   // outside the boss fight: just heal
-            hp = maxHp; inventory.potion = 0; closeBag(); stats();
+            hp = maxHp; inventory.potion = 0; closeBag(); stats(); playSfx('Drinking_potion');
             ui.dialogue.textContent = 'You drink the potion. Full HP again.';
             return;
         }
