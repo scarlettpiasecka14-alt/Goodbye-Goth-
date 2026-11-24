@@ -4,8 +4,8 @@
    so the map, fog, collision, "Are you ready?" screens, Princess Question, saving, knockouts,
    the 3-2-1 intros and Chain Goth's fight all behave exactly like Level 1. This file only holds
    what is DIFFERENT about Level 2: where things are, the words, the art, and how much harder
-   Chain Goth is. Parts Level 1 doesn't have (Find the Princess, Devil's Fingers, Sophia the
-   Chaos Fairy Goth) are borrowed from js/levels/level2.js.
+   Chain Goth is. Find the Princess is borrowed from js/levels/level2.js; Devil's Fingers and Sophia the Chaos
+   Fairy Goth fight on Level 1's fight screen through js/levels/level2-foes.js (V9.96).
 
    Map coordinates are map pixels on assets/environment/level2-map-bg.webp (1536 x 1024).
    To check positions against the collision, open the game with ?level=2&walk=1.
@@ -29,7 +29,7 @@ export const LEVEL2 = {
     // Map enemies. Same shape as Level 1's list. 'devilsfingers' is fought through level2.js.
     enemies: () => [
         { x: 520, y: 300, type: 'chain', name: 'CHAIN GOTH', hp: 100, maxHp: 100, dead: false, pattern: 'Whip • Chain Slam' },
-        { x: 935, y: 560, type: 'devilsfingers', name: "DEVIL'S FINGERS", hp: 200, maxHp: 200, dead: false, pattern: 'Burrow • Grab • Acid', custom: 'df' }
+        { x: 935, y: 560, type: 'devilsfingers', name: "DEVIL'S FINGERS", hp: 200, maxHp: 200, dead: false, pattern: 'Burrow • Grab • Acid', foe: 'devilsfingers' }   // V9.96: fought on Level 1's fight screen (level2-foes.js)
     ],
     relationshipChallenge: { x: 640, y: 800 },   // Find the Princess, on the fairy ring
     princessQuestion: { x: 1030, y: 445 },       // in front of the gazebo
@@ -81,13 +81,13 @@ export const LEVEL2 = {
     encounters: {
         chainGoth: {
             role: 'chainGoth', name: 'CHAIN GOTH', species: 'Gothica Catenata',
-            image: 'assets/encounters/level1/chain-goth-encounter.webp?v=2',   // placeholder: Level 1's screen until Scarlett's Level 2 one exists
-            text: "Another Chain Goth. Apparently they come in packs. This one heard what you did to her sister, she's been practising in the woods, and she's furious about the eyeliner. Faster chain, shorter temper. Are you ready?"
+            image: ENC + 'chain-goth-encounter.webp',
+            text: "YOU'VE ENCOUNTERED... CHAIN GOTH!\nOh, an old foe. And she doesn't look particularly pleased to see you.\nWait... is that a BIGGER chain?\nOh, brilliant. Here we go again.\nAre you ready?"
         },
         devilsFingers: {
             role: 'devilsFingers', name: "DEVIL'S FINGERS", species: 'Clathrus archeri',
-            image: ENC + 'devils-fingers-placeholder.webp',   // placeholder
-            text: "The ground splits and something pink, slimy and very much alive uncurls its fingers at you. It smells like a bin. It wants a hug. Are you ready?"
+            image: ENC + 'devils-fingers-encounter.webp',
+            text: "YOU'VE ENCOUNTERED... A MUSHROOM?\nWait... what?\nYou step a little closer. What's that smell?\nBefore you can investigate, acid suddenly spurts from the Devil's Fingers' core and straight into your face.\nSuddenly, everything feels a little... whirly.\nAre you ready?"
         },
         relationshipChallenge: {
             role: 'relationshipChallenge', name: 'FIND THE PRINCESS',
@@ -151,7 +151,9 @@ export const LEVEL2 = {
         name: 'Sophia, The Chaos Fairy Goth', species: 'Gothica Chaotica',
         image: 'assets/characters/chaosfairy/chaosfairy-idle.webp',   // placeholder until her encounter art exists
         text: "She's been watching you since you arrived. She's braided three of the trees together out of boredom, and now she's decided you look fun to ruin. Floaty dress, questionable footwear, a magic bow. Run.",
-        fight: 'cfg'
+        fight: 'cfg',
+        combatName: 'SOPHIA • THE CHAOS FAIRY GOTH',
+        maxHp: 250   // PROVISIONAL
     },
     complete: {
         image: 'assets/arenas/cfg-arena.webp',   // placeholder

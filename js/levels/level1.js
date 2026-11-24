@@ -7,6 +7,7 @@ import { actionHint, hintHTML } from '../controls.js?v=9820';
 // are borrowed from level2.js. With no level option everything below behaves exactly as Level 1.
 import { LEVEL2 } from './level2-config.js?v=9940';
 import { createLevel2 } from './level2.js?v=9940';
+import { createFoe, preloadLevel2Foes } from './level2-foes.js?v=9960';   // V9.96: Devil's Fingers + Sophia on this fight screen
 // Game clock: normal time, but it stands still while a tutorial pop-up is open (so nothing happens behind it).
 let pausedTotal = 0, pausedAt = 0;
 const gnow = () => (pausedAt || performance.now()) - pausedTotal;
@@ -882,6 +883,7 @@ export function createLevel1(ui, opts = {}) {
         extrasCanvas.width = 1536; extrasCanvas.height = 1024;
         extras = createLevel2({ canvas: extrasCanvas, dialogue: ui.dialogue }, { hosted: true, isGod: () => cheatGod });
     }
+    if (LV) setTimeout(preloadLevel2Foes, 3000);
     const tomSprite = LV ? Object.assign(new Image(), { src: 'assets/characters/tom/tom-front.webp' }) : null;
     const tomJournalIcon = LV ? Object.assign(new Image(), { src: 'assets/icons/tom-journal.webp' }) : null;
     let metTom = false, tomX = 0, tomY = 0;
@@ -2407,6 +2409,7 @@ export function createLevel1(ui, opts = {}) {
             return;
         if (jumping || jumpOffset < -18 || nowMs < dodgeUntil || heavyAttackAnimUntil > nowMs)
             return;
+        if (foe && (foe.untargetable(nowMs) || zombieDeathStarted)) return;   // V9.96: no body while she's vanished / dying
 
         // V9.85: the Zombie Goth's heavy bite only lands once she's physically closed to within 85px of Olly
         // (see updateZombieAI's heavyKick branch, catchDistance <= 85) - but this function was re-pushing him
@@ -2415,7 +2418,7 @@ export function createLevel1(ui, opts = {}) {
         // there (reported as "she's right on top of you and never bites" / "she pushes you away as she chases").
         // Let the gap close all the way while she's actively trying to catch him with it.
         const zombieBiting = target?.type === 'shambler' && zombieCombatState === 'heavyKick' && zombieBiteCaughtAt === 0 && !zombieBiteEvaded;
-        const minGap = zombieBiting ? 20 : 108;
+        const minGap = foe ? foe.bodyGap : (zombieBiting ? 20 : 108);
         const playerMinX = 140;
         const playerMaxX = COMBAT_W - 140;
         const dx = player.x - zombieCombatX;
@@ -2447,7 +2450,8 @@ export function createLevel1(ui, opts = {}) {
     }
     function drawCombatBackground(c) {
         c.clearRect(0, 0, COMBAT_W, COMBAT_H);
-        const bgImg = (isBoss && patriciaArenaImage.complete && patriciaArenaImage.naturalWidth > 0) ? patriciaArenaImage : combatBackgroundImage;
+        const foeBg = foe?.background && foe.background.complete && foe.background.naturalWidth > 0 ? foe.background : null;   // V9.96: Sophia's ruins
+        const bgImg = (isBoss && patriciaArenaImage.complete && patriciaArenaImage.naturalWidth > 0) ? patriciaArenaImage : (foeBg || combatBackgroundImage);
         if (bgImg.complete && bgImg.naturalWidth > 0) {
             c.drawImage(bgImg, 0, 0, COMBAT_W, COMBAT_H);
         } else {
@@ -3038,6 +3042,11 @@ export function createLevel1(ui, opts = {}) {
         if (!isAIFight())
             return;
         if (isPatriciaFight()) { onPatriciaHit(nowMs, heavy); return; }
+        if (foe) {   // V9.96: a flash + a groan (no hurt animation art for these two yet)
+            foe.onHit(nowMs, heavy);
+            if (heavy) playSfx('goth-pain', .9, foe.hurtRate); else playSfx(GOTH_HURT_SFX[Math.floor(Math.random() * GOTH_HURT_SFX.length)], .7, foe.hurtRate);
+            return;
+        }
         const hurtRate = isChainFight() ? .82 : 1;   // Chain Goth reuses the zombie groans, pitched lower, until she has her own
         if (heavy) playSfx('goth-pain', .9, hurtRate); else playSfx(GOTH_HURT_SFX[Math.floor(Math.random() * GOTH_HURT_SFX.length)], .7, hurtRate);
 
@@ -3226,7 +3235,7 @@ export function createLevel1(ui, opts = {}) {
     // attack. The Zombie functions above are untouched.
     // ------------------------------------------------------------------
     function isAIFight() {
-        return mode === 'combat' && (isBoss || target?.type === 'shambler' || target?.type === 'chain');
+        return mode === 'combat' && (isBoss || target?.type === 'shambler' || target?.type === 'chain' || !!foe);
     }
 
     function isChainFight() {
@@ -3240,6 +3249,38 @@ export function createLevel1(ui, opts = {}) {
     let chainHurtHeavy = false;
     let chainPatternStep = 0;
     let chainFollowUp = false;   // V9.94: Level 2's follow-up swipe already used this attack
+    // V9.96: Level 2's other enemies (Devil's Fingers, Sophia) plug into this fight screen through level2-foes.js.
+    let foe = null;
+    const foeApi = {
+        W: COMBAT_W, H: COMBAT_H, floorY: CHAIN_FLOOR_Y,
+        getX: () => zombieCombatX,
+        setX: v => { zombieCombatX = v; },
+        playerX: () => player.x,
+        isDodging: nowMs => player.invuln > nowMs,
+        // returns true if Olly was actually hurt
+        hurt: (dmg, range, label, o = {}) => { const before = hp; applyZombieDamage(dmg, range, o.push ?? 34, gnow(), label, !!o.ignoreAir, false); return hp < before; },
+        hurtDirect: (dmg, label) => { const before = hp; applyZombieDamage(dmg, 1e5, 0, gnow(), label, true, true); return hp < before; },
+        status: t => { ui.combatStatus.textContent = t; },
+        ring: (c, x, r, kind, prog, active, nowMs, windupMs) => drawAttackRing(c, x, COMBAT_GROUND_Y + RING_FLOOR_OFFSET, r, kind, prog, active, nowMs, windupMs),
+        sfx: (n, v, r) => playSfx(n, v, r),
+        queueRingTutorial: k => queueRingTutorial(k)
+    };
+    function triggerFoeDeath(nowMs) {
+        if (!foe || zombieDeathStarted) return;
+        zombieDeathStarted = true;
+        enemyAttackPhase = null;
+        zombieDeathEndAt = nowMs + foe.die(nowMs);
+    }
+    function updateFoe(dt, nowMs) {
+        if (!foe || mode !== 'combat') return;
+        if (zombieIntroActive) {
+            if (nowMs >= zombieIntroEndAt) { zombieIntroActive = false; enemyAttackPhase = null; foe.ready?.(nowMs); ui.combatStatus.textContent = 'FIGHT!'; }
+            return;
+        }
+        if (zombieDeathStarted) { if (nowMs >= zombieDeathEndAt) endCombat(true); return; }
+        if (playerDeathTriggered) return;
+        foe.update(dt, nowMs);
+    }
     let chainStunHits = 0;
     let chainStunLastHit = -1e9;
     let chainSparks = [];
@@ -4931,7 +4972,7 @@ export function createLevel1(ui, opts = {}) {
             drawOllyWorldCombat(cctx, player.x, player.y, anim, nowMs / 1000, renderHurt, jumpOffset);
             cctx.restore();
         }
-        else drawOllyWorldCombat(cctx, player.x, player.y, anim, nowMs / 1000, renderHurt, jumpOffset);
+        else if (!foe?.hidesOlly()) drawOllyWorldCombat(cctx, player.x, player.y, anim, nowMs / 1000, renderHurt, jumpOffset);   // V9.96: hidden while Devil's Fingers' grab clip (which has him in it) plays
         if (nowMs < veilUntil) {   // V9.85: cosmetic shimmer while a Moth-Eaten Veil charge is active - a drifting translucent veil, no real combat read needed
             const left = Math.max(0, veilUntil - nowMs), fy = player.y + OLLY_DRAW_FOOT_OFFSET - 150 + jumpOffset;
             cctx.save();
@@ -4960,7 +5001,8 @@ export function createLevel1(ui, opts = {}) {
             else if (zombieCombatState === 'claw' || zombieCombatState === 'heavyKick')
                 drawAttackRing(cctx, enemyX, ringY, ringR, ringKind, 1, true, nowMs);
         }
-        drawZombieCombat(cctx, enemyX, enemyY, nowMs);
+        if (foe) { foe.draw(cctx, nowMs); foe.drawOver(cctx, nowMs); }   // V9.96
+        else drawZombieCombat(cctx, enemyX, enemyY, nowMs);
         drawZombieCountdown(cctx, nowMs);
 
         // (Olly's HP now lives in the HTML HUD top-left, so the old canvas panel is gone.)
@@ -5044,15 +5086,16 @@ export function createLevel1(ui, opts = {}) {
 
     function startCombat(bossFight, resume = false) {
         loadCombatAssets();
-        playMusic(bossFight ? 'boss' : 'fight');   // V9.30: Patricia gets her own track (PatriciaBoss.mp3); falls back to the fight music until it exists
+        playMusic(bossFight || target?.boss ? 'boss' : 'fight');   // V9.30: Patricia gets her own track (PatriciaBoss.mp3); falls back to the fight music until it exists
         preloadSfx(['punch-1', 'punch-2', 'punch-3', 'goth-pain', ...GOTH_HURT_SFX, 'olly-hurt', 'olly-hurt-heavy', 'olly-ko', 'olly-thud', 'olly-attack', 'olly-heavy-attack', 'olly-jump', 'olly-land', 'olly-dodge-grunt', 'chain-clatter', 'chain-drop', 'chain-rattle', 'chain-spin', 'chain-impact', 'chain-impact-spin', 'breath-recovery', 'countdown-tick', 'fight-shout', 'zombie-death', 'pickup', 'interact', 'tutorial', 'olly-ko']);
         isBoss = bossFight;
         mode = 'combat';
         combatMax = bossFight ? PAT_HP : (target?.maxHp || 50);
         combatHp = combatMax;
         resetCombatVisual();
+        foe = (!bossFight && target?.foe) ? createFoe(target.foe, foeApi) : null;   // V9.96
         if (bossFight) initPatricia(resume);
-        if (!bossFight && (target?.type === 'shambler' || target?.type === 'chain')) {
+        if (!bossFight && (target?.type === 'shambler' || target?.type === 'chain' || foe)) {
             const introStart = gnow();
             zombieIntroNew = target?.type === 'shambler' && (zombieIntroMode === 'new' || (zombieIntroMode === 'random' && Math.random() < .5));   // V9.40
             zombieCombatX = COMBAT_W - 320;
@@ -5074,6 +5117,7 @@ export function createLevel1(ui, opts = {}) {
             chainStunHits = 0;
             chainStunLastHit = -1e9;
         }
+        if (foe) foe.start(gnow());
         ui.combatName.textContent = bossFight ? 'PATRICIA • THE CLASSIC GOTH' : target?.name || 'ZOMBIE GOTH';
         try {   // V9.34: a marker at 50% on Patricia's bar so the half-health point is visible
             const bar = ui.enemyHp.parentElement; bar.style.position = 'relative'; bar.classList.remove('pat-enraged'); ui.enemyHp.style.background = '';
@@ -5088,7 +5132,7 @@ export function createLevel1(ui, opts = {}) {
         ui.enemyStunLabel.textContent = 'STUN';
         ui.enemyHpText.textContent = `${combatHp} / ${combatMax}`;
         ui.combatStatus.textContent =
-            (target?.type === 'chain')
+            (target?.type === 'chain' && !LV)
                 ? 'The Chain Goth is quick. Defeat both Level 1 Goths to unlock Heavy Attack. Make it count.'
                 : (bossFight ? (resume ? 'Patricia is on her second wind. GET READY...' : 'Patricia is waiting. Your Heavy Attack is ready.') : 'GET READY...');
         ui.combat.classList.remove('hidden');
@@ -5118,6 +5162,7 @@ export function createLevel1(ui, opts = {}) {
             updateZombieAI(dt, t);
             updateChainAI(dt, t);
             updatePatriciaAI(dt, t);
+            updateFoe(dt, t);
             resolveCombatBodyCollision(t);
             resolveHeavyStrike(t);
             drawCombat();
@@ -5138,6 +5183,7 @@ export function createLevel1(ui, opts = {}) {
     function combatAttack() {
         if (patReward) { patChestInteract(); return; }   // V9.42: after Patricia falls, attack / click = open the chest
         if (pausedAt) return;
+        if (foe && mode === 'combat' && !zombieIntroActive && !playerDeathTriggered && foe.consumePunch(gnow())) return;   // V9.96: mashing out of Devil's Fingers' grab
         if (mode !== 'combat' || zombieIntroActive || patFrozen() || playerDeathTriggered)
             return;
 
@@ -5171,7 +5217,7 @@ export function createLevel1(ui, opts = {}) {
         const horizontalDistance = Math.abs(dx);
         const verticalDistance = Math.abs(dy);
         const hit = isAIFight()
-            ? horizontalDistance <= (isPatriciaFight() ? 260 : (isChainFight() ? 280 : 205)) && verticalDistance <= 105 && !patGone() && !patInvuln()
+            ? horizontalDistance <= (isPatriciaFight() ? 260 : (isChainFight() ? 280 : foe ? foe.hitRange : 205)) && verticalDistance <= 105 && !patGone() && !patInvuln() && !foe?.untargetable(nowMs)
             : Math.hypot(dx, dy) <= 180;
 
         if (hit) {
@@ -5189,13 +5235,15 @@ export function createLevel1(ui, opts = {}) {
                     triggerChainDeath(nowMs);
                 else if (isPatriciaFight())
                     triggerPatriciaDefeat(nowMs);
+                else if (foe)
+                    triggerFoeDeath(nowMs);
                 else
                     setTimeout(() => endCombat(true), 180);
                 return;
             }
             triggerZombieHitReaction(nowMs, false, false);
         } else {
-            ui.combatStatus.textContent = patInvuln() ? '🛡️ Untouchable right now. Get out of the way!' : '👊 Too far. Get closer.';
+            ui.combatStatus.textContent = (patInvuln() || foe?.untargetable(nowMs)) ? '🛡️ Untouchable right now. Get out of the way!' : '👊 Too far. Get closer.';
             if (isPatriciaFight()) patSay('trying-hard', { cd: 12000, chance: .6 });   // V9.31: his punch missed
             comboCount++;   // a miss still uses up a punch, so you can't spam to dodge the cooldown
         }
@@ -5265,7 +5313,7 @@ export function createLevel1(ui, opts = {}) {
             enemyY = COMBAT_GROUND_Y,
             distance = Math.hypot(enemyX - player.x, enemyY - player.y);
 
-        if (distance <= 265 && !patGone() && !patInvuln()) {   // V9.80: a touch more reach so a committed heavy really lands
+        if (distance <= 265 && !patGone() && !patInvuln() && !foe?.untargetable(nowMs)) {   // V9.80: a touch more reach so a committed heavy really lands
             const damage = 20;
             combatHp = Math.max(0, combatHp - damage);
             ui.enemyHp.style.width = (combatHp / combatMax * 100) + '%';
@@ -5280,6 +5328,8 @@ export function createLevel1(ui, opts = {}) {
                     triggerChainDeath(nowMs);
                 else if (isPatriciaFight())
                     triggerPatriciaDefeat(nowMs);
+                else if (foe)
+                    triggerFoeDeath(nowMs);
                 else
                     setTimeout(() => endCombat(true), 180);
             } else {
@@ -5324,6 +5374,7 @@ export function createLevel1(ui, opts = {}) {
         combatAnimationUntil = nowMs + 409; // v6.5.16d: 20% faster dodge animation
         jumpOffset = 0;
         ui.combatStatus.textContent = '↪ DODGE!';
+        foe?.onDodge(nowMs);   // V9.96
     }
     // V9.85: the Moth-Eaten Veil (Patricia's chest reward) - 3 total charges, no recharge, ever. Each press
     // buys 3 real seconds of true invincibility (reuses the same player.invuln the dodge i-frame uses, just
@@ -5407,6 +5458,7 @@ export function createLevel1(ui, opts = {}) {
 
     function endCombat(won) {
         patDeathCleanup();
+        foe = null;   // V9.96 (a retry makes a fresh one)
         comboCount = 0; attackCooldownUntil = 0; lastAttackAt = 0;   // V9.28: combo resets when a fight ends
         { const ch = document.getElementById('combo-hud'); if (ch) ch.style.display = 'none'; comboHudKey = ''; }
         setLoopSfx('chain-drag', false);
@@ -5420,6 +5472,16 @@ export function createLevel1(ui, opts = {}) {
             if (isBoss) {
                 hp = maxHp;
                 patriciaDefeated = true;   // V9.90: persisted below so a save taken on this win screen can restore it
+                stats();
+                ui.win.classList.remove('hidden');
+                return;
+            }
+            if (target?.boss) {   // V9.96: Sophia (Level 2's boss) - straight to the Level 2 complete screen
+                target.dead = true;
+                target = null;
+                foe = null;
+                hp = maxHp;
+                patriciaDefeated = true;   // the saved "boss beaten" flag (for Level 2 it means Sophia)
                 stats();
                 ui.win.classList.remove('hidden');
                 return;
@@ -5458,7 +5520,7 @@ export function createLevel1(ui, opts = {}) {
             const deathTitle = ui.death?.querySelector('.death-title');
             if (deathTitle) deathTitle.textContent = 'KNOCKED OUT';
             ui.deathText.textContent = "You wake with a pounding headache. You're alive, if somewhat worse for wear. You're not entirely sure what the Goths did while you were out, and frankly, you're not sure you want to know.";
-            if (ui.backMap) { ui.backMap.textContent = isBoss ? 'SAVE AND QUIT' : 'BACK TO MAP'; ui.backMap.dataset.mode = isBoss ? 'quit' : ''; }   // V9.31: after Patricia the choice is Try Again / Save and Quit
+            { const bossLoss = isBoss || !!target?.boss; if (ui.backMap) { ui.backMap.textContent = bossLoss ? 'SAVE AND QUIT' : 'BACK TO MAP'; ui.backMap.dataset.mode = bossLoss ? 'quit' : ''; } }   // V9.31: after Patricia the choice is Try Again / Save and Quit
             ui.death.classList.remove('hidden');
             mode = 'dead';
         }
@@ -5475,8 +5537,6 @@ export function createLevel1(ui, opts = {}) {
             reveal();
         }
         mode = 'map';
-        if (LV && isBoss) { setTimeout(() => startBoss(), 100); return; }   // V9.94: Sophia again
-        if (target?.custom) { const tg = target; setTimeout(() => startCustomFight(tg), 100); return; }   // V9.94: Devil's Fingers again
         if (target || isBoss)
             setTimeout(() => startCombat(isBoss, isBoss && patCheckpoint), 100);
     }
@@ -5794,39 +5854,20 @@ export function createLevel1(ui, opts = {}) {
             }
         });
     }
-    // Devil's Fingers (a normal map fight in Level 2) - fought in level2.js's arena with Olly's real HP.
+    // V9.96: Devil's Fingers and Sophia are normal fights on this fight screen now (see level2-foes.js).
     function startCustomFight(enemy) {
         target = enemy;
-        isBoss = false;
         combatCheckpoint = combatCheckpoint || { x, y };
-        mode = 'extra';
-        extras.runFight(enemy.custom, { hp, maxHp }, r => {
-            mode = 'map';
-            hp = Math.max(0, Math.min(maxHp, Math.round(r.hp)));
-            target = enemy;
-            endCombat(!!r.won);
-        });
+        startCombat(false);
     }
-    // Sophia, the Chaos Fairy Goth (Level 2's boss, through the glowing doorway).
+    const level2Boss = LV ? { type: LV.boss.fight, foe: LV.boss.fight, boss: true, name: LV.boss.combatName, hp: LV.boss.maxHp, maxHp: LV.boss.maxHp, dead: false } : null;
     function startLevel2Boss() {
         bossIntroPending = false;
         ui.bossIntro.classList.add('hidden');
-        target = null;
-        isBoss = true;
+        isBoss = false;
+        target = level2Boss;
         combatCheckpoint = { x, y };
-        mode = 'extra';
-        extras.runFight(LV.boss.fight, { hp, maxHp }, r => {
-            mode = 'map';
-            hp = Math.max(0, Math.min(maxHp, Math.round(r.hp)));
-            if (r.won) {
-                hp = maxHp;
-                patriciaDefeated = true;   // (the saved "boss beaten" flag - for Level 2 it means Sophia)
-                stats();
-                ui.win.classList.remove('hidden');
-                return;
-            }
-            endCombat(false);
-        });
+        startCombat(false);
     }
     // Tom's journal: plays Tom's cutscene (once Scarlett uploads it); until then, placeholder lines.
     function playTomCutscene() {
@@ -6035,6 +6076,7 @@ export function createLevel1(ui, opts = {}) {
             if (isPatriciaFight()) { prefightToken++; prefight = null; prefightHold = false; zombieIntroActive = false; patSpeech = null; triggerPatriciaDefeat(nowMs); }
             else if (target?.type === 'shambler') triggerZombieDeath(nowMs);
             else if (isChainFight()) triggerChainDeath(nowMs);
+            else if (foe) triggerFoeDeath(nowMs);
             else setTimeout(() => endCombat(true), 180);
             return true;
         },
@@ -6058,7 +6100,6 @@ export function createLevel1(ui, opts = {}) {
                 if (!found) return false;
                 target = found;
                 combatCheckpoint = { x, y };
-                if (found.custom) { startCustomFight(found); return true; }
                 startCombat(false);
             }
             if (kind === 'patricia' && skipIntro) { prefightToken++; prefight = null; prefightHold = false; zombieIntroActive = false; patSpeech = null; zombieCombatState = 'chase'; zombieCombatStateStart = gnow(); zombieCombatNextDecision = gnow() + 300; ui.combatStatus.textContent = ''; setBagGlow(false); }

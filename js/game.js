@@ -281,6 +281,18 @@ function showLevel1Intro(){
   );
 }
 
+// V9.96: the Level 2 title card - shown once, straight after Level 1's Ready button,
+// before the Mystical Forest map itself mounts. Mirrors showLevel1Intro's pattern.
+function showLevel2Intro(carryOver){
+  playMusic('');
+  showImageTransitionScreen(
+    'assets/story/level2-entrance.webp',
+    'Level 2: The Mystical Forest. Enter if you dare.',
+    () => { playMusic('map'); mountLevel1(false, 2, carryOver); },
+    'Level 2 entrance'
+  );
+}
+
 // V9.94: listeners from the previous level are removed when the next one mounts.
 let levelListeners = null;
 function mountLevel1(loadSaved=false, levelNum=1, carry=null){
@@ -465,7 +477,7 @@ function mountLevel1(loadSaved=false, levelNum=1, carry=null){
     if(L2){ const a = document.querySelector('#win .lc-ask'); if(a) a.textContent = 'Level 3 is still being built. Save and Quit for now - your progress is kept.'; return; }
     const carryOver = level.carryState?.();
     level.stop();
-    mountLevel1(false, 2, carryOver);
+    showLevel2Intro(carryOver);   // V9.96: title card plays before the Level 2 map mounts
   });
   // V9.85: pass which wrong button this is (0,1,2 in DOM order) so each one gets its own stable
   // voice line for the life of one Princess Question, instead of a fresh random pick every click.
