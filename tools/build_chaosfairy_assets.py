@@ -14,6 +14,8 @@ CLIPS: name: (source folder, first frame, last frame, step, keep_main_only)
   keep_main_only drops the loose bow/quiver props that float beside her in Arrowshotattempt1.
 
 usage: build_chaosfairy_assets.py <repo_root> <fairydust_frames_dir>
+  (Raw frame folders were removed from the repo to save space - restore them from the original
+  animation drive, in assets/characters/chaosfairy/<ClipFolder>/frame_####.png, before re-running.)
   (Fairydust is NOT in the repo - pass the folder that holds its frame_####.png files.)
 """
 import sys, os, json, glob
