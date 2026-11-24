@@ -2802,12 +2802,10 @@ export function createLevel1(ui, opts = {}) {
         // cycle straight INTO the first attack frame (still the most noticeable one) was untouched,
         // because we only remembered the last frame while already inside claw/heavyKick. Now we
         // remember the last frame drawn in ANY state, so entering (or leaving) the attack can blend too.
-        const xfadeState = (zombieCombatState === 'claw' || zombieCombatState === 'heavyKick');
-        const wasXfadeState = zombieLastDrawImg && zombieLastDrawImg.xfadeState;
-        if ((xfadeState || wasXfadeState) && zombieLastDrawImg && zombieLastDrawImg.img !== frame.img && nowMs - zombieLastDrawImg.t < 140) {
+        // V9.97: extended crossfade to ALL state transitions (walk→ready, ready→windup, etc.)
+        // so there's no hard pop between any animation sets. The old code only faded claw/heavyKick.
+        if (zombieLastDrawImg && zombieLastDrawImg.img !== frame.img && nowMs - zombieLastDrawImg.t < 140) {
             zombieXfade = { ...zombieLastDrawImg, start: nowMs };
-        } else if (!xfadeState && !wasXfadeState) {
-            zombieXfade = null;
         }
         const xk = zombieXfade ? Math.min(1, (nowMs - zombieXfade.start) / 90) : 1;
         if (zombieXfade && xk < 1) {
@@ -2816,7 +2814,7 @@ export function createLevel1(ui, opts = {}) {
             zombieXfade = null;
         }
         drawCombatImage(c, frame.img, enemyX, renderGroundY, renderHeight, face, renderMaxWidth, alpha * (zombieXfade ? Math.min(1, xk * 1.5) : 1), offsetX, rotation, sourceFacing, deathFloorOffset + deathSink);
-        zombieLastDrawImg = { img: frame.img, groundY: renderGroundY, h: renderHeight, face, offsetX, rotation, t: nowMs, xfadeState };
+        zombieLastDrawImg = { img: frame.img, groundY: renderGroundY, h: renderHeight, face, offsetX, rotation, t: nowMs };
         if (dying && frame.nextImg && frame.mix > .02) {
             const nh = (frame.scale && frame.nextImg.naturalHeight) ? Math.round(frame.nextImg.naturalHeight * frame.scale) : renderHeight;
             drawCombatImage(c, frame.nextImg, enemyX, renderGroundY, nh, face, renderMaxWidth, alpha * frame.mix, offsetX, rotation, sourceFacing, deathFloorOffset + deathSink);
@@ -4991,6 +4989,13 @@ export function createLevel1(ui, opts = {}) {
 
         const anim = getCombatAnimationFrame(nowMs);
         const renderHurt = playerHurtUntil > nowMs;
+
+        // V9.97: draw the zombie goth BEHIND Olly so the player character stays visible.
+        // Boss fights (Patricia, Chain Goth) and Level-2 foes handle their own layering.
+        if (!isBoss && !foe) {
+            drawZombieCombat(cctx, enemyX, enemyY, nowMs);
+        }
+
         if (drinkAnim) drawOllyDrink(cctx, player.x, player.y, nowMs);
         else if (isBoss) {   // V9.30: Olly is smaller next to Patricia (scaled around his feet)
             const fy = player.y + OLLY_DRAW_FOOT_OFFSET + 20, k = PAT_OLLY_SCALE;
@@ -5028,7 +5033,8 @@ export function createLevel1(ui, opts = {}) {
                 drawAttackRing(cctx, enemyX, ringY, ringR, ringKind, 1, true, nowMs);
         }
         if (foe) { foe.draw(cctx, nowMs); foe.drawOver(cctx, nowMs); }   // V9.96
-        else drawZombieCombat(cctx, enemyX, enemyY, nowMs);
+        // V9.97: zombie goth was drawn earlier (behind Olly); boss/foe draws here (they handle their own layering)
+        else if (isBoss) drawZombieCombat(cctx, enemyX, enemyY, nowMs);
         drawZombieCountdown(cctx, nowMs);
 
         // (Olly's HP now lives in the HTML HUD top-left, so the old canvas panel is gone.)
