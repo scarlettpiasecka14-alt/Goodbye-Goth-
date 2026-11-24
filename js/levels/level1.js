@@ -5160,9 +5160,13 @@ export function createLevel1(ui) {
         const enemyX = zombieCombatX,
             playerMinX = 140,
             playerMaxX = COMBAT_W - 140;
-        // Always dodge AWAY from the enemy (backwards), whichever way Olly happens to be facing or walking.
-        // If his back is to the wall there is no room, so he rolls THROUGH her to the other side instead.
-        let direction = player.x <= enemyX ? -1 : 1;
+        // V9.94: dodge goes the direction the player is pressing. If no direction is held,
+        // fall back to dodging away from the enemy. The old code always dodged away regardless
+        // of input, which felt unresponsive ("he dodges the wrong way").
+        let direction;
+        if (held.left && !held.right) direction = -1;
+        else if (held.right && !held.left) direction = 1;
+        else direction = player.x <= enemyX ? -1 : 1;   // no key / both keys: away from enemy
         const room = direction < 0 ? player.x - playerMinX : playerMaxX - player.x;
         let distance = 180;
         if (room < 110 && Math.abs(enemyX - player.x) <= 340) { direction = -direction; distance = Math.abs(enemyX - player.x) + 170; }   // cornered next to her: roll through to the other side
