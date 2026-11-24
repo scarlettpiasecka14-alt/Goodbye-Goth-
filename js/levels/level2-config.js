@@ -11,7 +11,7 @@
    To check positions against the collision, open the game with ?level=2&walk=1.
 
    PLACEHOLDER ART is marked "placeholder" below - Scarlett is making the real screens. */
-import { LEVEL2_WALK_RLE } from './level2-walk.js?v=9940';
+import { LEVEL2_WALK_RLE } from './level2-walk.js?v=9970';
 
 const ENC = 'assets/encounters/level2/';
 
@@ -22,32 +22,37 @@ export const LEVEL2 = {
     walkRle: LEVEL2_WALK_RLE,
     mapZoom: 1.9,              // Scarlett asked for the closer framing on this map
     ollyMapScale: .792,        // Olly's size on this map (Level 1 uses .92)
-    // Scarlett: start in the top-right clearing (not by the doorway).
-    start: { x: 1180, y: 268 },
+    // V9.97: repositioned to match Scarlett's annotated map screenshot exactly
+    // (yellow = start, red = Devil's Fingers on the mushroom waterfall, white = Tom's book,
+    // pink = relationship challenge in the fairy ring, orange = Princess Question, blue = pendant).
+    start: { x: 543, y: 214 },
     combatBackground: 'assets/environment/combat-background-level2.webp',
 
     // Map enemies. Same shape as Level 1's list. 'devilsfingers' is fought through level2.js.
     enemies: () => [
         { x: 520, y: 300, type: 'chain', name: 'CHAIN GOTH', hp: 100, maxHp: 100, dead: false, pattern: 'Whip • Chain Slam' },
-        { x: 935, y: 560, type: 'devilsfingers', name: "DEVIL'S FINGERS", hp: 200, maxHp: 200, dead: false, pattern: 'Burrow • Grab • Acid', foe: 'devilsfingers' }   // V9.96: fought on Level 1's fight screen (level2-foes.js)
+        // V9.97: moved onto the mushroom waterfall on the right (Scarlett: Olly has to climb/jump
+        // the waterfall to reach her). No new climb/jump mechanic exists yet - for now this is a
+        // normal walkable point at the foot of the falls; see the chat reply re: scoping that properly.
+        { x: 1290, y: 560, type: 'devilsfingers', name: "DEVIL'S FINGERS", hp: 200, maxHp: 200, dead: false, pattern: 'Burrow • Grab • Acid', foe: 'devilsfingers' }   // V9.96: fought on Level 1's fight screen (level2-foes.js)
     ],
-    relationshipChallenge: { x: 640, y: 800 },   // Find the Princess, on the fairy ring
-    princessQuestion: { x: 1030, y: 445 },       // in front of the gazebo
-    key: { x: 420, y: 428 },                      // where the pendant appears (the rune circle by the standing stones)
-    gate: { x: 775, y: 200 },                     // the glowing doorway at the top middle (the orb)
-    gateNear: { x: 775, y: 215, r: 150 },         // where Olly has to stand to use the pendant
-    tomJournal: { x: 255, y: 505 },               // by the hollow (placed by Scarlett earlier)
+    relationshipChallenge: { x: 752, y: 969 },   // Find the Princess, in the fairy ring
+    princessQuestion: { x: 1225, y: 460 },       // by the gazebo / mushroom-waterfall clearing
+    key: { x: 344, y: 925 },                      // where the pendant appears
+    gate: { x: 790, y: 230 },                     // the glowing doorway at the top middle (the orb)
+    gateNear: { x: 790, y: 245, r: 150 },         // where Olly has to stand to use the pendant
+    tomJournal: { x: 199, y: 664 },               // by the hollow
     tomCutscene: 'assets/video/tom-cutscene/tom-cutscene.mp4',   // Scarlett is uploading this; until then the placeholder lines below show
 
     // Fog: patches over each objective (the rest of the fog banks are shared with Level 1's layout).
     fogPatches: [
         { x: 520, y: 300, rx: 175, ry: 125, a: .9, seed: .2 },
-        { x: 935, y: 560, rx: 190, ry: 135, a: .94, seed: 1.7 },
-        { x: 640, y: 800, rx: 185, ry: 130, a: .9, seed: 3.1 },
-        { x: 1030, y: 470, rx: 160, ry: 115, a: .9, seed: 4.5 },
-        { x: 255, y: 505, rx: 170, ry: 125, a: .92, seed: 5.2 },
-        { x: 420, y: 428, rx: 150, ry: 110, a: .88, seed: 5.9 },
-        { x: 775, y: 210, rx: 175, ry: 120, a: .96, seed: 6.6 },
+        { x: 1290, y: 560, rx: 190, ry: 135, a: .94, seed: 1.7 },
+        { x: 752, y: 969, rx: 185, ry: 130, a: .9, seed: 3.1 },
+        { x: 1225, y: 480, rx: 160, ry: 115, a: .9, seed: 4.5 },
+        { x: 199, y: 664, rx: 170, ry: 125, a: .92, seed: 5.2 },
+        { x: 344, y: 925, rx: 150, ry: 110, a: .88, seed: 5.9 },
+        { x: 790, y: 240, rx: 175, ry: 120, a: .96, seed: 6.6 },
         { x: 1300, y: 250, rx: 140, ry: 95, a: .6, seed: 7.3 },
         { x: 1100, y: 880, rx: 160, ry: 110, a: .62, seed: 8.0 },
         { x: 300, y: 900, rx: 150, ry: 100, a: .58, seed: 8.7 }
@@ -100,9 +105,9 @@ export const LEVEL2 = {
             text: 'A Princess Question. Answer it correctly or remain hopelessly lost in the woods. Are you ready?'
         },
         lockedGate: {
-            role: 'lockedGate', name: 'THE GLOWING DOORWAY',
-            image: ENC + 'orb-placeholder.webp',   // placeholder: cropped from the map art
-            text: "A hollow, glowing doorway hums at you. You step forward and it gently but firmly pushes you back out. Something tells you it wants a key... or something shinier. Go and find it."
+            role: 'lockedGate', name: 'THE GATE',
+            image: 'assets/story/level2-gate-repels-olly.webp',   // V9.97: Scarlett's real art
+            text: "You approach the glowing orb, reaching towards it, completely entranced.\nJust as your fingertips are about to touch the gate, an invisible force throws you backwards.\nStrange... there must be some way through.\nYou'll have to find it."
         },
         tomJournal: {
             role: 'tomJournal', name: 'THE HOLLOW',

@@ -5,7 +5,7 @@ import { actionHint, hintHTML } from '../controls.js?v=9820';
 // V9.94: Level 2 runs on this same engine (createLevel1(ui, { level: 2 })). Its settings live in
 // level2-config.js; the parts this file doesn't have (Find the Princess, Devil's Fingers, Sophia)
 // are borrowed from level2.js. With no level option everything below behaves exactly as Level 1.
-import { LEVEL2 } from './level2-config.js?v=9940';
+import { LEVEL2 } from './level2-config.js?v=9970';
 import { createLevel2 } from './level2.js?v=9940';
 import { createFoe, preloadLevel2Foes } from './level2-foes.js?v=9960';   // V9.96: Devil's Fingers + Sophia on this fight screen
 // Game clock: normal time, but it stands still while a tutorial pop-up is open (so nothing happens behind it).
@@ -225,6 +225,22 @@ ollyMapWalkSprites.back.src = 'assets/characters/map/olly-walk-back.webp?v=7700'
 ollyMapWalkSprites.left.src = 'assets/characters/map/olly-walk-right.webp?v=7700';
 ollyMapWalkSprites.right.src = 'assets/characters/map/olly-walk-left.webp?v=7700';
 
+// V9.97: a real stride cycle (13 frames Scarlett supplied), facing image-left.
+// Used on the map for left/right travel; up/down keep the single static pose above
+// (no back/front stride frames exist yet).
+const OLLY_WALK_CYCLE_FPS = 9;
+const ollyWalkCycle = Array.from({ length: 13 }, (_, i) => {
+    const im = new Image();
+    im.src = `assets/characters/olly-walk/walk-${String(i + 1).padStart(2, '0')}.webp?v=9970`;
+    return im;
+});
+function ollyWalkCycleFrame(t) {
+    const ready = ollyWalkCycle.filter(f => f.complete && f.naturalWidth);
+    if (ready.length < ollyWalkCycle.length) return null;   // wait for the whole set so the cycle never stutters/pops
+    const idx = Math.floor(t * OLLY_WALK_CYCLE_FPS) % ollyWalkCycle.length;
+    return ollyWalkCycle[idx];
+}
+
 // Combat animation frames are cropped from the supplied sprite sheet so each
 // pose keeps its own aspect ratio and stray sprite-sheet labels never render.
 const ollyCombatSprites = {
@@ -269,6 +285,12 @@ const ICON_LIBRARY = {
     relationshipChallenge: 'assets/icons/relationship-challenge.webp?v=9420',
     princessQuestion: 'assets/icons/princess-question.webp?v=9420'
 };
+// V9.97: Devil's Fingers' map marker and the glowing-gate orb now have real art
+// (Level 2 only; drawn over/instead of the older procedural glow effects below).
+const devilsFingersIcon = new Image();
+devilsFingersIcon.src = 'assets/icons/devils-fingers-marker.webp?v=9970';
+const gateOrbIcon = new Image();
+gateOrbIcon.src = 'assets/icons/gate-orb-marker.webp?v=9970';
 const relationshipChallengeIcon = new Image();
 relationshipChallengeIcon.src = ICON_LIBRARY.relationshipChallenge;
 const princessQuestionIcon = new Image();
@@ -826,6 +848,13 @@ function drawOlly(ctx, x, y, s=.78, t=0, front=true, dir='right', moving=false, 
     else if (mapDir === 'down') img = ollyMapWalkSprites.front;
     else if (mapDir === 'left') img = ollyMapWalkSprites.left;
     else if (mapDir === 'right') img = ollyMapWalkSprites.right;
+
+    // V9.97: while actually walking left/right, prefer the real stride-cycle frames over the
+    // single static pose above (the frames face image-left, so moving right flips them).
+    if (moving && (mapDir === 'left' || mapDir === 'right')) {
+        const cycleFrame = ollyWalkCycleFrame(t);
+        if (cycleFrame) { img = cycleFrame; flipX = (mapDir === 'right'); }
+    }
 
     if (img.complete && img.naturalWidth && img.naturalHeight) {
         const h = 144 * s;
@@ -1883,7 +1912,7 @@ export function createLevel1(ui, opts = {}) {
         ctx.restore();
     }
     // ---- V9.94 Level 2 map drawing helpers ----
-    // Devil's Fingers has no map sprite yet: a glowing crack in the ground marks her spot.
+    // V9.97: Devil's Fingers' real marker art, with the old glow kept underneath for atmosphere.
     function drawDevilsFingersMapMarker(c, px, py, t) {
         c.save();
         const pulse = .8 + .2 * Math.sin(t * 3);
@@ -1891,20 +1920,33 @@ export function createLevel1(ui, opts = {}) {
         const glow = c.createRadialGradient(0, 0, 4, 0, 0, 52 * pulse);
         glow.addColorStop(0, 'rgba(230,80,110,.75)'); glow.addColorStop(1, 'rgba(120,20,60,0)');
         c.fillStyle = glow; c.beginPath(); c.arc(0, 0, 52 * pulse, 0, Math.PI * 2); c.fill();
-        c.strokeStyle = 'rgba(255,170,190,.9)'; c.lineWidth = 3; c.lineCap = 'round';
-        for (let i = 0; i < 5; i++) {
-            const a = (i / 5) * Math.PI * 2 + t * .4;
-            c.beginPath(); c.moveTo(0, 0); c.lineTo(Math.cos(a) * 24, Math.sin(a) * 11 - 4); c.stroke();
+        if (devilsFingersIcon.complete && devilsFingersIcon.naturalWidth) {
+            const h = 96, w = h * (devilsFingersIcon.naturalWidth / devilsFingersIcon.naturalHeight);
+            c.drawImage(devilsFingersIcon, -w / 2, -h * .86, w, h);
+        } else {
+            c.strokeStyle = 'rgba(255,170,190,.9)'; c.lineWidth = 3; c.lineCap = 'round';
+            for (let i = 0; i < 5; i++) {
+                const a = (i / 5) * Math.PI * 2 + t * .4;
+                c.beginPath(); c.moveTo(0, 0); c.lineTo(Math.cos(a) * 24, Math.sin(a) * 11 - 4); c.stroke();
+            }
         }
         c.restore();
     }
-    // The glowing doorway (the orb): a soft pulse marks where to click until it's opened.
+    // V9.97: the glowing doorway's real orb icon, with the old soft pulse kept underneath.
     function drawOrbPulse(c, px, py, t) {
         c.save();
         const r = 46 + Math.sin(t * 2.4) * 6;
         const g = c.createRadialGradient(px, py, 4, px, py, r);
         g.addColorStop(0, 'rgba(160,240,255,.55)'); g.addColorStop(1, 'rgba(60,180,255,0)');
         c.fillStyle = g; c.beginPath(); c.arc(px, py, r, 0, Math.PI * 2); c.fill();
+        if (gateOrbIcon.complete && gateOrbIcon.naturalWidth) {
+            c.save();
+            c.translate(px, py);
+            const pulse = 1 + Math.sin(t * 2.4) * .04;
+            const h = 84 * pulse, w = h * (gateOrbIcon.naturalWidth / gateOrbIcon.naturalHeight);
+            c.drawImage(gateOrbIcon, -w / 2, -h / 2, w, h);
+            c.restore();
+        }
         c.restore();
     }
     // Tom hops along behind Olly once he's been met (front-on art only for now).

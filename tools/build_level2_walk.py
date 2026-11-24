@@ -64,6 +64,22 @@ BLOCKED = [
     ('ell', 1245, 900, 55, 95),
 ]
 
+# V9.97: Scarlett moved Devil's Fingers and Princess Question onto/by the mushroom-waterfall
+# cluster on the right, which the BLOCKED shapes above seal off entirely (the waterfall pools +
+# giant mushrooms). These carve a narrow mossy ledge up from the gazebo clearing, round the
+# twisted tree, to a landing spot at each point - this is what "climbing/jumping the waterfall"
+# means for now (no separate climb/jump mechanic exists yet; Olly just walks the ledge).
+WALKABLE_CARVE = [
+    ('ell', 1130, 360, 42, 38), ('ell', 1170, 400, 42, 38), ('ell', 1205, 430, 42, 38),
+    ('ell', 1225, 460, 80, 70),    # Princess Question landing
+    ('ell', 1250, 495, 42, 38), ('ell', 1270, 525, 42, 38),
+    ('ell', 1290, 560, 85, 70),    # Devil's Fingers landing
+    # Tom's journal (white mark) sits right on the edge of the bottom-left pond/waterfall blob -
+    # carve a small standing spot, plus a path south out of the pond ellipse to open grass.
+    ('ell', 199, 664, 55, 48),
+    ('ell', 225, 710, 45, 42), ('ell', 250, 750, 45, 42), ('ell', 275, 795, 45, 42), ('ell', 295, 835, 45, 42),
+]
+
 
 def build():
     mask = Image.new('L', (W, H), 255)  # 255 = walkable
@@ -76,6 +92,14 @@ def build():
             d.ellipse((cx - rx, cy - ry, cx + rx, cy + ry), fill=0)
         else:
             d.polygon(s[1], fill=0)
+    for s in WALKABLE_CARVE:
+        if s[0] == 'rect':
+            d.rectangle(s[1:5], fill=255)
+        elif s[0] == 'ell':
+            _, cx, cy, rx, ry = s
+            d.ellipse((cx - rx, cy - ry, cx + rx, cy + ry), fill=255)
+        else:
+            d.polygon(s[1], fill=255)
     grid = mask.resize((COLS, ROWS), Image.NEAREST)
     px = grid.load()
     rows = []
