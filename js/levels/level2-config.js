@@ -121,15 +121,17 @@ export const LEVEL2 = {
 
     princessQuestionData: {
         image: 'assets/encounters/level1/princess-question-art.webp?v=501',
-        question: 'Which type of goth is known for frolicking in the woods?',
+        // V9.95: harder - every answer is something from the book, only one is the Guide's actual gift advice
+        // (Chapter Four, Step Five: black roses + a vial of your own blood; a dagger pin for her fishnets also acceptable).
+        question: 'According to The Goth Girl Guide™, which of these is an appropriate gift to give a goth?',
         answers: [
-            { text: 'The Classic Goth', correct: false },
-            { text: 'The Satanist Goth', correct: false },
-            { text: 'The Chaos Fairy Goth', correct: true },
-            { text: 'The Pink Princess Goth', correct: false }
+            { text: 'A Hello Kitty plush and a strawberry milk', correct: false },
+            { text: 'A copy of Frankenstein and a midnight graveyard picnic', correct: false },
+            { text: 'An iced Americano and a bag of ready salted crisps', correct: false },
+            { text: 'A bouquet of black roses and a vial of your own blood', correct: true }
         ],
         completedTitle: 'CONGRATULATIONS!',
-        completedCopy: "Correct. The Chaos Fairy Goth: forages for mushrooms, knows six types of hexes and will braid your hair before emotionally devastating you. Approach with caution. And snacks."
+        completedCopy: "Correct. Black roses and a vial of your own blood: the only acceptable offering. The crisps are for aftercare, and the Frankenstein is a date, not a gift. Do keep up."
     },
 
     findPrincessCompleted: {

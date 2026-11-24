@@ -40,7 +40,7 @@ Level 1 runs exactly as before. Every Level 2 change only switches on when the l
 - **Five things to do:**
   1. Tom's journal (by the hollow)
   2. Find the Princess (fairy ring)
-  3. Princess Question (in front of the gazebo)
+  3. Princess Question (in front of the gazebo): "According to The Goth Girl Guide™, which of these is an appropriate gift to give a goth?" (answer D, black roses and a vial of your own blood)
   4. Chain Goth (top-left)
   5. Devil's Fingers (between the big tree house and the moon-banner house)
 - **Pendant:** after all five, it appears on the rune circle by the standing stones. Pick it up, go to the **glowing doorway at the top middle**, open the backpack, select the pendant and press USE. Sophia's screen then appears.
