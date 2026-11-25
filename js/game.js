@@ -1,5 +1,5 @@
 import { StoryController } from './story.js?v=9820';
-import { createLevel1, resetRingTutorials } from './levels/level1.js?v=10020';
+import { createLevel1, resetRingTutorials } from './levels/level1.js?v=10030';
 import { LEVEL2 } from './levels/level2-config.js?v=9970';   // V9.94: Level 2 runs on the Level 1 engine
 import { createLevel3 } from './levels/level3.js?v=9850';
 import { playMusic, setLoopSfx, playSfx, audioNeedsClick, playVoiceLine, stopVoiceLine } from './audio.js?v=9820';
@@ -548,6 +548,15 @@ function mountLevel1(loadSaved=false, levelNum=1, carry=null){
     const act = actionForKey(e.key);
     if(MOVE_KEY[act]) level.setMoveKey?.(MOVE_KEY[act],false);
   }, listen);
+  // V10.3: "stuck walking in place" bug - if the window/tab loses focus while a direction is
+  // held (switching apps, clicking another window, a held modifier combo swallowing the
+  // keyup), the browser never sends that key's keyup and setMoveKey never hears about it, so
+  // Olly reads as permanently "moving" in that direction until the same key happens to be
+  // pressed and released again. Clear every direction whenever the window loses focus or the
+  // tab is hidden, so a missed keyup can never leave him walking against nothing.
+  const clearAllMoveKeys = () => { for (const k of Object.values(MOVE_KEY)) level.setMoveKey?.(k, false); };
+  window.addEventListener('blur', clearAllMoveKeys);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) clearAllMoveKeys(); });
   registerCheats(level.cheat);
   level.start();
   if(loadSaved){

@@ -229,7 +229,7 @@ ollyMapWalkSprites.right.src = 'assets/characters/map/olly-walk-left.webp?v=7700
 // left/right share one left-facing cycle (flipped for right); 'up' (away from camera) and
 // 'down' (toward camera) each have their own back/front-facing cycle. All four map
 // directions are now animated - the static poses above are now just the pre-move idle pose.
-const OLLY_WALK_CYCLE_FPS = 13;   // V9.98: sped up from Scarlett's source clip
+const OLLY_WALK_CYCLE_FPS = 17;   // V10.3: still read as sluggish at 13, sped up again
 function makeWalkCycle(folder, prefix, count, v, fps = OLLY_WALK_CYCLE_FPS) {
     const frames = Array.from({ length: count }, (_, i) => {
         const im = new Image();
@@ -246,13 +246,13 @@ function makeWalkCycle(folder, prefix, count, v, fps = OLLY_WALK_CYCLE_FPS) {
 const ollyWalkCycleFrame = makeWalkCycle('olly-walk', 'walk', 13, 9980);
 const ollyWalkBackCycleFrame = makeWalkCycle('olly-walk-back', 'back', 13, 9990);   // V9.99
 const ollyWalkFrontCycleFrame = makeWalkCycle('olly-walk-front', 'front', 13, 10000);   // V10.0
-// V10.1 (corrected): a braced, alert combat WALK (fists up, weight-shifting) used only
-// while Olly is actually repositioning in the fight ring. Standing still in combat keeps
-// the original static idle art - this does not replace it. Scarlett's own call that the
-// casual map-walk style read wrong for combat. Sped up from her source clip, same as the
-// map cycles.
-const OLLY_COMBAT_WALK_FPS = 11;
-const ollyCombatWalkCycleFrame = makeWalkCycle('olly-combat-walk', 'walk', 13, 10020, OLLY_COMBAT_WALK_FPS);   // V10.2: re-keyed to remove green hair fringe
+// V10.1 (corrected): a combat WALK used only while Olly is actually repositioning in the
+// fight ring. Standing still in combat keeps the original static idle art - this does not
+// replace it. V10.3: Scarlett felt the original braced/fists-up clip read a bit crouched for
+// combat, so it's kept in reserve as a possible future "creep" animation (olly-combat-creep,
+// not currently wired into gameplay) and replaced here with a proper running stride.
+const OLLY_COMBAT_WALK_FPS = 15;
+const ollyCombatWalkCycleFrame = makeWalkCycle('olly-combat-walk', 'walk', 13, 10030, OLLY_COMBAT_WALK_FPS);   // V10.3: swapped braced walk for a real run
 
 // Combat animation frames are cropped from the supplied sprite sheet so each
 // pose keeps its own aspect ratio and stray sprite-sheet labels never render.
@@ -890,6 +890,12 @@ function drawOlly(ctx, x, y, s=.78, t=0, front=true, dir='right', moving=false, 
     // keep the old gentle idle sway so they don't look stiff.
     const bob = usingRealCycle ? 0 : (moving ? Math.abs(stepPhase) * 3.2 : Math.sin(t * 2) * .35);
     const lean = (sideways && !usingRealCycle) ? leanSign * .055 : 0;
+    // V10.3: measured each cropped cycle's own empty margin below the feet against the old
+    // static poses'. Left/right and back were already within a pixel or two of the static
+    // art, but the front (toward-camera) cycle crops left noticeably more air below the feet
+    // than its static counterpart, so with the shadow at a fixed ground height that specific
+    // direction sat visibly above its own shadow. Nudge it down to close that gap.
+    const footYNudge = (usingRealCycle && mapDir === 'down') ? 4 * s : 0;
 
     ctx.translate(x + strideSway, y);
     ctx.fillStyle = SH(.34);
@@ -901,7 +907,7 @@ function drawOlly(ctx, x, y, s=.78, t=0, front=true, dir='right', moving=false, 
         const h = 144 * s;
         const w = h * (img.naturalWidth / img.naturalHeight);
         ctx.save();
-        ctx.translate(0, -bob);
+        ctx.translate(0, footYNudge - bob);
         ctx.transform(1, 0, lean, 1, 0, 0);
         if (flipX) ctx.scale(-1, 1);
         ctx.drawImage(img, -w / 2, -114 * s, w, h);
