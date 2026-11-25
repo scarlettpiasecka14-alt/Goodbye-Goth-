@@ -5,8 +5,8 @@ import { actionHint, hintHTML } from '../controls.js?v=9820';
 // V9.94: Level 2 runs on this same engine (createLevel1(ui, { level: 2 })). Its settings live in
 // level2-config.js; the parts this file doesn't have (Find the Princess, Devil's Fingers, Sophia)
 // are borrowed from level2.js. With no level option everything below behaves exactly as Level 1.
-import { LEVEL2 } from './level2-config.js?v=9970';
-import { createLevel2 } from './level2.js?v=9940';
+import { LEVEL2 } from './level2-config.js?v=9980';
+import { createLevel2 } from './level2.js?v=9950';
 import { createFoe, preloadLevel2Foes } from './level2-foes.js?v=9960';   // V9.96: Devil's Fingers + Sophia on this fight screen
 // Game clock: normal time, but it stands still while a tutorial pop-up is open (so nothing happens behind it).
 let pausedTotal = 0, pausedAt = 0;
@@ -251,7 +251,7 @@ const ollyWalkFrontCycleFrame = makeWalkCycle('olly-walk-front', 'front', 13, 10
 // replace it. V10.3: Scarlett felt the original braced/fists-up clip read a bit crouched for
 // combat, so it's kept in reserve as a possible future "creep" animation (olly-combat-creep,
 // not currently wired into gameplay) and replaced here with a proper running stride.
-const OLLY_COMBAT_WALK_FPS = 15;
+const OLLY_COMBAT_WALK_FPS = 17;   // V10.4: +10% animation speed (was 15)
 const ollyCombatWalkCycleFrame = makeWalkCycle('olly-combat-walk', 'walk', 13, 10030, OLLY_COMBAT_WALK_FPS);   // V10.3: swapped braced walk for a real run
 
 // Combat animation frames are cropped from the supplied sprite sheet so each
@@ -1924,7 +1924,7 @@ export function createLevel1(ui, opts = {}) {
             else drawZombieSprite(ctx, e.x, e.y, e.type, e.type === 'shambler' ? .84 : .9594, t / 1000, false);
             ctx.restore();
         });
-        if (LV && !metTom && tomJournalIcon) drawMarker(ctx, tomJournalIcon, LV.tomJournal.x, LV.tomJournal.y, 70, 70, '', t / 1000);
+        if (LV && !metTom && tomJournalIcon) drawMarker(ctx, tomJournalIcon, LV.tomJournal.x, LV.tomJournal.y, 35, 35, '', t / 1000);   // V10.4: 50% smaller, was dwarfing Olly
         if (!relationshipDone)
             drawMarker(ctx, relationshipChallengeIcon, relationshipChallenge.x, relationshipChallenge.y, 90, 90, '', t / 1000);
         if (!puzzleSolved)
@@ -1941,7 +1941,7 @@ export function createLevel1(ui, opts = {}) {
             }
             ctx.restore();
         }
-        if (LV && !gateOpened) drawOrbPulse(ctx, boss.x, boss.y - 58, t / 1000);
+        if (LV && !gateOpened) drawOrbPulse(ctx, boss.x, boss.y, t / 1000);   // V10.4: removed leftover -58 offset so the icon centers on the arch art
         if (!LV && !gateOpened && gateLockSprite.complete && gateLockSprite.naturalWidth) {
             ctx.save();
             ctx.translate(boss.x, boss.y - 58 + Math.sin(t / 360) * 3);
@@ -1995,7 +1995,7 @@ export function createLevel1(ui, opts = {}) {
             c.save();
             c.translate(px, py);
             const pulse = 1 + Math.sin(t * 2.4) * .04;
-            const h = 84 * pulse, w = h * (gateOrbIcon.naturalWidth / gateOrbIcon.naturalHeight);
+            const h = 84 * .7 * pulse, w = h * (gateOrbIcon.naturalWidth / gateOrbIcon.naturalHeight);   // V10.4: 30% smaller
             c.drawImage(gateOrbIcon, -w / 2, -h / 2, w, h);
             c.restore();
         }
@@ -2064,7 +2064,7 @@ export function createLevel1(ui, opts = {}) {
         const relEnc = kind === 'relationshipChallenge';
         ui.encounter.classList.toggle('enc-rel', relEnc);
         ui.encounterName.textContent = data.name;
-        ui.encounterName.style.display = relEnc && !LV ? 'none' : '';   // V9.94: Level 2's placeholder picture has no title in it
+        ui.encounterName.style.display = relEnc ? 'none' : '';   // V10.4: big title duplicated the "Find the Princess:" lead-in, so it's hidden for both levels now
         // V9.91: the "scientific" Latin name, per the Goth Girl Guide taxonomy - only the Goths that actually have one show it.
         if (ui.encounterSpecies) {
             ui.encounterSpecies.textContent = data.species ? `(${data.species})` : '';
@@ -2074,7 +2074,18 @@ export function createLevel1(ui, opts = {}) {
             const cut = data.text.indexOf('\n');
             ui.encounterText.textContent = '';
             const lead = document.createElement('span'); lead.className = 'enc-lead'; lead.textContent = data.text.slice(0, cut);
-            ui.encounterText.append(lead, document.createTextNode(data.text.slice(cut + 1)));
+            const restText = data.text.slice(cut + 1);
+            // V10.4: bold the "Find the Princess:" lead-in now that the big duplicate title is gone
+            const fpPhrase = 'Find the Princess:';
+            const fpIdx = restText.indexOf(fpPhrase);
+            if (fpIdx !== -1) {
+                const before = restText.slice(0, fpIdx);
+                const after = restText.slice(fpIdx + fpPhrase.length);
+                const strong = document.createElement('strong'); strong.textContent = fpPhrase;
+                ui.encounterText.append(lead, document.createTextNode(before), strong, document.createTextNode(after));
+            } else {
+                ui.encounterText.append(lead, document.createTextNode(restText));
+            }
         } else ui.encounterText.textContent = data.text;
         if (ui.encounterReady) {
             ui.encounterReady.textContent = 'I\'M READY';
@@ -2437,7 +2448,7 @@ export function createLevel1(ui, opts = {}) {
             return;
         if (gnow() < playerStunUntil) return;   // V9.82: lightning-zone stun - briefly can't move either
 
-        const speed = 430;
+        const speed = 435;   // V10.4: +5
         const playerMinX = 140;
         const playerMaxX = COMBAT_W - 140;
         const nowMs = gnow();
@@ -2643,7 +2654,14 @@ export function createLevel1(ui, opts = {}) {
                 state: reallyWalking ? 'walk' : 'idle',
                 progress: 0,
                 drawDir: combatFacing,
-                height: OLLY_IDLE_HEIGHT
+                height: OLLY_IDLE_HEIGHT,
+                // V10.4: the new run video's frames crop noticeably more empty space below
+                // the feet than the static idle pose does, so at the same draw height his feet
+                // sat visibly above the pinned combat shadow while running. feetNudge (unlike
+                // visualOffsetY) only shifts the drawn pose, not the shadow, so it closes that
+                // gap instead of moving shadow and pose together (measured against
+                // olly-idle.webp's own bottom margin).
+                feetNudge: reallyWalking ? 4 : 0
             };
         }
 
@@ -5201,6 +5219,7 @@ export function createLevel1(ui, opts = {}) {
                 finalH = targetH;
             }
             c.save();
+            c.translate(0, anim?.feetNudge || 0);   // V10.4: nudges the pose only, shadow stays pinned
             c.scale(dir === 'left' ? -1 : 1, 1);
             c.drawImage(img, -finalW / 2, -finalH, finalW, finalH);
             c.restore();

@@ -1,5 +1,5 @@
 import { StoryController } from './story.js?v=9820';
-import { createLevel1, resetRingTutorials } from './levels/level1.js?v=10030';
+import { createLevel1, resetRingTutorials } from './levels/level1.js?v=10040';
 import { LEVEL2 } from './levels/level2-config.js?v=9970';   // V9.94: Level 2 runs on the Level 1 engine
 import { createLevel3 } from './levels/level3.js?v=9850';
 import { playMusic, setLoopSfx, playSfx, audioNeedsClick, playVoiceLine, stopVoiceLine } from './audio.js?v=9820';

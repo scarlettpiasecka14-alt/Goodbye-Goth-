@@ -97,6 +97,11 @@ const SHELL_ROUNDS = [
 const FP_PASS_FRACTION = .6;   // Scarlett: "you have to get 60% to pass for now" -> 4 of 6
 const FP_PASS_SCORE = Math.ceil(SHELL_ROUNDS.length * FP_PASS_FRACTION);
 const REVEAL_SECONDS = 1.8;   // she's shown, then ducks under her mushroom, then the shuffle starts
+// V10.4: one-time "meet the mushrooms" intro - each type shown big & centered with its name,
+// then slides into its round-1 slot, before the first round ever begins.
+const FP_INTRO_HOLD_S = 1.1;
+const FP_INTRO_MOVE_S = .55;
+const FP_INTRO_STEP_S = FP_INTRO_HOLD_S + FP_INTRO_MOVE_S;
 const FP_END_ANIM_S = 1.6;    // end screen: other mushrooms fade, she pops out of hers
 
 const mapBackground = new Image();
@@ -302,8 +307,10 @@ export function createLevel2(ui, hostOpts = null) {
 
     // --- Find Scarlett runtime state ---
     let fsRoundIdx = 0;
-    let fsPhase = 'reveal';   // 'reveal' | 'shuffle' | 'guess' | 'resolve' | 'gameEnd'
+    let fsPhase = 'reveal';   // 'intro' | 'reveal' | 'shuffle' | 'guess' | 'resolve' | 'gameEnd'
     let fsPhaseT = 0;
+    let fsIntroShown = false;   // V10.4: the "meet the mushrooms" intro only ever plays once per session
+    let fsIntroIdx = 0;
     let fsScore = 0;
     let fsMushrooms = [];      // this round's { id, type, slot } entries
     let fsScarlettId = null;   // which mushroom id she's actually under
@@ -892,7 +899,16 @@ export function createLevel2(ui, hostOpts = null) {
         fsScore = 0;
         fsLastScarlettSlot = 0;
         if (hostFp) hostFp.overlay.style.display = 'block';
-        startShellRound();
+        // V10.4: first time ever entering this minigame in the session, show the one-time
+        // "meet the mushrooms" intro before the first round starts. Never repeats after that.
+        if (!fsIntroShown) {
+            fsIntroShown = true;
+            fsIntroIdx = 0;
+            fsPhase = 'intro';
+            fsPhaseT = 0;
+        } else {
+            startShellRound();
+        }
     }
     function exitMushroomGame(finished = false) {
         mode = 'map';
@@ -947,6 +963,14 @@ export function createLevel2(ui, hostOpts = null) {
         fsPhaseT += dt;
         mistScroll += dt * 60;
         if (fsPhase === 'gameEnd') return;
+        if (fsPhase === 'intro') {
+            if (fsPhaseT >= FP_INTRO_STEP_S) {
+                fsIntroIdx++;
+                fsPhaseT = 0;
+                if (fsIntroIdx >= MUSHROOM_TYPES.length) startShellRound();
+            }
+            return;
+        }
         const r = currentRound();
         if (fsPhase === 'reveal' && fsPhaseT >= REVEAL_SECONDS) { fsPhase = 'shuffle'; fsPhaseT = 0; }
         else if (fsPhase === 'shuffle') {
@@ -956,6 +980,12 @@ export function createLevel2(ui, hostOpts = null) {
                 const ma = mushroomAtSlot(a), mb = mushroomAtSlot(b);
                 if (ma) ma.slot = b;
                 if (mb) mb.slot = a;
+                // V10.4: when a swap touches her current mushroom, she has a chance to actually
+                // switch to the other one involved - so memorizing her starting type isn't enough.
+                if (ma && mb) {
+                    if (ma.id === fsScarlettId && Math.random() < 0.5) fsScarlettId = mb.id;
+                    else if (mb.id === fsScarlettId && Math.random() < 0.5) fsScarlettId = ma.id;
+                }
                 fsSwapIdx++;
                 fsPhaseT = 0;
             }
@@ -1074,6 +1104,7 @@ export function createLevel2(ui, hostOpts = null) {
         const t = performance.now() / 1000;
 
         if (fsPhase === 'gameEnd') { drawFpEnd(vw, vh, floorY, r, t); ctx.restore(); return; }
+        if (fsPhase === 'intro') { drawFpIntro(vw, vh, floorY); ctx.restore(); return; }
 
         fpText(`Round ${fsRoundIdx + 1} of ${SHELL_ROUNDS.length}   ·   Found her ${fsScore} time${fsScore === 1 ? '' : 's'}`, vw / 2, 80, '600 16px "Cormorant Garamond", Georgia, serif', '#e9d6e2');
         const prompt = fsPhase === 'reveal' ? "Watch the princess... she's hiding under one of these."
@@ -1150,6 +1181,25 @@ export function createLevel2(ui, hostOpts = null) {
 
     // End of the game: the other mushrooms fade away and she pops out of the one she was
     // last hiding under (Scarlett's "found her" picture), then the score.
+    // V10.4: one-time "meet the mushrooms" intro - each type pops up big & centered with its
+    // name label, then slides into the spot it'll start round 1 in, before play begins.
+    function drawFpIntro(vw, vh, floorY) {
+        fpText('Meet the mushrooms...', vw / 2, 92, '700 20px "Cormorant Garamond", Georgia, serif');
+        const idx = Math.min(fsIntroIdx, MUSHROOM_TYPES.length - 1);
+        const type = MUSHROOM_TYPES[idx];
+        const popIn = Math.min(1, fsPhaseT / .25);
+        const moveP = Math.max(0, Math.min(1, (fsPhaseT - FP_INTRO_HOLD_S) / FP_INTRO_MOVE_S));
+        const ease = moveP < .5 ? 2 * moveP * moveP : 1 - Math.pow(-2 * moveP + 2, 2) / 2;
+        const centerX = vw / 2;
+        const targetX = slotX(idx, 3, vw);
+        const cx = centerX + (targetX - centerX) * ease;
+        const base = fpMushroomSize(type.id, 3, vw, vh);
+        const scale = (.82 + .18 * popIn) * (1 - ease * .35);   // settles smaller into its slot, like the real layout
+        const h = base.h * scale, w = base.w * scale;
+        const labelAlpha = Math.max(0, 1 - moveP) * popIn;
+        fpText(type.label, cx, floorY - h - 22, '700 22px "Cormorant Garamond", Georgia, serif', `rgba(255,233,245,${labelAlpha.toFixed(2)})`);
+        drawImgBottom(type.img, cx, floorY, w, h, popIn);
+    }
     function drawFpEnd(vw, vh, floorY, r, t) {
         const p = Math.min(1, fsPhaseT / FP_END_ANIM_S);
         const fadeOthers = Math.min(1, p / .45);

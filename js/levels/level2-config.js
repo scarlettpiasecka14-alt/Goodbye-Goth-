@@ -22,35 +22,36 @@ export const LEVEL2 = {
     walkRle: LEVEL2_WALK_RLE,
     mapZoom: 1.9,              // Scarlett asked for the closer framing on this map
     ollyMapScale: .792,        // Olly's size on this map (Level 1 uses .92)
-    // V9.97: repositioned to match Scarlett's annotated map screenshot exactly
-    // (yellow = start, red = Devil's Fingers on the mushroom waterfall, white = Tom's book,
-    // pink = relationship challenge in the fairy ring, orange = Princess Question, blue = pendant).
-    start: { x: 543, y: 214 },
+    // V10.4: moved to match Scarlett's hand-drawn X on her latest screenshot - up and left of
+    // the old spot, under the big mossy archway near the top of the map.
+    start: { x: 460, y: 160 },
     combatBackground: 'assets/environment/combat-background-level2.webp',
 
     // Map enemies. Same shape as Level 1's list. 'devilsfingers' is fought through level2.js.
     enemies: () => [
-        { x: 520, y: 300, type: 'chain', name: 'CHAIN GOTH', hp: 100, maxHp: 100, dead: false, pattern: 'Whip • Chain Slam' },
+        // V10.4: moved off Olly's new start point (she used to spawn right on top of him) into
+        // the open clearing between the stone path and the gazebo.
+        { x: 900, y: 300, type: 'chain', name: 'CHAIN GOTH', hp: 100, maxHp: 100, dead: false, pattern: 'Whip • Chain Slam' },
         // V9.97: moved onto the mushroom waterfall on the right (Scarlett: Olly has to climb/jump
         // the waterfall to reach her). No new climb/jump mechanic exists yet - for now this is a
         // normal walkable point at the foot of the falls; see the chat reply re: scoping that properly.
         { x: 1290, y: 560, type: 'devilsfingers', name: "DEVIL'S FINGERS", hp: 200, maxHp: 200, dead: false, pattern: 'Burrow • Grab • Acid', foe: 'devilsfingers' }   // V9.96: fought on Level 1's fight screen (level2-foes.js)
     ],
     relationshipChallenge: { x: 752, y: 969 },   // Find the Princess, in the fairy ring
-    princessQuestion: { x: 1225, y: 460 },       // by the gazebo / mushroom-waterfall clearing
+    princessQuestion: { x: 1097, y: 351 },       // V10.4: moved to the gazebo clearing, away from Devil's Fingers (was crowding it at 1225,460)
     key: { x: 344, y: 925 },                      // where the pendant appears
     gate: { x: 790, y: 230 },                     // the glowing doorway at the top middle (the orb)
     gateNear: { x: 790, y: 245, r: 150 },         // where Olly has to stand to use the pendant
-    tomJournal: { x: 199, y: 664 },               // by the hollow
+    tomJournal: { x: 167, y: 553 },                // V10.4: moved up-left to the lantern-lit hollow, per Scarlett's screenshot X
     tomCutscene: 'assets/video/tom-cutscene/tom-cutscene.mp4',   // Scarlett is uploading this; until then the placeholder lines below show
 
     // Fog: patches over each objective (the rest of the fog banks are shared with Level 1's layout).
     fogPatches: [
-        { x: 520, y: 300, rx: 175, ry: 125, a: .9, seed: .2 },
+        { x: 900, y: 300, rx: 175, ry: 125, a: .9, seed: .2 },
         { x: 1290, y: 560, rx: 190, ry: 135, a: .94, seed: 1.7 },
         { x: 752, y: 969, rx: 185, ry: 130, a: .9, seed: 3.1 },
-        { x: 1225, y: 480, rx: 160, ry: 115, a: .9, seed: 4.5 },
-        { x: 199, y: 664, rx: 170, ry: 125, a: .92, seed: 5.2 },
+        { x: 1097, y: 351, rx: 160, ry: 115, a: .9, seed: 4.5 },
+        { x: 167, y: 553, rx: 170, ry: 125, a: .92, seed: 5.2 },
         { x: 344, y: 925, rx: 150, ry: 110, a: .88, seed: 5.9 },
         { x: 790, y: 240, rx: 175, ry: 120, a: .96, seed: 6.6 },
         { x: 1300, y: 250, rx: 140, ry: 95, a: .6, seed: 7.3 },
