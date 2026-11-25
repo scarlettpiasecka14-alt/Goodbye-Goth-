@@ -246,11 +246,13 @@ function makeWalkCycle(folder, prefix, count, v, fps = OLLY_WALK_CYCLE_FPS) {
 const ollyWalkCycleFrame = makeWalkCycle('olly-walk', 'walk', 13, 9980);
 const ollyWalkBackCycleFrame = makeWalkCycle('olly-walk-back', 'back', 13, 9990);   // V9.99
 const ollyWalkFrontCycleFrame = makeWalkCycle('olly-walk-front', 'front', 13, 10000);   // V10.0
-// V10.1: a braced, alert combat-idle loop (fists up, weight-shifting) replacing the
-// single static pose - Scarlett's own call that the casual map walk read wrong for combat.
-// Sped up further from her source clip, same as the map cycles.
-const OLLY_COMBAT_IDLE_FPS = 11;
-const ollyCombatIdleCycleFrame = makeWalkCycle('olly-combat-idle', 'idle', 13, 10010, OLLY_COMBAT_IDLE_FPS);
+// V10.1 (corrected): a braced, alert combat WALK (fists up, weight-shifting) used only
+// while Olly is actually repositioning in the fight ring. Standing still in combat keeps
+// the original static idle art - this does not replace it. Scarlett's own call that the
+// casual map-walk style read wrong for combat. Sped up from her source clip, same as the
+// map cycles.
+const OLLY_COMBAT_WALK_FPS = 11;
+const ollyCombatWalkCycleFrame = makeWalkCycle('olly-combat-walk', 'walk', 13, 10010, OLLY_COMBAT_WALK_FPS);
 
 // Combat animation frames are cropped from the supplied sprite sheet so each
 // pose keeps its own aspect ratio and stray sprite-sheet labels never render.
@@ -2617,12 +2619,14 @@ export function createLevel1(ui, opts = {}) {
             cfg = OLLY_ANIMATIONS.jump;
             frames = ollyCombatSprites.jump;
         } else {
-            // V10.1: the real braced combat-idle loop, falling back to the old static art
-            // until all its frames are loaded (and existing punch/dodge/jump/heavy stay untouched).
-            const idleCycleFrame = ollyCombatIdleCycleFrame(nowMs / 1000);
+            // V10.1 (corrected): standing still in combat keeps the original static art.
+            // The braced/fists-up loop is the WALK, used only while Olly is actually
+            // repositioning in the ring - same "is he really moving" check footsteps use.
+            const reallyWalking = (held.left !== held.right) && !jumping && !zombieIntroActive && !playerDeathTriggered && nowMs >= dodgeUntil;
+            const walkCycleFrame = reallyWalking ? ollyCombatWalkCycleFrame(nowMs / 1000) : null;
             return {
-                img: idleCycleFrame || (ollySprite.complete && ollySprite.naturalWidth ? ollySprite : ollyCombatSprites.idle),
-                state: 'idle',
+                img: walkCycleFrame || (ollySprite.complete && ollySprite.naturalWidth ? ollySprite : ollyCombatSprites.idle),
+                state: reallyWalking ? 'walk' : 'idle',
                 progress: 0,
                 drawDir: combatFacing,
                 height: OLLY_IDLE_HEIGHT
