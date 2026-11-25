@@ -252,7 +252,7 @@ const ollyWalkFrontCycleFrame = makeWalkCycle('olly-walk-front', 'front', 13, 10
 // casual map-walk style read wrong for combat. Sped up from her source clip, same as the
 // map cycles.
 const OLLY_COMBAT_WALK_FPS = 11;
-const ollyCombatWalkCycleFrame = makeWalkCycle('olly-combat-walk', 'walk', 13, 10010, OLLY_COMBAT_WALK_FPS);
+const ollyCombatWalkCycleFrame = makeWalkCycle('olly-combat-walk', 'walk', 13, 10020, OLLY_COMBAT_WALK_FPS);   // V10.2: re-keyed to remove green hair fringe
 
 // Combat animation frames are cropped from the supplied sprite sheet so each
 // pose keeps its own aspect ratio and stray sprite-sheet labels never render.
@@ -850,22 +850,10 @@ function drawWalkDebug(ctx) {
 
 function drawOlly(ctx, x, y, s=.78, t=0, front=true, dir='right', moving=false, mapDir='down') {
     ctx.save();
-    // V9.83: the map sprites are a single static pose per direction (no real stride frames), so a
-    // plain side-to-side sine bob floated him up AND down evenly, which reads as hovering rather than
-    // walking. Use an always-downward "step dip" instead (true to a footstep landing), and for the
-    // left/right walk add a small forward lean into the travel direction plus a tiny stride sway, so
-    // moving reads as forward momentum instead of a float.
     const stepPhase = moving ? Math.sin(t * 9) : 0;
-    const bob = moving ? Math.abs(stepPhase) * 3.2 : Math.sin(t * 2) * .35;
     const sideways = moving && (mapDir === 'left' || mapDir === 'right');
     const leanSign = mapDir === 'left' ? -1 : 1;
-    const lean = sideways ? leanSign * .055 : 0;
     const strideSway = sideways ? stepPhase * 2 * leanSign : 0;
-    ctx.translate(x + strideSway, y - bob);
-    ctx.fillStyle = SH(.34);
-    ctx.beginPath();
-    ctx.ellipse(0, 38 * s, 23 * s, 6 * s, 0, 0, Math.PI * 2);
-    ctx.fill();
 
     let img = ollySprite;
     let flipX = false;
@@ -878,22 +866,42 @@ function drawOlly(ctx, x, y, s=.78, t=0, front=true, dir='right', moving=false, 
     else if (mapDir === 'right') img = ollyMapWalkSprites.right;
 
     // V9.97-V10.0: while actually walking, prefer the real stride-cycle frames over the
-    // single static pose above (the left/right frames face image-left, so moving right flips them).
+    // single static pose above. V10.2: the source clip faces image-right, so moving LEFT
+    // is the one that needs flipping (was backwards - flipped the wrong direction before).
+    let usingRealCycle = false;
     if (moving && (mapDir === 'left' || mapDir === 'right')) {
         const cycleFrame = ollyWalkCycleFrame(t);
-        if (cycleFrame) { img = cycleFrame; flipX = (mapDir === 'right'); }
+        if (cycleFrame) { img = cycleFrame; flipX = (mapDir === 'left'); usingRealCycle = true; }
     } else if (moving && mapDir === 'up') {
         const cycleFrame = ollyWalkBackCycleFrame(t);
-        if (cycleFrame) { img = cycleFrame; }
+        if (cycleFrame) { img = cycleFrame; usingRealCycle = true; }
     } else if (moving && mapDir === 'down') {
         const cycleFrame = ollyWalkFrontCycleFrame(t);
-        if (cycleFrame) { img = cycleFrame; }
+        if (cycleFrame) { img = cycleFrame; usingRealCycle = true; }
     }
+
+    // V10.2: now that real walk-cycle video frames cover all 4 directions, the up/down
+    // motion of an actual stride is already baked into the footage itself. The old
+    // procedural "step dip" (bob) used to add ANOTHER layer of vertical motion on top of
+    // that, and since the shadow was translated by the same bob, shadow and body moved in
+    // perfect lockstep with no fixed ground reference - which read as floating rather than
+    // walking. Real cycle frames now get zero artificial bob and the shadow stays pinned
+    // to the ground; only the single static poses (nothing loaded yet, or standing still)
+    // keep the old gentle idle sway so they don't look stiff.
+    const bob = usingRealCycle ? 0 : (moving ? Math.abs(stepPhase) * 3.2 : Math.sin(t * 2) * .35);
+    const lean = (sideways && !usingRealCycle) ? leanSign * .055 : 0;
+
+    ctx.translate(x + strideSway, y);
+    ctx.fillStyle = SH(.34);
+    ctx.beginPath();
+    ctx.ellipse(0, 38 * s, 23 * s, 6 * s, 0, 0, Math.PI * 2);
+    ctx.fill();
 
     if (img.complete && img.naturalWidth && img.naturalHeight) {
         const h = 144 * s;
         const w = h * (img.naturalWidth / img.naturalHeight);
         ctx.save();
+        ctx.translate(0, -bob);
         ctx.transform(1, 0, lean, 1, 0, 0);
         if (flipX) ctx.scale(-1, 1);
         ctx.drawImage(img, -w / 2, -114 * s, w, h);
