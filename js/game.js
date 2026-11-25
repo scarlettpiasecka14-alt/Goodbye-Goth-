@@ -260,7 +260,6 @@ function showControls(){
           <div class="control-item"><span class="control-key">${hintHTML('dodge')}</span><span class="control-action">Dodge</span></div>
           <div class="control-item"><span class="control-key">${hintHTML('attack')}</span><span class="control-action">Punch</span></div>
           <div class="control-item"><span class="control-key">${hintHTML('heavy')}</span><span class="control-action">Heavy attack (once earned)</span></div>
-          <div class="control-item"><span class="control-key">${hintHTML('veil')}</span><span class="control-action">Moth-Eaten Veil (if you have it)</span></div>
           <div class="control-item"><span class="control-key">${hintHTML('interact')}</span><span class="control-action">Pick up / interact</span></div>
           <div class="control-item"><span class="control-key">${hintHTML('inventory')}</span><span class="control-action">Open inventory (backpack)</span></div>
           <div class="control-item"><span class="control-key">${hintHTML('settings')}</span><span class="control-action">Settings (or the ⚙ button)</span></div>
