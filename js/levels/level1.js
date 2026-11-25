@@ -225,21 +225,26 @@ ollyMapWalkSprites.back.src = 'assets/characters/map/olly-walk-back.webp?v=7700'
 ollyMapWalkSprites.left.src = 'assets/characters/map/olly-walk-right.webp?v=7700';
 ollyMapWalkSprites.right.src = 'assets/characters/map/olly-walk-left.webp?v=7700';
 
-// V9.97: a real stride cycle (13 frames Scarlett supplied), facing image-left.
-// Used on the map for left/right travel; up/down keep the single static pose above
-// (no back/front stride frames exist yet).
-const OLLY_WALK_CYCLE_FPS = 13;   // V9.98: real keyed video frames, sped up from Scarlett's source clip
-const ollyWalkCycle = Array.from({ length: 13 }, (_, i) => {
-    const im = new Image();
-    im.src = `assets/characters/olly-walk/walk-${String(i + 1).padStart(2, '0')}.webp?v=9980`;
-    return im;
-});
-function ollyWalkCycleFrame(t) {
-    const ready = ollyWalkCycle.filter(f => f.complete && f.naturalWidth);
-    if (ready.length < ollyWalkCycle.length) return null;   // wait for the whole set so the cycle never stutters/pops
-    const idx = Math.floor(t * OLLY_WALK_CYCLE_FPS) % ollyWalkCycle.length;
-    return ollyWalkCycle[idx];
+// V9.97/9.99: real stride cycles, keyed and cropped from Scarlett's green-screen videos.
+// left/right share one left-facing cycle (flipped for right); 'up' (walking away from camera)
+// has its own back-facing cycle. 'down' (toward camera) keeps the single static pose above
+// until a front-facing cycle exists.
+const OLLY_WALK_CYCLE_FPS = 13;   // V9.98: sped up from Scarlett's source clip
+function makeWalkCycle(folder, prefix, count, v) {
+    const frames = Array.from({ length: count }, (_, i) => {
+        const im = new Image();
+        im.src = `assets/characters/${folder}/${prefix}-${String(i + 1).padStart(2, '0')}.webp?v=${v}`;
+        return im;
+    });
+    return function (t) {
+        const ready = frames.filter(f => f.complete && f.naturalWidth);
+        if (ready.length < frames.length) return null;   // wait for the whole set so the cycle never stutters/pops
+        const idx = Math.floor(t * OLLY_WALK_CYCLE_FPS) % frames.length;
+        return frames[idx];
+    };
 }
+const ollyWalkCycleFrame = makeWalkCycle('olly-walk', 'walk', 13, 9980);
+const ollyWalkBackCycleFrame = makeWalkCycle('olly-walk-back', 'back', 13, 9990);   // V9.99
 
 // Combat animation frames are cropped from the supplied sprite sheet so each
 // pose keeps its own aspect ratio and stray sprite-sheet labels never render.
@@ -864,11 +869,14 @@ function drawOlly(ctx, x, y, s=.78, t=0, front=true, dir='right', moving=false, 
     else if (mapDir === 'left') img = ollyMapWalkSprites.left;
     else if (mapDir === 'right') img = ollyMapWalkSprites.right;
 
-    // V9.97: while actually walking left/right, prefer the real stride-cycle frames over the
-    // single static pose above (the frames face image-left, so moving right flips them).
+    // V9.97/9.99: while actually walking, prefer the real stride-cycle frames over the
+    // single static pose above (the left/right frames face image-left, so moving right flips them).
     if (moving && (mapDir === 'left' || mapDir === 'right')) {
         const cycleFrame = ollyWalkCycleFrame(t);
         if (cycleFrame) { img = cycleFrame; flipX = (mapDir === 'right'); }
+    } else if (moving && mapDir === 'up') {
+        const cycleFrame = ollyWalkBackCycleFrame(t);
+        if (cycleFrame) { img = cycleFrame; }
     }
 
     if (img.complete && img.naturalWidth && img.naturalHeight) {
