@@ -483,10 +483,18 @@ function patDespillCanvas(img) {
     const d = id.data;
     for (let i = 0; i < d.length; i += 4) {
         if (d[i + 3] === 0) continue;   // fully transparent - nothing to despill
-        const r = d[i], g = d[i + 1], b = d[i + 2], mx = Math.max(r, b);
-        if (g > mx) d[i + 1] = mx;   // pull the green channel down to whichever of red/blue is stronger - kills the
-                                     // green-screen fringe (which is G-dominant almost by definition) without touching
-                                     // any hue that was never green-shifted in the first place
+        const r = d[i], g = d[i + 1], b = d[i + 2], a = d[i + 3], mx = Math.max(r, b);
+        const excess = g - mx;
+        if (excess > 0) {
+            d[i + 1] = mx;   // pull the green channel down to whichever of red/blue is stronger
+            // V9.99d: fade out edge pixels that were heavily green-screen — these are fringe artifacts
+            // the chroma key didn't fully remove (the visible green outline around her sprites).
+            // Ramps from no fade at excess=20 to 90% fade at excess=110+.
+            if (excess > 20) {
+                const fade = Math.min(1, (excess - 20) / 90);
+                d[i + 3] = Math.max(0, Math.round(a * (1 - fade * 0.9)));
+            }
+        }
     }
     ctx.putImageData(id, 0, 0);
     return cv;
@@ -4096,6 +4104,7 @@ export function createLevel1(ui, opts = {}) {
                 const dir = patFace === 'left' ? -1 : 1;
                 // V9.80: a big purple orb lobs out of the umbrella, skips off the floor and bounces up at Olly - jump over the bounce, or interrupt her in the wind-up
                 patSpark = { x: zombieCombatX + dir * 95, y: CHAIN_FLOOR_Y - 155, vx: dir * 560, vy: 240, dir, born: nowMs, bounced: false, hit: false, dead: false };
+                ui.combatStatus.textContent = '⚡ Orb incoming! DODGE ROLL to avoid it!';   // V9.99d: tell the player how to dodge the orb (#159)
             }
             if (t >= PAT_JAB_STRIKE_FRAMES * PAT_JAB_FRAME_MS + 200) patToRecover(nowMs, 650);
             return;
@@ -4515,7 +4524,12 @@ export function createLevel1(ui, opts = {}) {
         // like every other clip fixes that without having to touch the segment's timing at all.
         if (!frame.hide && frame.next != null && frame.next !== frame.index && frame.frac > .02 && (packName === 'jab' || packName === 'hurtm' || packName === 'lunge' || packName === 'lightning' || packName === 'intro' || packName === 'stage2')) {
             const rs2 = PAT_SCALE * PAT_SIZE_K * (PAT_PACK_K[packName] || 1) * 1;
-            drawChainAtlasFrame(c, frame.pack, frame.next, enemyX, CHAIN_FLOOR_Y, drawFace, rs2, alpha * frame.frac, 0, 0);
+            // V9.99d: cap lunge wind-up blend to 30% — the full cross-fade over 1500ms of big-pose wind-up
+            // frames made the sword swipe read as blurry/ghosted when done as a standalone attack.
+            // The strike half and every other clip keep their normal blend.
+            const lungeWindup = st === 'lunge' && (nowMs - zombieCombatStateStart) < PAT_LUNGE_WINDUP_MS;
+            const bf = lungeWindup ? Math.min(frame.frac, 0.3) : frame.frac;
+            drawChainAtlasFrame(c, frame.pack, frame.next, enemyX, CHAIN_FLOOR_Y, drawFace, rs2, alpha * bf, 0, 0);
         }
         c.restore();
         // V9.89: her new umbrella 3-2-1 clip - per Scarlett, purple smoke should swirl around the
@@ -4538,8 +4552,43 @@ export function createLevel1(ui, opts = {}) {
                 patPuffs(c, tipX, tipY, .55 * twirl, nowMs, 10);
             }
         }
+        // V9.99d: spinning stars above Patricia's head when stunned — per Scarlett, visual indicator so the player
+        // knows she's dazed and they have an opening.  Stars fade in after 300ms (once she's visibly reeling) and
+        // orbit her head, pulsing size/brightness.
+        if (st === 'phurt' && patStunning) {
+            const stunElapsed = nowMs - zombieCombatStateStart;
+            const fadeIn = Math.min(1, Math.max(0, (stunElapsed - 300) / 400));
+            if (fadeIn > 0) {
+                c.save();
+                const cx = enemyX, cy = 120;   // above her head (her head sits at ~130-160 during hurt)
+                const nStars = 4, orbitR = 36;
+                const spin = nowMs / 600;   // one full revolution per 600ms * 2π ≈ every 3.8s
+                c.globalAlpha = fadeIn * (.7 + .2 * Math.sin(nowMs / 200));
+                for (let s = 0; s < nStars; s++) {
+                    const angle = spin + (s / nStars) * Math.PI * 2;
+                    const sx = cx + Math.cos(angle) * orbitR;
+                    const sy = cy + Math.sin(angle) * orbitR * 0.4;   // squashed orbit for perspective
+                    const size = 7 + 2 * Math.sin(nowMs / 300 + s);
+                    c.save();
+                    c.translate(sx, sy);
+                    c.rotate(angle * 1.5);
+                    // 4-pointed star
+                    c.fillStyle = s % 2 === 0 ? '#ffe066' : '#fff4b0';
+                    c.beginPath();
+                    for (let p = 0; p < 8; p++) {
+                        const r = p % 2 === 0 ? size : size * 0.35;
+                        const a2 = (p / 8) * Math.PI * 2 - Math.PI / 2;
+                        if (p === 0) c.moveTo(Math.cos(a2) * r, Math.sin(a2) * r);
+                        else c.lineTo(Math.cos(a2) * r, Math.sin(a2) * r);
+                    }
+                    c.closePath(); c.fill();
+                    c.restore();
+                }
+                c.restore();
+            }
+        }
         updateChainStunMeter(nowMs);
-        if (patSpeech) drawSpeechBubble(c, enemyX - 20, 118, patSpeech.text, nowMs - patSpeech.start, -250);   // V9.80: higher, clear of her face   // bubble sits beside her head so it never covers her HP box
+        if (patSpeech) drawSpeechBubble(c, enemyX - 60, 160, patSpeech.text, nowMs - patSpeech.start, -310);   // V9.99d: per Scarlett — moved bubble left and tail tip down onto her head (was floating above and too far right)
         drawJabCharge(c, enemyX, nowMs);
         drawPatSpark(c, nowMs);
     }
