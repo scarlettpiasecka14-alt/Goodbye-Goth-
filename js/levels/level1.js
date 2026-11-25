@@ -4104,7 +4104,6 @@ export function createLevel1(ui, opts = {}) {
                 const dir = patFace === 'left' ? -1 : 1;
                 // V9.80: a big purple orb lobs out of the umbrella, skips off the floor and bounces up at Olly - jump over the bounce, or interrupt her in the wind-up
                 patSpark = { x: zombieCombatX + dir * 95, y: CHAIN_FLOOR_Y - 155, vx: dir * 560, vy: 240, dir, born: nowMs, bounced: false, hit: false, dead: false };
-                ui.combatStatus.textContent = '⚡ Orb incoming! DODGE ROLL to avoid it!';   // V9.99d: tell the player how to dodge the orb (#159)
             }
             if (t >= PAT_JAB_STRIKE_FRAMES * PAT_JAB_FRAME_MS + 200) patToRecover(nowMs, 650);
             return;
@@ -4687,7 +4686,7 @@ export function createLevel1(ui, opts = {}) {
         const ground = CHAIN_FLOOR_Y - 8;
         if (s.y >= ground) {                       // skip off the floor and leap up toward Olly
             s.y = ground;
-            if (!s.bounced) { s.vy = -770; s.bounced = true; playSfx('chain-impact', .55, 1.7); patSparkPuff = { x: s.x, t: nowMs }; }
+            if (!s.bounced) { s.vy = -400; s.bounced = true; playSfx('chain-impact', .55, 1.7); patSparkPuff = { x: s.x, t: nowMs }; }   // V9.99e: was -770 — lowered so the orb peaks ~50px above floor, under Olly's 68px jump height (#159)
             else s.dead = true;                    // second landing: it fizzles out
         }
         // V9.82: check the whole path it swept this frame, not just where it ended up - at speed, a slow frame could
@@ -4697,9 +4696,10 @@ export function createLevel1(ui, opts = {}) {
             for (let i = 1; i <= steps && !s.hit; i++) {
                 const px = prevX + (s.x - prevX) * (i / steps), py = prevY + (s.y - prevY) * (i / steps);
                 if (Math.abs(px - player.x) < 70 && py > CHAIN_FLOOR_Y - 260) {
-                    // V9.93: removed the airborne check — the orb arcs up after bouncing and visually
-                    // hits Olly even when he's jumping, so letting it pass through looked like a bug.
-                    // Only dodging (invuln frames) avoids the orb now.
+                    // V9.99e: re-allow jumping over the orb now that the bounce is lower (#159).
+                    // The orb peaks at ~50px; Olly's jump peaks at 68px, so a well-timed jump clears it.
+                    const airborne = jumping || jumpOffset < -30;
+                    if (airborne && py > CHAIN_FLOOR_Y + jumpOffset + 20) continue;   // orb is below Olly's feet — it passes under
                     if (player.invuln > nowMs) continue;   // dodged: it sails past
                     s.hit = true; s.dead = true;
                     patSparkShards = { x: px, y: py, t: nowMs };   // V9.82: burst into purple shards on impact so the hit is unmistakable
