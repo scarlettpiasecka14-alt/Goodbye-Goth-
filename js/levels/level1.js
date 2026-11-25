@@ -230,7 +230,7 @@ ollyMapWalkSprites.right.src = 'assets/characters/map/olly-walk-left.webp?v=7700
 // 'down' (toward camera) each have their own back/front-facing cycle. All four map
 // directions are now animated - the static poses above are now just the pre-move idle pose.
 const OLLY_WALK_CYCLE_FPS = 13;   // V9.98: sped up from Scarlett's source clip
-function makeWalkCycle(folder, prefix, count, v) {
+function makeWalkCycle(folder, prefix, count, v, fps = OLLY_WALK_CYCLE_FPS) {
     const frames = Array.from({ length: count }, (_, i) => {
         const im = new Image();
         im.src = `assets/characters/${folder}/${prefix}-${String(i + 1).padStart(2, '0')}.webp?v=${v}`;
@@ -239,13 +239,18 @@ function makeWalkCycle(folder, prefix, count, v) {
     return function (t) {
         const ready = frames.filter(f => f.complete && f.naturalWidth);
         if (ready.length < frames.length) return null;   // wait for the whole set so the cycle never stutters/pops
-        const idx = Math.floor(t * OLLY_WALK_CYCLE_FPS) % frames.length;
+        const idx = Math.floor(t * fps) % frames.length;
         return frames[idx];
     };
 }
 const ollyWalkCycleFrame = makeWalkCycle('olly-walk', 'walk', 13, 9980);
 const ollyWalkBackCycleFrame = makeWalkCycle('olly-walk-back', 'back', 13, 9990);   // V9.99
 const ollyWalkFrontCycleFrame = makeWalkCycle('olly-walk-front', 'front', 13, 10000);   // V10.0
+// V10.1: a braced, alert combat-idle loop (fists up, weight-shifting) replacing the
+// single static pose - Scarlett's own call that the casual map walk read wrong for combat.
+// Sped up further from her source clip, same as the map cycles.
+const OLLY_COMBAT_IDLE_FPS = 11;
+const ollyCombatIdleCycleFrame = makeWalkCycle('olly-combat-idle', 'idle', 13, 10010, OLLY_COMBAT_IDLE_FPS);
 
 // Combat animation frames are cropped from the supplied sprite sheet so each
 // pose keeps its own aspect ratio and stray sprite-sheet labels never render.
@@ -2612,10 +2617,11 @@ export function createLevel1(ui, opts = {}) {
             cfg = OLLY_ANIMATIONS.jump;
             frames = ollyCombatSprites.jump;
         } else {
+            // V10.1: the real braced combat-idle loop, falling back to the old static art
+            // until all its frames are loaded (and existing punch/dodge/jump/heavy stay untouched).
+            const idleCycleFrame = ollyCombatIdleCycleFrame(nowMs / 1000);
             return {
-                // Use the new canonical Olly art for combat idle as well.
-                // Existing punch/dodge/jump/heavy animations remain untouched.
-                img: (ollySprite.complete && ollySprite.naturalWidth) ? ollySprite : ollyCombatSprites.idle,
+                img: idleCycleFrame || (ollySprite.complete && ollySprite.naturalWidth ? ollySprite : ollyCombatSprites.idle),
                 state: 'idle',
                 progress: 0,
                 drawDir: combatFacing,
