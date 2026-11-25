@@ -623,7 +623,7 @@ const PAT_LIGHT_STUN_AT_MS = 3000, PAT_LIGHT_STUN_MS = 900, PAT_LIGHT_STUN_DAMAG
 // as [atlas index, ms] steps that cross-fade into each other and HOLD the last pose (atlas index = source frame - 4). No hopping frames.
 const PAT_HURT_SEQ = Array.from({ length: 21 }, (_, i) => [i, i === 20 ? 160 : 34]);   // V9.80: ~0.8s, not ~1.6s - you can no longer just keep hitting her while she's frozen   // V9.80: her ONE hurt reaction ('hurtm' pack, 21 frames, ~1.3 s, then she holds the last pose). Used when she is interrupted, stunned, and at half health.
 const PAT_HURT_SEQS = { medium: PAT_HURT_SEQ, heavy: PAT_HURT_SEQ };
-const PAT_STUN_MS = 1700;   // V9.80: shorter dizzy
+const PAT_STUN_MS = 3000;   // V9.99b: 3 seconds per Scarlett — enough to land a full combo (1-2-3 punch + heavy) if you're quick
 const PAT_STUN_HITS = 3, PAT_STUN_WINDOW_MS = 4500;   // V9.99: per Scarlett - 3 clean hits in short succession (was 6 in 9.5s). Tighter window makes stun a reward for quick combos
 const patSeqMs = (q) => q.reduce((a, e) => a + e[1], 0);
 const PAT_HURT_SEGS = [[0, 10], [11, 21], [22, 34], [35, 48]], PAT_HURT_DY = [1, -9, 42, 119], PAT_HURT_FRAME_MS = 48, PAT_HURT_GRUNTS = ['grunt-4', 'grunt-7', 'grunt-3', 'grunt-8'];
