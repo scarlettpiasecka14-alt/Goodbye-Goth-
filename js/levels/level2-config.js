@@ -11,7 +11,7 @@
    To check positions against the collision, open the game with ?level=2&walk=1.
 
    PLACEHOLDER ART is marked "placeholder" below - Scarlett is making the real screens. */
-import { LEVEL2_WALK_RLE } from './level2-walk.js?v=9980';
+import { LEVEL2_WALK_RLE } from './level2-walk.js?v=10060';
 
 const ENC = 'assets/encounters/level2/';
 
@@ -29,18 +29,17 @@ export const LEVEL2 = {
 
     // Map enemies. Same shape as Level 1's list. 'devilsfingers' is fought through level2.js.
     enemies: () => [
-        // V10.5: moved off Olly's new start point (she used to spawn right on top of him) into
-        // the open clearing just left of the gazebo - nudged 20px off V10.4's spot once the
-        // tightened collision confirmed that exact point was inside the gazebo's own footprint.
-        { x: 880, y: 300, type: 'chain', name: 'CHAIN GOTH', hp: 100, maxHp: 100, dead: false, pattern: 'Whip • Chain Slam' },
+        // V10.6: moved to the small stone archway by the moon-banner cabin (bottom-right), per
+        // Scarlett's hand-drawn green X on her annotated map screenshot.
+        { x: 1109, y: 932, type: 'chain', name: 'CHAIN GOTH', hp: 100, maxHp: 100, dead: false, pattern: 'Whip • Chain Slam' },
         // V9.97: moved onto the mushroom waterfall on the right (Scarlett: Olly has to climb/jump
         // the waterfall to reach her). No new climb/jump mechanic exists yet - for now this is a
         // normal walkable point at the foot of the falls; see the chat reply re: scoping that properly.
         { x: 1290, y: 560, type: 'devilsfingers', name: "DEVIL'S FINGERS", hp: 200, maxHp: 200, dead: false, pattern: 'Burrow • Grab • Acid', foe: 'devilsfingers' }   // V9.96: fought on Level 1's fight screen (level2-foes.js)
     ],
     relationshipChallenge: { x: 752, y: 969 },   // Find the Princess, in the fairy ring
-    princessQuestion: { x: 1175, y: 300 },       // V10.5: by the gazebo's east side, away from Devil's Fingers (was crowding it at 1225,460; V10.4's 1097,351 landed inside the gazebo itself once collision was tightened)
-    key: { x: 344, y: 925 },                      // where the pendant appears
+    princessQuestion: { x: 1052, y: 372 },        // V10.6: on the gazebo floor, per Scarlett's hand-drawn orange X
+    key: { x: 1293, y: 228 },                     // V10.6: moved to the triple stone arches' candle-lit ritual circle, per Scarlett's hand-drawn pink X
     gate: { x: 790, y: 230 },                     // the glowing doorway at the top middle (the orb)
     gateNear: { x: 790, y: 245, r: 150 },         // where Olly has to stand to use the pendant
     tomJournal: { x: 167, y: 553 },                // V10.4: moved up-left to the lantern-lit hollow, per Scarlett's screenshot X
@@ -48,12 +47,12 @@ export const LEVEL2 = {
 
     // Fog: patches over each objective (the rest of the fog banks are shared with Level 1's layout).
     fogPatches: [
-        { x: 880, y: 300, rx: 175, ry: 125, a: .9, seed: .2 },
+        { x: 1109, y: 932, rx: 175, ry: 125, a: .9, seed: .2 },
         { x: 1290, y: 560, rx: 190, ry: 135, a: .94, seed: 1.7 },
         { x: 752, y: 969, rx: 185, ry: 130, a: .9, seed: 3.1 },
-        { x: 1175, y: 300, rx: 160, ry: 115, a: .9, seed: 4.5 },
+        { x: 1052, y: 372, rx: 160, ry: 115, a: .9, seed: 4.5 },
         { x: 167, y: 553, rx: 170, ry: 125, a: .92, seed: 5.2 },
-        { x: 344, y: 925, rx: 150, ry: 110, a: .88, seed: 5.9 },
+        { x: 1293, y: 228, rx: 150, ry: 110, a: .88, seed: 5.9 },
         { x: 790, y: 240, rx: 175, ry: 120, a: .96, seed: 6.6 },
         { x: 1300, y: 250, rx: 140, ry: 95, a: .6, seed: 7.3 },
         { x: 1100, y: 880, rx: 160, ry: 110, a: .62, seed: 8.0 },
