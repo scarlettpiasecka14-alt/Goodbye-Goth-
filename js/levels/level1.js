@@ -52,7 +52,7 @@ const RING_TUTORIAL = {   // V9.80: new wording. title = big heading, paras = on
     pink: { label: 'Pink Ring', title: 'A Friendly Little Warning', paras: ['Well, relatively friendly.', 'This is a standard attack. Dodge or jump in whichever direction you fancy, then strike back.', 'A well-timed hit will interrupt the enemy\'s attack entirely, stopping them in their tracks.', 'See? They\'re not all that scary.'] },
     red: { label: 'Red Ring', title: 'Now We\'re Getting Serious', paras: ['This attack packs considerably more punch.', 'One hit won\'t be enough; you\'ll need to keep dodging or jumping until the attack is over.', 'Good luck, soldier.'] },
     purple: { label: 'Purple Ring', title: 'Oh, This Is Just Cheating', paras: ['Some Goths have rather... unusual abilities.', 'A purple ring signals a special ability unique to the enemy. These abilities don\'t necessarily follow the usual rules of combat, so watch carefully.'] },
-    stun: { label: 'Dazed', title: 'Some Enemies Can Be Stunned!', paras: ['A few well-placed hits might leave an enemy seeing stars.', "Keep an eye on their stun bar. Once they're stunned, they'll be briefly vulnerable, giving you a chance to strike.", "But don't get too comfortable. Not every enemy goes down so easily!"] },
+    stun: { label: 'Dazed', title: 'Some Enemies Can Be Stunned!', paras: ['A few well-placed hits might leave an enemy seeing stars.', "Keep an eye on their stun bar. Once they're stunned, they'll be briefly vulnerable, giving you a chance to strike.", "Some enemies take more damage while they're stunned. Others are just kind enough to give you a moment to breathe.", "But don't get too comfortable. Not every enemy goes down so easily!"] },
     yellow: { label: 'Yellow Ring', title: 'A Little More Personal Space, Please?', paras: ['This attack covers a much larger area, so you\'ll need to think carefully about where you dodge or jump.', 'Some attacks may require more than one well-timed movement.', 'And don\'t bother trying to interrupt it. Enemies are completely invincible during yellow attacks.', 'Your best bet? Get out of her way.'] }
 };
 const RING_TUTORIAL_ASPECT = { pink: '1672/941', red: '1672/941', purple: '1672/941', yellow: '1672/941', stun: '1280/801' };
@@ -624,7 +624,7 @@ const PAT_LIGHT_STUN_AT_MS = 3000, PAT_LIGHT_STUN_MS = 900, PAT_LIGHT_STUN_DAMAG
 const PAT_HURT_SEQ = Array.from({ length: 21 }, (_, i) => [i, i === 20 ? 160 : 34]);   // V9.80: ~0.8s, not ~1.6s - you can no longer just keep hitting her while she's frozen   // V9.80: her ONE hurt reaction ('hurtm' pack, 21 frames, ~1.3 s, then she holds the last pose). Used when she is interrupted, stunned, and at half health.
 const PAT_HURT_SEQS = { medium: PAT_HURT_SEQ, heavy: PAT_HURT_SEQ };
 const PAT_STUN_MS = 1700;   // V9.80: shorter dizzy
-const PAT_STUN_HITS = 6;   // V9.80: she's the boss - takes more than the Chain Goth's 3 to stun   // V9.80: a stun (3 hit points in 9.5 s, a Heavy counts 2: same rule as the Chain Goth) leaves her dizzy for this long
+const PAT_STUN_HITS = 3, PAT_STUN_WINDOW_MS = 4500;   // V9.99: per Scarlett - 3 clean hits in short succession (was 6 in 9.5s). Tighter window makes stun a reward for quick combos
 const patSeqMs = (q) => q.reduce((a, e) => a + e[1], 0);
 const PAT_HURT_SEGS = [[0, 10], [11, 21], [22, 34], [35, 48]], PAT_HURT_DY = [1, -9, 42, 119], PAT_HURT_FRAME_MS = 48, PAT_HURT_GRUNTS = ['grunt-4', 'grunt-7', 'grunt-3', 'grunt-8'];
 const PAT_DEFEAT_HOLD_MS = 450;   // no death animation any more: she freezes for a beat, then the death cutscene plays
@@ -3405,7 +3405,8 @@ export function createLevel1(ui, opts = {}) {
             full = true;
         } else if (chainStunHits > 0) {
             const since = nowMs - chainStunLastHit;
-            const keep = Math.max(0, Math.min(1, (CHAIN_STUN_HIT_WINDOW_MS - since) / 800));
+            const window = isPatriciaFight() ? PAT_STUN_WINDOW_MS : CHAIN_STUN_HIT_WINDOW_MS;   // V9.99: Patricia has her own tighter window
+            const keep = Math.max(0, Math.min(1, (window - since) / 800));
             pct = Math.min(1, chainStunHits / (isPatriciaFight() ? PAT_STUN_HITS : CHAIN_STUN_HITS)) * keep;
         }
         // Only touch the page when something actually changed (writing to the DOM 60 times a second made Safari stutter).
@@ -3882,12 +3883,12 @@ export function createLevel1(ui, opts = {}) {
         const e = nowMs - zombieCombatStateStart;
         const jabWind = st === 'jab' && e < PAT_JAB_WINDUP_MS;   // V9.80: the pink jab CAN be interrupted during its wind-up
         const canFlinch = jabWind;   // V9.80: only the pink jab can be interrupted; everything else is just a flinch   // V9.80: a red attack (lunge, combo) can never be interrupted, hits still do damage
-        // V9.80: stun, exactly like the Chain Goth: 3 hit points inside 9.5 s (a Heavy = 2) leave her dizzy so Olly can hit her again. Hits while she is invincible (yellow / purple) do not count.
+        // V9.99: 3 clean hits in short succession (4.5 s) stun her — a Heavy counts 2, so a Heavy + punch does it
         if (st !== 'phurt' && st !== 'death' && !patInvuln()) {
-            if (nowMs - chainStunLastHit > CHAIN_STUN_HIT_WINDOW_MS) chainStunHits = 0;
+            if (nowMs - chainStunLastHit > PAT_STUN_WINDOW_MS) chainStunHits = 0;   // V9.99: Patricia uses her own tighter window
             chainStunHits += heavy ? 2 : 1;
             chainStunLastHit = nowMs;
-            if (chainStunHits >= PAT_STUN_HITS) { startPatStun(nowMs); return; }   // V9.80: her own, higher stun threshold
+            if (chainStunHits >= PAT_STUN_HITS) { startPatStun(nowMs); return; }
         }
         // a hit during the pink jab's wind-up stops it: she plays her hurt reaction once
         if (canFlinch) { patHurtMs = patSeqMs(PAT_HURT_SEQ); patStunning = false; patBeginHurt(nowMs); }
@@ -4090,6 +4091,12 @@ export function createLevel1(ui, opts = {}) {
         }
         if (st === 'vstrike') {
             const strikeAt = PAT_VSTRIKE_APPEAR_MS;
+            // V9.99: she tracks Olly after reappearing — keeps facing + sliding toward him until 120ms before the swing
+            if (elapsed < strikeAt - 120) {
+                patFace = player.x < zombieCombatX ? 'left' : 'right';
+                const g = Math.abs(player.x - zombieCombatX);
+                if (g > 200) zombieCombatX += (patFace === 'left' ? -1 : 1) * Math.min(g - 200, 100 * dt);
+            }
             if (!zombieCombatAttackHit && elapsed >= strikeAt + PAT_LUNGE_HIT_AT_MS) {
                 zombieCombatAttackHit = true;
                 playSfx('chain-impact', .95, 1.0);
@@ -5336,13 +5343,14 @@ export function createLevel1(ui, opts = {}) {
             : Math.hypot(dx, dy) <= 180;
 
         if (hit) {
-            const damage = 5;   // V9.92: punch damage tuning, per Scarlett - was 10
+            const stunBonus = isPatriciaFight() && patStunning;   // V9.99: bonus damage when Patricia is stunned
+            const damage = stunBonus ? 10 : 5;   // V9.92: punch damage tuning, per Scarlett - was 10; V9.99: double during stun
             combatHp = Math.max(0, combatHp - damage);
             ui.enemyHp.style.width = (combatHp / combatMax * 100) + '%';
             ui.enemyHpText.textContent = `${combatHp} / ${combatMax}`;
             comboCount++;
             playRandomSfx(['punch-1', 'punch-2', 'punch-3']);
-            ui.combatStatus.textContent = `👊 HIT! ${damage} damage.`;
+            ui.combatStatus.textContent = stunBonus ? `⚡ STUN BONUS! ${damage} damage!` : `👊 HIT! ${damage} damage.`;
             if (combatHp <= 0) {
                 if (target?.type === 'shambler')
                     triggerZombieDeath(nowMs);
@@ -5429,13 +5437,16 @@ export function createLevel1(ui, opts = {}) {
             distance = Math.hypot(enemyX - player.x, enemyY - player.y);
 
         if (distance <= 265 && !patGone() && !patInvuln() && !foe?.untargetable(nowMs)) {   // V9.80: a touch more reach so a committed heavy really lands
-            const damage = 20;
+            const heavyStunBonus = isPatriciaFight() && patStunning;   // V9.99: bonus damage when Patricia is stunned
+            const damage = heavyStunBonus ? 35 : 20;   // V9.99: 75% bonus during stun (was flat 20)
             combatHp = Math.max(0, combatHp - damage);
             ui.enemyHp.style.width = (combatHp / combatMax * 100) + '%';
             ui.enemyHpText.textContent = `${combatHp} / ${combatMax}`;
             playSfx('punch-2', 1); playSfx('olly-hurt-heavy', .5, 1.3);   // a meatier thump so it reads as a big hit
             kickShake(12, 300);
-            ui.combatStatus.textContent = `💥 HEAVY HIT! ${damage} damage. Heavy attack on cooldown for ${Math.ceil(60 * heavyCdMul)}s.`;   // V9.92: was a hardcoded "15s" that no longer matched the real cooldown
+            ui.combatStatus.textContent = heavyStunBonus
+                ? `⚡ STUN BONUS! HEAVY HIT! ${damage} damage! Heavy attack on cooldown for ${Math.ceil(60 * heavyCdMul)}s.`
+                : `💥 HEAVY HIT! ${damage} damage. Heavy attack on cooldown for ${Math.ceil(60 * heavyCdMul)}s.`;   // V9.92/V9.99
             if (combatHp <= 0) {
                 if (target?.type === 'shambler')
                     triggerZombieDeath(nowMs);
