@@ -228,10 +228,10 @@ ollyMapWalkSprites.right.src = 'assets/characters/map/olly-walk-left.webp?v=7700
 // V9.97: a real stride cycle (13 frames Scarlett supplied), facing image-left.
 // Used on the map for left/right travel; up/down keep the single static pose above
 // (no back/front stride frames exist yet).
-const OLLY_WALK_CYCLE_FPS = 9;
+const OLLY_WALK_CYCLE_FPS = 13;   // V9.98: real keyed video frames, sped up from Scarlett's source clip
 const ollyWalkCycle = Array.from({ length: 13 }, (_, i) => {
     const im = new Image();
-    im.src = `assets/characters/olly-walk/walk-${String(i + 1).padStart(2, '0')}.webp?v=9970`;
+    im.src = `assets/characters/olly-walk/walk-${String(i + 1).padStart(2, '0')}.webp?v=9980`;
     return im;
 });
 function ollyWalkCycleFrame(t) {
