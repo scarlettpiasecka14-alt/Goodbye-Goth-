@@ -225,10 +225,10 @@ ollyMapWalkSprites.back.src = 'assets/characters/map/olly-walk-back.webp?v=7700'
 ollyMapWalkSprites.left.src = 'assets/characters/map/olly-walk-right.webp?v=7700';
 ollyMapWalkSprites.right.src = 'assets/characters/map/olly-walk-left.webp?v=7700';
 
-// V9.97/9.99: real stride cycles, keyed and cropped from Scarlett's green-screen videos.
-// left/right share one left-facing cycle (flipped for right); 'up' (walking away from camera)
-// has its own back-facing cycle. 'down' (toward camera) keeps the single static pose above
-// until a front-facing cycle exists.
+// V9.97-V10.0: real stride cycles, keyed and cropped from Scarlett's green-screen videos.
+// left/right share one left-facing cycle (flipped for right); 'up' (away from camera) and
+// 'down' (toward camera) each have their own back/front-facing cycle. All four map
+// directions are now animated - the static poses above are now just the pre-move idle pose.
 const OLLY_WALK_CYCLE_FPS = 13;   // V9.98: sped up from Scarlett's source clip
 function makeWalkCycle(folder, prefix, count, v) {
     const frames = Array.from({ length: count }, (_, i) => {
@@ -245,6 +245,7 @@ function makeWalkCycle(folder, prefix, count, v) {
 }
 const ollyWalkCycleFrame = makeWalkCycle('olly-walk', 'walk', 13, 9980);
 const ollyWalkBackCycleFrame = makeWalkCycle('olly-walk-back', 'back', 13, 9990);   // V9.99
+const ollyWalkFrontCycleFrame = makeWalkCycle('olly-walk-front', 'front', 13, 10000);   // V10.0
 
 // Combat animation frames are cropped from the supplied sprite sheet so each
 // pose keeps its own aspect ratio and stray sprite-sheet labels never render.
@@ -869,13 +870,16 @@ function drawOlly(ctx, x, y, s=.78, t=0, front=true, dir='right', moving=false, 
     else if (mapDir === 'left') img = ollyMapWalkSprites.left;
     else if (mapDir === 'right') img = ollyMapWalkSprites.right;
 
-    // V9.97/9.99: while actually walking, prefer the real stride-cycle frames over the
+    // V9.97-V10.0: while actually walking, prefer the real stride-cycle frames over the
     // single static pose above (the left/right frames face image-left, so moving right flips them).
     if (moving && (mapDir === 'left' || mapDir === 'right')) {
         const cycleFrame = ollyWalkCycleFrame(t);
         if (cycleFrame) { img = cycleFrame; flipX = (mapDir === 'right'); }
     } else if (moving && mapDir === 'up') {
         const cycleFrame = ollyWalkBackCycleFrame(t);
+        if (cycleFrame) { img = cycleFrame; }
+    } else if (moving && mapDir === 'down') {
+        const cycleFrame = ollyWalkFrontCycleFrame(t);
         if (cycleFrame) { img = cycleFrame; }
     }
 
