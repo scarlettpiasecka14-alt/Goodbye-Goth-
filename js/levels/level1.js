@@ -2872,7 +2872,10 @@ export function createLevel1(ui, opts = {}) {
         // remember the last frame drawn in ANY state, so entering (or leaving) the attack can blend too.
         // V9.97: extended crossfade to ALL state transitions (walk→ready, ready→windup, etc.)
         // so there's no hard pop between any animation sets. The old code only faded claw/heavyKick.
-        if (zombieLastDrawImg && zombieLastDrawImg.img !== frame.img && nowMs - zombieLastDrawImg.t < 140) {
+        // V9.98: skip crossfade during rapid-frame animations (intro, death) where frames swap
+        // faster than the 90ms fade can finish — the constantly-resetting fade made her transparent.
+        const rapidFrameState = (zombieCombatState === 'intro' || zombieCombatState === 'death');
+        if (!rapidFrameState && zombieLastDrawImg && zombieLastDrawImg.img !== frame.img && nowMs - zombieLastDrawImg.t < 140) {
             zombieXfade = { ...zombieLastDrawImg, start: nowMs };
         }
         const xk = zombieXfade ? Math.min(1, (nowMs - zombieXfade.start) / 90) : 1;
@@ -3153,7 +3156,7 @@ export function createLevel1(ui, opts = {}) {
         }
         // Chain Goth cannot be knocked out of her swipe or spin, and she shrugs off hits while dizzy (the hits still count).
         if (isChainFight()) {
-            if (zombieCombatState === 'swipe' || zombieCombatState === 'slam') {   // V9.80: only shrugs off hits mid-swing; hits during the wind-up now count toward the stun
+            if (zombieCombatState === 'swipe' || zombieCombatState === 'slam' || zombieCombatState === 'windup') {   // V9.98: windup added — her red attack is uninterruptible from start to finish (she still takes damage but the attack continues)
                 zombieHitFlashUntil = nowMs + 115;
                 return;
             }
