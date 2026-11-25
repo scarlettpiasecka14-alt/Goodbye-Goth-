@@ -624,7 +624,7 @@ const PAT_LIGHT_STUN_AT_MS = 3000, PAT_LIGHT_STUN_MS = 900, PAT_LIGHT_STUN_DAMAG
 const PAT_HURT_SEQ = Array.from({ length: 21 }, (_, i) => [i, i === 20 ? 160 : 34]);   // V9.80: ~0.8s, not ~1.6s - you can no longer just keep hitting her while she's frozen   // V9.80: her ONE hurt reaction ('hurtm' pack, 21 frames, ~1.3 s, then she holds the last pose). Used when she is interrupted, stunned, and at half health.
 const PAT_HURT_SEQS = { medium: PAT_HURT_SEQ, heavy: PAT_HURT_SEQ };
 const PAT_STUN_MS = 3000;   // V9.99b: 3 seconds per Scarlett — enough to land a full combo (1-2-3 punch + heavy) if you're quick
-const PAT_STUN_HITS = 3, PAT_STUN_WINDOW_MS = 4500;   // V9.99: per Scarlett - 3 clean hits in short succession (was 6 in 9.5s). Tighter window makes stun a reward for quick combos
+const PAT_STUN_HITS = 3, PAT_STUN_WINDOW_MS = 4500, PAT_STUN_COOLDOWN_MS = 120000;   // V9.99c: 3 clean hits in 4.5s; can only be stunned once every 2 min
 const patSeqMs = (q) => q.reduce((a, e) => a + e[1], 0);
 const PAT_HURT_SEGS = [[0, 10], [11, 21], [22, 34], [35, 48]], PAT_HURT_DY = [1, -9, 42, 119], PAT_HURT_FRAME_MS = 48, PAT_HURT_GRUNTS = ['grunt-4', 'grunt-7', 'grunt-3', 'grunt-8'];
 const PAT_DEFEAT_HOLD_MS = 450;   // no death animation any more: she freezes for a beat, then the death cutscene plays
@@ -632,7 +632,7 @@ const PAT_PATTERN_1 = ['lunge', 'jab', 'vanish', 'jab', 'lunge'];
 const PAT_PATTERN_2 = ['jab', 'lightning', 'vanish', 'lunge', 'jab', 'lightning', 'vanish'];
 // V9.80: the reward chest (Patricia's chest) opening clip, 97 frames at 24 fps (tools/build_chest.py)
 const chestPack = { img: new Image(), frames: CHEST_ATLAS_DATA.frames.map(f => [f[0], f[1], f[2], f[3], f[4] / 0.28, f[5] / 0.28]), scale: 0.28 };   // V9.80: the table's offsets are in atlas pixels; the draw multiplies by the scale, so they are pre-divided (the chest used to sit too low and off to one side)
-const CHEST_FRAME_MS = 1000 / 24, CHEST_REWARDS_AT_MS = 2900;
+const CHEST_FRAME_MS = 1000 / 24, CHEST_REWARDS_AT_MS = 4200;   // V9.99c: let the 97-frame chest animation fully finish (~4042ms) before rewards pop up
 const chestVinesImg = new Image(); chestVinesImg.src = 'assets/environment/chest-vines.webp?v=9820';   // V9.80: wisteria vine art to drape over the chest's cut-off base
 const chainAtlas = {};
 for (const [name, data] of Object.entries(CHAIN_ATLAS_DATA)) {
@@ -3436,7 +3436,8 @@ export function createLevel1(ui, opts = {}) {
         // Only touch the page when something actually changed (writing to the DOM 60 times a second made Safari stutter).
         const w = (pct * 100).toFixed(0) + '%';
         if (w !== stunMeterW) { stunMeterW = w; ui.enemyStun.style.width = w; }
-        if (full !== stunMeterFull) { stunMeterFull = full; ui.enemyStunWrap.classList.toggle('full', full); ui.enemyStunLabel.textContent = full ? 'STUNNED!' : 'STUN'; }
+        const onCooldown = isPatriciaFight() && !patStunning && nowMs - patLastStunAt < PAT_STUN_COOLDOWN_MS && patLastStunAt > 0;   // V9.99c
+        if (full !== stunMeterFull) { stunMeterFull = full; ui.enemyStunWrap.classList.toggle('full', full); ui.enemyStunLabel.textContent = full ? 'STUNNED!' : onCooldown ? 'STUN (recovering)' : 'STUN'; }
     }
     function getChainCombatFrame(nowMs) {
         const elapsed = Math.max(0, nowMs - zombieCombatStateStart);
@@ -3907,9 +3908,9 @@ export function createLevel1(ui, opts = {}) {
         const e = nowMs - zombieCombatStateStart;
         const jabWind = st === 'jab' && e < PAT_JAB_WINDUP_MS;   // V9.80: the pink jab CAN be interrupted during its wind-up
         const canFlinch = jabWind;   // V9.80: only the pink jab can be interrupted; everything else is just a flinch   // V9.80: a red attack (lunge, combo) can never be interrupted, hits still do damage
-        // V9.99: 3 clean hits in short succession (4.5 s) stun her — a Heavy counts 2, so a Heavy + punch does it
-        if (st !== 'phurt' && st !== 'death' && !patInvuln()) {
-            if (nowMs - chainStunLastHit > PAT_STUN_WINDOW_MS) chainStunHits = 0;   // V9.99: Patricia uses her own tighter window
+        // V9.99c: 3 clean hits in 4.5s stun her, but only once every 2 minutes
+        if (st !== 'phurt' && st !== 'death' && !patInvuln() && nowMs - patLastStunAt >= PAT_STUN_COOLDOWN_MS) {
+            if (nowMs - chainStunLastHit > PAT_STUN_WINDOW_MS) chainStunHits = 0;
             chainStunHits += heavy ? 2 : 1;
             chainStunLastHit = nowMs;
             if (chainStunHits >= PAT_STUN_HITS) { startPatStun(nowMs); return; }
@@ -3928,7 +3929,7 @@ export function createLevel1(ui, opts = {}) {
     }
     function startPatStun(nowMs) {
         chainStunHits = 0; patSpark = null; patSparkShards = null;
-        patHurtMs = PAT_STUN_MS; patStunning = true;
+        patHurtMs = PAT_STUN_MS; patStunning = true; patLastStunAt = nowMs;   // V9.99c: record stun time for cooldown
         patBeginHurt(nowMs);
         zombieCombatAttackHit = true;
         comboCount = Math.max(0, comboCount - 1); attackCooldownUntil = 0;   // V9.82: refund one punch, not the whole combo (Patricia only - Chain Goth's refund was removed in V9.93, see startChainStun)
@@ -3967,7 +3968,9 @@ export function createLevel1(ui, opts = {}) {
         if (patVid && !patVid.failed) {   // the cutscene is (almost always) already loaded: straight in
             patVid.ov.style.opacity = '1'; patVid.ov.style.pointerEvents = 'auto'; patVid.skip.style.display = 'block';
             try { patVid.v.currentTime = 0; } catch (e) {}
-            patVid.v.muted = false;
+            patVid.v.muted = false; patVid.v.volume = 1;
+            // V9.99c: boost cutscene volume via Web Audio gain (the video file is too quiet on its own)
+            try { const ac = new (window.AudioContext || window.webkitAudioContext)(); const src = ac.createMediaElementSource(patVid.v); const gain = ac.createGain(); gain.gain.value = 2.0; src.connect(gain); gain.connect(ac.destination); patVid._ac = ac; } catch (e) {}
             patVid.v.play().catch(() => { patVid.v.muted = true; patVid.v.play().catch(() => {}); });
             setTimeout(() => { if (patVid && patVid.started && !patVid.done && patVid.v.currentTime < .05) patCutsceneDone(); }, 3000);   // it never started: carry on rather than sit on black
             playMusic('', 120);   // the video carries the boss music itself
@@ -4173,7 +4176,7 @@ export function createLevel1(ui, opts = {}) {
     function patStand() { return { pack: patAtlas.jab, index: 0, flipArt: false }; }
     let patSpark = null;
     let patJabChargeSoundAt = -1e9;   // V9.81: one-shot charge-up zap so you can HEAR the orb attack coming, not just see it
-    let patLastDraw = null, patXfade = null, patStunning = false, patHurtMs = 500, patHurtLvl = 'medium', patHurtSeg = 0, patHurtLast = -1, patReward = null, patVid = null;
+    let patLastDraw = null, patXfade = null, patStunning = false, patLastStunAt = 0, patHurtMs = 500, patHurtLvl = 'medium', patHurtSeg = 0, patHurtLast = -1, patReward = null, patVid = null;   // V9.99c: patLastStunAt tracks cooldown
     // V9.54: no more freezing. While she stands still (waiting, recovering, between moves) she breathes and sways, and EVERY hit gives her a visible flinch (even during a strike's strike-frames, when no hurt clip plays).
     let patHitKickAt = -1e9, patLastWalkIdx = -1, patWalkMovedAt = -1e9;
     let patLightStandMs = 0, patLightDmgAccum = 0;   // V9.84: lightning floor-hazard DOT/stun tracking (fractional per-frame damage accrues in patLightDmgAccum and is applied in whole points, so the HP readout stays a clean integer)
@@ -4305,7 +4308,7 @@ export function createLevel1(ui, opts = {}) {
         v.play().then(() => { if (!patVid.started) { v.pause(); try { v.currentTime = 0; } catch (e) {} } v.muted = false; }).catch(() => { v.muted = false; });
     }
     function patDeathCleanup() {
-        if (patVid) { try { patVid.v.pause(); patVid.v.removeAttribute('src'); patVid.v.load(); } catch (e) {} patVid.ov.remove(); patVid = null; }
+        if (patVid) { try { patVid.v.pause(); patVid.v.removeAttribute('src'); patVid.v.load(); } catch (e) {} try { patVid._ac?.close(); } catch (e) {} patVid.ov.remove(); patVid = null; }
         const ro = document.getElementById('pat-reward-overlay'); if (ro) ro.remove();
         patReward = null;
     }
