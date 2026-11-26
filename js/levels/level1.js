@@ -5,7 +5,7 @@ import { actionHint, hintHTML } from '../controls.js?v=9820';
 // V9.94: Level 2 runs on this same engine (createLevel1(ui, { level: 2 })). Its settings live in
 // level2-config.js; the parts this file doesn't have (Find the Princess, Devil's Fingers, Sophia)
 // are borrowed from level2.js. With no level option everything below behaves exactly as Level 1.
-import { LEVEL2 } from './level2-config.js?v=10070';
+import { LEVEL2 } from './level2-config.js?v=10080';
 import { createLevel2 } from './level2.js?v=9950';
 import { createFoe, preloadLevel2Foes } from './level2-foes.js?v=9960';   // V9.96: Devil's Fingers + Sophia on this fight screen
 // Game clock: normal time, but it stands still while a tutorial pop-up is open (so nothing happens behind it).
@@ -1976,6 +1976,22 @@ export function createLevel1(ui, opts = {}) {
             drawAnimatedMist(t);
         }
         ctx.restore();
+        // TEMP V10.8 diagnostic: on-screen readout to chase down the Level 2 marker-position
+        // reports. Remove once the markers are confirmed lining up with the art again.
+        if (LV) {
+            ctx.save();
+            ctx.font = '13px monospace';
+            ctx.fillStyle = 'rgba(0,0,0,.65)';
+            ctx.fillRect(4, 4, 430, 70);
+            ctx.fillStyle = '#7CFC9A';
+            const gsx = (vw / 2 + (boss.x - camX) * zoom).toFixed(0), gsy = (vh / 2 + (boss.y - camY) * zoom).toFixed(0);
+            const psx = (vw / 2 + (playerX - camX) * zoom).toFixed(0), psy = (vh / 2 + (playerY - camY) * zoom).toFixed(0);
+            ctx.fillText(`vw=${vw.toFixed(0)} vh=${vh.toFixed(0)} zoom=${zoom} dpr=${(window.devicePixelRatio||1).toFixed(2)}`, 10, 20);
+            ctx.fillText(`cam=${camX.toFixed(0)},${camY.toFixed(0)}  player world=${playerX.toFixed(0)},${playerY.toFixed(0)} screen=${psx},${psy}`, 10, 38);
+            ctx.fillText(`gate world=${boss.x},${boss.y}  gate screen=${gsx},${gsy}`, 10, 56);
+            ctx.fillText(`canvas.width=${ui.canvas.width} canvas.height=${ui.canvas.height}`, 10, 72);
+            ctx.restore();
+        }
     }
     // ---- V9.94 Level 2 map drawing helpers ----
     // V9.97: Devil's Fingers' real marker art, with the old glow kept underneath for atmosphere.
