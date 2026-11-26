@@ -182,7 +182,10 @@ gateLockSprite.src = 'assets/encounters/level1/gate-lock.webp?v=6524';
 // V9.21 inventory items (module level so the inventory code can use them at any time)
 const ITEM_INFO = {
     key: { name: 'A Mysterious Key', desc: 'It seems important.', tip: 'A mysterious key. Seems important.', img: 'assets/items/golden-key.webp', label: 'KEY' },
-    potion: { name: 'Potion', desc: 'Drink to restore to full HP.', tip: 'Drink to restore to full HP.', img: 'assets/items/potion-vial.webp', label: 'POTION' }
+    potion: { name: 'Potion', desc: 'Drink to restore to full HP.', tip: 'Drink to restore to full HP.', img: 'assets/items/potion-vial.webp', label: 'POTION' },
+    // V9.99f: Patricia's chest reward, shown read-only in the bag (no USE button - it's a quick-deploy
+    // panic button during combat, pressed with the veil key, not something you'd click from a paused menu).
+    veil: { name: 'Moth-Eaten Veil', desc: 'Hmm, some kind of protective item... seems eaten. Maybe you can still get some use out of it. Grants 5 seconds of immunity during combat - 3 times when deployed.', tip: 'Hmm, some kind of protective item... seems eaten. Maybe you can still get some use out of it. Grants 5 seconds of immunity during combat - 3 times when deployed.', img: 'assets/items/moth-eaten-veil.webp', label: 'VEIL' }
 };
 // V9.22: Olly's drinking animation (50 frames) used before the Patricia fight.
 // V9.84: this was tuned (V9.36b) against PAT_OLLY_SCALE=0.95 and never retuned when that later changed
@@ -1710,13 +1713,14 @@ export function createLevel1(ui, opts = {}) {
         const items = [];
         if (inventory && inventory.key) items.push('key');
         if (inventory && inventory.potion) items.push('potion');
+        if (veilCharges > 0) items.push('veil');   // V9.99f: Patricia's chest reward - shows while charges remain, gone once spent
         const count = items.length;
         const countText = `${count}/10`;
         const countEl = document.getElementById('inventory-count');
         const largeCountEl = document.getElementById('inventory-count-large');
         if (countEl) countEl.textContent = countText;
         if (largeCountEl) largeCountEl.textContent = `${count} / 10 ITEMS`;
-        const sig = items.join(',');
+        const sig = items.join(',') + '|' + veilCharges;   // V9.99f: veilCharges folded in so the label updates as charges are spent
         const slots = document.querySelectorAll('#inventory .inventory-slot');
         if (slots.length && sig !== invSig) {
             invSig = sig;
@@ -1724,7 +1728,8 @@ export function createLevel1(ui, opts = {}) {
                 const item = items[i];
                 if (item) {
                     const info = ITEM_INFO[item];
-                    slot.innerHTML = `<img class="inv-item-img" src="${info.img}?v=9420" alt="${info.name}" draggable="false"><span>${info.label}</span>`;
+                    const label = item === 'veil' ? `VEIL ×${veilCharges}` : info.label;   // V9.99f: show remaining charges
+                    slot.innerHTML = `<img class="inv-item-img" src="${info.img}?v=9420" alt="${info.name}" draggable="false"><span>${label}</span>`;
                     slot.dataset.item = item;
                     slot.dataset.tip = info.tip;
                     slot.classList.add('inventory-filled');
@@ -4287,8 +4292,9 @@ export function createLevel1(ui, opts = {}) {
     // Cutscene file: assets/video/cutscene4/patricia-death.mp4 (the video carries the BossFight1 music; afterwards BossFight1 restarts 15 s in).
     // V9.85: one limited-use ability + one permanent passive, per Scarlett (not a pile of stacking collectibles).
     const PAT_REWARDS = [
-        { id: 'veil', icon: '🕸️', name: 'Moth-Eaten Veil', get desc() { return 'Press ' + actionHint('veil') + ' mid-fight for 3 seconds of true invincibility. Works 3 times, ever - then it\'s gone.'; }, apply() { veilCharges = 3; } },
-        { id: 'heavycd', icon: '⚡', name: 'Heavy Attack recharge -25%', desc: 'Heavy Attack comes back faster, for good (60s becomes 45s).', apply() { heavyCdMul = Math.min(heavyCdMul, .75); } },   // V9.92: text updated to match the new 60s base cooldown
+        // V9.99f: real art instead of emoji, and hover text per Scarlett's wording (typos tidied up).
+        { id: 'veil', img: 'assets/items/moth-eaten-veil.webp', name: 'Moth-Eaten Veil', desc: 'Hmm, some kind of protective item... seems eaten. Maybe you can still get some use out of it. Grants 5 seconds of immunity during combat - 3 times when deployed.', apply() { veilCharges = 3; } },
+        { id: 'heavycd', img: 'assets/items/heavy-attack-reward.webp', name: 'Heavy Attack recharge -25%', desc: 'All that fighting\'s really improved your stamina. Heavy attack cooldown is now 45 seconds.', apply() { heavyCdMul = Math.min(heavyCdMul, .75); } },
     ];
     const PAT_CUTSCENE_FILES = ['assets/video/cutscene4/patricia-death.mp4', 'assets/video/cutscene4/patriciadeath.mp4', 'assets/video/cutscene4/PatriciaDeath.mp4', 'assets/video/cutscene4/patricia-death.mov'];
     function patDeathPrep() {
@@ -4358,7 +4364,7 @@ export function createLevel1(ui, opts = {}) {
         PAT_REWARDS.forEach(r => {
             const b = document.createElement('button');
             b.type = 'button'; b.className = 'inventory-slot inventory-filled gg-reward';
-            b.innerHTML = `<div style="font-size:2.3rem;line-height:1">${r.icon}</div><span style="font-size:.95rem!important;max-width:100%">${r.name}</span>`;
+            b.innerHTML = `<img src="${r.img}?v=9420" alt="${r.name}" draggable="false" style="width:72px;height:72px;object-fit:contain;display:block;margin:0 auto"><span style="font-size:.95rem!important;max-width:100%">${r.name}</span>`;
             b.style.aspectRatio = 'auto'; b.style.padding = '14px 8px'; b.style.cursor = 'pointer';
             b.addEventListener('mouseenter', () => { note.textContent = r.desc; });
             b.addEventListener('click', () => {
@@ -5585,8 +5591,9 @@ export function createLevel1(ui, opts = {}) {
         foe?.onDodge(nowMs);   // V9.96
     }
     // V9.85: the Moth-Eaten Veil (Patricia's chest reward) - 3 total charges, no recharge, ever. Each press
-    // buys 3 real seconds of true invincibility (reuses the same player.invuln the dodge i-frame uses, just
-    // much longer), so it works against anything - sword, lightning, future bosses, all of it.
+    // buys 5 real seconds of true invincibility (V9.99f: was 3s, bumped to match Scarlett's item text)
+    // (reuses the same player.invuln the dodge i-frame uses, just much longer), so it works against
+    // anything - sword, lightning, future bosses, all of it.
     function combatVeil() {
         if (patReward) return;
         if (pausedAt) return;
@@ -5596,10 +5603,10 @@ export function createLevel1(ui, opts = {}) {
         const nowMs = gnow();
         if (nowMs < veilUntil) return;   // already shimmering: can't stack another charge on top
         veilCharges--;
-        veilUntil = nowMs + 3000;
-        player.invuln = nowMs + 3000;
+        veilUntil = nowMs + 5000;
+        player.invuln = nowMs + 5000;
         playSfx('olly-jump', .7);   // V9.85: placeholder sfx - swap for a dedicated veil whoosh once Scarlett has one
-        ui.combatStatus.textContent = `🕸️ VEIL! True invincibility - 3s. (${veilCharges} use${veilCharges === 1 ? '' : 's'} left)`;
+        ui.combatStatus.textContent = `🕸️ VEIL! True invincibility - 5s. (${veilCharges} use${veilCharges === 1 ? '' : 's'} left)`;
     }
     function showHeavyAttackReward() {
         heavyUnlocked = true;
