@@ -4086,8 +4086,19 @@ export function createLevel1(ui, opts = {}) {
                 if (g > 230) zombieCombatX += (patFace === 'left' ? -1 : 1) * Math.min(g - 230, 70 * dt);
             }
             if (elapsed >= strikeAt && elapsed < strikeAt + 300) {
+                // V10.7: this was closing the gap toward a fixed 150px standoff using patFace, which was
+                // frozen up to 550ms earlier (the "eyes on Olly" phase above stops at strikeAt-260). If Olly
+                // stood still near the middle, this could shove zombieCombatX PAST his actual x - which flips
+                // the sign of applyZombieDamage's directional "behind" check and reads as Olly having dodged
+                // behind her, even though he never moved. Clamping the move to stop at player.x (with a small
+                // safety margin) keeps her from ever lunging past him.
                 const d = patFace === 'left' ? -1 : 1, g = (player.x - zombieCombatX) * d;
-                if (g > 150) zombieCombatX = Math.max(170, Math.min(COMBAT_W - 170, zombieCombatX + d * Math.min(g - 150, 700 * dt)));
+                if (g > 150) {
+                    const move = d * Math.min(g - 150, 700 * dt);
+                    let nx = zombieCombatX + move;
+                    nx = d > 0 ? Math.min(nx, player.x - 40) : Math.max(nx, player.x + 40);
+                    zombieCombatX = Math.max(170, Math.min(COMBAT_W - 170, nx));
+                }
             }
             if (elapsed >= strikeAt + PAT_LUNGE_STRIKE_FRAMES * PAT_LUNGE_FRAME_MS + 120) patToRecover(nowMs, 650);
             return;
@@ -4240,8 +4251,21 @@ export function createLevel1(ui, opts = {}) {
         if (st === 'lunge' || st === 'vstrike') {
             const wind = st === 'lunge' ? PAT_LUNGE_WINDUP_MS : PAT_VSTRIKE_APPEAR_MS;
             if (elapsed < wind) {
-                const p = Math.min(.999, elapsed / wind);
                 const from = st === 'lunge' ? 18 : 21;   // V9.82: frames 0-17 of the clip are a front-on, camera-facing stance (fine as her default idle, but jarring mid-fight - "why is she suddenly standing and facing the camera instead of facing Ollie?"). Starting at 18, where she's already turned into the windup, drops that flash entirely; the vanish strike appears already crouched, so it only plays the second half of the wind-up.
+                if (st === 'lunge') {
+                    // V10.7: real fix for the blur Scarlett kept reporting ("the same animation ... is blurry and slow").
+                    // The old code spread p = elapsed/wind linearly across the FULL 1500ms windup no matter how many
+                    // real frames there were, so the 19 frames here (18->37) were stretched to ~1.64x their natural
+                    // speed and were ALWAYS mid-blend between two frames - constant ghosting, not an occasional blur.
+                    // Jab's windup (23 frames / 1000ms) is close enough to its natural speed that this never showed.
+                    // Fix: play these frames at their own natural cadence (PAT_LUNGE_FRAME_MS/frame), then hold the
+                    // final pose crisply (frac=0, via mk()'s own clamp) for whatever's left of the 1500ms window,
+                    // instead of smearing them across the whole thing.
+                    const span = PAT_LUNGE_WINDUP_FRAMES - from;   // 19
+                    const t = Math.min(elapsed, span * PAT_LUNGE_FRAME_MS) / PAT_LUNGE_FRAME_MS;
+                    return mk(patAtlas.lunge, from + t, PAT_LUNGE_WINDUP_FRAMES, false);
+                }
+                const p = Math.min(.999, elapsed / wind);
                 return mk(patAtlas.lunge, from + p * (PAT_LUNGE_WINDUP_FRAMES - from), PAT_LUNGE_WINDUP_FRAMES, false);
             }
             return mk(patAtlas.lunge, (elapsed - wind) / PAT_LUNGE_FRAME_MS, PAT_LUNGE_STRIKE_FRAMES, false, PAT_LUNGE_WINDUP_FRAMES);
@@ -4529,12 +4553,11 @@ export function createLevel1(ui, opts = {}) {
         // like every other clip fixes that without having to touch the segment's timing at all.
         if (!frame.hide && frame.next != null && frame.next !== frame.index && frame.frac > .02 && (packName === 'jab' || packName === 'hurtm' || packName === 'lunge' || packName === 'lightning' || packName === 'intro' || packName === 'stage2')) {
             const rs2 = PAT_SCALE * PAT_SIZE_K * (PAT_PACK_K[packName] || 1) * 1;
-            // V9.99d: cap lunge wind-up blend to 30% — the full cross-fade over 1500ms of big-pose wind-up
-            // frames made the sword swipe read as blurry/ghosted when done as a standalone attack.
-            // The strike half and every other clip keep their normal blend.
-            const lungeWindup = st === 'lunge' && (nowMs - zombieCombatStateStart) < PAT_LUNGE_WINDUP_MS;
-            const bf = lungeWindup ? Math.min(frame.frac, 0.3) : frame.frac;
-            drawChainAtlasFrame(c, frame.pack, frame.next, enemyX, CHAIN_FLOOR_Y, drawFace, rs2, alpha * bf, 0, 0);
+            // V9.99d's 30%-blend cap for the lunge windup is gone as of V10.7: it was a band-aid over the
+            // real problem (the windup was stretched 1.64x past natural speed, see getPatriciaFrame above).
+            // Now that the windup plays at natural cadence and then holds (frac snaps to 0), the normal
+            // blend here is exactly what every other clip gets - no special case needed.
+            drawChainAtlasFrame(c, frame.pack, frame.next, enemyX, CHAIN_FLOOR_Y, drawFace, rs2, alpha * frame.frac, 0, 0);
         }
         c.restore();
         // V9.89: her new umbrella 3-2-1 clip - per Scarlett, purple smoke should swirl around the
@@ -4593,7 +4616,7 @@ export function createLevel1(ui, opts = {}) {
             }
         }
         updateChainStunMeter(nowMs);
-        if (patSpeech) drawSpeechBubble(c, enemyX - 60, 160, patSpeech.text, nowMs - patSpeech.start, -310);   // V9.99d: per Scarlett — moved bubble left and tail tip down onto her head (was floating above and too far right)
+        if (patSpeech) drawSpeechBubble(c, enemyX + 10, 120, patSpeech.text, nowMs - patSpeech.start, -310);   // V10.7: per Scarlett, the tail was still cutting right across her face - verified live (not guessed) with an instrumented headless run that this tipY/x combo lands the tail just above her hairline instead
         drawJabCharge(c, enemyX, nowMs);
         drawPatSpark(c, nowMs);
     }
