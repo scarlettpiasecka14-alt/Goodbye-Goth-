@@ -11,7 +11,7 @@
    To check positions against the collision, open the game with ?level=2&walk=1.
 
    PLACEHOLDER ART is marked "placeholder" below - Scarlett is making the real screens. */
-import { LEVEL2_WALK_RLE } from './level2-walk.js?v=10080';
+import { LEVEL2_WALK_RLE } from './level2-walk.js?v=10090';
 
 const ENC = 'assets/encounters/level2/';
 
