@@ -11,7 +11,7 @@
    To check positions against the collision, open the game with ?level=2&walk=1.
 
    PLACEHOLDER ART is marked "placeholder" below - Scarlett is making the real screens. */
-import { LEVEL2_WALK_RLE } from './level2-walk.js?v=10110';
+import { LEVEL2_WALK_RLE } from './level2-walk.js?v=10120';
 
 const ENC = 'assets/encounters/level2/';
 
@@ -31,29 +31,29 @@ export const LEVEL2 = {
     enemies: () => [
         // V10.6: moved to the small stone archway by the moon-banner cabin (bottom-right), per
         // Scarlett's hand-drawn green X on her annotated map screenshot.
-        { x: 1109, y: 932, type: 'chain', name: 'CHAIN GOTH', hp: 100, maxHp: 100, dead: false, pattern: 'Whip • Chain Slam' },
+        { x: 920, y: 905, type: 'chain', name: 'CHAIN GOTH', hp: 100, maxHp: 100, dead: false, pattern: 'Whip • Chain Slam' },   // V10.12: re-measured - the small stone archway is here (on the open ground just in front of it, since the archway itself is blocked), not at the old (1109,932) which landed in open grass well past it
         // V9.97: moved onto the mushroom waterfall on the right (Scarlett: Olly has to climb/jump
         // the waterfall to reach her). No new climb/jump mechanic exists yet - for now this is a
         // normal walkable point at the foot of the falls; see the chat reply re: scoping that properly.
         { x: 1290, y: 560, type: 'devilsfingers', name: "DEVIL'S FINGERS", hp: 200, maxHp: 200, dead: false, pattern: 'Burrow • Grab • Acid', foe: 'devilsfingers' }   // V9.96: fought on Level 1's fight screen (level2-foes.js)
     ],
-    relationshipChallenge: { x: 752, y: 969 },   // Find the Princess, in the fairy ring
+    relationshipChallenge: { x: 650, y: 830 },   // V10.12: re-measured directly off the map art - the actual fairy ring (glowing rune circle) is here, not at the old (752,969) which landed in open grass well past it
     princessQuestion: { x: 1052, y: 372 },        // V10.6: on the gazebo floor, per Scarlett's hand-drawn orange X
     key: { x: 1293, y: 228 },                     // V10.6: moved to the triple stone arches' candle-lit ritual circle, per Scarlett's hand-drawn pink X
-    gate: { x: 790, y: 230 },                     // the glowing doorway at the top middle (the orb)
+    gate: { x: 790, y: 155 },                     // V10.12: re-measured off the map art - the actual glowing star/doorway sits here; the old y:230 drew the orb on the ground below the archway instead of in the doorway
     gateNear: { x: 790, y: 245, r: 150 },         // where Olly has to stand to use the pendant
     tomJournal: { x: 167, y: 553 },                // V10.4: moved up-left to the lantern-lit hollow, per Scarlett's screenshot X
     tomCutscene: 'assets/video/tom-cutscene/tom-cutscene.mp4',   // Scarlett is uploading this; until then the placeholder lines below show
 
     // Fog: patches over each objective (the rest of the fog banks are shared with Level 1's layout).
     fogPatches: [
-        { x: 1109, y: 932, rx: 175, ry: 125, a: .9, seed: .2 },
+        { x: 920, y: 905, rx: 175, ry: 125, a: .9, seed: .2 },
         { x: 1290, y: 560, rx: 190, ry: 135, a: .94, seed: 1.7 },
-        { x: 752, y: 969, rx: 185, ry: 130, a: .9, seed: 3.1 },
+        { x: 650, y: 830, rx: 185, ry: 130, a: .9, seed: 3.1 },
         { x: 1052, y: 372, rx: 160, ry: 115, a: .9, seed: 4.5 },
         { x: 167, y: 553, rx: 170, ry: 125, a: .92, seed: 5.2 },
         { x: 1293, y: 228, rx: 150, ry: 110, a: .88, seed: 5.9 },
-        { x: 790, y: 240, rx: 175, ry: 120, a: .96, seed: 6.6 },
+        { x: 790, y: 160, rx: 175, ry: 120, a: .96, seed: 6.6 },
         { x: 1300, y: 250, rx: 140, ry: 95, a: .6, seed: 7.3 },
         { x: 1100, y: 880, rx: 160, ry: 110, a: .62, seed: 8.0 },
         { x: 300, y: 900, rx: 150, ry: 100, a: .58, seed: 8.7 }
