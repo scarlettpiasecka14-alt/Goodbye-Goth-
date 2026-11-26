@@ -1,10 +1,16 @@
 """Builds the Level 2 (Mystical Forest) walk grid.
 
-Level 1's walk grid was picked out of the cemetery art by colour (the cobblestone path).
-The forest is mostly open grass, so here it's the other way round: everything is walkable
-EXCEPT the shapes listed below (buildings, tree trunks, water, giant mushrooms, ruins,
-lamp posts, the map edges). Coordinates are map pixels on the 1536x1024 map art
-(assets/environment/level2-map-bg.webp).
+V10.6: rebuilt from Scarlett's own hand-drawn boundary annotation (she drew, on a screenshot
+of the full map, exactly which areas Olly shouldn't be able to walk on - buildings, the
+treehouse platform, the gazebo's posts, the stone walls behind the fairy ring, etc). That
+annotation was traced into tools/level2_walk_mask.png (1536x1024, same size as the map art:
+white = walkable, black = blocked) via image analysis of the red line she drew, then the
+treehouse (whose outline in her drawing didn't fully close) was patched in by hand.
+
+If the collision ever needs adjusting again, the simplest approach is: take a screenshot of
+the full Level 2 map, draw directly on it with a bright solid colour marking what should be
+blocked, save it as tools/level2_walk_mask.png sized 1536x1024 (white/light = walkable,
+black/dark = blocked), and re-run this script - no need to hand-code shapes.
 
 Output: same format as level1.js's WALK_RLE (384x256 grid, 1 cell = 4x4 map px, each row
 run-length encoded "blocked, walkable, blocked, ..." starting with blocked), written into
@@ -12,94 +18,16 @@ js/levels/level2-walk.js. Run from the repo root:  python3 tools/build_level2_wa
 Add --preview to also write /tmp/level2-walk-preview.png (red = blocked).
 """
 import sys
-from PIL import Image, ImageDraw
+from PIL import Image
 
 W, H, CELL = 1536, 1024, 4
 COLS, ROWS = W // CELL, H // CELL
-
-# ('rect', x0, y0, x1, y1) | ('ell', cx, cy, rx, ry) | ('poly', [(x,y), ...])
-BLOCKED = [
-    # map edges (thick foliage all round)
-    ('rect', 0, 0, W, 78), ('rect', 0, 0, 34, H), ('rect', W - 40, 0, W, H), ('rect', 0, H - 52, W, H),
-    # top-middle: the glowing doorway (the orb exit) and the tree trunks either side of it
-    ('rect', 640, 0, 728, 205), ('rect', 822, 0, 910, 205), ('rect', 728, 0, 822, 168),
-    ('rect', 560, 70, 640, 150),
-    # top-left treehouse, its stairs and the potion table
-    ('rect', 110, 70, 350, 250), ('poly', [(220, 250), (350, 250), (330, 310), (250, 310)]),
-    ('rect', 355, 205, 450, 275),
-    # wisteria / bushes top-left corner
-    ('rect', 0, 78, 110, 230),
-    # left: Tom's hollow (the cave) - Olly stands outside it, by the journal
-    ('ell', 120, 460, 118, 98),
-    # left-middle stone circle: just the standing stones
-    ('ell', 340, 382, 18, 22), ('ell', 492, 382, 18, 22), ('ell', 300, 410, 14, 16),
-    # centre: the big tree, its house and the porch steps
-    ('ell', 735, 420, 150, 125), ('rect', 690, 470, 860, 615), ('rect', 590, 540, 690, 585),
-    # gazebo (top right of centre) and the lamp next to it
-    ('rect', 945, 215, 1108, 402), ('rect', 912, 310, 938, 430),
-    # twisted tree near the top right
-    ('ell', 1095, 165, 62, 92),
-    # ruined arches top right (the candles/rune floor in front stay walkable)
-    ('rect', 1195, 70, 1440, 205), ('rect', 1440, 70, W, 330),
-    # right: waterfall pools and the giant glowing mushrooms
-    ('rect', 1225, 300, W, 455), ('rect', 1205, 455, W, 615),
-    # twisted tree right of centre
-    ('ell', 1170, 420, 55, 105),
-    # bottom-left pond + waterfall
-    ('ell', 240, 680, 140, 100),
-    # twisted tree left of centre and the lamp post by the fairy ring
-    ('ell', 432, 580, 50, 75), ('rect', 510, 640, 535, 760),
-    # lamp by the tree house
-    ('rect', 643, 480, 668, 540),
-    # bottom-left giant mushrooms
-    ('ell', 115, 875, 110, 70),
-    # signpost + stone arch pillars (the gap through the arch stays open)
-    ('rect', 878, 650, 912, 720), ('rect', 860, 735, 898, 885), ('rect', 968, 735, 1008, 885),
-    ('rect', 820, 765, 845, 900),
-    # moon-banner house
-    ('rect', 990, 590, 1210, 772),
-    # bottom-right cottage
-    ('rect', 1335, 625, W, 865),
-    # twisted tree bottom right
-    ('ell', 1245, 900, 55, 95),
-]
-
-# V9.97: Scarlett moved Devil's Fingers and Princess Question onto/by the mushroom-waterfall
-# cluster on the right, which the BLOCKED shapes above seal off entirely (the waterfall pools +
-# giant mushrooms). These carve a narrow mossy ledge up from the gazebo clearing, round the
-# twisted tree, to a landing spot at each point - this is what "climbing/jumping the waterfall"
-# means for now (no separate climb/jump mechanic exists yet; Olly just walks the ledge).
-WALKABLE_CARVE = [
-    ('ell', 1130, 360, 42, 38), ('ell', 1170, 400, 42, 38), ('ell', 1205, 430, 42, 38),
-    ('ell', 1225, 460, 80, 70),    # Princess Question landing
-    ('ell', 1250, 495, 42, 38), ('ell', 1270, 525, 42, 38),
-    ('ell', 1290, 560, 85, 70),    # Devil's Fingers landing
-    # Tom's journal (white mark) sits right on the edge of the bottom-left pond/waterfall blob -
-    # carve a small standing spot, plus a path south out of the pond ellipse to open grass.
-    ('ell', 199, 664, 55, 48),
-    ('ell', 225, 710, 45, 42), ('ell', 250, 750, 45, 42), ('ell', 275, 795, 45, 42), ('ell', 295, 835, 45, 42),
-]
+MASK_PATH = 'tools/level2_walk_mask.png'
 
 
 def build():
-    mask = Image.new('L', (W, H), 255)  # 255 = walkable
-    d = ImageDraw.Draw(mask)
-    for s in BLOCKED:
-        if s[0] == 'rect':
-            d.rectangle(s[1:5], fill=0)
-        elif s[0] == 'ell':
-            _, cx, cy, rx, ry = s
-            d.ellipse((cx - rx, cy - ry, cx + rx, cy + ry), fill=0)
-        else:
-            d.polygon(s[1], fill=0)
-    for s in WALKABLE_CARVE:
-        if s[0] == 'rect':
-            d.rectangle(s[1:5], fill=255)
-        elif s[0] == 'ell':
-            _, cx, cy, rx, ry = s
-            d.ellipse((cx - rx, cy - ry, cx + rx, cy + ry), fill=255)
-        else:
-            d.polygon(s[1], fill=255)
+    mask = Image.open(MASK_PATH).convert('L')
+    assert mask.size == (W, H), f'mask must be {W}x{H}, got {mask.size}'
     grid = mask.resize((COLS, ROWS), Image.NEAREST)
     px = grid.load()
     rows = []
@@ -120,7 +48,8 @@ def build():
 if __name__ == '__main__':
     mask, rle = build()
     with open('js/levels/level2-walk.js', 'w') as f:
-        f.write('/* Level 2 (Mystical Forest) walk grid - GENERATED by tools/build_level2_walk.py, edit the shapes there and re-run. */\n')
+        f.write('/* Level 2 (Mystical Forest) walk grid - GENERATED by tools/build_level2_walk.py '
+                'from tools/level2_walk_mask.png, edit that mask image and re-run. */\n')
         f.write("export const LEVEL2_WALK_RLE = '" + rle + "';\n")
     print('rows', rle.count('|') + 1, 'chars', len(rle))
     if '--preview' in sys.argv:
