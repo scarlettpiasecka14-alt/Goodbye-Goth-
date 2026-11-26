@@ -5,7 +5,7 @@ import { actionHint, hintHTML } from '../controls.js?v=9820';
 // V9.94: Level 2 runs on this same engine (createLevel1(ui, { level: 2 })). Its settings live in
 // level2-config.js; the parts this file doesn't have (Find the Princess, Devil's Fingers, Sophia)
 // are borrowed from level2.js. With no level option everything below behaves exactly as Level 1.
-import { LEVEL2 } from './level2-config.js?v=10100';
+import { LEVEL2 } from './level2-config.js?v=10110';
 import { createLevel2 } from './level2.js?v=9950';
 import { createFoe, preloadLevel2Foes } from './level2-foes.js?v=9960';   // V9.96: Devil's Fingers + Sophia on this fight screen
 // Game clock: normal time, but it stands still while a tutorial pop-up is open (so nothing happens behind it).
@@ -1788,7 +1788,7 @@ export function createLevel1(ui, opts = {}) {
             b.addEventListener('click', fn);
             actions.appendChild(b);
         };
-        if (item === 'key') addBtn('USE', useKeyFromBag);
+        if (item === 'key') addBtn(LV ? 'WEAR' : 'USE', useKeyFromBag);
         if (item === 'potion') {
             addBtn('DRINK', () => potionChoice(true));
             addBtn('SAVE FOR LATER', () => potionChoice(false), 'inv-secondary');
@@ -1804,10 +1804,10 @@ export function createLevel1(ui, opts = {}) {
         ui.inventory?.setAttribute('aria-hidden', 'true');
         hideItemPanel();
         hideInvTip();
-        if (LV) { openLevel2Gate(); return; }
+        if (LV) { playLevel2GateCutscene(); return; }
         playCutscene2();
     }
-    // V9.94: Level 2's doorway has no cutscene yet - the pendant is used up and Sophia appears.
+    // V10.11: Level 2's doorway cutscene - Olly wears the pendant, the gate opens, Sophia appears.
     function openLevel2Gate() {
         gateOpened = true;
         inventory.key = 0;
@@ -1816,6 +1816,108 @@ export function createLevel1(ui, opts = {}) {
         stats();
         ui.dialogue.textContent = LV.dialogue.gateOpened;
         showBossIntro();
+    }
+    function playLevel2GateCutscene() {
+        if (mode !== 'map' || !keyCollected || gateOpened) return;
+        mode = 'cutscene2';
+        playMusic('');   // the cutscene has its own sound
+        const overlay = document.createElement('div');
+        overlay.id = 'level2-gate-cutscene-overlay';
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:#09070d;display:flex;align-items:center;justify-content:center;overflow:auto;padding:24px;box-sizing:border-box;';
+
+        const frame = document.createElement('div');
+        frame.style.cssText = 'position:relative;width:min(1280px,96vw);height:min(760px,92vh);display:flex;align-items:center;justify-content:center;background:#120d16;border:1px solid #6f4a61;border-radius:18px;box-shadow:0 18px 70px rgba(0,0,0,.55);overflow:hidden;';
+        overlay.appendChild(frame);
+
+        const video = document.createElement('video');
+        video.preload = 'auto';
+        video.autoplay = true;
+        video.id = 'level2-gate-cutscene';
+        video.playsInline = true;
+        video.controls = false;
+        video.style.cssText = 'max-width:100%;max-height:100%;width:100%;height:100%;object-fit:contain;background:#09070d;';
+        frame.appendChild(video);
+
+        const status = document.createElement('div');
+        status.textContent = 'LOADING CUTSCENE...';
+        status.style.cssText = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:14px 20px;border:1px solid #8d5f78;border-radius:12px;background:rgba(22,14,25,.9);color:#f5dce7;font:700 18px Georgia,serif;letter-spacing:.4px;z-index:2;';
+        frame.appendChild(status);
+
+        const playButton = document.createElement('button');
+        playButton.textContent = '▶ PLAY CUTSCENE';
+        playButton.style.cssText = 'position:absolute;left:50%;bottom:24px;transform:translateX(-50%);padding:12px 22px;border:1px solid #d98ba8;border-radius:12px;background:#382132;color:#f8eaf0;font:700 16px Georgia,serif;cursor:pointer;display:none;z-index:3;';
+        frame.appendChild(playButton);
+
+        const closeButton = document.createElement('button');
+        closeButton.textContent = 'BACK TO MAP';
+        closeButton.style.cssText = 'position:absolute;left:50%;bottom:24px;transform:translateX(-50%);padding:12px 22px;border:1px solid #9b6f86;border-radius:12px;background:#241726;color:#f8eaf0;font:700 16px Georgia,serif;cursor:pointer;display:none;z-index:3;';
+        frame.appendChild(closeButton);
+
+        document.body.appendChild(overlay);
+
+        let finished = false;
+        let attemptedFallback = false;
+        const sources = [
+            'assets/video/level2-gate/level2-gate.mp4?v=10110',
+            'assets/video/level2-gate/level2-gate.mov?v=10110'
+        ];
+
+        const finish = () => {
+            if (finished) return;
+            finished = true;
+            video.pause();
+            video.removeAttribute('src');
+            video.load();
+            overlay.remove();
+            mode = 'map';
+            playMusic('map');
+            openLevel2Gate();
+        };
+
+        const showFailure = () => {
+            if (finished) return;
+            status.textContent = 'Cutscene could not be played. Make sure level2-gate.mp4 is in assets/video/level2-gate/.';
+            playButton.style.display = 'none';
+            closeButton.style.display = 'block';
+        };
+
+        const tryPlay = () => {
+            status.style.display = 'none';
+            video.play().then(() => { playButton.style.display = 'none'; }).catch(() => { playButton.style.display = 'block'; });
+        };
+
+        const gateSkip = document.createElement('button');
+        gateSkip.type = 'button'; gateSkip.textContent = 'SKIP CUTSCENE ▸';
+        gateSkip.style.cssText = 'position:absolute;right:22px;bottom:22px;padding:8px 16px;border:1px solid rgba(255,255,255,.35);border-radius:10px;background:rgba(0,0,0,.55);color:#fff;font:700 13px Georgia,serif;cursor:pointer;opacity:.85;z-index:5;';
+        gateSkip.addEventListener('click', finish);
+        overlay.appendChild(gateSkip);
+        video.addEventListener('loadeddata', tryPlay, { once: false });
+        video.addEventListener('canplay', tryPlay, { once: false });
+        video.addEventListener('ended', finish, { once: true });
+        video.addEventListener('error', () => {
+            if (!attemptedFallback) {
+                attemptedFallback = true;
+                status.textContent = 'Trying alternate video format...';
+                video.src = sources[1];
+                video.load();
+                return;
+            }
+            showFailure();
+        }, { once: false });
+
+        playButton.addEventListener('click', () => {
+            video.play().then(() => { playButton.style.display = 'none'; }).catch(() => { playButton.style.display = 'block'; });
+        });
+        closeButton.addEventListener('click', () => {
+            if (finished) return;
+            finished = true;
+            video.pause();
+            overlay.remove();
+            mode = 'map';
+            ui.dialogue.textContent = 'The cutscene could not be played yet. The gate remains locked.';
+        }, { once: true });
+
+        video.src = sources[0]; video.load();
     }
     function hideInvTip() { if (invTipEl) invTipEl.style.display = 'none'; }
     function initInventoryItems() {

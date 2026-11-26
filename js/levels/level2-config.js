@@ -11,7 +11,7 @@
    To check positions against the collision, open the game with ?level=2&walk=1.
 
    PLACEHOLDER ART is marked "placeholder" below - Scarlett is making the real screens. */
-import { LEVEL2_WALK_RLE } from './level2-walk.js?v=10100';
+import { LEVEL2_WALK_RLE } from './level2-walk.js?v=10110';
 
 const ENC = 'assets/encounters/level2/';
 
@@ -80,7 +80,7 @@ export const LEVEL2 = {
         retreat: 'You retreat into the trees. The forest is still waiting.'
     },
 
-    keyItem: { id: 'key', name: 'Glowing Pendant', label: 'PENDANT', img: 'assets/items/pendant-placeholder.webp',
+    keyItem: { id: 'key', name: 'Glowing Pendant', label: 'PENDANT', img: 'assets/items/pendant.png',
         tip: 'A glowing pendant. The doorway at the top of the forest wants it.',
         desc: 'It hums when you face the glowing doorway at the top of the forest. Stand in front of it and press USE.' },
 
