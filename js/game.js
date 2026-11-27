@@ -1,12 +1,12 @@
 import { StoryController } from './story.js?v=9820';
-import { createLevel1, resetRingTutorials } from './levels/level1.js?v=10170';
-import { LEVEL2 } from './levels/level2-config.js?v=10170';   // V9.94: Level 2 runs on the Level 1 engine
+import { createLevel1, resetRingTutorials } from './levels/level1.js?v=10180';
+import { LEVEL2 } from './levels/level2-config.js?v=10180';   // V9.94: Level 2 runs on the Level 1 engine
 import { createLevel3 } from './levels/level3.js?v=9850';
 import { playMusic, setLoopSfx, playSfx, audioNeedsClick, playVoiceLine, stopVoiceLine } from './audio.js?v=9820';
 import { initSettings, openSettings } from './settings.js?v=9820';
-import { actionForKey, hintHTML } from './controls.js?v=10170';
+import { actionForKey, hintHTML } from './controls.js?v=10180';
 import { initCheats, registerCheats } from './cheats.js?v=9820';
-import { initGamepad } from './gamepad.js?v=10170';
+import { initGamepad } from './gamepad.js?v=10180';
 import { SLOT_COUNT, getActiveSlot, setActiveSlot, readSlot, clearSlot, slotSummary, anySave } from './saves.js?v=9820';
 
 const root = document.getElementById('game-root');
@@ -317,7 +317,6 @@ function mountLevel1(loadSaved=false, levelNum=1, carry=null){
         <div id="player-hp-text" class="player-hp-text">100 / 100 HP</div>
         <div class="hud-btn-row">
           <button id="inventory-button" type="button" style="min-height:34px;padding:6px 10px;font-size:12px;">🎒 BACKPACK <span id="inventory-count">0/10</span></button>
-          <button id="journal-button" type="button" class="hidden" style="min-height:34px;padding:6px 10px;font-size:12px;">📖 TOM'S JOURNAL</button>
           <button id="hud-gear" class="hud-gear" type="button" title="Settings (O)" aria-label="Settings">⚙</button>
         </div>
         <div id="combo-hud" class="combo-hud" style="display:none" aria-label="Punch combo"><span class="combo-pips"><i></i><i></i><i></i></span><span id="combo-text" class="combo-text"></span></div>
@@ -339,6 +338,7 @@ function mountLevel1(loadSaved=false, levelNum=1, carry=null){
             <div class="inventory-slot">06</div><div class="inventory-slot">07</div><div class="inventory-slot">08</div><div class="inventory-slot">09</div><div class="inventory-slot">10</div>
           </div>
           <p class="inventory-empty-copy">Nothing in here yet. A suspiciously empty bag.</p>
+          <button id="journal-open-button" type="button" class="hidden inventory-journal-button">📖 TOM'S JOURNAL</button>
           <button id="inventory-close" type="button" class="primary inventory-close-button">CLOSE</button>
         </div>
       </div>
@@ -455,7 +455,7 @@ function mountLevel1(loadSaved=false, levelNum=1, carry=null){
     canvas:document.getElementById('world'), dialogue:document.getElementById('dialogue'),
     hpEl:document.getElementById('player-hp-text'), hpFill:document.getElementById('player-hp-fill'), gothEl:document.getElementById('goth-count'), relEl:document.getElementById('rel-state'), puzzleEl:document.getElementById('puzzle-state'),
     inventory:document.getElementById('inventory'), inventoryButton:document.getElementById('inventory-button'), inventoryClose:document.getElementById('inventory-close'),
-    journal:document.getElementById('journal'), journalButton:document.getElementById('journal-button'), journalClose:document.getElementById('journal-close'), journalList:document.getElementById('journal-list'),
+    journal:document.getElementById('journal'), journalOpenButton:document.getElementById('journal-open-button'), journalClose:document.getElementById('journal-close'), journalList:document.getElementById('journal-list'),
     encounter:document.getElementById('encounter'), encounterImage:document.getElementById('encounter-image'), encounterName:document.getElementById('encounter-name'), encounterSpecies:document.getElementById('encounter-species'), encounterText:document.getElementById('encounter-text'), encounterReady:document.getElementById('encounter-ready'), encounterExplore:document.getElementById('encounter-explore'),
     combat:document.getElementById('combat'), combatCanvas:document.getElementById('combat-canvas'), combatName:document.getElementById('combat-name'), enemyHp:document.getElementById('enemy-hp'), enemyHpText:document.getElementById('enemy-hp-text'), enemyStunWrap:document.getElementById('enemy-stun-wrap'), enemyStun:document.getElementById('enemy-stun'), enemyStunLabel:document.getElementById('enemy-stun-label'), combatStatus:document.getElementById('combat-status'),
     death:document.getElementById('death'), deathText:document.getElementById('death-text'), retryCombat:document.getElementById('retry-combat'), backMap:document.getElementById('back-map'),
@@ -554,7 +554,10 @@ function mountLevel1(loadSaved=false, levelNum=1, carry=null){
       ui.journal.setAttribute('aria-hidden','true');
     }
   }
-  ui.journalButton?.addEventListener('click',()=>toggleJournal(true));
+  // V10.18: Tom's Journal opens from inside the backpack now (a HUD button of its own kept
+  // clipping off the right edge of the screen at common window sizes) - so opening it also
+  // closes the inventory first, rather than stacking the two overlays.
+  ui.journalOpenButton?.addEventListener('click',()=>{ toggleInventory(false); toggleJournal(true); });
   ui.journalClose?.addEventListener('click',()=>toggleJournal(false));
 
   const MOVE_KEY = { up:'w', down:'s', left:'a', right:'d' };

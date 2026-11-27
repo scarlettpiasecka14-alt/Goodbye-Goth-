@@ -1,11 +1,11 @@
 /* Goodbye Goth V9.4 - Chain Goth fight (AI + all seven animations: intro, walk, swipe, spin, stun, hurt, death) on top of V9.0 map cleanup and the v8.11 Zombie Goth AI. */
 import { playSfx, playVoiceLine, playMagicZap, playThunder, playRandomSfx, playMusic, playMusicFrom, preloadSfx, setLoopSfx, setAudioHeld, kickAudio } from '../audio.js?v=9820';
 import { activeKey } from '../saves.js?v=9820';
-import { actionHint, hintHTML } from '../controls.js?v=10170';
+import { actionHint, hintHTML } from '../controls.js?v=10180';
 // V9.94: Level 2 runs on this same engine (createLevel1(ui, { level: 2 })). Its settings live in
 // level2-config.js; the parts this file doesn't have (Find the Princess, Devil's Fingers, Sophia)
 // are borrowed from level2.js. With no level option everything below behaves exactly as Level 1.
-import { LEVEL2 } from './level2-config.js?v=10170';
+import { LEVEL2 } from './level2-config.js?v=10180';
 import { createLevel2 } from './level2.js?v=9950';
 import { createFoe, preloadLevel2Foes } from './level2-foes.js?v=9960';   // V9.96: Devil's Fingers + Sophia on this fight screen
 // Game clock: normal time, but it stands still while a tutorial pop-up is open (so nothing happens behind it).
@@ -1861,8 +1861,8 @@ export function createLevel1(ui, opts = {}) {
         let finished = false;
         let attemptedFallback = false;
         const sources = [
-            'assets/video/level2-gate/level2-gate.mp4?v=10170',
-            'assets/video/level2-gate/level2-gate.mov?v=10170'
+            'assets/video/level2-gate/level2-gate.mp4?v=10180',
+            'assets/video/level2-gate/level2-gate.mov?v=10180'
         ];
 
         const finish = () => {
@@ -1960,7 +1960,7 @@ export function createLevel1(ui, opts = {}) {
         ui.gothEl.textContent = `${kills}/2`;
         ui.relEl.textContent = relationshipDone ? 'Solved' : 'Locked';
         ui.puzzleEl.textContent = puzzleSolved ? 'Answered' : 'Locked';
-        if (ui.journalButton) ui.journalButton.classList.toggle('hidden', !(LV && metTom));   // V10.15: Tom's Journal - only shows once Tom's actually with you
+        if (ui.journalOpenButton) ui.journalOpenButton.classList.toggle('hidden', !(LV && metTom));   // V10.18: Tom's Journal button lives inside the backpack now - only shows once Tom's actually with you
         refreshInventoryUI();
         if (objectivesComplete() && !keyCollected && !keySpawnAnnounced) {
             keySpawnAnnounced = true;
