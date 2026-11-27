@@ -1,6 +1,6 @@
 import { StoryController } from './story.js?v=9820';
-import { createLevel1, resetRingTutorials } from './levels/level1.js?v=10150';
-import { LEVEL2 } from './levels/level2-config.js?v=10150';   // V9.94: Level 2 runs on the Level 1 engine
+import { createLevel1, resetRingTutorials } from './levels/level1.js?v=10160';
+import { LEVEL2 } from './levels/level2-config.js?v=10160';   // V9.94: Level 2 runs on the Level 1 engine
 import { createLevel3 } from './levels/level3.js?v=9850';
 import { playMusic, setLoopSfx, playSfx, audioNeedsClick, playVoiceLine, stopVoiceLine } from './audio.js?v=9820';
 import { initSettings, openSettings } from './settings.js?v=9820';
@@ -526,8 +526,12 @@ function mountLevel1(loadSaved=false, levelNum=1, carry=null){
     if(!ui.journalList || !L2?.journal) return;
     const status = level.journalStatus?.() || {};
     ui.journalList.innerHTML = L2.journal.map(entry => {
-      const unlocked = !entry.future && !!status.seen?.[entry.key];
-      const defeated = unlocked && (status.bossDefeated && entry.key === 'sophia' || status.enemyDead?.[entry.key]);
+      const unlocked = !!entry.always || (!entry.future && !!status.seen?.[entry.key]);
+      const defeated = !unlocked ? false
+        : entry.defeated !== undefined ? entry.defeated
+        : entry.key === 'sophia' ? !!status.bossDefeated
+        : entry.enemyType ? !!status.enemyDead?.[entry.enemyType]
+        : false;
       const img = unlocked && entry.image ? `<img class="journal-entry-img" src="${entry.image}" alt="${entry.name}">` : '<div class="journal-entry-img journal-entry-mystery">❔</div>';
       const name = unlocked ? entry.name : '???';
       const species = unlocked && entry.species ? `<div class="journal-entry-species">(${entry.species})</div>` : '';

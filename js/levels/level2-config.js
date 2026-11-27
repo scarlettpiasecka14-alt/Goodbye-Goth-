@@ -11,7 +11,7 @@
    To check positions against the collision, open the game with ?level=2&walk=1.
 
    PLACEHOLDER ART is marked "placeholder" below - Scarlett is making the real screens. */
-import { LEVEL2_WALK_RLE } from './level2-walk.js?v=10150';
+import { LEVEL2_WALK_RLE } from './level2-walk.js?v=10160';
 
 const ENC = 'assets/encounters/level2/';
 
@@ -156,18 +156,30 @@ export const LEVEL2 = {
     // V10.15: Tom's Journal - the in-game compendium. "Pick it up" from the hollow, accessible
     // from the HUD once Tom's with you. Written entirely in Tom's voice (not Olly's, not a narrator's).
     // Each entry unlocks to its real "lore" once that foe's been encountered (see journalSeen in
-    // level1.js); until then it shows "teaser" instead. The last two entries never unlock on their
-    // own (future' is set) - they're just Tom being ominous about what's still coming.
+    // level1.js); until then it shows "teaser" instead. "always" entries (Patricia, Zombie Goth) are
+    // unlocked from the start - Tom wasn't there for Level 1, but Olly told him everything, and you
+    // can't be in Level 2 at all without having already beaten them. "defeated" on those is likewise
+    // just stated outright rather than checked live, for the same reason. The last two entries never
+    // unlock on their own ('future' is set) - they're just Tom being ominous about what's still coming.
     journal: [
         {
+            key: 'patricia', name: 'PATRICIA, THE CLASSIC GOTH', species: 'Gothicus Tradicionalis',
+            image: 'assets/story/patricia-encounter.webp', always: true, defeated: true,
+            lore: "Tom's notes: Olly won't shut up about her. Called him 'adorable' mid-fight, apparently, which by his account is somehow worse than being hit. She's the whole reason any of us are out here looking for his princess. Make of that what you will."
+        },
+        {
+            key: 'zombieGoth', name: 'ZOMBIE GOTH', species: 'Gothica Putrefacta',
+            image: 'assets/encounters/level1/zombie-goth-encounter.webp', always: true, defeated: true,
+            lore: "Tom's notes: The first one Olly ever fought, by his own account, and reportedly also the one that smelled the worst. Sun-sensitive, allergic to subtlety, moans at length about 'the burning sun.' Already dealt with, thankfully - I can't say I fancied meeting her myself."
+        },
+        {
             key: 'chainGoth', name: 'CHAIN GOTH', species: 'Gothica Catenata',
-            image: ENC + 'chain-goth-encounter.webp',
-            teaser: "Tom's notes: Word is she followed you out of the cemetery. Forest air clearly agreed with her.",
-            lore: "Tom's notes: Her again. I made the mistake of asking what the bigger chain was for and I deeply regret finding out. She remembers you, apparently, and she is not over it. Don't let her finish her sentences - she gets ideas."
+            image: ENC + 'chain-goth-encounter.webp', always: true, enemyType: 'chain',
+            lore: "Tom's notes: Old news to Olly, new problem for us. She followed him out of the cemetery, apparently, and forest air has only improved her mood for revenge. I asked what the bigger chain was for and deeply regret finding out. Don't let her finish her sentences - she gets ideas."
         },
         {
             key: 'devilsFingers', name: "DEVIL'S FINGERS", species: 'Clathrus archeri',
-            image: ENC + 'devils-fingers-encounter.webp',
+            image: ENC + 'devils-fingers-encounter.webp', enemyType: 'devilsfingers',
             teaser: "Tom's notes: There's a smell near the waterfall I don't love. Could be nothing. Probably isn't nothing.",
             lore: "Tom's notes: It's a mushroom. I want that on record. A mushroom that sprays acid and ruins your whole afternoon. Technically not a Goth at all, but nobody consulted me on the guest list."
         },
