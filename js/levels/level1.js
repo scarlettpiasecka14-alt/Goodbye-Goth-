@@ -5,7 +5,7 @@ import { actionHint, hintHTML } from '../controls.js?v=9820';
 // V9.94: Level 2 runs on this same engine (createLevel1(ui, { level: 2 })). Its settings live in
 // level2-config.js; the parts this file doesn't have (Find the Princess, Devil's Fingers, Sophia)
 // are borrowed from level2.js. With no level option everything below behaves exactly as Level 1.
-import { LEVEL2 } from './level2-config.js?v=10120';
+import { LEVEL2 } from './level2-config.js?v=10130';
 import { createLevel2 } from './level2.js?v=9950';
 import { createFoe, preloadLevel2Foes } from './level2-foes.js?v=9960';   // V9.96: Devil's Fingers + Sophia on this fight screen
 // Game clock: normal time, but it stands still while a tutorial pop-up is open (so nothing happens behind it).
@@ -1858,8 +1858,8 @@ export function createLevel1(ui, opts = {}) {
         let finished = false;
         let attemptedFallback = false;
         const sources = [
-            'assets/video/level2-gate/level2-gate.mp4?v=10120',
-            'assets/video/level2-gate/level2-gate.mov?v=10120'
+            'assets/video/level2-gate/level2-gate.mp4?v=10130',
+            'assets/video/level2-gate/level2-gate.mov?v=10130'
         ];
 
         const finish = () => {
