@@ -1,6 +1,6 @@
 import { StoryController } from './story.js?v=9820';
-import { createLevel1, resetRingTutorials } from './levels/level1.js?v=10130';
-import { LEVEL2 } from './levels/level2-config.js?v=10130';   // V9.94: Level 2 runs on the Level 1 engine
+import { createLevel1, resetRingTutorials } from './levels/level1.js?v=10140';
+import { LEVEL2 } from './levels/level2-config.js?v=10140';   // V9.94: Level 2 runs on the Level 1 engine
 import { createLevel3 } from './levels/level3.js?v=9850';
 import { playMusic, setLoopSfx, playSfx, audioNeedsClick, playVoiceLine, stopVoiceLine } from './audio.js?v=9820';
 import { initSettings, openSettings } from './settings.js?v=9820';
@@ -432,7 +432,7 @@ function mountLevel1(loadSaved=false, levelNum=1, carry=null){
     const bt = bi?.querySelector('.patricia-title');
     if(bt) bt.innerHTML = `You've encountered ${L2.boss.name} <span class="patricia-species">(${L2.boss.species})</span>.`;
     const bp = bi?.querySelector('.patricia-card p');
-    if(bp) bp.textContent = L2.boss.text;
+    if(bp) bp.innerHTML = L2.boss.text.split('\n\n').map(line => line.replace(/\n/g, '<br>')).join('<br><br>');
     const win = document.getElementById('win');
     const wa = win?.querySelector('.level-complete-art');
     if(wa){ wa.src = L2.complete.image; wa.alt = 'Level 2 complete'; }

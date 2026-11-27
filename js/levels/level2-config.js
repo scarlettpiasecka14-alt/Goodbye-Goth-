@@ -11,7 +11,7 @@
    To check positions against the collision, open the game with ?level=2&walk=1.
 
    PLACEHOLDER ART is marked "placeholder" below - Scarlett is making the real screens. */
-import { LEVEL2_WALK_RLE } from './level2-walk.js?v=10130';
+import { LEVEL2_WALK_RLE } from './level2-walk.js?v=10140';
 
 const ENC = 'assets/encounters/level2/';
 
@@ -155,8 +155,8 @@ export const LEVEL2 = {
 
     boss: {
         name: 'Sophia, The Chaos Fairy Goth', species: 'Gothica Chaotica',
-        image: 'assets/characters/chaosfairy/chaosfairy-idle.webp',   // placeholder until her encounter art exists
-        text: "She's been watching you since you arrived. She's braided three of the trees together out of boredom, and now she's decided you look fun to ruin. Floaty dress, questionable footwear, a magic bow. Run.",
+        image: 'assets/story/sophia-encounter.png',   // V10.14: Scarlett's real encounter-screen art
+        text: "Sophia seems... sweet?\n\nAnd somehow, that's all the more terrifying.\n\nYou get the sense she rather enjoys games.\n\nShe also seems to have brought her favourite toy.\n\nHow lovely.",
         fight: 'cfg',
         combatName: 'SOPHIA • THE CHAOS FAIRY GOTH',
         maxHp: 320   // PROVISIONAL - Patricia (Level 1's boss) is 300, Sophia needs to beat that
