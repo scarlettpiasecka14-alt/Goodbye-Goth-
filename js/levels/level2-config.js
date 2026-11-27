@@ -11,7 +11,7 @@
    To check positions against the collision, open the game with ?level=2&walk=1.
 
    PLACEHOLDER ART is marked "placeholder" below - Scarlett is making the real screens. */
-import { LEVEL2_WALK_RLE } from './level2-walk.js?v=10160';
+import { LEVEL2_WALK_RLE } from './level2-walk.js?v=10170';
 
 const ENC = 'assets/encounters/level2/';
 
@@ -40,7 +40,7 @@ export const LEVEL2 = {
     relationshipChallenge: { x: 610, y: 818 },   // V10.13: nudged onto the exact center of the fairy ring per Scarlett's mark
     princessQuestion: { x: 1020, y: 375 },        // V10.13: nudged to the middle of the gazebo floor per Scarlett's mark
     key: { x: 1293, y: 228 },                     // V10.6: moved to the triple stone arches' candle-lit ritual circle, per Scarlett's hand-drawn pink X
-    gate: { x: 790, y: 120 },                     // V10.13: nudged to the exact middle of the doorway star per Scarlett's mark
+    gate: { x: 782, y: 123 },                     // V10.17: measured directly against the baked-in star glow's true bright centre (was 790,120 - a few px right/up of it)
     gateNear: { x: 790, y: 245, r: 150 },         // where Olly has to stand to use the pendant
     tomJournal: { x: 167, y: 553 },                // V10.4: moved up-left to the lantern-lit hollow, per Scarlett's screenshot X
     tomCutscene: 'assets/video/tom-cutscene/tom-cutscene.mp4',   // Scarlett is uploading this; until then the placeholder lines below show
