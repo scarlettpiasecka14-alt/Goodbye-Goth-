@@ -1,7 +1,7 @@
 /* Goodbye Goth V9.4 - Chain Goth fight (AI + all seven animations: intro, walk, swipe, spin, stun, hurt, death) on top of V9.0 map cleanup and the v8.11 Zombie Goth AI. */
 import { playSfx, playVoiceLine, playMagicZap, playThunder, playRandomSfx, playMusic, playMusicFrom, preloadSfx, setLoopSfx, setAudioHeld, kickAudio } from '../audio.js?v=9820';
 import { activeKey } from '../saves.js?v=9820';
-import { actionHint, hintHTML } from '../controls.js?v=9820';
+import { actionHint, hintHTML } from '../controls.js?v=10160';
 // V9.94: Level 2 runs on this same engine (createLevel1(ui, { level: 2 })). Its settings live in
 // level2-config.js; the parts this file doesn't have (Find the Princess, Devil's Fingers, Sophia)
 // are borrowed from level2.js. With no level option everything below behaves exactly as Level 1.
@@ -1533,6 +1533,7 @@ export function createLevel1(ui, opts = {}) {
         keyCollected = false,
         gateOpened = false,
         heavyUnlocked = false,
+        crouching = false,   // V10.16: held Crouch - slows map movement for now (real crouch-walk art still to come); in a fight it's just the flag the purple-glass-spark hazard will check once it exists
         patriciaDefeated = false,   // V9.90: true once her fight is won - saved, so a reload after "Save and Quit" on the win screen can put the win screen back up instead of just dropping you on a map with nothing left to do
         heavyCdMul = 1,   // V9.42: chest reward can lower this
         veilCharges = 0,   // V9.85: Patricia's "Moth-Eaten Veil" chest reward - 3 total uses, never recharges, gone once spent
@@ -1664,7 +1665,7 @@ export function createLevel1(ui, opts = {}) {
     }
     function updateMovement(dt) {
         if (mode !== 'map') return;
-        const speed = 240;
+        const speed = crouching ? 240 * .55 : 240;   // V10.16: crouch-walking is slower; swap in the real crouch-walk cycle once Scarlett's Vidu sprite sheet is in
         let dx = (held.right ? 1 : 0) - (held.left ? 1 : 0);
         let dy = (held.down ? 1 : 0) - (held.up ? 1 : 0);
         if (!dx && !dy) { walkPulse = 0; return; }
@@ -5738,6 +5739,28 @@ export function createLevel1(ui, opts = {}) {
     // buys 5 real seconds of true invincibility (V9.99f: was 3s, bumped to match Scarlett's item text)
     // (reuses the same player.invuln the dodge i-frame uses, just much longer), so it works against
     // anything - sword, lightning, future bosses, all of it.
+    // V10.16: held Crouch. Works on the map (slows him down - updateMovement()) and in a fight
+    // (just sets the flag; nothing reads it yet since the purple-glass-spark hazard he's meant
+    // to duck under doesn't exist yet). No distinct crouch sprite yet either way - Scarlett's
+    // crouch-walk footage still needs turning into a sprite sheet - so for now this is the
+    // mechanic wired up and ready, without new art to show for it.
+    function setCrouch(down) { crouching = !!down; }
+    // V10.16: potion quick-deploy (Up / D-pad Up, fight only - see js/game.js and js/gamepad.js).
+    // Instant chug-and-continue rather than the staged sip animation the pre-fight drink choice
+    // uses: a split-second decision mid-fight reads better as immediate than as a mini-cutscene.
+    function combatPotionQuick() {
+        if (patReward) return;
+        if (pausedAt) return;
+        if (mode !== 'combat' || zombieIntroActive || patFrozen() || playerDeathTriggered)
+            return;
+        if (!inventory.potion) { ui.combatStatus.textContent = 'No potion to drink.'; return; }
+        inventory.potion = 0;
+        hp = maxHp;
+        refreshInventoryUI();
+        stats();
+        playSfx('Drinking_potion');
+        ui.combatStatus.textContent = '🧪 Potion! Full HP again.';
+    }
     function combatVeil() {
         if (patReward) return;
         if (pausedAt) return;
@@ -6563,6 +6586,8 @@ export function createLevel1(ui, opts = {}) {
         combatHeavyAttack: () => inExtraFight() ? extras.combatHeavyAttack() : combatHeavyAttack(),
         combatDodge: () => inExtraFight() ? extras.combatDodge() : combatDodge(),
         combatVeil,
+        combatPotionQuick,
+        setCrouch,
         shootAtPointer,
         retryCombat,
         backToMap,

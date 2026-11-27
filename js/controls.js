@@ -1,20 +1,25 @@
 /* Goodbye Goth - keyboard bindings. One place decides which key does which action.
    Defaults can be changed in Settings > Controls > CUSTOMISE (saved in the browser).
-   Arrow keys always move too, and the mouse (right click dodge) is not rebindable. Saving lives in Settings (no key). */
+   Arrow keys always move too, and the mouse (right click dodge) is not rebindable. Saving lives in Settings (no key).
+   V10.16: full control-scheme rebuild, per Scarlett's finalised 2026-11-26 layout. Punch and Heavy Attack
+   are no longer separate keys - tap Punch for a light hit, hold it (~350ms) for Heavy once it's unlocked.
+   Crouch is new: hold it to crouch-walk on the map, and (once the purple-glass-spark hazard exists) duck
+   under it in a fight. Potion quick-deploy during a fight reuses the Move Up key/D-pad Up rather than a
+   separate binding - see js/game.js and js/gamepad.js. */
 const KEY = 'goodbyeGothControls_v1';
 export const ACTIONS = [
-    { id: 'up', label: 'Move up' },
+    { id: 'up', label: 'Move up / potion (in a fight)' },
     { id: 'down', label: 'Move down' },
     { id: 'left', label: 'Move left' },
     { id: 'right', label: 'Move right' },
     { id: 'jump', label: 'Jump / interact' },
     { id: 'dodge', label: 'Dodge' },
-    { id: 'attack', label: 'Punch' },
-    { id: 'heavy', label: 'Heavy attack' },
+    { id: 'crouch', label: 'Crouch (hold)' },
+    { id: 'attack', label: 'Punch (tap) / Heavy (hold, once earned)' },
     { id: 'veil', label: 'Moth-Eaten Veil (if earned)' },
     { id: 'inventory', label: 'Inventory (backpack)' }
 ];
-export const DEFAULTS = { up: 'w', down: 's', left: 'a', right: 'd', jump: ' ', dodge: 'r', attack: 'x', heavy: 'z', veil: 'k', inventory: 'y' };
+export const DEFAULTS = { up: 'w', down: 's', left: 'a', right: 'd', jump: ' ', dodge: 'r', crouch: 'c', attack: 'x', veil: 'k', inventory: 'y' };
 const ARROWS = { arrowup: 'up', arrowdown: 'down', arrowleft: 'left', arrowright: 'right' };
 const RESERVED = new Set(['o', 'escape', 'tab', 'enter', '`', 'f5', 'f11', 'f12', 'meta', 'control', 'alt', 'shift', 'capslock']);
 
@@ -60,9 +65,12 @@ export function keyLabel(key) {
 }
 
 /* ---- V9.80: controller buttons (Gamepad API "standard" numbering) ---- */
+/* V10.16: rebuilt per Scarlett's finalised layout - A jump/interact, B crouch (hold), X dodge,
+   Y punch (tap) / heavy (hold), RS click veil, D-pad Up potion quick-deploy (fight only, see
+   js/gamepad.js), View/Back inventory. */
 const PAD_KEY = 'goodbyeGothPad_v1';
-export const PAD_ACTIONS = ['jump', 'dodge', 'attack', 'heavy', 'veil', 'inventory'];
-export const PAD_DEFAULTS = { jump: 0, dodge: 1, attack: 2, heavy: 3, veil: 11, inventory: 8 };
+export const PAD_ACTIONS = ['jump', 'crouch', 'dodge', 'attack', 'veil', 'inventory'];
+export const PAD_DEFAULTS = { jump: 0, crouch: 1, dodge: 2, attack: 3, veil: 11, inventory: 8 };
 export const PAD_NAMES = { 0: 'A', 1: 'B', 2: 'X', 3: 'Y', 4: 'LB', 5: 'RB', 6: 'LT', 7: 'RT', 8: 'VIEW', 9: 'START', 11: 'R3 (right stick click)' };
 export const PAD_ALLOWED = [0, 1, 2, 3, 4, 5, 6, 7, 8, 11];     // Start and D-pad stay fixed; R3 (click-in) is free to use, per Scarlett for the veil
 let padMap = { ...PAD_DEFAULTS };

@@ -4,9 +4,9 @@ import { LEVEL2 } from './levels/level2-config.js?v=10160';   // V9.94: Level 2 
 import { createLevel3 } from './levels/level3.js?v=9850';
 import { playMusic, setLoopSfx, playSfx, audioNeedsClick, playVoiceLine, stopVoiceLine } from './audio.js?v=9820';
 import { initSettings, openSettings } from './settings.js?v=9820';
-import { actionForKey, hintHTML } from './controls.js?v=9820';
+import { actionForKey, hintHTML } from './controls.js?v=10160';
 import { initCheats, registerCheats } from './cheats.js?v=9820';
-import { initGamepad } from './gamepad.js?v=9820';
+import { initGamepad } from './gamepad.js?v=10160';
 import { SLOT_COUNT, getActiveSlot, setActiveSlot, readSlot, clearSlot, slotSummary, anySave } from './saves.js?v=9820';
 
 const root = document.getElementById('game-root');
@@ -258,8 +258,9 @@ function showControls(){
           <div class="control-item"><span class="control-key">${hintHTML('move')}</span><span class="control-action">Move</span></div>
           <div class="control-item"><span class="control-key">${hintHTML('jump')}</span><span class="control-action">Jump</span></div>
           <div class="control-item"><span class="control-key">${hintHTML('dodge')}</span><span class="control-action">Dodge</span></div>
-          <div class="control-item"><span class="control-key">${hintHTML('attack')}</span><span class="control-action">Punch</span></div>
-          <div class="control-item"><span class="control-key">${hintHTML('heavy')}</span><span class="control-action">Heavy attack (once earned)</span></div>
+          <div class="control-item"><span class="control-key">${hintHTML('crouch')}</span><span class="control-action">Crouch (hold)</span></div>
+          <div class="control-item"><span class="control-key">${hintHTML('attack')}</span><span class="control-action">Punch (tap) / Heavy attack (hold, once earned)</span></div>
+          <div class="control-item"><span class="control-key">${hintHTML('up')}</span><span class="control-action">Potion (in a fight)</span></div>
           <div class="control-item"><span class="control-key">${hintHTML('interact')}</span><span class="control-action">Pick up / interact</span></div>
           <div class="control-item"><span class="control-key">${hintHTML('inventory')}</span><span class="control-action">Open inventory (backpack)</span></div>
           <div class="control-item"><span class="control-key">${hintHTML('settings')}</span><span class="control-action">Settings (or the ⚙ button)</span></div>
@@ -557,6 +558,15 @@ function mountLevel1(loadSaved=false, levelNum=1, carry=null){
   ui.journalClose?.addEventListener('click',()=>toggleJournal(false));
 
   const MOVE_KEY = { up:'w', down:'s', left:'a', right:'d' };
+  // V10.16: Punch and Heavy share one key now - tap it for a punch, hold it past HEAVY_HOLD_MS
+  // for Heavy (fires the instant the hold crosses the threshold, rather than waiting for release,
+  // so it feels responsive). If Heavy isn't unlocked yet, combatHeavyAttack() itself shows the
+  // "locked" message and does nothing, same as it always has - that one held press just doesn't
+  // land a punch, which only ever happens before both Level 1 Goths are beaten.
+  const HEAVY_HOLD_MS = 350;
+  let attackTimer = 0, attackFiredHeavy = false, attackIsDown = false;
+  function isInFight(){ return !ui.combat.classList.contains('hidden') || !!level.inExtraFight?.(); }   // V9.94: Devil's Fingers / Sophia have their own arena
+  window.ggIsInFight = isInFight;   // so gamepad.js (a separate, DOM-only module) can gate D-pad-Up potion quick-deploy to fights only
   window.addEventListener('keydown',e=>{
     if(e.ctrlKey || e.metaKey || e.altKey) return;
     const act = actionForKey(e.key);
@@ -564,25 +574,34 @@ function mountLevel1(loadSaved=false, levelNum=1, carry=null){
     if(act==='inventory' && !e.repeat){ e.preventDefault(); toggleInventory(); return; }
     if(!ui.journal?.classList.contains('hidden')){ if(e.key==='Escape') toggleJournal(false); return; }   // V10.15: Tom's Journal - no map/combat input while it's open
     if(!ui.inventory?.classList.contains('hidden')) return;
-    const inFight = !ui.combat.classList.contains('hidden') || !!level.inExtraFight?.();   // V9.94: Devil's Fingers / Sophia have their own arena
+    const inFight = isInFight();
     if(act==='dodge' && inFight){
       e.preventDefault();
       if(!e.repeat) level.combatDodge?.();
       return;
     }
-    if(act==='attack' && inFight){
+    if(act==='crouch'){
       e.preventDefault();
-      if(!e.repeat) level.combatAttack?.();
+      if(!e.repeat) level.setCrouch?.(true);
       return;
     }
-    if(act==='heavy' && inFight){
+    if(act==='attack' && inFight){
       e.preventDefault();
-      if(!e.repeat) level.combatHeavyAttack?.();
+      if(!e.repeat){
+        attackIsDown = true; attackFiredHeavy = false;
+        clearTimeout(attackTimer);
+        attackTimer = setTimeout(()=>{ if(attackIsDown){ attackFiredHeavy = true; level.combatHeavyAttack?.(); } }, HEAVY_HOLD_MS);
+      }
       return;
     }
     if(act==='veil' && inFight){
       e.preventDefault();
       if(!e.repeat) level.combatVeil?.();
+      return;
+    }
+    if(act==='up' && inFight){
+      e.preventDefault();
+      if(!e.repeat) level.combatPotionQuick?.();
       return;
     }
     if(MOVE_KEY[act]){ e.preventDefault(); level.setMoveKey?.(MOVE_KEY[act],true); return; }
@@ -593,6 +612,12 @@ function mountLevel1(loadSaved=false, levelNum=1, carry=null){
   window.ggSaveAndQuit = () => { try { level.saveAndQuit(); } catch(e) {} };
   window.addEventListener('keyup',e=>{
     const act = actionForKey(e.key);
+    if(act==='crouch') level.setCrouch?.(false);
+    if(act==='attack' && attackIsDown){
+      attackIsDown = false;
+      clearTimeout(attackTimer);
+      if(!attackFiredHeavy) level.combatAttack?.();   // released before the hold threshold - a plain punch
+    }
     if(MOVE_KEY[act]) level.setMoveKey?.(MOVE_KEY[act],false);
   }, listen);
   // V10.3: "stuck walking in place" bug - if the window/tab loses focus while a direction is
@@ -601,7 +626,13 @@ function mountLevel1(loadSaved=false, levelNum=1, carry=null){
   // Olly reads as permanently "moving" in that direction until the same key happens to be
   // pressed and released again. Clear every direction whenever the window loses focus or the
   // tab is hidden, so a missed keyup can never leave him walking against nothing.
-  const clearAllMoveKeys = () => { for (const k of Object.values(MOVE_KEY)) level.setMoveKey?.(k, false); };
+  // V10.16: the same missed-keyup risk applies to crouch (he'd be stuck crouched) and to the
+  // attack hold-timer (a stale timeout could fire Heavy well after the key was actually let go).
+  const clearAllMoveKeys = () => {
+    for (const k of Object.values(MOVE_KEY)) level.setMoveKey?.(k, false);
+    level.setCrouch?.(false);
+    attackIsDown = false; attackFiredHeavy = false; clearTimeout(attackTimer);
+  };
   window.addEventListener('blur', clearAllMoveKeys);
   document.addEventListener('visibilitychange', () => { if (document.hidden) clearAllMoveKeys(); });
   registerCheats(level.cheat);

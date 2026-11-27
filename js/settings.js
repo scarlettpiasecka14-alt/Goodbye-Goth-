@@ -2,8 +2,8 @@
    Everything is built here and lives on <body>, so it survives the game swapping screens.
    Opened from the title menu (SETTINGS) or by pressing O anywhere outside a fight; closes with O, Esc or CLOSE. */
 import { getVolumes, setVolume } from './audio.js?v=9820';
-import { ACTIONS, DEFAULTS, getBindings, swapBindings, setBinding, resetBindings, keyLabel, isDefault, PAD_ACTIONS, getPadBindings, setPadBinding, resetPad, padLabel, isPadDefault } from './controls.js?v=9820';
-import { listenForPadButton, padConnected } from './gamepad.js?v=9820';
+import { ACTIONS, DEFAULTS, getBindings, swapBindings, setBinding, resetBindings, keyLabel, isDefault, PAD_ACTIONS, getPadBindings, setPadBinding, resetPad, padLabel, isPadDefault } from './controls.js?v=10160';
+import { listenForPadButton, padConnected } from './gamepad.js?v=10160';
 
 // V9.30: display / accessibility preferences. Saved in the browser; the game reads window.ggPrefs.
 const PREFS_KEY = 'goodbyeGothPrefs_v1';
