@@ -11,7 +11,7 @@
    To check positions against the collision, open the game with ?level=2&walk=1.
 
    PLACEHOLDER ART is marked "placeholder" below - Scarlett is making the real screens. */
-import { LEVEL2_WALK_RLE } from './level2-walk.js?v=10140';
+import { LEVEL2_WALK_RLE } from './level2-walk.js?v=10150';
 
 const ENC = 'assets/encounters/level2/';
 
@@ -152,6 +152,40 @@ export const LEVEL2 = {
         devilsfingers: { image: ENC + 'devils-fingers-placeholder.webp', title: "DEVIL'S FINGERS DEFEATED!",
             copy: "Devil's Fingers curls up and sinks back into the earth, leaving nothing but a smell you'll be thinking about for weeks." }
     },
+
+    // V10.15: Tom's Journal - the in-game compendium. "Pick it up" from the hollow, accessible
+    // from the HUD once Tom's with you. Written entirely in Tom's voice (not Olly's, not a narrator's).
+    // Each entry unlocks to its real "lore" once that foe's been encountered (see journalSeen in
+    // level1.js); until then it shows "teaser" instead. The last two entries never unlock on their
+    // own (future' is set) - they're just Tom being ominous about what's still coming.
+    journal: [
+        {
+            key: 'chainGoth', name: 'CHAIN GOTH', species: 'Gothica Catenata',
+            image: ENC + 'chain-goth-encounter.webp',
+            teaser: "Tom's notes: Word is she followed you out of the cemetery. Forest air clearly agreed with her.",
+            lore: "Tom's notes: Her again. I made the mistake of asking what the bigger chain was for and I deeply regret finding out. She remembers you, apparently, and she is not over it. Don't let her finish her sentences - she gets ideas."
+        },
+        {
+            key: 'devilsFingers', name: "DEVIL'S FINGERS", species: 'Clathrus archeri',
+            image: ENC + 'devils-fingers-encounter.webp',
+            teaser: "Tom's notes: There's a smell near the waterfall I don't love. Could be nothing. Probably isn't nothing.",
+            lore: "Tom's notes: It's a mushroom. I want that on record. A mushroom that sprays acid and ruins your whole afternoon. Technically not a Goth at all, but nobody consulted me on the guest list."
+        },
+        {
+            key: 'sophia', name: 'SOPHIA, THE CHAOS FAIRY GOTH', species: 'Gothica Chaotica',
+            image: 'assets/story/sophia-encounter.png',
+            teaser: "Tom's notes: Something's waiting behind that glowing doorway, and it is by all accounts delighted about it. I'd stock up on potions before you knock.",
+            lore: "Tom's notes: She's lovely, in the way a landmine is lovely right before you step on it. Brought her favourite toy, apparently, and smiled the whole time she mentioned it. I've decided not to think about the toy."
+        },
+        {
+            key: 'tease1', name: '???', future: true,
+            teaser: "Tom's notes: There are older pages in this journal than mine. Whoever kept it before me wrote about something past the forest. I haven't got further than the words 'do NOT'. Charming."
+        },
+        {
+            key: 'tease2', name: '???', future: true,
+            teaser: "Tom's notes: Olly, if we ever actually reach the princess, I have a horrible feeling this won't be the last fight. Call it a professional hunch."
+        }
+    ],
 
     boss: {
         name: 'Sophia, The Chaos Fairy Goth', species: 'Gothica Chaotica',

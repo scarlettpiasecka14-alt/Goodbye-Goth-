@@ -5,7 +5,7 @@ import { actionHint, hintHTML } from '../controls.js?v=9820';
 // V9.94: Level 2 runs on this same engine (createLevel1(ui, { level: 2 })). Its settings live in
 // level2-config.js; the parts this file doesn't have (Find the Princess, Devil's Fingers, Sophia)
 // are borrowed from level2.js. With no level option everything below behaves exactly as Level 1.
-import { LEVEL2 } from './level2-config.js?v=10140';
+import { LEVEL2 } from './level2-config.js?v=10150';
 import { createLevel2 } from './level2.js?v=9950';
 import { createFoe, preloadLevel2Foes } from './level2-foes.js?v=9960';   // V9.96: Devil's Fingers + Sophia on this fight screen
 // Game clock: normal time, but it stands still while a tutorial pop-up is open (so nothing happens behind it).
@@ -1539,6 +1539,7 @@ export function createLevel1(ui, opts = {}) {
         veilUntil = -1e9,   // purely cosmetic: draws the shimmer while a veil use is active (the actual invincibility is player.invuln, same as dodge)
         keySpawnAnnounced = false,
         inventory = {},
+        journalSeen = {},   // V10.15: Tom's Journal - which journal entries (by encounter 'kind') have been uncovered, keyed by name (e.g. journalSeen.chainGoth)
         checkpoint = 'cemetery-entrance',
         target = null,
         isBoss = false,
@@ -1858,8 +1859,8 @@ export function createLevel1(ui, opts = {}) {
         let finished = false;
         let attemptedFallback = false;
         const sources = [
-            'assets/video/level2-gate/level2-gate.mp4?v=10140',
-            'assets/video/level2-gate/level2-gate.mov?v=10140'
+            'assets/video/level2-gate/level2-gate.mp4?v=10150',
+            'assets/video/level2-gate/level2-gate.mov?v=10150'
         ];
 
         const finish = () => {
@@ -1957,6 +1958,7 @@ export function createLevel1(ui, opts = {}) {
         ui.gothEl.textContent = `${kills}/2`;
         ui.relEl.textContent = relationshipDone ? 'Solved' : 'Locked';
         ui.puzzleEl.textContent = puzzleSolved ? 'Answered' : 'Locked';
+        if (ui.journalButton) ui.journalButton.classList.toggle('hidden', !(LV && metTom));   // V10.15: Tom's Journal - only shows once Tom's actually with you
         refreshInventoryUI();
         if (objectivesComplete() && !keyCollected && !keySpawnAnnounced) {
             keySpawnAnnounced = true;
@@ -2186,6 +2188,7 @@ export function createLevel1(ui, opts = {}) {
             kind,
             enemy
         };
+        if (LV) journalSeen[kind] = true;   // V10.15: Tom's Journal unlocks an entry the moment you encounter that foe
         combatCheckpoint = {
             x,
             y
@@ -6067,6 +6070,7 @@ export function createLevel1(ui, opts = {}) {
     function showBossIntro() {
         bossIntroPending = true;
         mode = 'bossintro';
+        if (LV) journalSeen.sophia = true;   // V10.15: Tom's Journal unlocks Sophia's entry once she's encountered
         playMusic('map');
         if (!LV) loadPatriciaAssets();   // V9.44: safety net in case the early (level-open) preload hasn't fired yet - gives her one more head start before the player hits "fight"
         ui.bossIntro.classList.remove('hidden');
@@ -6326,6 +6330,7 @@ export function createLevel1(ui, opts = {}) {
                 heavyUnlocked,
                 patriciaDefeated,
                 inventory,
+                journalSeen,   // V10.15: Tom's Journal - which entries have been uncovered
                 checkpoint,
                 enemies: enemies.map(e => ({
                     dead: e.dead,
@@ -6366,6 +6371,7 @@ export function createLevel1(ui, opts = {}) {
             gateOpened = !!state.gateOpened;
             keySpawnAnnounced = keyCollected;
             inventory = state.inventory && typeof state.inventory === 'object' ? state.inventory : {};
+            journalSeen = state.journalSeen && typeof state.journalSeen === 'object' ? { ...state.journalSeen } : {};   // V10.15: older saves predate this - an empty journal is correct for them
             if (keyCollected && !gateOpened) inventory.key = 1; else inventory.key = 0;   // V9.30: a used key is gone
             checkpoint = state.checkpoint || 'cemetery-entrance';
             if (Array.isArray(state.enemies)) {
@@ -6566,7 +6572,14 @@ export function createLevel1(ui, opts = {}) {
         startBoss,
         saveAndQuit,
         saveGame,
-        loadGame
+        loadGame,
+        // V10.15: Tom's Journal - what's been uncovered so far, for the journal screen to render against
+        journalStatus: () => ({
+            metTom,
+            seen: { ...journalSeen },
+            enemyDead: Object.fromEntries(enemies.map(e => [e.type, !!e.dead])),
+            bossDefeated: !!patriciaDefeated
+        })
     };
 }
 

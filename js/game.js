@@ -1,6 +1,6 @@
 import { StoryController } from './story.js?v=9820';
-import { createLevel1, resetRingTutorials } from './levels/level1.js?v=10140';
-import { LEVEL2 } from './levels/level2-config.js?v=10140';   // V9.94: Level 2 runs on the Level 1 engine
+import { createLevel1, resetRingTutorials } from './levels/level1.js?v=10150';
+import { LEVEL2 } from './levels/level2-config.js?v=10150';   // V9.94: Level 2 runs on the Level 1 engine
 import { createLevel3 } from './levels/level3.js?v=9850';
 import { playMusic, setLoopSfx, playSfx, audioNeedsClick, playVoiceLine, stopVoiceLine } from './audio.js?v=9820';
 import { initSettings, openSettings } from './settings.js?v=9820';
@@ -316,6 +316,7 @@ function mountLevel1(loadSaved=false, levelNum=1, carry=null){
         <div id="player-hp-text" class="player-hp-text">100 / 100 HP</div>
         <div class="hud-btn-row">
           <button id="inventory-button" type="button" style="min-height:34px;padding:6px 10px;font-size:12px;">🎒 BACKPACK <span id="inventory-count">0/10</span></button>
+          <button id="journal-button" type="button" class="hidden" style="min-height:34px;padding:6px 10px;font-size:12px;">📖 TOM'S JOURNAL</button>
           <button id="hud-gear" class="hud-gear" type="button" title="Settings (O)" aria-label="Settings">⚙</button>
         </div>
         <div id="combo-hud" class="combo-hud" style="display:none" aria-label="Punch combo"><span class="combo-pips"><i></i><i></i><i></i></span><span id="combo-text" class="combo-text"></span></div>
@@ -338,6 +339,15 @@ function mountLevel1(loadSaved=false, levelNum=1, carry=null){
           </div>
           <p class="inventory-empty-copy">Nothing in here yet. A suspiciously empty bag.</p>
           <button id="inventory-close" type="button" class="primary inventory-close-button">CLOSE</button>
+        </div>
+      </div>
+
+      <div id="journal" class="overlay hidden" style="z-index:40">
+        <div class="overlay-box center journal-box">
+          <div class="story-title">TOM'S JOURNAL</div>
+          <div class="journal-intro">Notes from Tom, reluctant travelling companion and even more reluctant biographer.</div>
+          <div id="journal-list" class="journal-list"></div>
+          <button id="journal-close" type="button" class="primary inventory-close-button">CLOSE</button>
         </div>
       </div>
 
@@ -444,6 +454,7 @@ function mountLevel1(loadSaved=false, levelNum=1, carry=null){
     canvas:document.getElementById('world'), dialogue:document.getElementById('dialogue'),
     hpEl:document.getElementById('player-hp-text'), hpFill:document.getElementById('player-hp-fill'), gothEl:document.getElementById('goth-count'), relEl:document.getElementById('rel-state'), puzzleEl:document.getElementById('puzzle-state'),
     inventory:document.getElementById('inventory'), inventoryButton:document.getElementById('inventory-button'), inventoryClose:document.getElementById('inventory-close'),
+    journal:document.getElementById('journal'), journalButton:document.getElementById('journal-button'), journalClose:document.getElementById('journal-close'), journalList:document.getElementById('journal-list'),
     encounter:document.getElementById('encounter'), encounterImage:document.getElementById('encounter-image'), encounterName:document.getElementById('encounter-name'), encounterSpecies:document.getElementById('encounter-species'), encounterText:document.getElementById('encounter-text'), encounterReady:document.getElementById('encounter-ready'), encounterExplore:document.getElementById('encounter-explore'),
     combat:document.getElementById('combat'), combatCanvas:document.getElementById('combat-canvas'), combatName:document.getElementById('combat-name'), enemyHp:document.getElementById('enemy-hp'), enemyHpText:document.getElementById('enemy-hp-text'), enemyStunWrap:document.getElementById('enemy-stun-wrap'), enemyStun:document.getElementById('enemy-stun'), enemyStunLabel:document.getElementById('enemy-stun-label'), combatStatus:document.getElementById('combat-status'),
     death:document.getElementById('death'), deathText:document.getElementById('death-text'), retryCombat:document.getElementById('retry-combat'), backMap:document.getElementById('back-map'),
@@ -509,12 +520,45 @@ function mountLevel1(loadSaved=false, levelNum=1, carry=null){
   document.getElementById('hud-gear')?.addEventListener('click',e=>{ e.currentTarget.blur(); openSettings(); });
   ui.inventoryClose?.addEventListener('click',()=>toggleInventory(false));
 
+  // V10.15: Tom's Journal - the in-game compendium, built fresh from L2.journal + level.journalStatus()
+  // every time it opens, so it always reflects what's actually been uncovered/defeated so far.
+  function renderJournal(){
+    if(!ui.journalList || !L2?.journal) return;
+    const status = level.journalStatus?.() || {};
+    ui.journalList.innerHTML = L2.journal.map(entry => {
+      const unlocked = !entry.future && !!status.seen?.[entry.key];
+      const defeated = unlocked && (status.bossDefeated && entry.key === 'sophia' || status.enemyDead?.[entry.key]);
+      const img = unlocked && entry.image ? `<img class="journal-entry-img" src="${entry.image}" alt="${entry.name}">` : '<div class="journal-entry-img journal-entry-mystery">❔</div>';
+      const name = unlocked ? entry.name : '???';
+      const species = unlocked && entry.species ? `<div class="journal-entry-species">(${entry.species})</div>` : '';
+      const status2 = unlocked ? `<div class="journal-entry-status">${defeated ? 'DEFEATED' : 'AT LARGE'}</div>` : '';
+      const text = unlocked ? entry.lore : entry.teaser;
+      return `<div class="journal-entry ${unlocked ? 'journal-unlocked' : 'journal-locked'}">${img}<div class="journal-entry-body"><div class="journal-entry-name">${name}</div>${species}${status2}<p class="journal-entry-text">${text}</p></div></div>`;
+    }).join('');
+  }
+  function toggleJournal(forceOpen){
+    if(!ui.journal) return;
+    const willOpen = forceOpen !== undefined ? forceOpen : ui.journal.classList.contains('hidden');
+    if(willOpen){
+      renderJournal();
+      level.setMoveKey?.('w',false); level.setMoveKey?.('a',false); level.setMoveKey?.('s',false); level.setMoveKey?.('d',false);
+      ui.journal.classList.remove('hidden');
+      ui.journal.setAttribute('aria-hidden','false');
+    } else {
+      ui.journal.classList.add('hidden');
+      ui.journal.setAttribute('aria-hidden','true');
+    }
+  }
+  ui.journalButton?.addEventListener('click',()=>toggleJournal(true));
+  ui.journalClose?.addEventListener('click',()=>toggleJournal(false));
+
   const MOVE_KEY = { up:'w', down:'s', left:'a', right:'d' };
   window.addEventListener('keydown',e=>{
     if(e.ctrlKey || e.metaKey || e.altKey) return;
     const act = actionForKey(e.key);
     if(!act) return;
     if(act==='inventory' && !e.repeat){ e.preventDefault(); toggleInventory(); return; }
+    if(!ui.journal?.classList.contains('hidden')){ if(e.key==='Escape') toggleJournal(false); return; }   // V10.15: Tom's Journal - no map/combat input while it's open
     if(!ui.inventory?.classList.contains('hidden')) return;
     const inFight = !ui.combat.classList.contains('hidden') || !!level.inExtraFight?.();   // V9.94: Devil's Fingers / Sophia have their own arena
     if(act==='dodge' && inFight){

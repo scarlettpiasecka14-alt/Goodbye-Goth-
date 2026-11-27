@@ -891,3 +891,18 @@ html,body,#app{height:100%;overflow:hidden}
 .gg-disclaimer-credit{color:#f3bcd3 !important;font-style:normal !important;font-weight:700 !important}
 .gg-disclaimer-skip{position:fixed;left:50%;bottom:max(28px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:2;padding:12px 28px;border:1px solid #d98ba8;border-radius:12px;background:#382132;color:#f8eaf0;font:800 15px Georgia,serif;letter-spacing:.1em;cursor:pointer}
 .gg-disclaimer-skip:disabled{opacity:.4;cursor:not-allowed}
+
+/* V10.15: Tom's Journal - the in-game enemy compendium */
+.journal-box{width:min(100%,760px)}
+.journal-intro{color:#cdb8c7;font:italic 500 13px Georgia,serif;margin:2px 0 14px}
+.journal-list{display:flex;flex-direction:column;gap:10px;text-align:left;max-height:60svh;overflow:auto;padding-right:2px}
+.journal-entry{display:flex;gap:12px;align-items:flex-start;background:#18121b;border:1px solid var(--line);border-radius:11px;padding:10px}
+.journal-entry-img{width:64px;height:64px;object-fit:cover;border-radius:9px;background:#0b090d;border:1px solid var(--line);flex:none}
+.journal-entry-mystery{display:grid;place-items:center;font-size:26px;color:#8a7a89}
+.journal-entry-body{min-width:0}
+.journal-entry-name{font:800 14px Georgia,serif;letter-spacing:.03em;color:#f3d6e6}
+.journal-locked .journal-entry-name{color:#9d8c9a}
+.journal-entry-species{font:italic 500 11px Georgia,serif;color:#a98fa4;margin-top:1px}
+.journal-entry-status{display:inline-block;margin-top:4px;font:800 10px Georgia,serif;letter-spacing:.08em;padding:2px 7px;border-radius:6px;background:#2a1b26;color:#e7a6c3}
+.journal-entry-text{margin:6px 0 0;font:500 13px/1.5 Georgia,serif;color:#dccbd8}
+@media(max-width:600px){.journal-entry{gap:9px}.journal-entry-img{width:52px;height:52px}}

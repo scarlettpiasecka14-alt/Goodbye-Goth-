@@ -1069,3 +1069,4 @@ body.gg-calm *, body.gg-calm *::before, body.gg-calm *::after { animation-durati
 #pat-reward-overlay .inventory-slots.gg-reward-slots { gap: 14px !important; padding: 30px 18px 20px !important; }
 #pat-reward-overlay .gg-reward { aspect-ratio: auto !important; min-height: 120px !important; }
 #pat-reward-overlay .inventory-close-button, #pat-reward-overlay .gg-reward-done { margin: 6px 8px 0 !important; }
+.hud-btn-row #journal-button { flex: 1 1 auto; width: auto !important; margin-top: 0 !important; white-space: nowrap; }
