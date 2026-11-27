@@ -46,16 +46,17 @@ const GOTH_HURT_SFX = ['goth-hurt-1', 'goth-hurt-2', 'goth-hurt-3', 'goth-hurt-4
 const COMBO_PUNCHES = 3;   // V9.80: three swings then a rest (the HUD shows 3 pips)
 const BITE_WINDUP_MS = 1150;   // red bite warning: long enough to see the ring and dodge
 const RING_FLOOR_OFFSET = 62;   // how far below Olly's ground line the Zombie Goth's ring sits
-const ATTACK_RING_RGB = { pink: '236,110,170', yellow: '255,208,64', red: '255,66,86', purple: '176,84,255' };
+const ATTACK_RING_RGB = { pink: '236,110,170', yellow: '255,208,64', red: '255,66,86', purple: '176,84,255', duck: '236,110,170' };   // V10.16: 'duck' is the same pink as 'pink' visually - it's a separate tutorial kind only because its dodge is different (crouch, not jump)
 // ---- Ring tutorial pop-ups: shown the first time each ring colour appears, then remembered. Images: assets/tutorial/ring-<colour>.webp
 const RING_TUTORIAL = {   // V9.80: new wording. title = big heading, paras = one paragraph each
     pink: { label: 'Pink Ring', title: 'A Friendly Little Warning', paras: ['Well, relatively friendly.', 'This is a standard attack. Dodge or jump in whichever direction you fancy, then strike back.', 'A well-timed hit will interrupt the enemy\'s attack entirely, stopping them in their tracks.', 'See? They\'re not all that scary.'] },
     red: { label: 'Red Ring', title: 'Now We\'re Getting Serious', paras: ['This attack packs considerably more punch.', 'One hit won\'t be enough; you\'ll need to keep dodging or jumping until the attack is over.', 'Good luck, soldier.'] },
     purple: { label: 'Purple Ring', title: 'Oh, This Is Just Cheating', paras: ['Some Goths have rather... unusual abilities.', 'A purple ring signals a special ability unique to the enemy. These abilities don\'t necessarily follow the usual rules of combat, so watch carefully.'] },
     stun: { label: 'Dazed', title: 'Some Enemies Can Be Stunned!', paras: ['A few well-placed hits might leave an enemy seeing stars.', "Keep an eye on their stun bar. Once they're stunned, they'll be briefly vulnerable, giving you a chance to strike.", "Some enemies take more damage while they're stunned. Others are just kind enough to give you a moment to breathe.", "But don't get too comfortable. Not every enemy goes down so easily!"] },
-    yellow: { label: 'Yellow Ring', title: 'A Little More Personal Space, Please?', paras: ['This attack covers a much larger area, so you\'ll need to think carefully about where you dodge or jump.', 'Some attacks may require more than one well-timed movement.', 'And don\'t bother trying to interrupt it. Enemies are completely invincible during yellow attacks.', 'Your best bet? Get out of her way.'] }
+    yellow: { label: 'Yellow Ring', title: 'A Little More Personal Space, Please?', paras: ['This attack covers a much larger area, so you\'ll need to think carefully about where you dodge or jump.', 'Some attacks may require more than one well-timed movement.', 'And don\'t bother trying to interrupt it. Enemies are completely invincible during yellow attacks.', 'Your best bet? Get out of her way.'] },
+    duck: { label: 'Pink Ring', title: 'Get Down', paras: ['This one flies dead level, so jumping won\'t help you here.', 'Hold Crouch to duck underneath it instead, then keep walking towards her while you\'re down there.', 'Come up swinging the moment it\'s passed - a good hit will stop her before she can try it again.'] }
 };
-const RING_TUTORIAL_ASPECT = { pink: '1672/941', red: '1672/941', purple: '1672/941', yellow: '1672/941', stun: '1280/801' };
+const RING_TUTORIAL_ASPECT = { pink: '1672/941', red: '1672/941', purple: '1672/941', yellow: '1672/941', stun: '1280/801', duck: '1672/941' };
 // V9.83: these were never preloaded, so the FIRST time each ring showed, the card rendered small/squarish (no intrinsic
 // image size yet) and then visibly reflowed to its real shape once the webp finished loading a moment later ("pops up
 // as a dark square, then changes shape, then actually pops up"). Kick off the real download the instant the game loads.
@@ -3929,7 +3930,7 @@ export function createLevel1(ui, opts = {}) {
         patVoiceReset();
         patDeathPrep();   // V9.42: load the death cutscene in the background so it can start the instant she falls
         patReward = null;
-        patSpark = null; patSparkShards = null; patSparkPuff = null;
+        patSpark = null; patSparkShards = null;
         patLightStandMs = 0; patLightDmgAccum = 0; playerStunUntil = 0;
         chainLastGood = null;   // V9.39: never show the Chain Goth's last frame (the dead chain on the floor) before Patricia's art has loaded
         patStage = resume ? 2 : 1;
@@ -3976,8 +3977,8 @@ export function createLevel1(ui, opts = {}) {
             // (no chain noises for Patricia)
             ui.combatStatus.textContent = 'Patricia raises her sword. DODGE or JUMP!';
         } else if (kind === 'jab') {
-            zombieCombatState = 'jab'; queueRingTutorial('pink');
-            ui.combatStatus.textContent = 'Umbrella jab! Hit her before it lands to stop it.';
+            zombieCombatState = 'jab'; queueRingTutorial('duck');   // V10.16: own tutorial kind - its dodge is crouch, not jump, so it can't share 'pink''s tutorial text
+            ui.combatStatus.textContent = 'Umbrella jab! Crouch to duck under it, or hit her first to stop it.';
         } else if (kind === 'lightning') {
             zombieCombatState = 'lightning'; queueRingTutorial('yellow');
             // (no chain noises for Patricia)
@@ -4240,8 +4241,10 @@ export function createLevel1(ui, opts = {}) {
                 playSfx('chain-impact-spin', .7, 1.5);   // a sharp little zap as the sparks leave the umbrella
                 playMagicZap('launch', .9);   // V9.81: a clear descending zap right as the orb fires, distinct from any other attack sound
                 const dir = patFace === 'left' ? -1 : 1;
-                // V9.80: a big purple orb lobs out of the umbrella, skips off the floor and bounces up at Olly - jump over the bounce, or interrupt her in the wind-up
-                patSpark = { x: zombieCombatX + dir * 95, y: CHAIN_FLOOR_Y - 155, vx: dir * 560, vy: 240, dir, born: nowMs, bounced: false, hit: false, dead: false };
+                // V10.16: per Scarlett's redesign - the purple glass spray now flies dead level at chest height
+                // instead of skipping off the floor, so CROUCH ducks it (not jump): stand in its path and it
+                // hits, crouch and it sails clean overhead while you close the distance and punish her for it.
+                patSpark = { x: zombieCombatX + dir * 95, y: CHAIN_FLOOR_Y - 140, vx: dir * 560, dir, born: nowMs, hit: false, dead: false };
             }
             if (t >= PAT_JAB_STRIKE_FRAMES * PAT_JAB_FRAME_MS + 200) patToRecover(nowMs, 650);
             return;
@@ -4623,7 +4626,7 @@ export function createLevel1(ui, opts = {}) {
         // V9.36: warning rings flash twice during the wind-up, then go (red = dodge or jump, yellow = only jumping works, purple = special ability)
         const ringY = CHAIN_FLOOR_Y + 8, tt = nowMs - zombieCombatStateStart;
         if (st === 'lunge') drawAttackRing(c, enemyX, ringY, PAT_LUNGE_RANGE - 40, 'red', tt / PAT_LUNGE_WINDUP_MS, tt >= PAT_LUNGE_WINDUP_MS, nowMs, PAT_LUNGE_WINDUP_MS);
-        else if (st === 'jab') drawAttackRing(c, enemyX, ringY, PAT_JAB_RANGE - 30, 'pink', tt / PAT_JAB_WINDUP_MS, tt >= PAT_JAB_WINDUP_MS, nowMs, PAT_JAB_WINDUP_MS);
+        else if (st === 'jab') drawAttackRing(c, enemyX, ringY, PAT_JAB_RANGE - 30, 'duck', tt / PAT_JAB_WINDUP_MS, tt >= PAT_JAB_WINDUP_MS, nowMs, PAT_JAB_WINDUP_MS);
         else if (st === 'lightning') drawAttackRing(c, enemyX, ringY, PAT_LIGHT_RANGE, 'yellow', tt / PAT_LIGHT_WINDUP_MS, tt >= PAT_LIGHT_WINDUP_MS, nowMs, PAT_LIGHT_WINDUP_MS);
         else if (st === 'smoke') {
             const pr = tt / PAT_SMOKE_REAPPEAR_AT_MS;
@@ -4742,7 +4745,7 @@ export function createLevel1(ui, opts = {}) {
         drawJabCharge(c, enemyX, nowMs);
         drawPatSpark(c, nowMs);
     }
-    let patSparkPuff = null, patSparkShards = null;   // V9.82: shard burst when the orb hits Olly
+    let patSparkShards = null;   // V9.82: shard burst when the orb hits Olly
     // V9.87: per Scarlett's redesign - the orb no longer holds one fixed look. It continuously
     // crossfades through all three of the reviewed concepts (a glassy "crystal" shell with smoke
     // curling inside it, a dense "swirl" wreath of smoke with no shell, and a sparser "witchlight"
@@ -4832,28 +4835,19 @@ export function createLevel1(ui, opts = {}) {
     function updatePatSpark(dt, nowMs) {
         if (!patSpark || patSpark.dead) return;
         const s = patSpark;
-        const prevX = s.x, prevY = s.y;
-        s.vy += 1550 * dt; s.x += s.vx * dt; s.y += s.vy * dt;
-        const ground = CHAIN_FLOOR_Y - 8;
-        if (s.y >= ground) {                       // skip off the floor and leap up toward Olly
-            s.y = ground;
-            if (!s.bounced) { s.vy = -400; s.bounced = true; playSfx('chain-impact', .55, 1.7); patSparkPuff = { x: s.x, t: nowMs }; }   // V9.99e: was -770 — lowered so the orb peaks ~50px above floor, under Olly's 68px jump height (#159)
-            else s.dead = true;                    // second landing: it fizzles out
-        }
+        const prevX = s.x;
+        s.x += s.vx * dt;   // V10.16: dead level now - no gravity, no floor bounce, just a straight line at chest height
         // V9.82: check the whole path it swept this frame, not just where it ended up - at speed, a slow frame could
         // step it clean past Olly's hit window and never register, which read as "sometimes it just doesn't do anything."
         if (!s.hit) {
             const steps = Math.max(1, Math.ceil(Math.abs(s.x - prevX) / 24));
             for (let i = 1; i <= steps && !s.hit; i++) {
-                const px = prevX + (s.x - prevX) * (i / steps), py = prevY + (s.y - prevY) * (i / steps);
-                if (Math.abs(px - player.x) < 70 && py > CHAIN_FLOOR_Y - 260) {
-                    // V9.99e: re-allow jumping over the orb now that the bounce is lower (#159).
-                    // The orb peaks at ~50px; Olly's jump peaks at 68px, so a well-timed jump clears it.
-                    const airborne = jumping || jumpOffset < -30;
-                    if (airborne && py > CHAIN_FLOOR_Y + jumpOffset + 20) continue;   // orb is below Olly's feet — it passes under
-                    if (player.invuln > nowMs) continue;   // dodged: it sails past
+                const px = prevX + (s.x - prevX) * (i / steps);
+                if (Math.abs(px - player.x) < 70) {
+                    if (crouching) continue;           // V10.16: ducked - it sails clean overhead
+                    if (player.invuln > nowMs) continue;   // dodged some other way: it sails past
                     s.hit = true; s.dead = true;
-                    patSparkShards = { x: px, y: py, t: nowMs };   // V9.82: burst into purple shards on impact so the hit is unmistakable
+                    patSparkShards = { x: px, y: s.y, t: nowMs };   // V9.82: burst into purple shards on impact so the hit is unmistakable
                     patDamage(PAT_JAB_DAMAGE, 1e5, PAT_JAB_PUSH, 'UMBRELLA SPARK', nowMs, true);   // V9.94: ignoreAir — the orb already did its own hit check, so applyZombieDamage must not re-check airborne
                 }
             }
@@ -4861,13 +4855,6 @@ export function createLevel1(ui, opts = {}) {
         if (s.x < -100 || s.x > COMBAT_W + 100 || nowMs - s.born > 3200) patSpark = null;
     }
     function drawPatSpark(c, nowMs) {
-        // ground puff when it skips off the floor
-        if (patSparkPuff && nowMs - patSparkPuff.t < 260) {
-            const k = (nowMs - patSparkPuff.t) / 260; c.save(); c.globalCompositeOperation = 'lighter';
-            c.strokeStyle = `rgba(150,70,205,${.5 * (1 - k)})`; c.lineWidth = 3;
-            for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI - Math.PI; const r = 10 + k * 42; c.beginPath(); c.moveTo(patSparkPuff.x, CHAIN_FLOOR_Y - 6); c.lineTo(patSparkPuff.x + Math.cos(a) * r, CHAIN_FLOOR_Y - 6 + Math.sin(a) * r * .6); c.stroke(); }
-            c.restore();
-        }
         // V9.82: on impact with Olly it explodes into purple shards (same deep-purple family as her teleport smoke) - an
         // unmissable burst instead of a silent, sometimes-ambiguous touch.
         // V9.87: per Scarlett ("should explode into little purple sparks and shards") - the jagged shards are joined
