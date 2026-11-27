@@ -2,10 +2,11 @@
    Works by turning controller buttons into the same key presses the keyboard makes, so every fight and map move
    follows the keyboard bindings. In menus / pop-ups the D-pad or left stick moves a pink highlight, A presses it, B goes back.
 
-   Layout (Xbox style):  stick / D-pad = move (and move the highlight in menus)
-     A = jump / interact / select      B = dodge / back      X = punch      Y = heavy attack
+   Layout (Xbox style), V10.16:  stick / D-pad = move (and move the highlight in menus)
+     A = jump / interact / select      B = crouch (hold)      X = dodge      Y = punch (tap) / heavy (hold)
+     RS click = veil      D-pad Up = potion quick-deploy (fight only - normal movement everywhere else)
      Start = Settings      View (Back) = backpack      bumpers + triggers are kept free for the bow later. */
-import { getBindings, getPadBindings, setUsingPad } from './controls.js?v=9820';
+import { getBindings, getPadBindings, setUsingPad } from './controls.js?v=10160';
 
 const DEAD = 0.5;                 // stick dead zone
 const BTN = { A: 0, B: 1, X: 2, Y: 3, VIEW: 8, START: 9, UP: 12, DOWN: 13, LEFT: 14, RIGHT: 15 };
@@ -15,7 +16,7 @@ const CAND = 'summary, button:not(:disabled), [role="button"], input[type="range
 
 let capture = null;
 let padIndex = -1, rafId = 0;
-const held = new Set();           // movement keys we are currently holding down for the game
+const held = new Set();           // movement directions + crouch + attack: keys we are currently holding down for the game
 const prev = { A: false, B: false, X: false, Y: false, VIEW: false, START: false, dir: { up: false, down: false, left: false, right: false } };
 let focusEl = null, wasMenu = false, repeatAt = { up: 0, down: 0, left: 0, right: 0 }, usingPad = false;
 
@@ -24,13 +25,17 @@ function pressKey(key, type) {
     window.dispatchEvent(new KeyboardEvent(type, { key, bubbles: true, cancelable: true }));
 }
 function tapAction(action) { const k = getBindings()[action]; pressKey(k, 'keydown'); pressKey(k, 'keyup'); }
-function setMove(dir, on) {
-    const k = getBindings()[dir];
+// V10.16: generalised from the old movement-only setMove, so Crouch and Attack (both held
+// buttons now - Attack needs to stay held for the hold-for-Heavy timing in js/game.js to work)
+// can be tracked the same way as a held movement direction.
+function setHeldKey(id, on) {
+    const k = getBindings()[id];
     if (!k) return;
-    if (on && !held.has(dir)) { held.add(dir); pressKey(k, 'keydown'); }
-    else if (!on && held.has(dir)) { held.delete(dir); pressKey(k, 'keyup'); }
+    if (on && !held.has(id)) { held.add(id); pressKey(k, 'keydown'); }
+    else if (!on && held.has(id)) { held.delete(id); pressKey(k, 'keyup'); }
 }
-function releaseAll() { for (const d of [...held]) setMove(d, false); }
+function setMove(dir, on) { setHeldKey(dir, on); }
+function releaseAll() { for (const id of [...held]) setHeldKey(id, false); }
 
 /* ---- menu mode: which buttons can the controller reach right now? ---- */
 function visible(el) {
@@ -162,9 +167,19 @@ function frame(now) {
         if (edge('A') && focusEl) focusEl.click();
         if (edge('B')) goBack();
     } else {
-        // Playing: stick / D-pad = move, buttons = actions.
-        for (const d of ['up', 'down', 'left', 'right']) setMove(d, dir[d]);
-        for (const act of ['jump', 'dodge', 'attack', 'heavy', 'veil']) if (edgeBtn(pb[act])) tapAction(act);
+        // Playing: stick / D-pad = move, buttons = actions. Crouch and Attack are held buttons
+        // (Attack needs to stay held so js/game.js can tell a tap from a hold-for-Heavy); the
+        // rest are one-shot taps on the press. D-pad Up is movement everywhere except mid-fight,
+        // where it's repurposed as the potion quick-deploy instead (see js/game.js) - the left
+        // stick alone still can't trigger it, same as the keyboard only reusing the Up key, not
+        // every way to move up.
+        const fighting = window.ggIsInFight ? window.ggIsInFight() : false;
+        for (const d of ['down', 'left', 'right']) setMove(d, dir[d]);
+        if (fighting) { setMove('up', false); if (edgeBtn(BTN.UP)) tapAction('up'); }
+        else setMove('up', dir.up);
+        for (const act of ['jump', 'dodge', 'veil']) if (edgeBtn(pb[act])) tapAction(act);
+        setHeldKey('crouch', b(pb.crouch));
+        setHeldKey('attack', b(pb.attack));
     }
     Object.assign(prev, now2); prev.dir = dir;
 }
@@ -195,7 +210,7 @@ export function initGamepad() {
     window.addEventListener('gamepadconnected', e => {
         padIndex = e.gamepad ? e.gamepad.index : padIndex;
         if (!rafId) rafId = requestAnimationFrame(frame);
-        toast('🎮 Controller connected<br>A jump / select · B dodge / back · X punch · Y heavy attack<br>Start settings · View backpack');
+        toast('🎮 Controller connected<br>A jump / select · B crouch (hold) · X dodge · Y punch (tap) / heavy (hold)<br>Start settings · View backpack');
     });
     window.addEventListener('gamepaddisconnected', e => {
         if (!e.gamepad || e.gamepad.index !== padIndex) return;
