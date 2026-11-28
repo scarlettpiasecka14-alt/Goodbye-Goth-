@@ -67,12 +67,14 @@ const TOM_INTRO_SCRIPT = [
 ];
 
 // --- Find the Princess minigame data -------------------------------------------------
-// "Find the Lady" with mushrooms (V9.94, Scarlett's rules): Princess Scarlett hides under
-// a mushroom, the mushrooms swap places faster and faster, and you click the one she's
-// under. Three rounds with 3 mushrooms, then three rounds with 5. Names are the ones
-// Scarlett and Olly use in real life: MUSHROOM = the red spotted toadstool (there is only
-// ever ONE, it's the special one), TALL MUSHROOM = the shaggy inkcap, BIG MUSHROOM = the
-// oyster cluster. The 5-mushroom rounds add a second tall + a second big mushroom.
+// "Find the Lady" with mushrooms (V9.94, Scarlett's rules; restructured V10.20): Princess
+// Scarlett hides under a mushroom, the mushrooms swap places faster and faster, and you
+// click the one she's under. Four stages of three rounds each: toadstool only, then tall
+// only, then big only (3 mushrooms apiece, so you learn to track one look-alike type at a
+// time), then a final stage mixing all three (5 mushrooms). Names are the ones Scarlett
+// and Olly use in real life: MUSHROOM = the red spotted toadstool (only ever ONE in the
+// mixed stage - it's the special one), TALL MUSHROOM = the shaggy inkcap, BIG MUSHROOM =
+// the oyster cluster. See SHELL_ROUNDS below for the exact per-round line-up.
 // Art: assets/minigames/find-the-princess/ (Scarlett's own drawings, transparent PNGs
 // converted to webp). `k` = drawn height relative to the round's base mushroom size.
 const FP_DIR = 'assets/minigames/find-the-princess/';
@@ -84,15 +86,32 @@ const MUSHROOM_TYPES = [
 MUSHROOM_TYPES.forEach(m => { m.img = new Image(); m.img.src = m.src; });
 const fpPrincessImg = new Image(); fpPrincessImg.src = FP_DIR + 'princess-scarlett.webp';
 const fpFoundImg = new Image(); fpFoundImg.src = FP_DIR + 'princess-found-peek.webp';
-// Each round: how many mushrooms, how many swaps, seconds per swap (smaller = faster).
-// Numbers are a first guess - Scarlett: "we can always tweak it".
+// V10.20, Scarlett's redesign: it felt like a pure gamble because you never actually
+// SAW which mushroom she'd swapped into (see the switch-reveal animation in
+// updateMushroom/drawMushroomGame below) - that's the real fix. This structure change is
+// the other half: four stages of three rounds apiece, so you learn to track one mushroom
+// type at a time before the final stage asks you to track all three at once.
+//   Stage 1 (rounds 1-3): toadstool only, 3 mushrooms.
+//   Stage 2 (rounds 4-6): tall mushroom only, 3 mushrooms.
+//   Stage 3 (rounds 7-9): big mushroom only, 3 mushrooms.
+//   Stage 4 (rounds 10-12): all three types mixed, 5 mushrooms (toadstool + 2 tall + 2 big,
+//   same "only one toadstool" rule as before).
+// `types` is this round's exact mushroom line-up (shuffled into slots at round start).
+// swaps/swapTime still ramp smoothly across all 12 rounds (same start/end pace as the old
+// 6-round version, just spread further out).
 const SHELL_ROUNDS = [
-    { count: 3, swaps: 5, swapTime: .62 },
-    { count: 3, swaps: 7, swapTime: .5 },
-    { count: 3, swaps: 9, swapTime: .4 },
-    { count: 5, swaps: 8, swapTime: .5 },
-    { count: 5, swaps: 11, swapTime: .4 },
-    { count: 5, swaps: 14, swapTime: .31 }
+    { count: 3, types: ['small', 'small', 'small'], swaps: 5, swapTime: .62 },
+    { count: 3, types: ['small', 'small', 'small'], swaps: 6, swapTime: .59 },
+    { count: 3, types: ['small', 'small', 'small'], swaps: 7, swapTime: .56 },
+    { count: 3, types: ['tall', 'tall', 'tall'], swaps: 7, swapTime: .54 },
+    { count: 3, types: ['tall', 'tall', 'tall'], swaps: 8, swapTime: .51 },
+    { count: 3, types: ['tall', 'tall', 'tall'], swaps: 9, swapTime: .48 },
+    { count: 3, types: ['huge', 'huge', 'huge'], swaps: 10, swapTime: .45 },
+    { count: 3, types: ['huge', 'huge', 'huge'], swaps: 11, swapTime: .42 },
+    { count: 3, types: ['huge', 'huge', 'huge'], swaps: 12, swapTime: .39 },
+    { count: 5, types: ['small', 'tall', 'huge', 'tall', 'huge'], swaps: 12, swapTime: .37 },
+    { count: 5, types: ['small', 'tall', 'huge', 'tall', 'huge'], swaps: 13, swapTime: .34 },
+    { count: 5, types: ['small', 'tall', 'huge', 'tall', 'huge'], swaps: 14, swapTime: .31 }
 ];
 const FP_PASS_FRACTION = .6;   // Scarlett: "you have to get 60% to pass for now" -> 4 of 6
 const FP_PASS_SCORE = Math.ceil(SHELL_ROUNDS.length * FP_PASS_FRACTION);
@@ -316,6 +335,8 @@ export function createLevel2(ui, hostOpts = null) {
     let fsScarlettId = null;   // which mushroom id she's actually under
     let fsSwapQueue = [];      // [[slotA, slotB], ...] for the current round's shuffle
     let fsSwapIdx = 0;
+    let fsActiveSwitchPlan = null;   // V10.20: decided the moment a swap BEGINS (not after), so its
+    // visible reveal animation can play out across the whole hop - see planSwitchFor() below.
     let fsGuessedId = null;
     let fsResolveOk = false;
     let fsLastScarlettSlot = 0;   // where she was in the last round (the end screen pops her out of it)
@@ -872,11 +893,24 @@ export function createLevel2(ui, hostOpts = null) {
     function currentRound() { return SHELL_ROUNDS[fsRoundIdx]; }
     function typeFor(id) { return MUSHROOM_TYPES.find(m => m.id === id); }
     function mushroomAtSlot(slot) { return fsMushrooms.find(m => m.slot === slot); }
+    // V10.20: decides, for one upcoming swap, whether she switches to the other mushroom
+    // involved - same 50% rule as before, just decided up front so drawMushroomGame can
+    // show it happening (a visible peek-and-dash) across that swap's whole hop animation,
+    // instead of it just silently taking effect once the hop was already over.
+    function planSwitchFor(a, b) {
+        const ma = mushroomAtSlot(a), mb = mushroomAtSlot(b);
+        if (!ma || !mb) return null;
+        if (ma.id === fsScarlettId && Math.random() < 0.5) return { fromId: ma.id, toId: mb.id, fromSlot: a, toSlot: b };
+        if (mb.id === fsScarlettId && Math.random() < 0.5) return { fromId: mb.id, toId: ma.id, fromSlot: b, toSlot: a };
+        return null;
+    }
 
-    // 3 mushrooms = one of each; 5 mushrooms = add a second TALL and a second BIG one.
-    // There is only ever one red toadstool ("that's the special mushroom").
-    function buildTypesForCount(count) {
-        const types = count <= 3 ? ['small', 'tall', 'huge'].slice(0, count) : ['small', 'tall', 'huge', 'tall', 'huge'].slice(0, count);
+    // V10.20: each round now names its own exact mushroom line-up (see SHELL_ROUNDS) rather
+    // than deriving it from the count alone - shuffled into slots so the same-type stages
+    // (1-3) aren't suspiciously predictable about which slot she started under, and so the
+    // mixed stage (4) randomizes where the lone toadstool and the two pairs land.
+    function buildTypesForRound(r) {
+        const types = [...r.types];
         for (let i = types.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [types[i], types[j]] = [types[j], types[i]];
@@ -923,7 +957,7 @@ export function createLevel2(ui, hostOpts = null) {
     }
     function startShellRound() {
         const r = currentRound();
-        const types = buildTypesForCount(r.count);
+        const types = buildTypesForRound(r);
         fsMushrooms = types.map((type, i) => ({ id: i, type, slot: i }));
         fsScarlettId = Math.floor(Math.random() * r.count);
         fsSwapQueue = buildSwapQueue(r.count, r.swaps);
@@ -972,8 +1006,10 @@ export function createLevel2(ui, hostOpts = null) {
             return;
         }
         const r = currentRound();
-        if (fsPhase === 'reveal' && fsPhaseT >= REVEAL_SECONDS) { fsPhase = 'shuffle'; fsPhaseT = 0; }
-        else if (fsPhase === 'shuffle') {
+        if (fsPhase === 'reveal' && fsPhaseT >= REVEAL_SECONDS) {
+            fsPhase = 'shuffle'; fsPhaseT = 0;
+            fsActiveSwitchPlan = fsSwapQueue.length ? planSwitchFor(...fsSwapQueue[0]) : null;
+        } else if (fsPhase === 'shuffle') {
             if (fsSwapIdx >= fsSwapQueue.length) { fsPhase = 'guess'; fsPhaseT = 0; }
             else if (fsPhaseT >= r.swapTime) {
                 const [a, b] = fsSwapQueue[fsSwapIdx];
@@ -982,12 +1018,13 @@ export function createLevel2(ui, hostOpts = null) {
                 if (mb) mb.slot = a;
                 // V10.4: when a swap touches her current mushroom, she has a chance to actually
                 // switch to the other one involved - so memorizing her starting type isn't enough.
-                if (ma && mb) {
-                    if (ma.id === fsScarlettId && Math.random() < 0.5) fsScarlettId = mb.id;
-                    else if (mb.id === fsScarlettId && Math.random() < 0.5) fsScarlettId = ma.id;
-                }
+                // V10.20: the roll itself now happens in planSwitchFor, at the moment this swap
+                // BEGAN (see above / below) - here we just apply whatever was already decided,
+                // so it matches what drawMushroomGame has been visibly showing this whole hop.
+                if (fsActiveSwitchPlan) fsScarlettId = fsActiveSwitchPlan.toId;
                 fsSwapIdx++;
                 fsPhaseT = 0;
+                fsActiveSwitchPlan = (fsSwapIdx < fsSwapQueue.length) ? planSwitchFor(...fsSwapQueue[fsSwapIdx]) : null;
             }
         } else if (fsPhase === 'resolve' && fsPhaseT >= 1.6) advanceShellRound();
     }
@@ -1120,6 +1157,12 @@ export function createLevel2(ui, hostOpts = null) {
 
         // Work out where each mushroom is this frame. The two swapping mushrooms travel on
         // opposite arcs (one hops up and over, one dips under) so you can follow them.
+        // V10.20: when this swap is also the one where she switches mushrooms (see
+        // fsActiveSwitchPlan), the mushroom she's LEAVING is always the one that lifts
+        // (regardless of which of the two it happens to be in the swap tuple) - that's the
+        // "you have to actually see the mushroom lift" fix, and it lifts further + faster
+        // than a plain decoy swap so it reads as a deliberate, bigger reveal.
+        const switchSwap = activeSwap && fsActiveSwitchPlan;
         const placed = fsMushrooms.map(m => {
             let cx = slotX(m.slot, r.count, vw), dy = 0, front = 0;
             if (activeSwap) {
@@ -1127,8 +1170,9 @@ export function createLevel2(ui, hostOpts = null) {
                 if (m.slot === a || m.slot === b) {
                     const from = slotX(m.slot, r.count, vw), to = slotX(m.slot === a ? b : a, r.count, vw);
                     cx = from + (to - from) * ease;
-                    const up = m.slot === a;
-                    dy = Math.sin(Math.PI * swapT) * base * (up ? -.28 : .1);
+                    const up = switchSwap ? m.slot === fsActiveSwitchPlan.fromSlot : m.slot === a;
+                    const liftMul = switchSwap ? (up ? -.5 : .1) : (up ? -.28 : .1);
+                    dy = Math.sin(Math.PI * swapT) * base * liftMul;
                     front = up ? 1 : 2;
                 }
             }
@@ -1143,6 +1187,17 @@ export function createLevel2(ui, hostOpts = null) {
             const p = fsPhaseT / REVEAL_SECONDS;
             const hide = Math.max(0, Math.min(1, (p - .55) / .35));
             drawPrincess(scarlett.cx, floorY, princessH, 1 - hide, 1 - hide * .65);
+        }
+        // V10.20: the actual "you can see her change mushrooms" moment. Plays across the
+        // WHOLE hop (not a separate instant), peaking right as the two mushrooms cross -
+        // she pops up from the one she's leaving, dashes to the one she's headed for, and
+        // ducks back down, perfectly in sync with that mushroom's own lift/dip.
+        if (switchSwap) {
+            const fromX = slotX(fsActiveSwitchPlan.fromSlot, r.count, vw);
+            const toX = slotX(fsActiveSwitchPlan.toSlot, r.count, vw);
+            const dashX = fromX + (toX - fromX) * ease;
+            const hump = Math.sin(Math.PI * swapT);   // 0 at the ends, 1 at swapT=.5
+            drawPrincess(dashX, floorY, princessH * .8, Math.max(0, hump), .55 + .45 * hump);
         }
         placed.forEach(p => {
             let lift = 0, alpha = 1;
